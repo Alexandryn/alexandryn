@@ -137,3 +137,12 @@ not cross either gate on its own judgement.
 | In progress | Specs or implementation underway. |
 | Blocked | Waiting on a dependency or a decision. The phase file says which. |
 | Closed | Exit criteria met, audit clear, maintainer signed off. |
+
+"Maintainer approval recorded" (an exit criterion on every phase) means the
+maintainer fills in the phase file's own **Closed** date, in the header table
+at the top of the phase document — not a separate file. `reviews/` is for
+specs, ADRs, and boundary-crossing changes; a phase's own closure doesn't get
+a second, redundant record. If a phase closes with unresolved disagreement
+worth remembering, a line under its **Why here** or a new **Closure notes**
+section says so — the date alone isn't enough when the sign-off wasn't
+unanimous.

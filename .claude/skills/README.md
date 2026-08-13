@@ -28,6 +28,26 @@ The signal to write one: the same guidance has been given in review twice.
 Short, actionable, and opinionated. A skill is a checklist with reasoning, not
 an essay. If it can't be applied while working, it belongs in `docs/` instead.
 
+## Tooling already available, not authored here
+
+The table below is skills *this project will write*. Separately, Claude Code
+sessions working on this repo already have tools that aren't ours to author —
+built-in skills, MCP servers, CLIs. Recording what exists and what it's for,
+so a phase doesn't "discover" a tool mid-implementation instead of deciding
+on it during planning, per the spec-before-build rule:
+
+| Tool | Kind | Use | First relevant phase |
+|---|---|---|---|
+| `code-review` skill | Built-in | PR/diff review | Any, once there's code. Overlaps the planned "Code review" purpose skill below — undecided whether that gets authored from scratch or as a thin wrapper adding this project's `templates/review.md` dimensions on top |
+| `security-review` skill | Built-in | Audit-gate reviews | Same — overlaps the planned "Security review" row, same open question |
+| `frontend-design` skill | Built-in | Aesthetic direction, avoiding templated-default UI | Phase 04 — translating `.design-reference/` into production |
+| `dataviz` skill | Built-in | Chart/dashboard design consistency | Phase 15 — Activity, metrics |
+| `artifact-design` / `artifact-diagramming` skills | Built-in | Diagrams, design docs | Phase 01 — the three trust-boundary diagrams the phase requires |
+| `postgres` MCP server | Project (`.mcp.json`) | Query/inspect the local dev database | Live now. ADR 0004 |
+| `playwright` MCP server | Plugin | Drive a real browser | Phase 04 (frontend testing), Phase 17 (accessibility conformance) |
+| `gh` CLI | System | GitHub repo/PR/issue operations | Already in use (repo creation) |
+| `github` MCP server | Plugin | Same, via MCP | Currently broken (bad auth header) — `gh` CLI covers this, not blocking |
+
 ## Status
 
 **Empty by design.** The practices these would describe don't exist yet — the
