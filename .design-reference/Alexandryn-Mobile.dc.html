@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#EDEBE6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  button{background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
+  a{color:var(--ac);text-decoration:none}
+  a:hover{color:var(--tx);text-decoration:underline;text-underline-offset:3px}
+  ::selection{background:var(--acs);color:var(--tx)}
+  .fr::-webkit-scrollbar{width:0;height:0}
+</style>
+</helmet>
+
+<div ref="{{ rootRef }}" style="--bg:#F6F5F2;--sf:#FFFFFF;--sf2:#FBFAF9;--sf3:#F1EFEB;--tx:#1A1917;--tx2:#6E6B66;--tx3:#9C978F;--ln:#E7E4DE;--ln2:#F0EDE8;--ac:#41608F;--acs:#ECF0F7;--act:#FFFFFF;--wm:#B07C4F;--ok:#4A8A68;--er:#B04A40;--sh2:0 14px 34px -18px rgba(24,22,20,.34);--dz:#0E0E10;min-height:100vh;background:{{ boardBg }};color:var(--tx);font-family:Geist,system-ui,-apple-system,'Helvetica Neue',sans-serif;font-size:14px;line-height:1.45;padding:44px clamp(20px,4vw,56px) 90px">
+
+  <div style="max-width:1560px;margin:0 auto">
+    <div style="display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap;margin-bottom:34px">
+      <div style="flex:1;min-width:280px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--tx3)">ALEXANDRYN · MOBILE</div>
+        <h1 style="margin:8px 0 0;font-family:Newsreader,Georgia,serif;font-size:clamp(30px,3.4vw,40px);font-weight:400;letter-spacing:-.025em;line-height:1.05">Companion app</h1>
+        <div style="font-size:13.5px;color:var(--tx2);margin-top:8px;max-width:66ch">The phone is a reader and a remote, not a manager. It reads from whichever host is reachable, keeps a small offline shelf, and never edits sources.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div onClick="{{ toggleTheme }}" style="display:flex;align-items:center;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--ln);background:var(--sf);font-size:12.5px;cursor:pointer">{{ themeLabel }}</div>
+        <div style="display:flex;align-items:center;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--ln);background:var(--sf);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--tx2)">390 × 844</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:46px 40px">
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">01</div>
+          <div style="font-size:13.5px;font-weight:500">Library</div>
+          <div style="font-size:12px;color:var(--tx3)">home tab</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+              </div>
+            </div>
+
+            <div style="flex:none;padding:8px 20px 14px;display:flex;align-items:center;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--tx3)">{{ hostShort }}</div>
+                <div style="font-family:Newsreader,Georgia,serif;font-size:27px;letter-spacing:-.02em;margin-top:3px">Home Library</div>
+              </div>
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--sf3);border:1px solid var(--ln);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--tx2);flex:none">SR</div>
+            </div>
+
+            <div style="flex:1;overflow:hidden;padding:0 20px 12px">
+              <div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 13px;border-radius:11px;background:var(--sf);border:1px solid var(--ln);color:var(--tx3);font-size:13.5px">
+                <div style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--tx3);flex:none"></div>
+                <div>Search library</div>
+              </div>
+
+              <div style="display:flex;gap:14px;padding:15px;border-radius:15px;background:var(--sf);border:1px solid var(--ln);margin-top:16px">
+                <div style="position:relative;width:64px;flex:none;align-self:flex-start;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ hero.bg }};color:{{ hero.fg }}">
+                  <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(0,0,0,.22)"></div>
+                  <div style="position:absolute;left:8px;right:6px;top:9px;font-family:Newsreader,Georgia,serif;font-size:10px;line-height:1.15">{{ hero.t }}</div>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--tx3)">CONTINUE READING</div>
+                  <div style="font-family:Newsreader,Georgia,serif;font-size:19px;line-height:1.15;margin-top:6px;text-wrap:pretty">{{ hero.t }}</div>
+                  <div style="font-size:11.5px;color:var(--tx3);margin-top:5px">{{ hero.ch }}</div>
+                  <div style="flex:1;min-height:10px"></div>
+                  <div style="height:3px;border-radius:2px;background:var(--ln);overflow:hidden"><div style="height:100%;background:var(--wm);width:{{ hero.progW }}"></div></div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:11px">
+                    <div style="display:inline-flex;align-items:center;height:44px;padding:0 20px;border-radius:11px;background:var(--ac);color:var(--act);font-size:13.5px;font-weight:500">Read</div>
+                    <div style="font-size:11.5px;color:var(--tx3)">{{ hero.left }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;margin:20px 0 12px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--tx3)">ON THIS PHONE · 7</div>
+                <div style="flex:1;height:1px;background:var(--ln)"></div>
+                <div style="font-size:11.5px;color:var(--ac)">Manage</div>
+              </div>
+              <div style="display:flex;gap:11px">
+                <sc-for list="{{ offlineRow }}" as="b" hint-placeholder-count="4">
+                  <div style="width:74px;flex:none">
+                    <div style="position:relative;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ b.bg }};color:{{ b.fg }}">
+                      <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(0,0,0,.22)"></div>
+                      <div style="position:absolute;left:8px;right:6px;top:9px;font-family:Newsreader,Georgia,serif;font-size:10px;line-height:1.15">{{ b.t }}</div>
+                      <div style="position:absolute;right:5px;bottom:5px;width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px">↓</div>
+                    </div>
+                    <div style="font-size:10.5px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.t }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;margin:22px 0 12px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--tx3)">ALL BOOKS · 1,284</div>
+                <div style="flex:1;height:1px;background:var(--ln)"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px">
+                <sc-for list="{{ gridRow }}" as="b" hint-placeholder-count="6">
+                  <div>
+                    <div style="position:relative;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ b.bg }};color:{{ b.fg }}">
+                      <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(0,0,0,.22)"></div>
+                      <div style="position:absolute;left:9px;right:7px;top:10px;font-family:Newsreader,Georgia,serif;font-size:10.5px;line-height:1.15">{{ b.t }}</div>
+                    </div>
+                    <div style="font-size:10.5px;font-weight:500;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.t }}</div>
+                    <div style="font-size:10px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.a }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="flex:none;height:82px;border-top:1px solid var(--ln);background:var(--sf);display:flex;align-items:flex-start;padding-top:9px">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+                <div style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:{{ t.color }}">
+                  <div style="width:18px;height:18px;border-radius:{{ t.r }};border:1.6px solid currentColor;opacity:{{ t.o }}"></div>
+                  <div style="font-size:10px;font-weight:{{ t.w }}">{{ t.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">02</div>
+          <div style="font-size:13.5px;font-weight:500">Book</div>
+          <div style="font-size:12px;color:var(--tx3)">metadata + real availability</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:none;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 18px">
+              <div style="width:44px;height:44px;display:flex;align-items:center;font-size:14px;color:var(--tx2)">←</div>
+              <div style="display:flex;gap:2px">
+                <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--tx2)">⋯</div>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:6px 20px 0">
+              <div style="display:flex;gap:16px">
+                <div style="position:relative;width:112px;flex:none;align-self:flex-start;aspect-ratio:2/3;border-radius:4px;overflow:hidden;box-shadow:0 20px 40px -20px rgba(0,0,0,.5);background:{{ book.bg }};color:{{ book.fg }}">
+                  <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 8px)"></div>
+                  <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(0,0,0,.22)"></div>
+                  <div style="position:absolute;left:13px;right:10px;top:14px;font-family:Newsreader,Georgia,serif;font-size:14px;line-height:1.13">{{ book.t }}</div>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--tx3)">{{ book.y }} · {{ book.subj1 }}</div>
+                  <div style="font-family:Newsreader,Georgia,serif;font-size:25px;line-height:1.1;letter-spacing:-.02em;margin-top:8px;text-wrap:pretty">{{ book.t }}</div>
+                  <div style="font-size:13px;color:var(--tx2);margin-top:7px">{{ book.a }}</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--tx3);margin-top:12px;padding:3px 7px;border:1px solid var(--ln);border-radius:5px;display:inline-block">OPEN LIBRARY · {{ book.ol }}</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:9px;margin-top:18px">
+                <div style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--ac);color:var(--act);font-size:14px;font-weight:500">Continue reading</div>
+                <div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--ln);background:var(--sf);font-size:15px;color:var(--tx2)">↓</div>
+              </div>
+              <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+                <div style="flex:1;height:3px;border-radius:2px;background:var(--ln);overflow:hidden"><div style="height:100%;background:var(--wm);width:{{ book.progW }}"></div></div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--tx3)">{{ book.progLabel }}</div>
+              </div>
+
+              <div style="font-family:Newsreader,Georgia,serif;font-size:16px;line-height:1.6;margin-top:20px;text-wrap:pretty">{{ book.d }}</div>
+
+              <div style="margin-top:20px;padding:15px;border-radius:13px;border:1px solid var(--ln);background:var(--sf)">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--tx3)">AVAILABLE FROM YOUR SOURCES</div>
+                <sc-for list="{{ availability }}" as="a" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:11px;padding:11px 0 0;margin-top:11px;border-top:1px solid var(--ln2)">
+                    <div style="width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none"></div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.name }}</div>
+                      <div style="font-size:11px;color:var(--tx3)">{{ a.fmt }}</div>
+                    </div>
+                    <div style="font-size:12px;color:var(--ac);flex:none">{{ a.action }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:12px;padding:12px 14px;border-radius:11px;border:1px dashed var(--ln);font-size:11.5px;color:var(--tx2);line-height:1.5">3 of 32 editions are not in any source you have connected.</div>
+            </div>
+            <div style="flex:none;height:28px;display:flex;align-items:center;justify-content:center"><div style="width:130px;height:5px;border-radius:3px;background:var(--tx);opacity:.28"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">03</div>
+          <div style="font-size:13.5px;font-weight:500">Reader</div>
+          <div style="font-size:12px;color:var(--tx3)">controls hidden · tap to reveal</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:#FBFAF7;color:#1A1917;display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500;opacity:.35">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid currentColor;border-radius:2px"></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:14px 30px 0">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;opacity:.45">SECOND DAY — TERCE</div>
+              <sc-for list="{{ readerParas }}" as="p" hint-placeholder-count="5">
+                <div style="font-family:Newsreader,Georgia,serif;font-size:17.5px;line-height:1.72;margin-top:17px;text-wrap:pretty">{{ p.t }}</div>
+              </sc-for>
+            </div>
+            <div style="flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;opacity:.4">
+              <div>118 / 536</div>
+              <div>6h 12m left</div>
+            </div>
+            <div style="flex:none;height:24px;display:flex;align-items:center;justify-content:center"><div style="width:130px;height:5px;border-radius:3px;background:#1A1917;opacity:.22"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">04</div>
+          <div style="font-size:13.5px;font-weight:500">Reader controls</div>
+          <div style="font-size:12px;color:var(--tx3)">sepia · settings sheet</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:#F2E8D8;color:#3A2E20;display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid currentColor;border-radius:2px;opacity:.8"></div>
+            </div>
+            <div style="flex:none;height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(58,46,32,.14)">
+              <div style="width:44px;height:44px;display:flex;align-items:center;font-size:14px;opacity:.7">←</div>
+              <div style="flex:1;min-width:0;text-align:center;font-size:12px;opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">The Name of the Rose</div>
+              <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;opacity:.7">☰</div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:16px 30px 0">
+              <sc-for list="{{ readerParas }}" as="p" hint-placeholder-count="3">
+                <div style="font-family:Newsreader,Georgia,serif;font-size:17.5px;line-height:1.72;margin-bottom:17px;text-wrap:pretty">{{ p.t }}</div>
+              </sc-for>
+            </div>
+            <div style="flex:none;border-top:1px solid rgba(58,46,32,.16);background:#F7EFE2;padding:18px 20px 12px;border-radius:20px 20px 0 0">
+              <div style="width:38px;height:4px;border-radius:3px;background:rgba(58,46,32,.25);margin:0 auto 16px"></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;opacity:.55">READING</div>
+              <div style="display:flex;gap:9px;margin-top:11px">
+                <sc-for list="{{ mobThemes }}" as="t" hint-placeholder-count="3">
+                  <div style="flex:1;height:52px;border-radius:11px;border:1.5px solid {{ t.bd }};background:{{ t.sw }};color:{{ t.fg }};display:flex;align-items:center;justify-content:center;font-family:Newsreader,Georgia,serif;font-size:15px">Aa</div>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;margin-top:12px">
+                <div style="flex:1;height:48px;border-radius:11px;border:1px solid rgba(58,46,32,.16);display:flex;align-items:center;justify-content:center;font-family:Newsreader,Georgia,serif;font-size:15px">A −</div>
+                <div style="flex:1;height:48px;border-radius:11px;border:1px solid rgba(58,46,32,.16);display:flex;align-items:center;justify-content:center;font-family:Newsreader,Georgia,serif;font-size:19px">A +</div>
+                <div style="flex:1;height:48px;border-radius:11px;border:1px solid rgba(58,46,32,.16);display:flex;align-items:center;justify-content:center;font-size:12.5px">Contents</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;opacity:.5">34%</div>
+                <div style="flex:1;height:3px;border-radius:2px;background:rgba(58,46,32,.16);overflow:hidden"><div style="height:100%;background:#B07C4F;width:34%"></div></div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;opacity:.5">6h 12m</div>
+              </div>
+              <div style="height:16px"></div>
+              <div style="width:130px;height:5px;border-radius:3px;background:#3A2E20;opacity:.22;margin:0 auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">05</div>
+          <div style="font-size:13.5px;font-weight:500">Discover</div>
+          <div style="font-size:12px;color:var(--tx3)">metadata vs. availability</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:none;padding:8px 20px 12px">
+              <div style="font-family:Newsreader,Georgia,serif;font-size:25px;letter-spacing:-.02em">Discover</div>
+              <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 13px;border-radius:11px;background:var(--sf);border:1.5px solid var(--ac);margin-top:12px;font-size:14px">
+                <div style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--tx3);flex:none"></div>
+                <div style="flex:1;min-width:0">calvino invisible cities</div>
+                <div style="font-size:14px;color:var(--tx3)">×</div>
+              </div>
+              <div style="display:flex;gap:7px;margin-top:11px;overflow:hidden">
+                <sc-for list="{{ mobFilters }}" as="f" hint-placeholder-count="4">
+                  <div style="flex:none;height:32px;display:flex;align-items:center;padding:0 12px;border-radius:8px;border:1px solid var(--ln);background:{{ f.bgc }};font-size:12px;color:{{ f.color }}">{{ f.n }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3);margin-bottom:12px">4 WORKS · OPEN LIBRARY</div>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <sc-for list="{{ mobResults }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex;gap:13px;padding:13px;border-radius:13px;border:1px solid var(--ln);background:var(--sf)">
+                    <div style="position:relative;width:52px;flex:none;align-self:flex-start;aspect-ratio:2/3;border-radius:3px;overflow:hidden;background:{{ r.bg }};color:{{ r.fg }}">
+                      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:rgba(0,0,0,.22)"></div>
+                      <div style="position:absolute;left:6px;right:5px;top:7px;font-family:Newsreader,Georgia,serif;font-size:8.5px;line-height:1.15">{{ r.t }}</div>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-family:Newsreader,Georgia,serif;font-size:17px;line-height:1.2;text-wrap:pretty">{{ r.t }}</div>
+                      <div style="font-size:11.5px;color:var(--tx2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.a }} · {{ r.y }} · {{ r.eds }}</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+                        <div style="width:5px;height:5px;border-radius:50%;background:{{ r.availDot }};flex:none"></div>
+                        <div style="flex:1;min-width:0;font-size:11.5px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.availTxt }}</div>
+                      </div>
+                      <div style="margin-top:11px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:{{ r.actBg }};color:{{ r.actFg }};border:1px solid {{ r.actBd }};font-size:12.5px;font-weight:500">{{ r.act }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:none;height:82px;border-top:1px solid var(--ln);background:var(--sf);display:flex;align-items:flex-start;padding-top:9px">
+              <sc-for list="{{ tabsDiscover }}" as="t" hint-placeholder-count="4">
+                <div style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:{{ t.color }}">
+                  <div style="width:18px;height:18px;border-radius:{{ t.r }};border:1.6px solid currentColor;opacity:{{ t.o }}"></div>
+                  <div style="font-size:10px;font-weight:{{ t.w }}">{{ t.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">06</div>
+          <div style="font-size:13.5px;font-weight:500">Collections</div>
+          <div style="font-size:12px;color:var(--tx3)">tab</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:none;padding:8px 20px 14px;display:flex;align-items:flex-end;gap:12px">
+              <div style="flex:1;font-family:Newsreader,Georgia,serif;font-size:25px;letter-spacing:-.02em">Collections</div>
+              <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid var(--ln);background:var(--sf);font-size:16px;color:var(--tx2)">+</div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ collections }}" as="c" hint-placeholder-count="4">
+                  <div style="padding:15px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);display:flex;gap:14px;align-items:center">
+                    <div style="display:flex;gap:3px;flex:none">
+                      <sc-for list="{{ c.spines }}" as="s" hint-placeholder-count="4">
+                        <div style="width:12px;height:52px;border-radius:2px;background:{{ s.bg }}"></div>
+                      </sc-for>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:14.5px;font-weight:500">{{ c.n }}</div>
+                      <div style="font-size:11.5px;color:var(--tx2);margin-top:4px;line-height:1.45">{{ c.d }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--tx3);margin-top:9px">{{ c.count }} BOOKS · {{ c.avail }} AVAILABLE</div>
+                    </div>
+                    <div style="font-size:14px;color:var(--tx3);flex:none">›</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:none;height:82px;border-top:1px solid var(--ln);background:var(--sf);display:flex;align-items:flex-start;padding-top:9px">
+              <sc-for list="{{ tabsCollections }}" as="t" hint-placeholder-count="4">
+                <div style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:{{ t.color }}">
+                  <div style="width:18px;height:18px;border-radius:{{ t.r }};border:1.6px solid currentColor;opacity:{{ t.o }}"></div>
+                  <div style="font-size:10px;font-weight:{{ t.w }}">{{ t.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">07</div>
+          <div style="font-size:13.5px;font-weight:500">Downloads</div>
+          <div style="font-size:12px;color:var(--tx3)">offline shelf + storage</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:none;padding:8px 20px 14px">
+              <div style="font-family:Newsreader,Georgia,serif;font-size:25px;letter-spacing:-.02em">On this phone</div>
+              <div style="font-size:12.5px;color:var(--tx2);margin-top:6px">Kept for reading without the host. Positions still sync when you reconnect.</div>
+              <div style="margin-top:16px;padding:14px 15px;border-radius:13px;border:1px solid var(--ln);background:var(--sf)">
+                <div style="display:flex;align-items:baseline;gap:8px">
+                  <div style="font-size:20px">86 MB</div>
+                  <div style="font-size:11.5px;color:var(--tx3)">of 220 MB allowance</div>
+                </div>
+                <div style="height:6px;border-radius:3px;background:var(--sf3);overflow:hidden;margin-top:11px"><div style="height:100%;background:var(--ac);width:39%"></div></div>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px">
+              <div style="border:1px solid var(--ln);border-radius:13px;background:var(--sf);overflow:hidden">
+                <sc-for list="{{ downloads }}" as="d" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--ln2)">
+                    <div style="width:26px;flex:none;aspect-ratio:2/3;border-radius:2px;background:{{ d.bg }}"></div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.t }}</div>
+                      <div style="font-size:10.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.meta }}</div>
+                    </div>
+                    <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none;font-size:13px;color:{{ d.iconColor }}">{{ d.icon }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:14px;padding:13px 14px;border-radius:12px;border:1px solid var(--ln);background:var(--sf2);display:flex;gap:11px;align-items:flex-start">
+                <div style="width:5px;height:5px;border-radius:50%;background:var(--wm);margin-top:6px;flex:none"></div>
+                <div style="font-size:11.5px;color:var(--tx2);line-height:1.5">Files are copies. Removing one here never touches the source it came from.</div>
+              </div>
+            </div>
+            <div style="flex:none;height:82px;border-top:1px solid var(--ln);background:var(--sf);display:flex;align-items:flex-start;padding-top:9px">
+              <sc-for list="{{ tabsMore }}" as="t" hint-placeholder-count="4">
+                <div style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:{{ t.color }}">
+                  <div style="width:18px;height:18px;border-radius:{{ t.r }};border:1.6px solid currentColor;opacity:{{ t.o }}"></div>
+                  <div style="font-size:10px;font-weight:{{ t.w }}">{{ t.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">08</div>
+          <div style="font-size:13.5px;font-weight:500">Connect</div>
+          <div style="font-size:12px;color:var(--tx3)">host discovery · first run</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:1;padding:30px 26px 0;display:flex;flex-direction:column">
+              <div style="width:38px;height:38px;border-radius:11px;background:var(--tx);display:flex;align-items:center;justify-content:center">
+                <div style="width:13px;height:15px;border-left:2.5px solid var(--bg);border-right:2.5px solid var(--bg)"></div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.22em;color:var(--tx2);margin-top:22px">ALEXANDRYN</div>
+              <div style="font-family:Newsreader,Georgia,serif;font-size:31px;letter-spacing:-.025em;line-height:1.1;margin-top:14px">Find your library</div>
+              <div style="font-size:13px;color:var(--tx2);margin-top:10px;line-height:1.55">One host was found on this network. You can also enter an address or scan the code shown on the host computer.</div>
+
+              <div style="margin-top:24px;padding:16px;border-radius:14px;border:1.5px solid var(--ac);background:var(--acs)">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14.5px;font-weight:500">Home Library</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--tx2);margin-top:3px">192.168.1.24:8474</div>
+                  </div>
+                </div>
+                <div style="font-size:11.5px;color:var(--tx2);margin-top:12px">1,284 books · 4 sources · requires passphrase</div>
+                <div style="margin-top:14px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:var(--ac);color:var(--act);font-size:14px;font-weight:500">Connect</div>
+              </div>
+
+              <div style="margin-top:14px;display:flex;flex-direction:column;gap:9px">
+                <div style="height:48px;display:flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid var(--ln);background:var(--sf);font-size:13.5px">Scan code on host</div>
+                <div style="height:48px;display:flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid var(--ln);background:var(--sf);font-size:13.5px">Enter address manually</div>
+              </div>
+
+              <div style="flex:1"></div>
+              <div style="padding:14px 15px;border-radius:12px;border:1px solid var(--ln);background:var(--sf2);display:flex;gap:11px;align-items:flex-start;margin-bottom:20px">
+                <div style="width:5px;height:5px;border-radius:50%;background:var(--wm);margin-top:6px;flex:none"></div>
+                <div style="font-size:11.5px;color:var(--tx2);line-height:1.5">Away from home? Ask the host to publish a cloud relay in <span style="color:var(--tx)">Settings → Network</span>.</div>
+              </div>
+            </div>
+            <div style="flex:none;height:26px;display:flex;align-items:center;justify-content:center"><div style="width:130px;height:5px;border-radius:3px;background:var(--tx);opacity:.28"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:13px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--tx3)">09</div>
+          <div style="font-size:13.5px;font-weight:500">More</div>
+          <div style="font-size:12px;color:var(--tx3)">host status · what the phone can't do</div>
+        </div>
+        <div style="width:390px;height:844px;border-radius:44px;padding:11px;background:var(--dz);box-shadow:0 40px 80px -40px rgba(0,0,0,.55)">
+          <div class="fr" style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative">
+            <div style="flex:none;height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12.5px;font-weight:500">
+              <div>9:41</div>
+              <div style="position:absolute;left:50%;transform:translateX(-50%);top:9px;width:86px;height:26px;border-radius:14px;background:var(--dz)"></div>
+              <div style="width:15px;height:9px;border:1.2px solid var(--tx);border-radius:2px;opacity:.85"></div>
+            </div>
+            <div style="flex:none;padding:8px 20px 14px">
+              <div style="font-family:Newsreader,Georgia,serif;font-size:25px;letter-spacing:-.02em">More</div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px">
+              <div style="padding:15px;border-radius:14px;border:1px solid var(--ln);background:var(--sf)">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none"></div>
+                  <div style="flex:1;min-width:0;font-size:14px;font-weight:500">Home Library</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--tx3)">{{ hostShort }}</div>
+                </div>
+                <div style="font-size:11.5px;color:var(--tx2);margin-top:9px">Last synced 12 minutes ago · 1,284 books</div>
+              </div>
+
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3);margin:20px 0 10px">SOURCES · READ ONLY</div>
+              <div style="border:1px solid var(--ln);border-radius:13px;background:var(--sf);overflow:hidden">
+                <sc-for list="{{ sources }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-top:1px solid var(--ln2)">
+                    <div style="width:6px;height:6px;border-radius:50%;background:{{ s.dotc }};flex:none"></div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</div>
+                      <div style="font-size:10.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.status }}</div>
+                    </div>
+                    <div style="font-size:11px;color:var(--tx3);flex:none">{{ s.booksLabel }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="margin-top:12px;padding:13px 14px;border-radius:12px;border:1px dashed var(--ln);font-size:11.5px;color:var(--tx2);line-height:1.5">Adding sources, importing files and changing library settings happen on the host computer.</div>
+
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3);margin:20px 0 10px">THIS DEVICE</div>
+              <div style="border:1px solid var(--ln);border-radius:13px;background:var(--sf);overflow:hidden">
+                <sc-for list="{{ moreRows }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px;border-top:1px solid var(--ln2);min-height:48px">
+                    <div style="flex:1;min-width:0;font-size:13px">{{ r.n }}</div>
+                    <div style="font-size:12px;color:var(--tx3);flex:none">{{ r.v }}</div>
+                    <div style="font-size:13px;color:var(--tx3);flex:none">›</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:none;height:82px;border-top:1px solid var(--ln);background:var(--sf);display:flex;align-items:flex-start;padding-top:9px">
+              <sc-for list="{{ tabsMore }}" as="t" hint-placeholder-count="4">
+                <div style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:{{ t.color }}">
+                  <div style="width:18px;height:18px;border-radius:{{ t.r }};border:1.6px solid currentColor;opacity:{{ t.o }}"></div>
+                  <div style="font-size:10px;font-weight:{{ t.w }}">{{ t.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#41608F&quot;,&quot;#4F6B57&quot;,&quot;#7A5A86&quot;,&quot;#8A5A3C&quot;],&quot;default&quot;:&quot;#41608F&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const LIGHT={'--bg':'#F6F5F2','--sf':'#FFFFFF','--sf2':'#FBFAF9','--sf3':'#F1EFEB','--tx':'#1A1917','--tx2':'#6E6B66','--tx3':'#9C978F','--ln':'#E7E4DE','--ln2':'#F0EDE8','--acs':'#ECF0F7','--act':'#FFFFFF','--wm':'#B07C4F','--ok':'#4A8A68','--er':'#B04A40','--sh2':'0 14px 34px -18px rgba(24,22,20,.34)'};
+const DARK={'--bg':'#101012','--sf':'#17171A','--sf2':'#1C1C20','--sf3':'#25252A','--tx':'#ECEAE6','--tx2':'#98958F','--tx3':'#6E6B65','--ln':'#27272C','--ln2':'#1F1F23','--acs':'#1C2333','--act':'#0E1420','--wm':'#C89466','--ok':'#6FB68C','--er':'#DF8078','--sh2':'0 14px 34px -18px rgba(0,0,0,.8)'};
+
+const RAW=[
+ {id:'rose',t:'The Name of the Rose',a:'Umberto Eco',y:1980,ol:'OL27448W',bg:'#2A3550',fg:'#E8E4DA',prog:34,ch:'Second Day — Terce',left:'6h 12m left',subj:['Historical fiction'],
+  d:'A murder mystery set within a fourteenth-century Italian monastery, where a Franciscan friar and his young novice investigate a series of deaths among the brothers.'},
+ {id:'piranesi',t:'Piranesi',a:'Susanna Clarke',y:2020,ol:'OL20933942W',bg:'#26494F',fg:'#E6EDEA',prog:78,ch:'Part 4 — The Prophet',left:'1h 05m left',subj:['Fantasy fiction'],d:''},
+ {id:'lefthand',t:'The Left Hand of Darkness',a:'Ursula K. Le Guin',y:1969,ol:'OL453936W',bg:'#333A63',fg:'#E4E3EE',prog:12,ch:'Chapter 3',left:'4h 40m left',subj:['Science fiction'],d:''},
+ {id:'sicp',t:'Structure and Interpretation of Computer Programs',a:'Abelson & Sussman',y:1985,ol:'OL1975402W',bg:'#1F2124',fg:'#DCD9D2',prog:0,ch:'',left:'',subj:['Computer science'],d:''},
+ {id:'cities',t:'Invisible Cities',a:'Italo Calvino',y:1972,ol:'OL27478W',bg:'#9C5B3C',fg:'#F6EDE4',prog:0,ch:'',left:'',subj:['Italian fiction'],d:''},
+ {id:'master',t:'The Master and Margarita',a:'Mikhail Bulgakov',y:1967,ol:'OL27482W',bg:'#5A2E30',fg:'#F0E2DE',prog:0,ch:'',left:'',subj:['Russian fiction'],d:''},
+ {id:'geb',t:'Gödel, Escher, Bach',a:'Douglas Hofstadter',y:1979,ol:'OL1875823W',bg:'#3C5142',fg:'#E4EBE2',prog:12,ch:'Chapter V',left:'11h 20m left',subj:['Consciousness'],d:''},
+ {id:'disquiet',t:'The Book of Disquiet',a:'Fernando Pessoa',y:1982,ol:'OL2761662W',bg:'#4A3450',fg:'#EDE4F0',prog:0,ch:'',left:'',subj:['Fragments'],d:''},
+ {id:'solaris',t:'Solaris',a:'Stanisław Lem',y:1961,ol:'OL27448X',bg:'#2B4A5C',fg:'#E2ECF0',prog:0,ch:'',left:'',subj:['Science fiction'],d:''},
+ {id:'orlando',t:'Orlando',a:'Virginia Woolf',y:1928,ol:'OL46372W',bg:'#7A4A5E',fg:'#F5E6EB',prog:0,ch:'',left:'',subj:['Biography'],d:''},
+ {id:'wolfhall',t:'Wolf Hall',a:'Hilary Mantel',y:2009,ol:'OL15168718W',bg:'#5C4327',fg:'#F1E7D8',prog:0,ch:'',left:'',subj:['Historical fiction'],d:''},
+ {id:'austerlitz',t:'Austerlitz',a:'W. G. Sebald',y:2001,ol:'OL27441W',bg:'#3A3F45',fg:'#E3E2DF',prog:0,ch:'',left:'',subj:['Memory'],d:''}
+];
+
+const SOURCES=[
+ {name:'Personal OPDS',status:'Synced 12 min ago',books:1284,dot:'ok'},
+ {name:'Studio NAS',status:'Synced 6 hours ago',books:412,dot:'ok'},
+ {name:'Reading Room',status:'Reachable',books:96,dot:'ok'},
+ {name:'Archive Bucket',status:'Credentials expired',books:0,dot:'er'}
+];
+
+const COLLECTIONS=[
+ {n:'Slow Fiction',d:'Long novels worth living inside for a month.',count:38,avail:31,ids:['rose','piranesi','master','wolfhall']},
+ {n:'Systems & Minds',d:'Computation, cognition and the arguments between them.',count:22,avail:14,ids:['sicp','geb','solaris','lefthand']},
+ {n:'Cities & Memory',d:'Places that are really about remembering.',count:17,avail:17,ids:['cities','austerlitz','disquiet','orlando']},
+ {n:'Bought, Unread',d:'The shelf of good intentions.',count:54,avail:40,ids:['solaris','wolfhall','sicp','disquiet']}
+];
+
+const PARAS=[
+ 'It was a beautiful morning at the end of November. During the night it had snowed, but only a little, and the earth was covered with a cool blanket no more than three fingers high.',
+ 'The library was the greatest in Christendom, and the only one whose plan was known to a single man. Not even the abbot could say how the finis Africae was reached.',
+ 'My master had a habit of collecting signs the way other men collect debts. A hoofprint in the snow, a torn page, the direction in which a corpse had fallen.',
+ 'I asked him whether the truth was a thing one could arrive at by reason alone. He said that reason was a lamp, and that a lamp shows you the room you are standing in and nothing of the house.',
+ 'That evening the scriptorium was cold. Thirty monks worked in silence, and the only sound was the scratch of styluses.'
+];
+
+class Component extends DCLogic {
+  constructor(p){super(p);
+    this.rootRef=React.createRef();
+    this.state={theme:p.theme||'light'};
+  }
+  componentDidMount(){this.applyTheme();}
+  componentDidUpdate(){this.applyTheme();}
+  applyTheme(){const el=this.rootRef.current;if(!el)return;
+    const t=this.state.theme==='dark'?DARK:LIGHT;
+    Object.keys(t).forEach(k=>el.style.setProperty(k,t[k]));
+    el.style.setProperty('--ac',this.props.accent||(this.state.theme==='dark'?'#7E9BD6':'#41608F'));
+  }
+  book(id){return RAW.filter(b=>b.id===id)[0]||RAW[0];}
+  deco(b){return Object.assign({},b,{subj1:b.subj[0],progW:b.prog+'%',progLabel:b.prog+'%'});}
+  tabbar(active){
+    const items=[{id:'library',n:'Library',r:'3px'},{id:'discover',n:'Discover',r:'50%'},
+      {id:'collections',n:'Collections',r:'3px'},{id:'more',n:'More',r:'6px'}];
+    return items.map(t=>{const on=t.id===active;return Object.assign({},t,{
+      color:on?'var(--ac)':'var(--tx3)',o:on?'1':'.75',w:on?'500':'400'});});
+  }
+  renderVals(){
+    const s=this.state,dark=s.theme==='dark';
+    const books=RAW.map(b=>this.deco(b));
+    const hero=this.deco(this.book('rose'));
+    const chip=(on)=>({bgc:on?'var(--acs)':'var(--sf)',color:on?'var(--ac)':'var(--tx2)'});
+    const results=[this.book('cities'),this.book('austerlitz'),this.book('disquiet')].map((x,i)=>Object.assign({},x,{
+      eds:(i===0?'27':(i===1?'11':'22'))+' editions',
+      availTxt:i===2?'Not in any connected source':(i===1?'Studio NAS · EPUB':'Personal OPDS · EPUB'),
+      availDot:i===2?'var(--tx3)':'var(--ok)',
+      act:i===2?'Find sources':'Add to library',
+      actBg:i===2?'var(--sf)':'var(--ac)',actFg:i===2?'var(--tx)':'var(--act)',actBd:i===2?'var(--ln)':'var(--ac)'}));
+
+    return {
+      boardBg:dark?'#0A0A0B':'#EDEBE6',
+      themeLabel:dark?'Dark frames':'Light frames',
+      toggleTheme:()=>this.setState({theme:dark?'light':'dark'}),
+      hostShort:'192.168.1.24:8474',
+
+      hero:hero,book:this.deco(this.book('rose')),
+      offlineRow:books.filter(b=>['rose','piranesi','cities','geb'].indexOf(b.id)>-1),
+      gridRow:books.slice(2,8),
+      readerParas:PARAS.map(t=>({t:t})),
+
+      availability:[{name:'Personal OPDS',fmt:'EPUB · 2.4 MB · v3.0',action:'Read'},
+        {name:'Studio NAS',fmt:'EPUB · 2.1 MB · v2.0',action:'Download'}],
+
+      mobFilters:[{n:'Available'},{n:'Language'},{n:'Year'},{n:'Format'}].map((f,i)=>Object.assign({},f,chip(i===0))),
+      mobResults:results,
+
+      collections:COLLECTIONS.map(c=>Object.assign({},c,{spines:c.ids.map(id=>({bg:this.book(id).bg}))})),
+
+      sources:SOURCES.map(x=>Object.assign({},x,{dotc:x.dot==='ok'?'var(--ok)':'var(--er)',
+        booksLabel:x.books?String(x.books).replace(/\B(?=(\d{3})+(?!\d))/g,','):'—'})),
+
+      downloads:[{id:'rose',meta:'EPUB · 2.4 MB · 34% read',icon:'✓',iconColor:'var(--ok)'},
+        {id:'piranesi',meta:'EPUB · 1.1 MB · 78% read',icon:'✓',iconColor:'var(--ok)'},
+        {id:'cities',meta:'EPUB · 0.9 MB · unread',icon:'✓',iconColor:'var(--ok)'},
+        {id:'geb',meta:'PDF · 41 MB · downloading 62%',icon:'⋯',iconColor:'var(--ac)'},
+        {id:'solaris',meta:'EPUB · 0.7 MB · unread',icon:'✓',iconColor:'var(--ok)'},
+        {id:'orlando',meta:'EPUB · 1.3 MB · unread',icon:'✓',iconColor:'var(--ok)'}
+      ].map(d=>Object.assign({},d,{t:this.book(d.id).t,bg:this.book(d.id).bg})),
+
+      moreRows:[{n:'Appearance',v:'System'},{n:'Reading defaults',v:'Serif · 18pt'},
+        {n:'Sign out of this device',v:''}],
+
+      mobThemes:[{sw:'#FBFAF7',fg:'#1A1917',bd:'rgba(58,46,32,.16)'},
+        {sw:'#F2E8D8',fg:'#3A2E20',bd:'var(--ac)'},
+        {sw:'#121214',fg:'#DEDBD5',bd:'rgba(58,46,32,.16)'}],
+
+      tabs:this.tabbar('library'),tabsDiscover:this.tabbar('discover'),
+      tabsCollections:this.tabbar('collections'),tabsMore:this.tabbar('more')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+# ---- Secrets and local configuration -------------------------------------
+# Never relax these without a review. Anything matching here is assumed to
+# contain credentials until proven otherwise.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testdata/**/*.key
+*.p12
+*.keystore
+secrets.json
+credentials.json
+
+# ---- Node / frontend -------------------------------------------------------
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/versions
+dist/
+build/
+out/
+.next/
+.vite/
+*.tsbuildinfo
+.eslintcache
+coverage/
+.nyc_output/
+
+# ---- Go / backend ----------------------------------------------------------
+bin/
+*.exe
+*.test
+*.out
+vendor/
+__debug_bin*
+
+# ---- Electron / packaging --------------------------------------------------
+release/
+dist-electron/
+*.dmg
+*.AppImage
+*.snap
+*.deb
+*.rpm
+*.msi
+
+# ---- Test artefacts --------------------------------------------------------
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+*.lcov
+
+# ---- Local runtime data ----------------------------------------------------
+# The host writes cached files here during dev. The library itself lives in
+# PostgreSQL (ADR 0004), not a file on disk.
+.data/
+
+# ---- Local PostgreSQL / Supabase dev tooling --------------------------------
+# Supabase's local CLI stack is a dev/test convenience only (ADR 0004), never
+# a shipped dependency — its generated state stays out of history.
+supabase/.branches/
+supabase/.temp/
+*.pgdata/
+
+# ---- Editors and OS --------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+
+# ---- Logs ------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*

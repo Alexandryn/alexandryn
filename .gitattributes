@@ -1,0 +1,25 @@
+# Normalise line endings so a Windows contributor cannot flip the whole tree.
+* text=auto eol=lf
+
+*.go       text eol=lf
+*.sh       text eol=lf
+*.bat      text eol=crlf
+
+# Binary assets: never diff, never convert.
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.webp     binary
+*.gif      binary
+*.ico      binary
+*.icns     binary
+*.woff     binary
+*.woff2    binary
+*.epub     binary
+*.pdf      binary
+
+# Generated or vendored material: keep it out of diffs and language stats.
+pnpm-lock.yaml       linguist-generated=true -diff
+package-lock.json    linguist-generated=true -diff
+go.sum               linguist-generated=true -diff
+.design-reference/** linguist-vendored=true

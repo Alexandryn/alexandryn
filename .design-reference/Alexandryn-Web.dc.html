@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#F6F5F2;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  input,button,select,textarea{font:inherit;color:inherit}
+  button{background:none;border:0;padding:0;cursor:pointer}
+  a{color:var(--ac);text-decoration:none}
+  a:hover{color:var(--tx);text-decoration:underline;text-underline-offset:3px}
+  ::selection{background:var(--acs);color:var(--tx)}
+  :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:var(--ln);border:3px solid transparent;background-clip:content-box;border-radius:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+
+<div ref="{{ rootRef }}" style="--bg:#F6F5F2;--sf:#FFFFFF;--sf2:#FBFAF9;--sf3:#F1EFEB;--tx:#1A1917;--tx2:#6E6B66;--tx3:#9C978F;--ln:#E7E4DE;--ln2:#F0EDE8;--ac:#41608F;--acs:#ECF0F7;--act:#FFFFFF;--wm:#B07C4F;--ok:#4A8A68;--er:#B04A40;--sh:0 1px 2px rgba(24,22,20,.05);--sh2:0 14px 34px -18px rgba(24,22,20,.34);min-height:100vh;background:var(--bg);color:var(--tx);font-family:Geist,system-ui,-apple-system,'Helvetica Neue',sans-serif;font-size:14px;line-height:1.45">
+
+  <sc-if value="{{ chromeOn }}" hint-placeholder-val="{{ true }}">
+  <div style="position:sticky;top:0;z-index:40;background:var(--bg);border-bottom:1px solid var(--ln)">
+    <div style="max-width:1320px;margin:0 auto;padding:0 clamp(18px,3.4vw,48px);height:62px;display:flex;align-items:center;gap:clamp(14px,2vw,30px)">
+      <div onClick="{{ goLibrary }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:none">
+        <div style="width:24px;height:24px;border-radius:7px;background:var(--tx);display:flex;align-items:center;justify-content:center">
+          <div style="width:9px;height:11px;border-left:2px solid var(--bg);border-right:2px solid var(--bg)"></div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em">ALEXANDRYN</div>
+      </div>
+
+      <div style="display:flex;gap:2px;flex:none">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+          <div onClick="{{ n.go }}" style="position:relative;padding:8px 12px;border-radius:8px;font-size:13.5px;cursor:pointer;color:{{ n.color }};font-weight:{{ n.weight }};background:{{ n.bgc }}">{{ n.n }}</div>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;display:flex;justify-content:center;min-width:0">
+        <div onClick="{{ goDiscover }}" style="display:flex;align-items:center;gap:9px;width:100%;max-width:380px;height:34px;padding:0 12px;border-radius:9px;background:var(--sf);border:1px solid var(--ln);color:var(--tx3);font-size:12.5px;cursor:text">
+          <div style="width:9px;height:9px;border-radius:50%;border:1.5px solid var(--tx3);flex:none"></div>
+          <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Search this library</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:1px 5px;border:1px solid var(--ln);border-radius:4px;flex:none">/</div>
+        </div>
+      </div>
+
+      <div onClick="{{ toggleHost }}" title="Switch hosting mode" style="display:flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:20px;border:1px solid var(--ln);background:var(--sf);cursor:pointer;flex:none">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--tx2)">{{ hostBadge }}</div>
+      </div>
+
+      <div onClick="{{ toggleTheme }}" title="Toggle theme" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--ln);background:var(--sf);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none">
+        <div style="width:11px;height:11px;border-radius:50%;background:linear-gradient(90deg,var(--tx) 50%,transparent 50%);border:1.5px solid var(--tx)"></div>
+      </div>
+
+      <div onClick="{{ goAccess }}" style="width:28px;height:28px;border-radius:50%;background:var(--sf3);border:1px solid var(--ln);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:500;color:var(--tx2);cursor:pointer;flex:none">SR</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atLibrary }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1320px;margin:0 auto;padding:34px clamp(18px,3.4vw,48px) 90px">
+    <div style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px">
+      <div style="flex:1;min-width:260px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--tx3)">{{ hostLine }}</div>
+        <h1 style="margin:6px 0 0;font-family:Newsreader,Georgia,serif;font-size:clamp(30px,3.6vw,42px);font-weight:400;letter-spacing:-.025em;line-height:1.05">Home Library</h1>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;align-items:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--ln);background:var(--sf);font-size:12.5px;color:var(--tx2)">Sort · Recently added</div>
+        <div style="display:flex;border-radius:8px;border:1px solid var(--ln);background:var(--sf);overflow:hidden">
+          <div onClick="{{ setGrid }}" style="padding:0 11px;height:32px;display:flex;align-items:center;font-size:12.5px;cursor:pointer;background:{{ gridBg }};color:{{ gridFg }}">Grid</div>
+          <div onClick="{{ setList }}" style="padding:0 11px;height:32px;display:flex;align-items:center;font-size:12.5px;cursor:pointer;border-left:1px solid var(--ln);background:{{ listBg }};color:{{ listFg }}">List</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:38px">
+      <sc-for list="{{ reading }}" as="b" hint-placeholder-count="2">
+        <div onClick="{{ b.open }}" style="display:flex;gap:16px;padding:16px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);box-shadow:var(--sh);cursor:pointer">
+          <div style="position:relative;width:74px;flex:none;align-self:flex-start;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ b.bg }};color:{{ b.fg }}">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(0,0,0,.22)"></div>
+            <div style="position:absolute;left:9px;right:7px;top:11px;font-family:Newsreader,Georgia,serif;font-size:11px;line-height:1.15">{{ b.t }}</div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;color:var(--tx3)">CONTINUE READING</div>
+            <div style="font-family:Newsreader,Georgia,serif;font-size:20px;line-height:1.15;letter-spacing:-.02em;margin-top:7px;text-wrap:pretty">{{ b.t }}</div>
+            <div style="font-size:12.5px;color:var(--tx2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.a }}</div>
+            <div style="flex:1;min-height:12px"></div>
+            <div style="font-size:11.5px;color:var(--tx3);margin-bottom:7px">{{ b.ch }} · {{ b.left }}</div>
+            <div style="height:3px;border-radius:2px;background:var(--ln);overflow:hidden"><div style="height:100%;background:var(--wm);width:{{ b.progW }}"></div></div>
+          </div>
+          <div style="align-self:center;flex:none"><div onClick="{{ b.read }}" style="display:inline-flex;align-items:center;height:34px;padding:0 15px;border-radius:9px;background:var(--ac);color:var(--act);font-size:12.5px;font-weight:500">Read</div></div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--tx3)">COLLECTIONS</div>
+      <div style="flex:1;height:1px;background:var(--ln)"></div>
+      <div onClick="{{ goCollections }}" style="font-size:12px;color:var(--ac);cursor:pointer">All collections</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:40px">
+      <sc-for list="{{ collections }}" as="c" hint-placeholder-count="4">
+        <div onClick="{{ c.open }}" style="padding:14px 15px;border-radius:12px;border:1px solid var(--ln);background:var(--sf);cursor:pointer">
+          <div style="display:flex;gap:3px;margin-bottom:12px">
+            <sc-for list="{{ c.spines }}" as="s" hint-placeholder-count="4">
+              <div style="width:11px;height:34px;border-radius:2px;background:{{ s.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="font-size:13.5px;font-weight:500">{{ c.n }}</div>
+          <div style="font-size:11.5px;color:var(--tx3);margin-top:3px">{{ c.count }} books · {{ c.avail }} available</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--tx3)">ALL BOOKS · {{ total }}</div>
+      <div style="flex:1;height:1px;background:var(--ln)"></div>
+    </div>
+
+    <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(120px,13vw,168px),1fr));gap:26px 20px">
+      <sc-for list="{{ books }}" as="b" hint-placeholder-count="12">
+        <div onClick="{{ b.open }}" style="cursor:pointer">
+          <div style="position:relative;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ b.bg }};color:{{ b.fg }}">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(0,0,0,.22)"></div>
+            <div style="position:absolute;left:12px;right:10px;top:14px;font-family:Newsreader,Georgia,serif;font-size:13px;line-height:1.15">{{ b.t }}</div>
+            <sc-if value="{{ b.offline }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:7px;bottom:7px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">↓</div>
+            </sc-if>
+          </div>
+          <div style="font-size:12px;font-weight:500;margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.t }}</div>
+          <div style="font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.a }}</div>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+    <div style="border:1px solid var(--ln);border-radius:13px;background:var(--sf);overflow:hidden">
+      <sc-for list="{{ books }}" as="b" hint-placeholder-count="8">
+        <div onClick="{{ b.open }}" style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--ln2);cursor:pointer">
+          <div style="position:relative;width:30px;flex:none;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:{{ b.bg }}"></div>
+          <div style="flex:1 1 220px;min-width:0">
+            <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.t }}</div>
+            <div style="font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.a }} · {{ b.y }}</div>
+          </div>
+          <div style="flex:0 1 130px;min-width:0;font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.subj1 }}</div>
+          <div style="flex:0 1 160px;min-width:0;display:flex;align-items:center;gap:8px">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none"></div>
+            <div style="font-size:11.5px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.srcLabel }}</div>
+          </div>
+          <div style="flex:none;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3)">{{ b.fmtLabel }}</div>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atDiscover }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:34px clamp(18px,3.4vw,48px) 90px">
+    <h1 style="margin:0;font-family:Newsreader,Georgia,serif;font-size:clamp(28px,3.2vw,38px);font-weight:400;letter-spacing:-.025em">Discover</h1>
+    <div style="font-size:13.5px;color:var(--tx2);margin-top:7px;max-width:64ch">Search Open Library for metadata, then see whether any of your sources can actually give you the file. Nothing is downloaded until you ask.</div>
+
+    <div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 15px;border-radius:11px;border:1.5px solid var(--ac);background:var(--sf);margin-top:22px;max-width:660px">
+      <div style="width:11px;height:11px;border-radius:50%;border:1.5px solid var(--tx3);flex:none"></div>
+      <div style="flex:1;font-size:14.5px">{{ query }}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3)">{{ resultCount }} RESULTS</div>
+    </div>
+
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px">
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--ln);background:{{ f.bgc }};font-size:12px;color:{{ f.color }};cursor:pointer">
+          <span>{{ f.n }}</span>
+          <span style="color:var(--tx3);font-size:10px">▾</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+      <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+        <div style="display:flex;gap:18px;padding:18px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);flex-wrap:wrap">
+          <div style="position:relative;width:78px;flex:none;align-self:flex-start;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ r.bg }};color:{{ r.fg }}">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(0,0,0,.22)"></div>
+            <div style="position:absolute;left:9px;right:7px;top:11px;font-family:Newsreader,Georgia,serif;font-size:11px;line-height:1.15">{{ r.t }}</div>
+          </div>
+          <div style="flex:1 1 300px;min-width:0">
+            <div onClick="{{ r.open }}" style="font-family:Newsreader,Georgia,serif;font-size:21px;letter-spacing:-.02em;cursor:pointer;text-wrap:pretty">{{ r.t }}</div>
+            <div style="font-size:13px;color:var(--tx2);margin-top:4px">{{ r.a }} · {{ r.y }} · {{ r.eds }}</div>
+            <div style="font-size:12.5px;color:var(--tx3);margin-top:9px">{{ r.subjLine }}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:var(--tx3);padding:2px 7px;border-radius:5px;border:1px solid var(--ln)">OPEN LIBRARY · {{ r.ol }}</div>
+            </div>
+          </div>
+          <div style="flex:0 1 230px;min-width:190px;padding:13px 14px;border-radius:11px;background:var(--sf2);border:1px solid var(--ln2)">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">FROM YOUR SOURCES</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <div style="width:5px;height:5px;border-radius:50%;background:{{ r.availDot }};flex:none"></div>
+              <div style="font-size:12.5px;color:var(--tx2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.availTxt }}</div>
+            </div>
+            <div style="margin-top:14px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:{{ r.actBg }};color:{{ r.actFg }};border:1px solid {{ r.actBd }};font-size:12.5px;font-weight:500;cursor:pointer">{{ r.act }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atCollections }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:34px clamp(18px,3.4vw,48px) 90px">
+    <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <h1 style="margin:0;flex:1;min-width:240px;font-family:Newsreader,Georgia,serif;font-size:clamp(28px,3.2vw,38px);font-weight:400;letter-spacing:-.025em">Collections</h1>
+      <div style="display:flex;align-items:center;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--ln);background:var(--sf);font-size:12.5px;color:var(--tx2)">New collection</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:24px">
+      <sc-for list="{{ collections }}" as="c" hint-placeholder-count="6">
+        <div onClick="{{ c.open }}" style="padding:18px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);cursor:pointer">
+          <div style="display:flex;gap:4px;margin-bottom:16px">
+            <sc-for list="{{ c.spines }}" as="s" hint-placeholder-count="5">
+              <div style="width:14px;height:46px;border-radius:2px;background:{{ s.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="font-size:15px;font-weight:500">{{ c.n }}</div>
+          <div style="font-size:12.5px;color:var(--tx2);margin-top:5px;line-height:1.5">{{ c.d }}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:var(--tx3);margin-top:13px">{{ c.count }} BOOKS · {{ c.avail }} AVAILABLE</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atCollection }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:26px clamp(18px,3.4vw,48px) 90px">
+    <div onClick="{{ goCollections }}" style="font-size:12.5px;color:var(--tx2);cursor:pointer">← Collections</div>
+    <div style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-top:16px">
+      <div style="flex:1;min-width:260px">
+        <h1 style="margin:0;font-family:Newsreader,Georgia,serif;font-size:clamp(28px,3.2vw,38px);font-weight:400;letter-spacing:-.025em">{{ collection.n }}</h1>
+        <div style="font-size:13.5px;color:var(--tx2);margin-top:7px;max-width:60ch">{{ collection.d }}</div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--tx3)">{{ collection.count }} BOOKS · {{ collection.avail }} AVAILABLE</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(120px,13vw,168px),1fr));gap:26px 20px;margin-top:28px">
+      <sc-for list="{{ books }}" as="b" hint-placeholder-count="8">
+        <div onClick="{{ b.open }}" style="cursor:pointer">
+          <div style="position:relative;aspect-ratio:2/3;border-radius:3px;overflow:hidden;box-shadow:var(--sh2);background:{{ b.bg }};color:{{ b.fg }}">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(0,0,0,.22)"></div>
+            <div style="position:absolute;left:12px;right:10px;top:14px;font-family:Newsreader,Georgia,serif;font-size:13px;line-height:1.15">{{ b.t }}</div>
+          </div>
+          <div style="font-size:12px;font-weight:500;margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.t }}</div>
+          <div style="font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.a }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atSources }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:34px clamp(18px,3.4vw,48px) 90px">
+    <h1 style="margin:0;font-family:Newsreader,Georgia,serif;font-size:clamp(28px,3.2vw,38px);font-weight:400;letter-spacing:-.025em">Sources</h1>
+    <div style="font-size:13.5px;color:var(--tx2);margin-top:7px;max-width:64ch">What this library can actually fetch files from. Sources are configured on the host machine — from the web you can see status and trigger a sync.</div>
+
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:22px">
+      <sc-for list="{{ hostFacts }}" as="f" hint-placeholder-count="3">
+        <div style="flex:1 1 200px;padding:15px 16px;border-radius:12px;border:1px solid var(--ln);background:var(--sf)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">{{ f.k }}</div>
+          <div style="font-size:19px;margin-top:8px;letter-spacing:-.01em">{{ f.v }}</div>
+          <div style="font-size:11.5px;color:var(--tx3);margin-top:3px">{{ f.sub }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="border:1px solid var(--ln);border-radius:14px;background:var(--sf);overflow:hidden;margin-top:20px">
+      <div style="display:flex;align-items:center;gap:14px;padding:13px 18px;background:var(--sf2);border-bottom:1px solid var(--ln)">
+        <div style="flex:1 1 200px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">SOURCE</div>
+        <div style="flex:1 1 150px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">STATUS</div>
+        <div style="flex:0 1 110px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">BOOKS</div>
+        <div style="flex:0 1 130px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">LAST SYNC</div>
+      </div>
+      <sc-for list="{{ sources }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-top:1px solid var(--ln2);flex-wrap:wrap">
+          <div style="flex:1 1 200px;min-width:0">
+            <div style="font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</div>
+            <div style="font-size:11.5px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.addr }}</div>
+          </div>
+          <div style="flex:1 1 150px;min-width:0;display:flex;align-items:center;gap:8px">
+            <div style="width:6px;height:6px;border-radius:50%;background:{{ s.dotc }};flex:none"></div>
+            <div style="font-size:12.5px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.status }}</div>
+          </div>
+          <div style="flex:0 1 110px;min-width:0;font-size:12.5px;color:var(--tx2)">{{ s.booksLabel }}</div>
+          <div style="flex:0 1 130px;min-width:0;font-size:12.5px;color:var(--tx3)">{{ s.last }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top:16px;padding:14px 16px;border-radius:12px;border:1px solid var(--ln);background:var(--sf2);display:flex;gap:12px;align-items:flex-start">
+      <div style="width:5px;height:5px;border-radius:50%;background:var(--wm);margin-top:7px;flex:none"></div>
+      <div style="font-size:12.5px;color:var(--tx2);line-height:1.55">Adding, editing or removing a source requires the desktop app on the host machine. This browser session has <span style="color:var(--tx)">read and read-only sync</span> permission.</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atBook }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:26px clamp(18px,3.4vw,48px) 90px">
+    <div onClick="{{ goLibrary }}" style="font-size:12.5px;color:var(--tx2);cursor:pointer">← Library</div>
+    <div style="display:flex;gap:clamp(24px,3.4vw,48px);margin-top:20px;flex-wrap:wrap">
+      <div style="flex:0 0 210px;max-width:210px">
+        <div style="position:relative;aspect-ratio:2/3;border-radius:4px;overflow:hidden;box-shadow:0 26px 52px -26px rgba(0,0,0,.5);background:{{ book.bg }};color:{{ book.fg }}">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 8px)"></div>
+          <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:rgba(0,0,0,.22)"></div>
+          <div style="position:absolute;left:22px;right:18px;top:24px;font-family:Newsreader,Georgia,serif;font-size:23px;line-height:1.12">{{ book.t }}</div>
+          <div style="position:absolute;left:22px;right:18px;bottom:20px;font-size:11px;opacity:.75">{{ book.a }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+          <div onClick="{{ openReader }}" style="height:38px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--ac);color:var(--act);font-size:13.5px;font-weight:500;cursor:pointer">Read in browser</div>
+          <div style="height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--ln);background:var(--sf);font-size:12.5px;cursor:pointer">Save for offline</div>
+          <div style="height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--ln);background:var(--sf);font-size:12.5px;cursor:pointer">Add to collection</div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--ln)">
+          <sc-for list="{{ book.facts }}" as="f" hint-placeholder-count="5">
+            <div style="display:flex;gap:10px;padding:5px 0;font-size:12px">
+              <div style="flex:0 0 76px;color:var(--tx3)">{{ f.k }}</div>
+              <div style="flex:1;min-width:0;color:var(--tx2)">{{ f.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex:1 1 420px;min-width:0">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--tx3)">{{ book.y }} · {{ book.subj1 }}</div>
+        <h1 style="margin:10px 0 0;font-family:Newsreader,Georgia,serif;font-size:clamp(32px,4vw,46px);font-weight:400;line-height:1.04;letter-spacing:-.028em;text-wrap:pretty">{{ book.t }}</h1>
+        <div style="font-size:15.5px;color:var(--tx2);margin-top:11px">{{ book.a }}</div>
+
+        <sc-if value="{{ book.hasProgress }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:20px;padding:14px 16px;border-radius:12px;background:var(--sf2);border:1px solid var(--ln);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="flex:1 1 200px;min-width:0">
+              <div style="font-size:12.5px;color:var(--tx2)">{{ book.ch }} · {{ book.left }}</div>
+              <div style="height:3px;border-radius:2px;background:var(--ln);overflow:hidden;margin-top:9px"><div style="height:100%;background:var(--wm);width:{{ book.progW }}"></div></div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3)">SYNCED FROM {{ book.syncedFrom }}</div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;gap:22px;margin-top:26px;border-bottom:1px solid var(--ln)">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+            <div onClick="{{ t.pick }}" style="position:relative;padding:0 0 12px;font-size:13.5px;cursor:pointer;color:{{ t.color }};font-weight:{{ t.weight }}">
+              {{ t.n }}
+              <sc-if value="{{ t.sel }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--tx)"></div></sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ tabAbout }}" hint-placeholder-val="{{ true }}">
+        <div style="padding-top:22px">
+          <div style="font-family:Newsreader,Georgia,serif;font-size:18px;line-height:1.65;max-width:62ch;text-wrap:pretty">{{ book.d }}</div>
+          <div style="font-family:Newsreader,Georgia,serif;font-size:16.5px;line-height:1.65;max-width:62ch;color:var(--tx2);margin-top:14px;text-wrap:pretty">{{ book.d2 }}</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:22px">
+            <sc-for list="{{ book.subjChips }}" as="s" hint-placeholder-count="4">
+              <div style="padding:4px 10px;border-radius:20px;border:1px solid var(--ln);background:var(--sf);font-size:11.5px;color:var(--tx2)">{{ s.n }}</div>
+            </sc-for>
+          </div>
+          <div style="margin-top:26px;padding:15px 16px;border-radius:12px;border:1px solid var(--ln);background:var(--sf)">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">METADATA PROVENANCE</div>
+            <div style="font-size:12.5px;color:var(--tx2);margin-top:10px;line-height:1.55">Title, author, subjects and edition list come from Open Library work <span style="font-family:'IBM Plex Mono',monospace;color:var(--tx)">{{ book.ol }}</span>. Files come from your own sources and are listed separately.</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ tabEditions }}" hint-placeholder-val="{{ false }}">
+        <div style="padding-top:18px;border:0">
+          <div style="border:1px solid var(--ln);border-radius:13px;background:var(--sf);overflow:hidden">
+            <sc-for list="{{ editions }}" as="e" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-top:1px solid var(--ln2);flex-wrap:wrap">
+                <div style="width:26px;flex:none;aspect-ratio:2/3;border-radius:2px;background:{{ e.bg }}"></div>
+                <div style="flex:1 1 200px;min-width:0">
+                  <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</div>
+                  <div style="font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.pub }} · {{ e.year }} · {{ e.lang }}</div>
+                </div>
+                <div style="flex:0 1 130px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--tx3)">{{ e.isbn }}</div>
+                <div style="flex:1 1 150px;min-width:0;display:flex;align-items:center;gap:8px">
+                  <div style="width:5px;height:5px;border-radius:50%;background:{{ e.dot }};flex:none"></div>
+                  <div style="font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.avail }}</div>
+                </div>
+                <div style="flex:none;font-size:12.5px;color:var(--ac);cursor:pointer">{{ e.action }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ tabSources }}" hint-placeholder-val="{{ false }}">
+        <div style="padding-top:18px;display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ availability }}" as="a" hint-placeholder-count="2">
+            <div style="padding:16px;border-radius:13px;border:1px solid var(--ln);background:var(--sf)">
+              <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none"></div>
+                <div style="flex:1 1 180px;min-width:0;font-size:14px;font-weight:500">{{ a.name }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:var(--tx3)">{{ a.kind }}</div>
+              </div>
+              <sc-for list="{{ a.files }}" as="f" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0 0;margin-top:10px;border-top:1px solid var(--ln2);flex-wrap:wrap">
+                  <div style="flex:1 1 160px;min-width:0;font-size:12.5px;color:var(--tx2)">{{ f.fmt }}</div>
+                  <div style="flex:0 1 90px;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3)">{{ f.size }}</div>
+                  <div style="flex:none;display:inline-flex;align-items:center;height:30px;padding:0 13px;border-radius:8px;background:{{ f.btnBg }};color:{{ f.btnFg }};border:1px solid {{ f.btnBd }};font-size:12px;font-weight:500;cursor:pointer">{{ f.action }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="padding:14px 16px;border-radius:12px;border:1px dashed var(--ln);background:var(--sf2);font-size:12.5px;color:var(--tx2);line-height:1.55">Two of the five known editions are not in any source you have connected. Discover can look again whenever you add one.</div>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atReader }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:60;background:{{ rd.pageBg }};color:{{ rd.pageFg }};display:flex;flex-direction:column">
+    <sc-if value="{{ rd.chrome }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:none;height:54px;display:flex;align-items:center;gap:14px;padding:0 clamp(14px,2.4vw,26px);border-bottom:1px solid {{ rd.line }}">
+      <div onClick="{{ closeReader }}" style="font-size:12.5px;opacity:.7;cursor:pointer;flex:none">← Library</div>
+      <div style="flex:1;min-width:0;text-align:center;font-size:12.5px;opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ book.t }} · {{ book.ch }}</div>
+      <div style="display:flex;gap:6px;flex:none">
+        <sc-for list="{{ rd.tools }}" as="t" hint-placeholder-count="3">
+          <div onClick="{{ t.pick }}" style="height:30px;padding:0 11px;display:flex;align-items:center;border-radius:8px;border:1px solid {{ rd.line }};background:{{ t.bgc }};font-size:12px;cursor:pointer">{{ t.n }}</div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <div onClick="{{ toggleChrome }}" style="flex:1;overflow-y:auto;display:flex;justify-content:center;padding:clamp(28px,5vh,64px) clamp(18px,4vw,40px) 90px;padding-left:{{ rd.padL }};padding-right:{{ rd.padR }};cursor:default">
+      <div style="width:100%;max-width:{{ rd.colMax }}">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;opacity:.5">{{ book.ch }}</div>
+        <div style="font-family:Newsreader,Georgia,serif;font-size:clamp(26px,3vw,34px);font-weight:400;letter-spacing:-.02em;margin-top:18px;line-height:1.15">{{ rd.chapterTitle }}</div>
+        <sc-for list="{{ rd.paras }}" as="p" hint-placeholder-count="5">
+          <div style="font-family:Newsreader,Georgia,serif;font-size:{{ rd.fs }};line-height:{{ rd.lh }};margin-top:20px;text-wrap:pretty">{{ p.t }}</div>
+        </sc-for>
+        <div style="height:1px;background:{{ rd.line }};margin:44px 0"></div>
+        <div style="font-size:12px;opacity:.5;font-family:'IBM Plex Mono',monospace;letter-spacing:.08em">END OF SAMPLE · PAGE {{ rd.page }} OF {{ book.pg }}</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ rd.panelToc }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:0;top:54px;bottom:44px;width:min(320px,80vw);background:{{ rd.panelBg }};border-right:1px solid {{ rd.line }};overflow-y:auto;padding:20px 18px;animation:fu .18s ease">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;opacity:.55">CONTENTS</div>
+      <div style="display:flex;flex-direction:column;gap:2px;margin-top:14px">
+        <sc-for list="{{ rd.toc }}" as="c" hint-placeholder-count="7">
+          <div style="display:flex;gap:12px;padding:8px 10px;border-radius:8px;background:{{ c.bgc }};font-size:13px;cursor:pointer">
+            <div style="flex:1;min-width:0">{{ c.n }}</div>
+            <div style="opacity:.45;font-family:'IBM Plex Mono',monospace;font-size:10.5px">{{ c.p }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ rd.panelMarks }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;right:0;top:54px;bottom:44px;width:min(340px,84vw);background:{{ rd.panelBg }};border-left:1px solid {{ rd.line }};overflow-y:auto;padding:20px 18px;animation:fu .18s ease">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;opacity:.55">MARKS · {{ rd.markCount }}</div>
+        <div style="font-size:11.5px;opacity:.55;cursor:pointer">Export</div>
+      </div>
+      <sc-if value="{{ rd.hasMarks }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+        <sc-for list="{{ rd.marks }}" as="m" hint-placeholder-count="3">
+          <div style="padding:13px 14px;border-radius:11px;border:1px solid {{ rd.line }};cursor:pointer">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:5px;height:5px;border-radius:50%;background:{{ m.c }};flex:none"></div>
+              <div style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;opacity:.5">{{ m.kind }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;opacity:.45">{{ m.loc }}</div>
+            </div>
+            <div style="font-family:Newsreader,Georgia,serif;font-size:15px;line-height:1.5;margin-top:9px;text-wrap:pretty">{{ m.q }}</div>
+            <sc-if value="{{ m.hasNote }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;opacity:.65;margin-top:9px;padding-top:9px;border-top:1px solid {{ rd.line }};line-height:1.5">{{ m.note }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+      <sc-if value="{{ rd.noMarks }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:22px;padding:18px 16px;border-radius:11px;border:1px dashed {{ rd.line }}">
+        <div style="font-family:Newsreader,Georgia,serif;font-size:16px;line-height:1.45">Nothing marked yet</div>
+        <div style="font-size:12px;opacity:.6;margin-top:7px;line-height:1.55">Select a passage to highlight it or attach a note. Marks are stored with the library, not in this browser.</div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ rd.panelSet }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;right:clamp(14px,2.4vw,26px);top:62px;width:min(300px,86vw);background:{{ rd.panelBg }};border:1px solid {{ rd.line }};border-radius:14px;box-shadow:0 28px 60px -30px rgba(0,0,0,.5);padding:18px;animation:fu .18s ease">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;opacity:.55">READING</div>
+      <div style="font-size:12px;opacity:.7;margin-top:16px">Theme</div>
+      <div style="display:flex;gap:7px;margin-top:8px">
+        <sc-for list="{{ rd.themes }}" as="t" hint-placeholder-count="3">
+          <div onClick="{{ t.pick }}" style="flex:1;height:44px;border-radius:9px;border:1.5px solid {{ t.bd }};background:{{ t.sw }};color:{{ t.fg }};display:flex;align-items:center;justify-content:center;font-family:Newsreader,Georgia,serif;font-size:14px;cursor:pointer">Aa</div>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;opacity:.7;margin-top:18px">Type size · {{ rd.fs }}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <div onClick="{{ rd.smaller }}" style="width:32px;height:32px;border-radius:8px;border:1px solid {{ rd.line }};display:flex;align-items:center;justify-content:center;cursor:pointer">−</div>
+        <div style="flex:1;height:3px;border-radius:2px;background:{{ rd.line }};overflow:hidden"><div style="height:100%;background:currentColor;opacity:.5;width:{{ rd.fsPct }}"></div></div>
+        <div onClick="{{ rd.bigger }}" style="width:32px;height:32px;border-radius:8px;border:1px solid {{ rd.line }};display:flex;align-items:center;justify-content:center;cursor:pointer">+</div>
+      </div>
+      <div style="font-size:12px;opacity:.7;margin-top:18px">Column width</div>
+      <div style="display:flex;gap:7px;margin-top:8px">
+        <sc-for list="{{ rd.widths }}" as="w" hint-placeholder-count="3">
+          <div onClick="{{ w.pick }}" style="flex:1;height:32px;border-radius:8px;border:1px solid {{ rd.line }};background:{{ w.bgc }};display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer">{{ w.n }}</div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;gap:14px;padding:0 clamp(14px,2.4vw,26px);border-top:1px solid {{ rd.line }};background:{{ rd.panelBg }}">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;opacity:.5;flex:none">{{ book.progLabel }}</div>
+      <div style="flex:1;height:3px;border-radius:2px;background:{{ rd.line }};overflow:hidden"><div style="height:100%;background:var(--wm);width:{{ book.progW }}"></div></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;opacity:.5;flex:none">{{ book.left }}</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atConnect }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px">
+    <div style="width:100%;max-width:420px">
+      <div style="width:34px;height:34px;border-radius:10px;background:var(--tx);display:flex;align-items:center;justify-content:center">
+        <div style="width:12px;height:14px;border-left:2.5px solid var(--bg);border-right:2.5px solid var(--bg)"></div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;color:var(--tx2);margin-top:20px">ALEXANDRYN</div>
+      <h1 style="margin:16px 0 0;font-family:Newsreader,Georgia,serif;font-size:32px;font-weight:400;letter-spacing:-.025em;line-height:1.1">Sign in to Home Library</h1>
+      <div style="display:flex;align-items:center;gap:9px;margin-top:12px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--tx2)">{{ hostLine }}</div>
+      </div>
+
+      <div style="margin-top:26px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-size:12.5px;font-weight:500;margin-bottom:6px">Library passphrase</div>
+          <div style="height:42px;display:flex;align-items:center;padding:0 13px;border-radius:9px;border:1.5px solid var(--ac);background:var(--sf);font-size:14px;letter-spacing:.16em;color:var(--tx2)">••••••••••</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:16px;height:16px;border-radius:5px;border:1px solid var(--ac);background:var(--ac);color:var(--act);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>
+          <div style="font-size:12.5px">Remember this browser for 30 days</div>
+        </div>
+        <div onClick="{{ goLibrary }}" style="height:42px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--ac);color:var(--act);font-size:13.5px;font-weight:500;cursor:pointer">Continue</div>
+      </div>
+
+      <div style="margin-top:22px;padding:14px 15px;border-radius:11px;border:1px solid var(--ln);background:var(--sf2);display:flex;gap:11px;align-items:flex-start">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--wm);margin-top:6px;flex:none"></div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.55">Or approve this browser from the host computer: <span style="color:var(--tx)">Settings → Devices → Pending</span>.</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atAccess }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1320px;margin:0 auto;padding:34px clamp(18px,3.4vw,48px) 90px">
+    <h1 style="margin:0;font-family:Newsreader,Georgia,serif;font-size:clamp(28px,3.2vw,38px);font-weight:400;letter-spacing:-.025em">This session</h1>
+    <div style="font-size:13.5px;color:var(--tx2);margin-top:7px;max-width:64ch">What this browser is allowed to do, and where it is reading from.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:24px">
+      <div style="padding:18px;border-radius:14px;border:1px solid var(--ln);background:var(--sf)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">HOSTING MODE</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+          <sc-for list="{{ hostModes }}" as="h" hint-placeholder-count="2">
+            <div onClick="{{ h.pick }}" style="display:flex;gap:12px;padding:13px 14px;border-radius:11px;border:1.5px solid {{ h.bd }};background:{{ h.bgc }};cursor:pointer">
+              <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid {{ h.dot }};margin-top:2px;flex:none;display:flex;align-items:center;justify-content:center">
+                <div style="width:6px;height:6px;border-radius:50%;background:{{ h.fill }}"></div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:500">{{ h.n }}</div>
+                <div style="font-size:12px;color:var(--tx2);margin-top:3px;line-height:1.5">{{ h.d }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3);margin-top:7px">{{ h.addr }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:18px;border-radius:14px;border:1px solid var(--ln);background:var(--sf)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">PERMISSIONS</div>
+        <div style="margin-top:14px">
+          <sc-for list="{{ perms }}" as="p" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--ln2)">
+              <div style="flex:1;min-width:0;font-size:13px">{{ p.n }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:{{ p.color }}">{{ p.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div onClick="{{ goConnect }}" style="margin-top:16px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--ln);background:var(--sf2);font-size:12.5px;cursor:pointer">Sign out of this browser</div>
+      </div>
+
+      <div style="padding:18px;border-radius:14px;border:1px solid var(--ln);background:var(--sf)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--tx3)">OFFLINE COPIES</div>
+        <div style="font-size:26px;margin-top:12px;letter-spacing:-.02em">{{ offlineCount }}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:4px">books cached in this browser · {{ offlineSize }}</div>
+        <div style="height:6px;border-radius:3px;background:var(--sf3);overflow:hidden;margin-top:14px"><div style="height:100%;background:var(--ac);width:38%"></div></div>
+        <div style="font-size:11.5px;color:var(--tx3);margin-top:8px">Cleared when you sign out. Reading position is stored on the host, not here.</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;host&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;local&quot;,&quot;cloud&quot;],&quot;default&quot;:&quot;local&quot;,&quot;tsType&quot;:&quot;'local'|'cloud'&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#41608F&quot;,&quot;#4F6B57&quot;,&quot;#7A5A86&quot;,&quot;#8A5A3C&quot;],&quot;default&quot;:&quot;#41608F&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const LIGHT={'--bg':'#F6F5F2','--sf':'#FFFFFF','--sf2':'#FBFAF9','--sf3':'#F1EFEB','--tx':'#1A1917','--tx2':'#6E6B66','--tx3':'#9C978F','--ln':'#E7E4DE','--ln2':'#F0EDE8','--acs':'#ECF0F7','--act':'#FFFFFF','--wm':'#B07C4F','--ok':'#4A8A68','--er':'#B04A40','--sh':'0 1px 2px rgba(24,22,20,.05)','--sh2':'0 14px 34px -18px rgba(24,22,20,.34)'};
+const DARK={'--bg':'#101012','--sf':'#17171A','--sf2':'#1C1C20','--sf3':'#25252A','--tx':'#ECEAE6','--tx2':'#98958F','--tx3':'#6E6B65','--ln':'#27272C','--ln2':'#1F1F23','--acs':'#1C2333','--act':'#0E1420','--wm':'#C89466','--ok':'#6FB68C','--er':'#DF8078','--sh':'0 1px 2px rgba(0,0,0,.5)','--sh2':'0 14px 34px -18px rgba(0,0,0,.8)'};
+
+const RAW=[
+ {id:'rose',t:'The Name of the Rose',a:'Umberto Eco',y:1980,pub:'Harcourt',lang:'English',isbn:'9780151446476',pg:536,ed:32,ol:'OL27448W',bg:'#2A3550',fg:'#E8E4DA',prog:34,ch:'Second Day — Terce',left:'6h 12m left',off:true,
+  subj:['Historical fiction','Detective and mystery stories','Monasteries','Semiotics','Italy — 14th century'],
+  d:'A murder mystery set within a fourteenth-century Italian monastery, where a Franciscan friar and his young novice investigate a series of deaths among the brothers.',
+  d2:'Eco folds a medieval whodunnit into an essay on signs, libraries and the danger of a book that no one is permitted to read.'},
+ {id:'piranesi',t:'Piranesi',a:'Susanna Clarke',y:2020,pub:'Bloomsbury',lang:'English',isbn:'9781635575637',pg:245,ed:14,ol:'OL20933942W',bg:'#26494F',fg:'#E6EDEA',prog:78,ch:'Part 4 — The Prophet',left:'1h 05m left',off:true,
+  subj:['Fantasy fiction','Labyrinths','Memory','Isolation'],
+  d:'A man lives in an endless house of statues, tides and halls, keeping meticulous records of its rooms and the thirteen people who have ever existed.',
+  d2:'A quiet novel about knowledge, solitude and the slow discovery that your own records are not what they seem.'},
+ {id:'lefthand',t:'The Left Hand of Darkness',a:'Ursula K. Le Guin',y:1969,pub:'Ace Books',lang:'English',isbn:'9780441478125',pg:304,ed:41,ol:'OL453936W',bg:'#333A63',fg:'#E4E3EE',prog:12,ch:'Chapter 3 — The Mad King',left:'4h 40m left',off:false,
+  subj:['Science fiction','Gender','Winter','First contact'],
+  d:'An envoy from a galactic federation arrives on a frozen world whose inhabitants have no fixed sex, and must learn its politics before he can be believed.',
+  d2:'Le Guin writes anthropology as fiction: the ice, the myths and the long walk that ends the novel.'},
+ {id:'sicp',t:'Structure and Interpretation of Computer Programs',a:'Abelson & Sussman',y:1985,pub:'MIT Press',lang:'English',isbn:'9780262510875',pg:657,ed:9,ol:'OL1975402W',bg:'#1F2124',fg:'#DCD9D2',prog:0,ch:'',left:'',off:false,
+  subj:['Computer programming','Lisp','Abstraction','Computer science'],
+  d:'The classic MIT text on building abstractions with procedures and data, using Scheme as its instrument rather than its subject.',
+  d2:'Still the clearest argument that programs are written for people to read, and only incidentally for machines to execute.'},
+ {id:'cities',t:'Invisible Cities',a:'Italo Calvino',y:1972,pub:'Einaudi',lang:'Italian',isbn:'9780156453805',pg:165,ed:27,ol:'OL27478W',bg:'#9C5B3C',fg:'#F6EDE4',prog:0,ch:'',left:'',off:true,
+  subj:['Italian fiction','Travel','Imaginary places','Marco Polo'],
+  d:'Marco Polo describes fifty-five cities to an aging Kublai Khan, each one a small essay on memory, desire, signs and the dead.',
+  d2:'The cities are all Venice; the book is about the impossibility of describing anything at all.'},
+ {id:'master',t:'The Master and Margarita',a:'Mikhail Bulgakov',y:1967,pub:'YMCA Press',lang:'Russian',isbn:'9780143108276',pg:412,ed:36,ol:'OL27482W',bg:'#5A2E30',fg:'#F0E2DE',prog:0,ch:'',left:'',off:false,
+  subj:['Russian fiction','Satire','Devil','Moscow'],
+  d:'The devil arrives in Soviet Moscow with a retinue that includes a talking cat, while a suppressed novelist and his lover are drawn into his visit.',
+  d2:'Bulgakov wrote it in secret; the manuscript survived a fire and three decades of censorship.'},
+ {id:'geb',t:'Gödel, Escher, Bach',a:'Douglas Hofstadter',y:1979,pub:'Basic Books',lang:'English',isbn:'9780465026562',pg:777,ed:18,ol:'OL1875823W',bg:'#3C5142',fg:'#E4EBE2',prog:12,ch:'Chapter V — Recursive Structures',left:'11h 20m left',off:false,
+  subj:['Consciousness','Formal systems','Mathematics','Artificial intelligence'],
+  d:'A book about how meaning and self-reference arise from formal rules, told through fugues, dialogues, drawings and incompleteness.',
+  d2:'It is long, playful and entirely serious about the question of what a mind is made of.'},
+ {id:'disquiet',t:'The Book of Disquiet',a:'Fernando Pessoa',y:1982,pub:'Ática',lang:'Portuguese',isbn:'9780141183046',pg:544,ed:22,ol:'OL2761662W',bg:'#4A3450',fg:'#EDE4F0',prog:0,ch:'',left:'',off:false,
+  subj:['Portuguese literature','Fragments','Lisbon','Melancholy'],
+  d:'A factless autobiography assembled from hundreds of fragments left in a trunk, written under one of Pessoa\u2019s many invented names.',
+  d2:'There is no correct order; every edition is a different book.'},
+ {id:'solaris',t:'Solaris',a:'Stanisław Lem',y:1961,pub:'MON',lang:'Polish',isbn:'9780156027601',pg:204,ed:29,ol:'OL27448X',bg:'#2B4A5C',fg:'#E2ECF0',prog:0,ch:'',left:'',off:false,
+  subj:['Science fiction','Ocean','Contact','Grief'],
+  d:'A psychologist arrives at a station orbiting a planet whose ocean answers human study with something nobody can interpret.',
+  d2:'Lem is less interested in the alien than in how badly people want it to be a mirror.'},
+ {id:'austerlitz',t:'Austerlitz',a:'W. G. Sebald',y:2001,pub:'Hanser',lang:'German',isbn:'9780375756566',pg:298,ed:11,ol:'OL27441W',bg:'#3A3F45',fg:'#E3E2DF',prog:0,ch:'',left:'',off:false,
+  subj:['German literature','Memory','Architecture','Exile'],
+  d:'A narrator meets a solitary architectural historian across decades, and slowly learns the history he has spent his life not remembering.',
+  d2:'Photographs interrupt the prose; there are almost no paragraph breaks.'},
+ {id:'wolfhall',t:'Wolf Hall',a:'Hilary Mantel',y:2009,pub:'Fourth Estate',lang:'English',isbn:'9780312429980',pg:604,ed:19,ol:'OL15168718W',bg:'#5C4327',fg:'#F1E7D8',prog:0,ch:'',left:'',off:false,
+  subj:['Historical fiction','Tudor England','Thomas Cromwell','Politics'],
+  d:'Thomas Cromwell rises from a blacksmith\u2019s son to the centre of Henry VIII\u2019s court, in a present tense that never leaves his shoulder.',
+  d2:'The pronouns are famously slippery; the politics are not.'},
+ {id:'orlando',t:'Orlando',a:'Virginia Woolf',y:1928,pub:'Hogarth Press',lang:'English',isbn:'9780156701600',pg:333,ed:24,ol:'OL46372W',bg:'#7A4A5E',fg:'#F5E6EB',prog:0,ch:'',left:'',off:false,
+  subj:['English literature','Biography','Gender','Time'],
+  d:'A poet lives three hundred years, changes sex halfway through, and is treated by the narrator as an entirely ordinary biographical subject.',
+  d2:'Written as a joke for a friend; it outlived most of the serious books of its year.'}
+];
+
+const SOURCES=[
+ {id:'opds',name:'Personal OPDS',addr:'opds.stellar.house/feed',kind:'OPDS 2.0',status:'Synced 12 min ago',books:1284,last:'12 min ago',dot:'ok'},
+ {id:'nas',name:'Studio NAS',addr:'smb://studio.local/books',kind:'Local folder',status:'Synced 6 hours ago',books:412,last:'6 hours ago',dot:'ok'},
+ {id:'reading',name:'Reading Room',addr:'reading.room/opds',kind:'OPDS 1.2',status:'Reachable',books:96,last:'Yesterday',dot:'ok'},
+ {id:'bucket',name:'Archive Bucket',addr:'s3://alexandryn-archive',kind:'S3 compatible',status:'Credentials expired',books:0,last:'4 days ago',dot:'er'}
+];
+
+const COLLECTIONS=[
+ {id:'fiction',n:'Slow Fiction',d:'Long novels worth living inside for a month.',count:38,avail:31,ids:['rose','piranesi','master','wolfhall']},
+ {id:'systems',n:'Systems & Minds',d:'Computation, cognition and the arguments between them.',count:22,avail:14,ids:['sicp','geb','solaris','lefthand']},
+ {id:'cities',n:'Cities & Memory',d:'Places that are really about remembering.',count:17,avail:17,ids:['cities','austerlitz','disquiet','orlando']},
+ {id:'unread',n:'Bought, Unread',d:'The shelf of good intentions.',count:54,avail:40,ids:['solaris','wolfhall','sicp','disquiet']}
+];
+
+const SAMPLES={
+ rose:{title:'In which the abbey is described',page:'118',
+  toc:[{n:'Prologue',p:'1'},{n:'First Day — Prime',p:'21'},{n:'First Day — Terce',p:'38'},{n:'Second Day — Terce',p:'112'},{n:'Second Day — Vespers',p:'146'},{n:'Third Day — Compline',p:'203'},{n:'Fourth Day — Lauds',p:'268'}],
+  paras:['It was a beautiful morning at the end of November. During the night it had snowed, but only a little, and the earth was covered with a cool blanket no more than three fingers high.',
+   'The library was the greatest in Christendom, and the only one whose plan was known to a single man. Not even the abbot could say how the finis Africae was reached, nor which of the rooms held the books that were not to be read.',
+   'My master had a habit of collecting signs the way other men collect debts. A hoofprint in the snow, a torn page, the direction in which a corpse had fallen — each was a word in a sentence he had not yet finished reading.',
+   'I asked him whether the truth was a thing one could arrive at by reason alone. He said that reason was a lamp, and that a lamp shows you the room you are standing in and nothing of the house.',
+   'That evening the scriptorium was cold. Thirty monks worked in silence, and the only sound was the scratch of styluses and the occasional cough that the winter had left in the older brothers.']},
+ piranesi:{title:'The Prophet returns to the Halls',page:'191',
+  toc:[{n:'Part 1 — Piranesi',p:'1'},{n:'Part 2 — The Other',p:'44'},{n:'Part 3 — The Prophet',p:'96'},{n:'Part 4 — The Prophet',p:'168'},{n:'Part 5 — Valentine Ketterley',p:'204'},{n:'Part 6 — Wave',p:'231'}],
+  paras:['The Beauty of the House is immeasurable; its Kindness infinite. I have counted the Halls in the North-Western region and found them to be nine hundred and sixty, though I have not yet reached their end.',
+   'I keep my Journals in the Third North-Western Hall, beside the Statue of a Woman carrying a Beehive. The Other says that record-keeping is a waste of the little time we have, but the Other does not live here.',
+   'Today the Tides came in from two directions at once. I climbed to the Empty Plinth in the Second Vestibule and watched the water fill the Lower Halls, and I understood that my Tables of the Tides were wrong.',
+   'The Prophet arrived without warning, as he does. He asked me what I remembered of the world before the House, and I told him truthfully that there is no world before the House. He looked at me for a long time and did not argue.',
+   'Afterwards I sat with the Statues and thought about the number sixteen, which appears in my Journals in a handwriting I do not recognise as my own.']},
+ lefthand:{title:'The Mad King of Karhide',page:'38',
+  toc:[{n:'1 — A Parade in Erhenrang',p:'1'},{n:'2 — The Place Inside the Blizzard',p:'19'},{n:'3 — The Mad King',p:'31'},{n:'4 — The Nineteenth Day',p:'52'},{n:'5 — The Domestication of Hunch',p:'61'}],
+  paras:['I will make my report as if I told a story, for I was taught as a child on my homeworld that Truth is a matter of the imagination.',
+   'The King received me in the Corner Red Dwelling, in a room too hot for anyone born on a warmer world. He did not look at me while I spoke, and when I had finished he asked whether I was a pervert.',
+   'On Winter there is no word for a person who is only ever one thing. The language has no pronoun for what I am, and so I was given the one used for animals and for foreigners.',
+   'I had come to say that eighty-three worlds wished to speak with this one. It is an absurd sentence in any language, and I had rehearsed it for two years.',
+   'Snow began again as I left the palace. In Erhenrang the snow is not weather; it is the floor, the wall and the calendar.']},
+ geb:{title:'Recursive Structures and Processes',page:'127',
+  toc:[{n:'Introduction — A Musico-Logical Offering',p:'3'},{n:'II — Meaning and Form',p:'41'},{n:'III — Figure and Ground',p:'62'},{n:'IV — Consistency',p:'94'},{n:'V — Recursive Structures',p:'119'},{n:'VI — The Location of Meaning',p:'158'}],
+  paras:['What is recursion? It is what was illustrated in the Dialogue: nesting, and variations on nesting. The concept is very general, and instances of it abound in the world.',
+   'Consider a story inside a story, a film about the making of a film, a painting that contains itself. Each is a small machine for pushing and popping a stack, and each is more confusing to describe than to experience.',
+   'A pushdown automaton can only remember what it has most recently forgotten. This sounds like a joke, and is instead a definition.',
+   'Music does this too. A theme is stated, departed from, and returned to — and the return is never simply a repetition, because you have travelled in the interval.',
+   'The strangest recursive structures are those in which the levels cross: a hand drawing the hand that draws it. These are the tangled hierarchies to which the rest of this book is devoted.']}
+};
+const GENERIC={title:'Beginning',page:'1',
+ toc:[{n:'Front matter',p:'i'},{n:'Chapter One',p:'1'},{n:'Chapter Two',p:'24'},{n:'Chapter Three',p:'51'},{n:'Notes',p:'—'}],
+ paras:['You have not opened this book before. Alexandryn keeps no position for it yet, so the reader begins at the first page of the file it fetched from your source.',
+  'Everything here — the type size, the column width, the theme — is stored per device. Your position in the text is stored on the host, so a phone on the same network resumes exactly here.',
+  'The file itself is never modified. Highlights, marks and notes live in the library database alongside the metadata Open Library supplied.']};
+const RTHEMES=[{id:'light',bg:'#FBFAF7',fg:'#1A1917',ln:'rgba(26,25,23,.12)',panel:'#FFFFFF'},
+ {id:'sepia',bg:'#F2E8D8',fg:'#3A2E20',ln:'rgba(58,46,32,.16)',panel:'#F7EFE2'},
+ {id:'dark',bg:'#121214',fg:'#DEDBD5',ln:'rgba(222,219,213,.14)',panel:'#191919'}];
+
+class Component extends DCLogic {
+  constructor(p){super(p);
+    this.rootRef=React.createRef();
+    this.state={route:'library',bookId:'rose',tab:'about',colId:'fiction',view:'grid',
+      theme:p.theme||'light',host:p.host||'local',
+      readerTheme:'light',chrome:true,panel:null,fs:19,cw:'660px'};
+  }
+  componentDidMount(){this.applyTheme();}
+  componentDidUpdate(){this.applyTheme();}
+  applyTheme(){const el=this.rootRef.current;if(!el)return;
+    const t=this.state.theme==='dark'?DARK:LIGHT;
+    Object.keys(t).forEach(k=>el.style.setProperty(k,t[k]));
+    el.style.setProperty('--ac',this.props.accent||(this.state.theme==='dark'?'#7E9BD6':'#41608F'));
+  }
+  go(r){this.setState({route:r,panel:null});}
+  book(id){return RAW.filter(b=>b.id===id)[0]||RAW[0];}
+  deco(b){const self=this;return Object.assign({},b,{
+    subj1:b.subj[0],progW:b.prog+'%',progLabel:b.prog+'%',offline:!!b.off,
+    fmtLabel:b.id==='sicp'?'PDF':'EPUB',
+    srcLabel:b.id==='sicp'?'Studio NAS':(b.id==='cities'?'Reading Room':'Personal OPDS'),
+    open:()=>self.setState({route:'book',bookId:b.id,tab:'about'}),
+    read:(e)=>{if(e&&e.stopPropagation)e.stopPropagation();self.setState({route:'reader',bookId:b.id,chrome:true,panel:null});}});}
+  spines(ids){return ids.map(id=>({bg:this.book(id).bg}));}
+
+  renderVals(){
+    const s=this.state,self=this,cloud=s.host==='cloud';
+    const books=RAW.map(b=>this.deco(b));
+    const b=this.deco(this.book(s.bookId));
+    const rt=RTHEMES.filter(t=>t.id===s.readerTheme)[0]||RTHEMES[0];
+    const sample=SAMPLES[s.bookId]||GENERIC;
+    const MARKS={
+      rose:[{q:'the danger of a book that no one is permitted to read',loc:'p. 118 · Second Day',kind:'HIGHLIGHT',c:'var(--wm)',note:''},
+        {q:'reason is a lamp, and a lamp shows you the room you are standing in',loc:'p. 121 · Second Day',kind:'NOTE',c:'var(--ac)',note:'The whole argument of the novel, said once and never repeated.'},
+        {q:'finis Africae',loc:'p. 119 · Second Day',kind:'BOOKMARK',c:'var(--tx3)',note:''}],
+      piranesi:[{q:'The Beauty of the House is immeasurable; its Kindness infinite.',loc:'p. 168 · Part 4',kind:'HIGHLIGHT',c:'var(--wm)',note:''},
+        {q:'a handwriting I do not recognise as my own',loc:'p. 191 · Part 4',kind:'NOTE',c:'var(--ac)',note:'First crack in the record-keeping.'}],
+      lefthand:[{q:'Truth is a matter of the imagination.',loc:'p. 1 · Chapter 1',kind:'HIGHLIGHT',c:'var(--wm)',note:''}],
+      geb:[{q:'A pushdown automaton can only remember what it has most recently forgotten.',loc:'p. 127 · Chapter V',kind:'HIGHLIGHT',c:'var(--wm)',note:''},
+        {q:'a hand drawing the hand that draws it',loc:'p. 131 · Chapter V',kind:'NOTE',c:'var(--ac)',note:'Tangled hierarchy — comes back in Ch. XX.'}]
+    };
+    const marks=(MARKS[s.bookId]||[]).map(m=>Object.assign({},m,{hasNote:!!m.note}));
+    const sel=(on)=>on?'var(--acs)':'transparent';
+
+    const navItems=[{id:'library',n:'Library'},{id:'discover',n:'Discover'},{id:'collections',n:'Collections'},{id:'sources',n:'Sources'}];
+    const activeNav=s.route==='collection'?'collections':(s.route==='book'?'library':s.route);
+
+    const chip=(on)=>({bgc:on?'var(--acs)':'var(--sf)',color:on?'var(--ac)':'var(--tx2)'});
+
+    const book=Object.assign({},b,{
+      hasProgress:b.prog>0,syncedFrom:cloud?'CLOUD HOST':'DESKTOP HOST',
+      subjChips:b.subj.map(x=>({n:x})),
+      facts:[{k:'Published',v:b.y+' · '+b.pub},{k:'Language',v:b.lang},{k:'Pages',v:String(b.pg)},
+        {k:'ISBN',v:b.isbn},{k:'Editions',v:b.ed+' known'},{k:'Open Library',v:b.ol}]});
+
+    const editions=[
+      {title:'First English edition',pub:'Harcourt Brace Jovanovich',year:1983,lang:'English',isbn:'9780151446476',bg:b.bg,avail:'Personal OPDS',dot:'var(--ok)',action:'Open'},
+      {title:'Vintage paperback',pub:'Vintage Classics',year:2004,lang:'English',isbn:'9780099466031',bg:'#4A3450',avail:'Reading Room',dot:'var(--ok)',action:'Acquire'},
+      {title:'Edizione originale',pub:'Bompiani',year:1980,lang:'Italian',isbn:'9788845292613',bg:'#5A2E30',avail:'Studio NAS',dot:'var(--ok)',action:'Acquire'},
+      {title:'Anniversary edition',pub:'Mariner Books',year:2014,lang:'English',isbn:'9780544176560',bg:'#26494F',avail:'Not in your sources',dot:'var(--tx3)',action:'Find'},
+      {title:'Ausgabe',pub:'Hanser',year:1982,lang:'German',isbn:'9783446135505',bg:'#3A3F45',avail:'Not in your sources',dot:'var(--tx3)',action:'Find'}
+    ];
+    const btn=(primary)=>primary
+      ?{btnBg:'var(--ac)',btnFg:'var(--act)',btnBd:'var(--ac)'}
+      :{btnBg:'var(--sf)',btnFg:'var(--tx)',btnBd:'var(--ln)'};
+    const availability=[
+      {name:'Personal OPDS',kind:'OPDS 2.0',files:[
+        Object.assign({fmt:'EPUB · 2.4 MB',size:'v3.0',action:'Read'},btn(true)),
+        Object.assign({fmt:'PDF · 18.1 MB',size:'scan',action:'Save offline'},btn(false))]},
+      {name:'Studio NAS',kind:'Local folder',files:[
+        Object.assign({fmt:'EPUB · 2.1 MB',size:'v2.0',action:'Save offline'},btn(false))]}
+    ];
+
+    const results=books.slice(0,4).map((x,i)=>Object.assign({},x,{
+      eds:x.ed+' editions',
+      subjLine:x.subj.slice(0,3).join(' · '),
+      availTxt:i%3===2?'Not in any connected source':(i%2?'Studio NAS · EPUB':'Personal OPDS · EPUB'),
+      availDot:i%3===2?'var(--tx3)':'var(--ok)',
+      act:i%3===2?'Find sources':'Add to library',
+      actBg:i%3===2?'var(--sf)':'var(--ac)',actFg:i%3===2?'var(--tx)':'var(--act)',actBd:i%3===2?'var(--ln)':'var(--ac)'}));
+
+    const col=COLLECTIONS.filter(c=>c.id===s.colId)[0]||COLLECTIONS[0];
+
+    const hostModes=[
+      {id:'local',n:'Local network',d:'Served straight from the desktop app while it is running. Nothing leaves your network.',addr:'192.168.1.24:8474'},
+      {id:'cloud',n:'Cloud relay',d:'A tunnel published by the host so you can reach the library from anywhere.',addr:'stellar.alexandryn.cloud'}
+    ].map(h=>{const on=s.host===h.id;return Object.assign({},h,{
+      bd:on?'var(--ac)':'var(--ln)',bgc:on?'var(--acs)':'var(--sf2)',
+      dot:on?'var(--ac)':'var(--tx3)',fill:on?'var(--ac)':'transparent',
+      pick:()=>self.setState({host:h.id})});});
+
+    return {
+      chromeOn:['library','discover','collections','collection','sources','book','access'].indexOf(s.route)>-1,
+      atLibrary:s.route==='library',atDiscover:s.route==='discover',atCollections:s.route==='collections',
+      atCollection:s.route==='collection',atSources:s.route==='sources',atBook:s.route==='book',
+      atReader:s.route==='reader',atConnect:s.route==='connect',atAccess:s.route==='access',
+
+      nav:navItems.map(n=>{const on=activeNav===n.id;return Object.assign({},n,{
+        color:on?'var(--tx)':'var(--tx2)',weight:on?'500':'400',bgc:sel(on),
+        go:()=>self.go(n.id)});}),
+      goLibrary:()=>this.go('library'),goDiscover:()=>this.go('discover'),
+      goCollections:()=>this.go('collections'),goAccess:()=>this.go('access'),
+      goConnect:()=>this.go('connect'),
+      openReader:()=>this.setState({route:'reader',chrome:true,panel:null}),
+      closeReader:()=>this.go('library'),
+      toggleTheme:()=>this.setState({theme:s.theme==='dark'?'light':'dark'}),
+      toggleHost:()=>this.setState({host:cloud?'local':'cloud'}),
+      hostBadge:cloud?'CLOUD RELAY · TLS':'LOCAL NETWORK',
+      hostLine:cloud?'HOST stellar.alexandryn.cloud · 1,284 BOOKS · 4 SOURCES':'HOST 192.168.1.24:8474 · 1,284 BOOKS · 4 SOURCES',
+      hostModes:hostModes,
+
+      books:books,reading:books.filter(x=>x.prog>0).slice(0,2),total:'1,284',
+      isGrid:s.view==='grid',isList:s.view==='list',
+      setGrid:()=>this.setState({view:'grid'}),setList:()=>this.setState({view:'list'}),
+      gridBg:s.view==='grid'?'var(--acs)':'transparent',gridFg:s.view==='grid'?'var(--ac)':'var(--tx2)',
+      listBg:s.view==='list'?'var(--acs)':'transparent',listFg:s.view==='list'?'var(--ac)':'var(--tx2)',
+
+      collections:COLLECTIONS.map(c=>Object.assign({},c,{spines:self.spines(c.ids),
+        open:()=>self.setState({route:'collection',colId:c.id})})),
+      collection:col,
+
+      sources:SOURCES.map(x=>Object.assign({},x,{dotc:x.dot==='ok'?'var(--ok)':'var(--er)',
+        booksLabel:x.books?String(x.books).replace(/\B(?=(\d{3})+(?!\d))/g,','):'—'})),
+      hostFacts:[{k:'BOOKS INDEXED',v:'1,284',sub:'across 4 sources'},
+        {k:'AVAILABLE NOW',v:'1,041',sub:'file present in a reachable source'},
+        {k:'METADATA ONLY',v:'243',sub:'known works with no file yet'}],
+
+      query:'invisible cities calvino',resultCount:'4',
+      filters:[{n:'Language'},{n:'Year'},{n:'Format'},{n:'Availability'},{n:'Subject'}].map((f,i)=>Object.assign({},f,chip(i===3))),
+      results:results,
+
+      book:book,editions:editions,availability:availability,
+      tabs:[{id:'about',n:'About'},{id:'editions',n:'Editions'},{id:'sources',n:'Sources'}].map(t=>{const on=s.tab===t.id;
+        return Object.assign({},t,{sel:on,color:on?'var(--tx)':'var(--tx2)',weight:on?'500':'400',
+          pick:()=>self.setState({tab:t.id})});}),
+      tabAbout:s.tab==='about',tabEditions:s.tab==='editions',tabSources:s.tab==='sources',
+
+      toggleChrome:()=>this.setState({chrome:!s.chrome,panel:null}),
+      rd:{
+        chrome:s.chrome,pageBg:rt.bg,pageFg:rt.fg,line:rt.ln,panelBg:rt.panel,
+        chapterTitle:sample.title,
+        paras:sample.paras.map(t=>({t:t})),page:sample.page,
+        fs:s.fs+'px',lh:String(1.72),colMax:s.cw,fsPct:Math.round((s.fs-14)/12*100)+'%',
+        panelToc:s.panel==='toc',panelSet:s.panel==='set',panelMarks:s.panel==='marks',
+        padL:s.panel==='toc'?'calc(min(320px,80vw) + 28px)':'clamp(18px,4vw,40px)',
+        padR:s.panel==='marks'?'calc(min(340px,84vw) + 28px)':'clamp(18px,4vw,40px)',
+        marks:marks,hasMarks:marks.length>0,noMarks:marks.length===0,markCount:String(marks.length),
+        toc:sample.toc.map(c=>Object.assign({},c,{bgc:c.n===b.ch?'rgba(127,127,127,.14)':'transparent'})),
+        tools:[{id:'toc',n:'Contents'},{id:'set',n:'Aa'},{id:'marks',n:'Marks'}].map(t=>Object.assign({},t,{
+          bgc:s.panel===t.id?'rgba(127,127,127,.14)':'transparent',
+          pick:()=>self.setState({panel:s.panel===t.id?null:t.id})})),
+        themes:RTHEMES.map(t=>({id:t.id,sw:t.bg,fg:t.fg,bd:s.readerTheme===t.id?'var(--ac)':t.ln,
+          pick:()=>self.setState({readerTheme:t.id})})),
+        widths:[{n:'Narrow',v:'540px'},{n:'Default',v:'660px'},{n:'Wide',v:'820px'}].map(w=>Object.assign({},w,{
+          bgc:s.cw===w.v?'rgba(127,127,127,.14)':'transparent',pick:()=>self.setState({cw:w.v})})),
+        smaller:()=>this.setState({fs:Math.max(15,s.fs-1)}),
+        bigger:()=>this.setState({fs:Math.min(26,s.fs+1)})
+      },
+
+      perms:[{n:'Read library and metadata',v:'ALLOWED',color:'var(--ok)'},
+        {n:'Read files from sources',v:'ALLOWED',color:'var(--ok)'},
+        {n:'Trigger a source sync',v:'ALLOWED',color:'var(--ok)'},
+        {n:'Edit collections',v:'ALLOWED',color:'var(--ok)'},
+        {n:'Add or remove sources',v:'HOST ONLY',color:'var(--tx3)'},
+        {n:'Change library settings',v:'HOST ONLY',color:'var(--tx3)'}],
+      offlineCount:'7',offlineSize:'86 MB of 220 MB'
+    };
+  }
+}
+</script>
+</body>
+</html>
