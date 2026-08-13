@@ -91,6 +91,31 @@ tooling become real design surface for phase 01/03 rather than "whatever
 **Neutral** — this does not change the metadata/source/Alexandryn boundary
 (§3); it decides storage for the Alexandryn side of it only.
 
+## Addendum — local development method (2026-08-13)
+
+Concrete mechanism, so this isn't just a principle: local development runs the
+Supabase CLI's local stack (`supabase init` / `supabase start`), which is
+Postgres plus Supabase's dev conveniences (Studio, a local API gateway) in
+Docker/Compose-compatible containers. `supabase/config.toml` and
+`supabase/migrations/` are tracked in the repo; `.branches` and `.temp` are
+not (`supabase/.gitignore`, written by the CLI itself).
+
+Automated contributors (this includes Claude Code sessions) reach the local
+database through a `postgres` MCP server
+(`@modelcontextprotocol/server-postgres`), registered in the tracked
+`.mcp.json`. It reads `DATABASE_URL` from a git-ignored `.env` at the repo
+root (`.env.example` documents the shape) rather than embedding the
+connection string in tracked config — the local Supabase default credential
+(`postgres:postgres`, loopback-only) still isn't something we write into
+history, on the same principle that will matter for real once phase 12 issues
+real ones.
+
+This is dev/test tooling, not application behaviour, so it didn't go through
+the spec process (constitution §1's exemption for build/CI-shaped changes).
+It does not decide anything about phase 03's actual driver, connection pool,
+or migration runner — those remain open architecture decisions for that
+phase.
+
 ## Reversal cost
 
 Expensive once phase 03 has repositories and migrations built against

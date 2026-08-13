@@ -62,11 +62,8 @@ blob-report/
 .data/
 
 # ---- Local PostgreSQL / Supabase dev tooling --------------------------------
-# Supabase's local CLI stack is a dev/test convenience only (ADR 0004), never
-# a shipped dependency — its generated state stays out of history.
-supabase/.branches/
-supabase/.temp/
-*.pgdata/
+# `supabase init` (ADR 0004) writes its own supabase/.gitignore for
+# .branches/.temp. config.toml and migrations/ are tracked on purpose.
 
 # ---- Editors and OS --------------------------------------------------------
 .DS_Store

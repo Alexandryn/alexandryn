@@ -9,6 +9,20 @@ this project asks for things other projects don't.
 > yet. Feedback on the roadmap and the specs is genuinely useful, and that's
 > where the leverage is until the foundation lands.
 
+## Local development
+
+Storage is PostgreSQL, run locally via the Supabase CLI ([ADR
+0004](.claude/decisions/0004-persistence-engine-postgresql.md)):
+
+```
+npm install -g supabase   # once
+supabase start            # spins up local Postgres + dev tooling
+cp .env.example .env      # DATABASE_URL matches the URL supabase start prints
+```
+
+`supabase stop` when done. Nothing here is a cloud dependency — no Supabase
+account needed, no data leaves the machine.
+
 ## The short version
 
 1. Behaviour changes start with a specification, not a branch.
