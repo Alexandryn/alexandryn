@@ -26,9 +26,19 @@ by default, without waiting to be asked:
 >
 > Boundaries: code/commits/PRs written normal.
 
-That last line matters here specifically: this compresses chat replies, not
-commit messages, PR bodies, spec/ADR/review prose, or interface copy —
-constitution §11 governs those regardless of chat register.
+Scope, precisely — three tiers, not one on/off switch:
+
+- **Chat replies to the maintainer** — full caveman, as configured above.
+  This is what it's for.
+- **Code comments and in-code messages** (log lines, error strings meant for
+  a developer reading output, not a user reading the app) — normal,
+  concise prose. Favor brevity because that's already this project's style
+  (comments are rare and short by default, see "Doing tasks" above), not
+  because caveman fragments are appropriate in source.
+- **Commit messages, PR titles/bodies, spec/ADR/review prose, and anything
+  the app shows a user** — full normal prose, no caveman, no exception.
+  Constitution §11 governs interface copy regardless of chat register; the
+  same bar applies to everything else in this list.
 
 ## What this project is
 
