@@ -29,6 +29,7 @@ deserves to know they were already weighed.
 | [0003](0003-design-canvas-split.md) | Design reference split into per-surface canvases (Desktop/Host, Web/Remote viewer, States, Design system) | Accepted |
 | [0004](0004-persistence-engine-postgresql.md) | Persistence engine is self-hosted PostgreSQL; Supabase is dev/test tooling only | Accepted |
 | [0005](0005-process-model.md) | Go server is a spawned child process, never embedded into one binary; prototype-backed | Accepted |
+| [0006](0006-docs-and-website-repos.md) | Documentation and the landing page live in separate repos (`docs`, `website`), created at phase 99 release | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -39,7 +40,7 @@ Things known to need deciding, with the phase that will force the question:
 | Monorepo layout and tooling | Phase 01 |
 | Migration tooling, and recovery from a failed partial migration (engine decided — ADR 0004) | Phase 01 |
 | Frontend data-fetching and state approach | Phase 01 |
-| Where the API contract is defined, and who owns it | Phase 01 |
+| Where the API contract is defined, and who owns it — format fixed as OpenAPI (ADR 0006); ownership/versioning/design still open | Phase 01 |
 | Whether RabbitMQ is warranted, and for exactly which work | Phase 09 |
 | How the reader renders EPUB, and in what sandbox | Phase 11 |
 | Credential storage on the host | Phase 12 |

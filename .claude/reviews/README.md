@@ -50,3 +50,4 @@ next person from looking.
 | [0003](0003-adr-persistence-engine-postgresql.md) | ADR 0004 — Persistence engine PostgreSQL | 2026-08-13 | Pending, self-reviewed — needs independent read |
 | [0004](0004-spec-architecture-system.md) | Spec — `architecture-system.md` | 2026-08-13 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0005](0005-adr-process-model.md) | ADR 0005 — Process model, prototype-backed | 2026-08-13 | Pending, self-reviewed — needs independent read |
+| [0006](0006-adr-docs-and-website-repos.md) | ADR 0006 — Docs and website repos | 2026-08-13 | Pending, self-reviewed — needs independent read |

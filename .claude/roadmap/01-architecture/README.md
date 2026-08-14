@@ -59,7 +59,7 @@ next three phases actually need. Anything else goes on the open-questions list.
 | `architecture-frontend.md` | React layering, state ownership, data fetching, routing |
 | `architecture-desktop-host.md` | Electron processes, IPC surface, serving model, lifecycle |
 | `architecture-persistence.md` | Engine, schema ownership, migrations, corruption and backup |
-| `architecture-contracts.md` | API and event schemas, versioning, contract testing |
+| `architecture-contracts.md` | API and event schemas (OpenAPI, ADR 0006), versioning, contract testing |
 | `architecture-testing.md` | Layers, tooling, fixtures, determinism, CI shape |
 
 ## Architecture decisions expected
@@ -69,9 +69,13 @@ next three phases actually need. Anything else goes on the open-questions list.
   designs schema ownership, connection lifecycle, and migration tooling
   around it, and walks the concurrent-access assumption the ADR left at
   medium confidence
-- Whether the Go backend and Electron host are one binary or two processes
+- Process model decided — two processes, Electron spawns the Go server as a
+  child, prototype-backed (ADR 0005, `architecture-system.md`). This phase's
+  remaining specs build on it rather than reopening it
 - How the web UI is served identically to the desktop window and to the LAN
-- API style, and where its schema is the single source of truth
+- API contract format fixed as OpenAPI (ADR 0006); this phase still owns
+  ownership, versioning, and the actual schema design in
+  `architecture-contracts.md`
 - Frontend data-fetching and cache strategy
 - Configuration precedence and where secrets are stored on the host
 - Error taxonomy shared across the stack

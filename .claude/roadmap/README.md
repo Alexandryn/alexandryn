@@ -37,7 +37,7 @@ Each outline is expanded into a full phase document when its dependencies close.
 | [15](15-observability/) | Observability | Metrics, queue visibility, diagnostics, Activity | Not started |
 | [16](16-security-hardening/) | Security hardening | Threat model consolidation, external-review readiness | Not started |
 | [17](17-accessibility-and-qa/) | Accessibility and QA | Conformance, the full test matrix, regression suite | Not started |
-| [99](99-release/) | Release | Packaging, self-hosting docs, versioning, release process | Not started |
+| [99](99-release/) | Release | Packaging, versioning, release process, `docs`/`website` repos stood up | Not started |
 
 ## Dependency graph
 
