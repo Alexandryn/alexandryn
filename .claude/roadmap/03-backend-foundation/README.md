@@ -73,8 +73,10 @@ retrofit will ever catch up.
 - PostgreSQL driver/access layer (e.g. `database/sql` plus driver, or a query
   builder) — justified under constitution §9 same as any dependency
 - Migration tooling, and how a failed partial migration is recovered
-- Whether repositories return domain types or their own, and where mapping
-  lives
+- Repositories return domain types — decided by
+  `architecture-backend.md` FR-2 (repository interfaces live in
+  `internal/domain`, implemented by persistence); this phase implements
+  it, doesn't re-decide it
 - Log format and level policy: what is debug, what is a real event
 - How the clock, filesystem and randomness are injected so tests stay
   deterministic
