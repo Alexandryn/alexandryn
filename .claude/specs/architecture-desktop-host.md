@@ -113,7 +113,13 @@ secret in `ps` or `/proc`.
   and the Go server reads it once at startup. The main process deletes the
   file once the Go server's readiness check (loopback HTTP `/health`, per
   `architecture-system.md` FR-7) succeeds, or after a fixed timeout if it
-  never does.
+  never does. **Updated for ADR 0007**: in production this channel no
+  longer needs to carry `DATABASE_URL` — the Go server generates its own
+  after spawning its bundled PostgreSQL (`architecture-persistence.md`).
+  The dev path (an external `DATABASE_URL` from the Supabase CLI stack,
+  ADR 0004's addendum) still uses this exact mechanism; production's
+  version of this file, if it carries anything at all yet, doesn't need a
+  database connection string in it.
 - **FR-6** The main process MUST NOT create or show the main window's real
   content until the Go server passes its readiness check. Before that, it
   MUST show a loading state matching the design reference's `atStates`

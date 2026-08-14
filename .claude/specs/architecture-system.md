@@ -2,13 +2,24 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `REVIEWED` — amended after approval, moved back deliberately (see note) |
 | **Phase** | `01-architecture` |
-| **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira |
+| **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira; amended 2026-08-14 |
 | **Created** | 2026-08-13 |
-| **Last updated** | 2026-08-13 |
+| **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes, all findings fixed |
+| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes 2026-08-13; amendment below not yet re-reviewed |
+
+**Amendment note (2026-08-14):** drafting `architecture-persistence.md`
+surfaced that production PostgreSQL needs to be bundled and managed by the
+Go server (ADR 0007) — the design reference has no database-configuration
+screen anywhere, so a shipped instance can't ask the user for a connection
+string. That makes PostgreSQL a *third* long-running process, contradicting
+this spec's original FR-1 ("exactly two"). Per constitution §1 and
+`specs/README.md`'s own rule — amend the spec, note the change, move it back
+through review rather than let the amendment happen silently — FR-1, FR-2,
+new FR-12, Security considerations, and Open questions are updated below.
+Status moved back to `REVIEWED` until the maintainer confirms the amendment.
 
 ## Context
 
@@ -80,13 +91,28 @@ every contributor reasoning about failure:
 
 ## Functional requirements
 
-- **FR-1** A running instance MUST consist of exactly two long-running
-  processes on the host: the Electron application (main + renderer) and the
-  Go server. They MUST NOT be compiled or run as a single binary.
+- **FR-1** A running instance MUST consist of three long-running processes
+  on the host — the Electron application (main + renderer), the Go server,
+  and a bundled PostgreSQL instance the Go server spawns and owns (ADR
+  0007 — amended 2026-08-14; this spec originally said "exactly two,"
+  written before production Postgres provisioning was decided) — **or four
+  on macOS specifically**, where PostgreSQL orphan-prevention needs an
+  additional small supervisor process Alexandryn writes
+  (`architecture-persistence.md` FR-10), because macOS has no parent-side
+  spawn-time death-signal mechanism the way Linux and Windows do. None of
+  these are ever compiled or run as a single binary. Postgres is never
+  spawned by anything other than the Go server (or, on macOS, the
+  supervisor acting on the Go server's behalf) — this keeps FR-5's "only
+  the Go server talks to Postgres" true of process ownership, not just
+  network access.
 - **FR-2** The Electron main process MUST spawn the Go server as a child
   process on application start, and MUST terminate it on application quit —
   the Go server's lifetime is a subset of the Electron app's lifetime, never
-  the reverse.
+  the reverse. The Go server MUST spawn PostgreSQL the same way, one level
+  down: Postgres's lifetime is a subset of the Go server's, which is a
+  subset of Electron's. Orphan-prevention (ADR 0005, `FR-10` below) applies
+  at each level — the Go server must not survive Electron's disappearance,
+  and Postgres must not survive the Go server's.
 - **FR-3** The Go server MUST bind to `127.0.0.1` (loopback) only, on a port
   chosen at startup, until phase 12/13 introduce authenticated LAN binding
   (constitution §6). The port MUST NOT be hardcoded such that two instances
@@ -128,6 +154,15 @@ every contributor reasoning about failure:
   divergent against the same data — either the second start is refused with
   a clear message, or it focuses the existing window. Mechanism undecided;
   see Open questions.
+- **FR-12** (Added with ADR 0007) PostgreSQL MUST terminate if the Go
+  server that spawned it exits or becomes unreachable, by crash or forced
+  kill — the same orphan-prevention requirement FR-10 places on the Go
+  server one level up, now applied one level down. It MUST NOT continue
+  running as an orphan holding a data directory open. Mechanism per
+  platform: not designed here — `architecture-persistence.md` owns it,
+  informed by whatever FR-10's phase 05 implementation settles on, since
+  the underlying OS mechanisms (Linux `pdeathsig`, macOS `kqueue`, a
+  Windows Job Object) are the same family of tool either way.
 
 ## Non-functional requirements
 
@@ -245,6 +280,15 @@ Additional, specific to this spec:
   application's own bundled binary, never a path influenced by
   renderer-supplied or environment-supplied input, or a compromised renderer
   could attempt to have Electron spawn something else.
+- **PostgreSQL as a spawned child process (ADR 0007)** — same requirement,
+  one level down: the Go server chooses the bundled `postgres` binary path
+  and initializes its own data directory, never influenced by renderer- or
+  network-supplied input. In production, the Go server generates its own
+  connection string after spawning Postgres itself — it does not receive
+  `DATABASE_URL` from an external source the way the dev setup does
+  (ADR 0004's addendum, Supabase CLI stack). That dev-only external-config
+  path stays real for development; it is not how a shipped instance gets
+  its database.
 - **Control-plane channel (main ↔ Go server)** — narrower than the HTTP API,
   but still a boundary: if the port-announcement mechanism (stdout, above) is
   used, the main process must not trust anything else printed to that stream
@@ -304,11 +348,12 @@ execution:
   macOS (kqueue `EVFILT_PROC`/`NOTE_EXIT` monitoring the parent PID, named
   but unbuilt) and Windows (a Job Object with
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, same status). Owner: phase 05.
-- **Second-instance handling** — single-instance lock, focus-existing-window,
-  or allow multiple instances against the same PostgreSQL data (probably
-  wrong, given phase 03's migration/connection assumptions aren't written for
-  concurrent app-level writers beyond normal request concurrency). Owner:
-  phase 05.
+- **Second-instance handling** — resolved in `architecture-desktop-host.md`
+  FR-4: `app.requestSingleInstanceLock()`, second start refused and existing
+  window focused.
+- **Orphaned PostgreSQL on Go-server crash (FR-12, added with ADR 0007)** —
+  same status as the Electron/Go-server case above: real requirement, no
+  chosen mechanism per platform yet. Owner: `architecture-persistence.md`.
 - **Startup budget (3 seconds)** — a placeholder, not a measurement. Phase 03
   should replace it with a real number once there's something to measure, or
   explicitly ratify it as the target.
@@ -342,6 +387,10 @@ execution:
   privilege boundary), §6 (network exposure), §11 (copy)
 - ADR 0004 — persistence engine is self-hosted PostgreSQL
 - ADR 0005 — process model, prototype-backed
+- ADR 0007 — production PostgreSQL is bundled and managed by the Go server;
+  the reason FR-1, FR-2, FR-10, and Security considerations were amended
+  2026-08-14
+- `architecture-desktop-host.md` — resolved second-instance handling (FR-4)
 - `.claude/roadmap/01-architecture/README.md` — this spec's parent phase
 - `.claude/roadmap/03-backend-foundation/README.md`,
   `.claude/roadmap/05-desktop-host/README.md` — phases this spec constrains
