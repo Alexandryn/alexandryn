@@ -109,3 +109,16 @@ High on "two processes, not embedded, Linux orphan-prevention via pdeathsig"
 because two of its three platform-specific legs (macOS, Windows) are
 well-known patterns asserted here, not verified. Constitution §12: that gap
 is a guess, recorded as one, owned by phase 05.
+
+## Addendum — process count extended (2026-08-14)
+
+This ADR's "two processes" finding is still correct as far as it goes —
+Electron spawns the Go server as a child, never one combined binary, exactly
+as decided here. It's no longer the complete picture: ADR 0007 (production
+PostgreSQL is bundled and managed by the Go server) adds a third process the
+Go server itself spawns and owns, a fourth on macOS specifically
+(`architecture-persistence.md` FR-10, a supervisor process for Postgres
+orphan-prevention where no parent-side mechanism exists).  Not a
+supersession — the pdeathsig mechanism and the one-binary rejection this ADR
+records are unchanged and still apply at the Electron↔Go-server level. See
+ADR 0007 for the extension.

@@ -72,7 +72,10 @@ retrofit will ever catch up.
   either way under constitution §9
 - PostgreSQL driver/access layer (e.g. `database/sql` plus driver, or a query
   builder) — justified under constitution §9 same as any dependency
-- Migration tooling, and how a failed partial migration is recovered
+- Migration tooling (recovery *policy* already decided —
+  `architecture-persistence.md` FR-4/FR-5: forward-only, fail loudly, no
+  silent continuation past a partial migration; this phase picks the tool
+  and implements the policy, doesn't re-decide it)
 - Repositories return domain types — decided by
   `architecture-backend.md` FR-2 (repository interfaces live in
   `internal/domain`, implemented by persistence); this phase implements

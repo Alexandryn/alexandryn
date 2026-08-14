@@ -73,9 +73,11 @@ next three phases actually need. Anything else goes on the open-questions list.
   forward-only migration policy are designed in `architecture-persistence.md`;
   the concurrent-access assumption ADR 0004 left at medium confidence is
   still unwalked
-- Process model decided — two processes, Electron spawns the Go server as a
-  child, prototype-backed (ADR 0005, `architecture-system.md`). This phase's
-  remaining specs build on it rather than reopening it
+- Process model decided — three processes (four on macOS), Electron spawns
+  the Go server as a child, prototype-backed (ADR 0005), the Go server in
+  turn spawns and owns a bundled PostgreSQL (ADR 0007,
+  `architecture-system.md`, amended). This phase's remaining specs build
+  on it rather than reopening it
 - How the web UI is served identically to the desktop window and to the LAN
 - API contract format fixed as OpenAPI (ADR 0006); this phase still owns
   ownership, versioning, and the actual schema design in
