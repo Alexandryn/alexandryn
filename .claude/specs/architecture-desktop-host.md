@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `REVIEWED` (self, needs independent read) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-13 |
-| **Last updated** | 2026-08-13 |
+| **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0007-spec-architecture-desktop-host.md`](../reviews/0007-spec-architecture-desktop-host.md) — Needs rework, self-reviewed, not independent |
+| **Reviewed in** | [`.claude/reviews/0007-spec-architecture-desktop-host.md`](../reviews/0007-spec-architecture-desktop-host.md) — Approved with changes, findings 2–7 fixed, finding 1 open by design |
 
 ## Context
 
@@ -49,9 +49,11 @@ secret in `ps` or `/proc`.
   state, degraded state, error state — tied to the design reference's
   `atStates` screen, not invented copy
 - Define the navigation/external-link policy required by constitution §5
-- Decide the concrete testing tool for this layer (Playwright MCP is already
-  available per `skills/README.md`'s tooling table — decide whether it's
-  used here, per the spec-before-code rule)
+- Establish what the Playwright MCP already available in this environment
+  actually covers for this layer (checked, not assumed — it's browser-page
+  automation, not an Electron launcher) and what it doesn't, so
+  `architecture-testing.md` inherits an accurate starting point instead of
+  an overclaim
 
 ## Non-goals
 
@@ -103,22 +105,36 @@ secret in `ps` or `/proc`.
   second Go server against the same PostgreSQL data.
 - **FR-5** Configuration and secrets MUST reach the spawned Go server
   through a file, not argv and not an inherited environment variable: the
-  main process writes a single-use file with owner-only permissions (`0600`)
-  to a per-run temporary path before spawning, passes only that *path* as
-  the child's first argument (a path is not sensitive), and the Go server
-  reads it once at startup. The main process deletes the file once the Go
-  server's readiness check (loopback HTTP `/health`, per
+  main process creates a single-use file with owner-only permissions
+  (`0600`) via the OS's atomic temp-file API (e.g. `os.CreateTemp` or
+  equivalent — a predictable path in a shared temp directory is a
+  TOCTOU/symlink-attack surface, not just a permissions question), passes
+  only that *path* as the child's first argument (a path is not sensitive),
+  and the Go server reads it once at startup. The main process deletes the
+  file once the Go server's readiness check (loopback HTTP `/health`, per
   `architecture-system.md` FR-7) succeeds, or after a fixed timeout if it
   never does.
 - **FR-6** The main process MUST NOT create or show the main window's real
   content until the Go server passes its readiness check. Before that, it
   MUST show a loading state matching the design reference's `atStates`
   loading treatment — not a blank window, not the real UI with broken data.
+  This resolves what was an open contradiction: the real UI (and `atStates`
+  as a screen within it) is served *by* the Go server
+  (`architecture-system.md` FR-6), so it cannot be what renders while the Go
+  server isn't up yet. The loading/error chrome is therefore a **small,
+  separate asset bundled into the Electron app itself** — loaded from disk
+  (`file://` or equivalent), never fetched over HTTP from the Go server —
+  implementing the same visual treatment as `atStates` without being served
+  by the thing it's reporting on. It MUST be visually consistent with
+  `atStates` (same design tokens once `architecture-frontend.md` extracts
+  them) but MUST NOT depend on the frontend's build succeeding or the Go
+  server responding to render.
 - **FR-7** If the Go server fails to become ready within a bounded timeout
   (placeholder: 15 seconds — see Open questions), the main process MUST show
-  an error state matching `atStates`' error treatment, naming what failed
-  and offering retry — not a silently retried infinite spinner, not a raw
-  stack trace (constitution §11).
+  an error state matching `atStates`' error treatment, offering retry (same
+  bundled asset as FR-6, its error variant) — not a silently retried
+  infinite spinner, not a raw stack trace (constitution §11), and not a page
+  fetched from the Go server it's reporting as unreachable.
 - **FR-8** On macOS, the Go server binary MUST monitor the Electron parent's
   PID via `kqueue` (`EVFILT_PROC`, `NOTE_EXIT`) and exit if that PID
   disappears, for the same reason FR-10 of `architecture-system.md` requires
@@ -136,6 +152,14 @@ secret in `ps` or `/proc`.
   instance of the same UI does, and the UI code is shared (FR-6 of
   `architecture-system.md`), so this is an Electron-side interception, not
   a web-UI-side behavior change.
+- **FR-11** For v1, closing the main window MUST quit the application —
+  no tray icon, no minimize-to-background. This is a scope decision, not an
+  oversight: a tray/background mode is a real feature (keeps serving LAN
+  clients with no window open) that phase 13 might eventually want, but
+  deciding it now would be guessing at a requirement phase 13 hasn't
+  specified. Close-means-quit is also what makes "the app closed" in FR-8/
+  FR-9's orphan-prevention requirements unambiguous: window closed, main
+  process exits, child processes must die with it, full stop.
 
 ## Non-functional requirements
 
@@ -245,8 +269,8 @@ Illegal transitions, restated for the window layer:
 | Unit | Preload argument validation (FR-1), navigation-policy handlers (FR-3) — pure functions, no Electron runtime needed |
 | Integration | Single-instance lock behavior (FR-4), config file lifecycle (FR-5) — needs a real spawned process, not a mock |
 | Contract | N/A — `architecture-contracts.md` |
-| E2E | Full lifecycle walkthrough (below), driven by the **Playwright MCP** already available in this environment (`skills/README.md`'s tooling table) — decided here rather than left to phase 05 to discover: Playwright can drive Electron directly (`_electron` launcher), so the loading → ready → degraded → error state walkthrough becomes an actual automated test, not a manual one |
-| Accessibility | Loading/error states' keyboard and screen-reader behavior — same Playwright-driven approach, using its accessibility snapshot capability |
+| E2E | Full lifecycle walkthrough (below). **Correction from this spec's first draft**: the Playwright *library* supports launching Electron apps directly (`_electron`), but the **Playwright MCP server actually available in this environment does not** — its exposed tools (`browser_navigate`, `browser_click`, etc.) are browser-page automation only, no Electron launcher, checked directly against its tool list. So: the *web UI itself* (once loaded in any browser context, including the one inside Electron's `BrowserWindow`) can be driven and snapshotted via this MCP, but the *lifecycle walkthrough* (spawn → loading → ready → degraded → error, across process boundaries) needs Playwright's own `@playwright/test` Electron support running as a real test suite in phase 05's CI, not this MCP. Two different tools for two different layers — decide the CI-side one in `architecture-testing.md`, not assumed here |
+| Accessibility | Loading/error states' keyboard and screen-reader behavior — the *rendered content* can be checked via the Playwright MCP's accessibility snapshot once something is on screen; getting Electron to that point for the test is `architecture-testing.md`'s CI-harness job, not this MCP's |
 
 - **Walkthrough** — cold start with PostgreSQL unreachable: window shows
   loading, then error (`atStates`), retry succeeds once PostgreSQL is
@@ -267,8 +291,9 @@ Illegal transitions, restated for the window layer:
       screen, not invented copy
 - [ ] Every FR maps to an exit criterion in phase 05's own document
       (cross-reference, not duplicate)
-- [ ] Playwright-driven E2E test plan named as the concrete mechanism for
-      phase 05's test harness, per this spec's Test strategy
+- [ ] Playwright MCP's actual (verified, not assumed) coverage — web-content
+      automation only — handed to `architecture-testing.md` accurately, with
+      the CI-side Electron E2E tool decision left to that spec
 
 ## Open questions
 
@@ -289,19 +314,16 @@ Illegal transitions, restated for the window layer:
 - **15-second readiness timeout (FR-7)** — a placeholder, same status as
   `architecture-system.md`'s 3-second startup budget and 10-second shutdown
   grace period. Phase 03/05 should replace with a measured number.
-- **How can the window show a loading state before the Go server exists to
-  serve it?** FR-6 requires citing `atStates`' loading treatment while the
-  Go server isn't ready yet — but `architecture-system.md`'s FR-6 says the
-  web UI (which is where `atStates` lives, as a screen in the same design
-  system) is *served by the Go server*. If the Go server isn't up, Electron
-  has nothing to load a loading-state page from. This spec doesn't resolve
-  the contradiction. Likely fix: the loading/error chrome is a small
-  bundle Electron loads directly from disk (not over HTTP from the Go
-  server), separate from the main web UI bundle — which means it needs its
-  own minimal implementation of the `atStates` treatment, not a shared
-  component with the React app, or it needs `architecture-frontend.md` to
-  own a build target for it. Not decided here; flagged for whoever picks
-  this up, likely jointly with `architecture-frontend.md`.
+- **Who owns building the bundled loading/error asset (FR-6, FR-7)?**
+  Resolved architecturally: it's a separate, disk-loaded bundle, not served
+  by the Go server (was a real contradiction, not just a scope question —
+  see review 0007 finding 6). What's still open is which spec owns the
+  actual build target and how it stays visually consistent with `atStates`
+  without depending on the frontend's React build. Two reasonable owners —
+  this spec (it's Electron-side, no server dependency, matches this spec's
+  own territory) or `architecture-frontend.md` (it needs the same design
+  tokens the real `atStates` component uses, and token drift between two
+  independent implementations is a real risk) — not decided here.
 - **`atTablet`'s actual surface** — `.design-reference/ANALYSIS.md` flags
   that the Tablet screen is captured inside the host/Admin canvas, not the
   Web canvas ADR 0003 assigned it to. This spec doesn't resolve it; noting
@@ -319,7 +341,7 @@ Illegal transitions, restated for the window layer:
 Phase 05's `desktop-host-process-model.md`, `-ipc-surface.md`, and
 `-window-and-serving.md` cover almost exactly this spec's territory by name.
 That's intentional layering, not redundancy: this spec fixes the pattern and
-the requirements (FR-1 through FR-10); phase 05's specs own the actual
+the requirements (FR-1 through FR-11); phase 05's specs own the actual
 implementation, the measured numbers replacing this spec's placeholders, and
 anything this spec left explicitly open (binary location in dev vs.
 packaged, schema-vs-hand-maintained preload generation, mid-session crash
@@ -339,5 +361,7 @@ open question.
   `atStates` screens this spec's lifecycle states cite
 - Constitution §4 (hostile input), §5 (Electron privilege boundary), §7
   (accessibility), §8 (observability without leakage), §11 (copy)
-- `.claude/skills/README.md` — Playwright MCP, decided here as the E2E tool
+- `.claude/skills/README.md` — Playwright MCP's actual scope verified here
+  (browser automation, not an Electron launcher); its tooling table entry
+  ("drive a real browser") already didn't overclaim, checked for consistency
   for this layer

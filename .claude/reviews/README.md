@@ -51,4 +51,4 @@ next person from looking.
 | [0004](0004-spec-architecture-system.md) | Spec — `architecture-system.md` | 2026-08-13 | Approved with changes (all findings fixed) |
 | [0005](0005-adr-process-model.md) | ADR 0005 — Process model, prototype-backed | 2026-08-13 | Approved |
 | [0006](0006-adr-docs-and-website-repos.md) | ADR 0006 — Docs and website repos | 2026-08-13 | Approved |
-| [0007](0007-spec-architecture-desktop-host.md) | Spec — `architecture-desktop-host.md` | 2026-08-13 | Needs rework, self-reviewed — needs independent read |
+| [0007](0007-spec-architecture-desktop-host.md) | Spec — `architecture-desktop-host.md` | 2026-08-14 | Approved with changes (findings 2–7 fixed, finding 1 open by design), self-reviewed — needs independent read |
