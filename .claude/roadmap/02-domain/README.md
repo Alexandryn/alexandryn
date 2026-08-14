@@ -63,16 +63,18 @@ a serialisation of a model, not a substitute for one.
 
 ## Architecture decisions expected
 
-- Identity strategy: internal IDs versus external identifiers (`OL…`, ISBN),
-  and what happens when a work has neither
-- How a work with no Open Library record is represented — this must be a
-  first-class case, not an error state, because imported files often have none
-- Whether availability is stored or computed, and how staleness is expressed
-- What a collection may contain: works, editions, or files
-- Whether reading progress attaches to a work, an edition, or a file — this
-  determines whether progress survives switching editions, and it is not
-  obvious
-- Conflict resolution when two devices report progress for the same book
+- Identity strategy decided — ADR 0010: internal IDs primary, external
+  identifiers (`OL…`, ISBN) optional and never required, a work with
+  neither is fully first-class (`domain-bibliographic.md`)
+- Availability decided — `domain-source.md`: a timestamped observation
+  (`SourceOffering`), never a stored fact; staleness is always expressible
+- Collection contents decided — `domain-library.md` FR-4: `Work`s, not
+  `Edition`s or files
+- Reading progress attachment and conflict resolution decided — ADR 0009:
+  attaches to `Work`, `Percentage` primary with an `Edition`-tagged
+  precise position as fallback-capable secondary; furthest-wins conflict
+  resolution with an explicit override, required to be commutative and
+  associative (`domain-reading.md`)
 
 ## Risks
 
@@ -130,7 +132,8 @@ history from leaking into logs by accident.
 - [ ] Every invariant has a test proving its violation is rejected
 - [ ] The work/edition/file distinction holds throughout, with no shortcut type
 - [ ] Books with no external metadata are a tested normal case
-- [ ] ADRs recorded for progress attachment and identity strategy
+- [x] ADRs recorded for progress attachment (0009) and identity strategy
+      (0010)
 - [ ] Every entity in the design prototype's data bindings maps to something in
       the model, or is explicitly recorded as presentation-only
 - [ ] Maintainer approval recorded

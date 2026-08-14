@@ -40,6 +40,8 @@ deserves to know they were already weighed.
 | [0006](0006-docs-and-website-repos.md) | Documentation and the landing page live in separate repos (`docs`, `website`), created at phase 99 release | Accepted |
 | [0007](0007-postgres-provisioning.md) | Production PostgreSQL is bundled and managed by the Go server, never user-configured | Accepted |
 | [0008](0008-monorepo-layout.md) | Monorepo layout: Go module at root, two npm workspace packages, no build-orchestration tool | Accepted |
+| [0009](0009-progress-attachment.md) | Reading progress attaches to Work, Edition-scoped precise position as fallback-capable secondary | Accepted |
+| [0010](0010-bibliographic-identity-strategy.md) | Bibliographic identity is internal-ID-primary; external references optional, never required | Accepted |
 
 ## Open questions not yet ADRs
 
