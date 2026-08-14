@@ -1,0 +1,42 @@
+
+=== BASELINE: spawn, health check, graceful shutdown ===
+parent_pid=636153 child_pid=636163 port=39593
+health check: HTTP 200
+RESULT: child exited cleanly in 0.10s after graceful parent SIGTERM — PASS
+PARENT_PID=636153
+CHILD_PID=636163
+2026/08/13 22:26:22 baseline child pid=636163 ppid=636153 listening on 39593
+PORT=39593
+PARENT_GOT_SIGTERM, forwarding to child
+2026/08/13 22:26:22 received terminated, shutting down
+2026/08/13 22:26:22 shutdown complete
+CHILD_EXITED code=0 signal=null
+
+=== PDEATHSIG: spawn, health check, graceful shutdown ===
+parent_pid=636186 child_pid=636196 port=34155
+health check: HTTP 200
+RESULT: child exited cleanly in 0.10s after graceful parent SIGTERM — PASS
+PARENT_PID=636186
+CHILD_PID=636196
+2026/08/13 22:26:22 pdeathsig child pid=636196 ppid=636186 listening on 34155
+PORT=34155
+PARENT_GOT_SIGTERM, forwarding to child
+2026/08/13 22:26:22 received terminated (parent-death or normal shutdown), shutting down
+2026/08/13 22:26:22 shutdown complete
+CHILD_EXITED code=0 signal=null
+
+=== BASELINE: SIGKILL the parent, check the child ===
+parent_pid=636221 child_pid=636231 port=45951
+SIGKILLing parent (simulates Electron main crashing, no cleanup code runs)
+/tmp/claude-1000/-home-luann-Projetos-Alexandryn/b20790da-5b0e-4af0-97fa-688714ea30c2/scratchpad/pkg-prototype/run.sh, linha 74: 636221 Morto                      node "$DIR/node-parent/parent.js" "$bin" > "$out" 2>&1
+RESULT: child (636231) still ALIVE 1.5s after parent SIGKILL, still serving HTTP (200) — orphan
+VERDICT: EXPECTED — baseline has no orphan-prevention mechanism
+
+=== PDEATHSIG: SIGKILL the parent, check the child ===
+parent_pid=636252 child_pid=636262 port=40335
+SIGKILLing parent (simulates Electron main crashing, no cleanup code runs)
+RESULT: child (636262) is gone 1.5s after parent SIGKILL
+VERDICT: PASS — pdeathsig killed the orphan
+/tmp/claude-1000/-home-luann-Projetos-Alexandryn/b20790da-5b0e-4af0-97fa-688714ea30c2/scratchpad/pkg-prototype/run.sh, linha 99: 636252 Morto                      node "$DIR/node-parent/parent.js" "$bin" > "$out" 2>&1
+
+=== done ===

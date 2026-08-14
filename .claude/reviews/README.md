@@ -48,4 +48,5 @@ next person from looking.
 | [0001](0001-adr-record-architecture-decisions.md) | ADR 0001 — Record architecture decisions | 2026-08-13 | Pending |
 | [0002](0002-adr-design-canvas-split.md) | ADR 0003 — Design canvas split | 2026-08-13 | Pending |
 | [0003](0003-adr-persistence-engine-postgresql.md) | ADR 0004 — Persistence engine PostgreSQL | 2026-08-13 | Pending, self-reviewed — needs independent read |
-| [0004](0004-spec-architecture-system.md) | Spec — `architecture-system.md` | 2026-08-13 | Needs rework, self-reviewed — needs independent read |
+| [0004](0004-spec-architecture-system.md) | Spec — `architecture-system.md` | 2026-08-13 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0005](0005-adr-process-model.md) | ADR 0005 — Process model, prototype-backed | 2026-08-13 | Pending, self-reviewed — needs independent read |

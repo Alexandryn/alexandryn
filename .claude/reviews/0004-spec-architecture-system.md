@@ -5,7 +5,7 @@
 | **Subject** | `.claude/specs/architecture-system.md` |
 | **Reviewer** | Claude (self-review — same author; needs an independent read before this counts as real review) |
 | **Date** | 2026-08-13 |
-| **Verdict** | Needs rework |
+| **Verdict** | Approved with changes (all six findings addressed — see Resolution below); self-reviewed, independent read still pending |
 
 ## Summary
 
@@ -75,7 +75,17 @@ that.
   channel, with an Open questions entry naming the owning spec
 - **#6** — non-goal line added for `architecture-testing.md`
 
-**Still open: Finding 1.** FR-1/FR-2 unchanged.
+**Finding 1 — resolved 2026-08-13.** Prototyped
+([`0005-process-model-prototype/`](../decisions/0005-process-model-prototype/)):
+Node parent spawns the Go binary, health-checks it, shuts it down
+gracefully, and — with a `prctl(PR_SET_PDEATHSIG)` fix candidate — the child
+reliably self-terminates when the parent is `SIGKILL`ed. Recorded as
+[ADR 0005](../decisions/0005-process-model.md). FR-1/FR-2 confirmed; FR-10
+resolved on Linux, still open on macOS/Windows (named mechanisms, unverified
+— tracked in the spec's Open questions, owner phase 05). This closes the
+finding; it does not close the ADR's own review
+([`0005-adr-process-model.md`](0005-adr-process-model.md)), which is
+separately pending.
 
 ## What I did not review
 

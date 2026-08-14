@@ -8,7 +8,7 @@
 | **Created** | 2026-08-13 |
 | **Last updated** | 2026-08-13 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Needs rework, self-reviewed, not independent |
+| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending before this moves to `APPROVED` |
 
 ## Context
 
@@ -118,9 +118,10 @@ every contributor reasoning about failure:
   questions), not indefinite.
 - **FR-10** The Go server MUST terminate if the Electron main process that
   spawned it exits or becomes unreachable, by crash or forced kill. It MUST
-  NOT continue running as an orphan holding its port bound — the exact
-  mechanism (process-group termination, a watchdog, an OS job object on
-  Windows) is undecided; see Open questions.
+  NOT continue running as an orphan holding its port bound. On Linux: the Go
+  binary sets `prctl(PR_SET_PDEATHSIG)`, prototype-verified (ADR 0005). On
+  macOS and Windows: mechanism named but not yet built or verified — see
+  Open questions.
 - **FR-11** The system MUST prevent, or explicitly and visibly handle, a
   second instance starting while one is already running against the same
   PostgreSQL data. It MUST NOT allow two instances to run silently
@@ -286,10 +287,9 @@ execution:
 
 - [ ] Every functional requirement above maps to at least one exit criterion
       in phase 03 or phase 05's own document (cross-reference, not duplicate)
-- [ ] The one-binary-vs-two-processes question is closed by this spec (FR-1,
-      FR-2) and does not need a separate ADR restating it — a short ADR
-      recording *why*, referencing this spec, is still warranted per
-      `decisions/README.md`'s own bar ("expensive to reverse")
+- [x] The one-binary-vs-two-processes question is closed by this spec (FR-1,
+      FR-2) and by [ADR 0005](../decisions/0005-process-model.md), which
+      records *why* with prototype evidence rather than reasoning alone
 - [ ] The state diagram's illegal transitions each have a named owner (phase
       03 or phase 05) for the test that will enforce them
 - [ ] Reviewed and at minimum `REVIEWED`, ideally `APPROVED`, before
@@ -299,11 +299,11 @@ execution:
 
 ## Open questions
 
-- **Orphaned Go server on Electron crash** — needs a concrete mechanism
-  (process-group kill, watchdog, or OS-specific job object on Windows). Not
-  resolved here; owner: phase 05 (`architecture-desktop-host.md`), since it's
-  an Electron-process-management detail, but this spec's FR-2 depends on it
-  actually working.
+- **Orphaned Go server on Electron crash** — resolved on Linux (ADR 0005,
+  prototype-verified: `prctl(PR_SET_PDEATHSIG)`, stdlib only). Still open on
+  macOS (kqueue `EVFILT_PROC`/`NOTE_EXIT` monitoring the parent PID, named
+  but unbuilt) and Windows (a Job Object with
+  `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, same status). Owner: phase 05.
 - **Second-instance handling** — single-instance lock, focus-existing-window,
   or allow multiple instances against the same PostgreSQL data (probably
   wrong, given phase 03's migration/connection assumptions aren't written for
@@ -341,6 +341,7 @@ execution:
 - Constitution §3 (domain boundaries), §4 (hostile input), §5 (Electron
   privilege boundary), §6 (network exposure), §11 (copy)
 - ADR 0004 — persistence engine is self-hosted PostgreSQL
+- ADR 0005 — process model, prototype-backed
 - `.claude/roadmap/01-architecture/README.md` — this spec's parent phase
 - `.claude/roadmap/03-backend-foundation/README.md`,
   `.claude/roadmap/05-desktop-host/README.md` — phases this spec constrains
