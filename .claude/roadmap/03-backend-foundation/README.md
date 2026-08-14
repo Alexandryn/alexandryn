@@ -136,7 +136,9 @@ readiness.
 
 ## Exit criteria
 
-- [ ] All six specifications `APPROVED` with recorded reviews
+- [x] All six specifications `APPROVED` with recorded reviews — self +
+      independent review (`0022`), all findings fixed, approved by the
+      maintainer 2026-08-14
 - [ ] The service starts, serves health, and shuts down gracefully under load
 - [ ] Migrations apply to an empty database and to a populated one
 - [ ] Tests pass with the race detector enabled
