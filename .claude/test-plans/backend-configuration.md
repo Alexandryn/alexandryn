@@ -87,8 +87,11 @@ temp-directory TOML fixture, no real environment beyond `t.Setenv`:
   defect review `0022` found in an earlier draft, without depending on
   someone remembering to add a matching pair of tests by hand.
 - FR-4 type/enum validation, table-driven per key: `BIND_ADDRESS` accepts
-  a valid `host:port`; `LOG_LEVEL` accepts only the four named values and
-  rejects anything else; the three `HTTP_*_TIMEOUT` keys,
+  a valid `host:port`; `LOG_LEVEL` accepts the four named values matched
+  case-insensitively (`INFO`, `Debug`, etc. all accepted, lowercased
+  before comparison — FR-4, amended `0025`) and rejects anything else,
+  including a value that isn't one of the four even after lowercasing;
+  the three `HTTP_*_TIMEOUT` keys,
   `DB_POOL_MAX_CONNS`, and `HTTP_MAX_BODY_BYTES` accept a parseable
   duration/integer and reject a non-parseable one; `SHUTDOWN_GRACE_PERIOD`
   likewise.
@@ -181,7 +184,7 @@ N/A — no UI (spec's own Non-functional requirements agree).
 | Config file with a key not in FR-4's table | Ignored, not an error — the table is authoritative for what's read; an unrecognized key must not silently do nothing while looking like it did something, so this case also asserts nothing crashes and no unexpected field appears in the resulting `Config` (an inferred behavior, not stated explicitly in the spec — same category of assumption as the `DATABASE_URL` non-connection-string row below; flagged for spec confirmation, not treated as certain) |
 | Config file with the same key declared twice (TOML duplicate key) | Whatever the TOML parser's own defined behavior is (error, per the TOML spec) surfaces as an FR-6 error naming the file, not a silently-picked value |
 | `BIND_ADDRESS` set to an empty string via environment | Treated as "no value from this source" for FR-2 purposes, not as an explicit invalid value — falls through to the next source or the default, never a validation error for being empty specifically (distinct from being present-and-malformed) |
-| `LOG_LEVEL` set to a value differing only in case (`INFO`, `Debug`) | Unresolved by `backend-configuration.md` as written — flagged here rather than decided unilaterally in a test; left out of RED until the spec states a rule (constitution §1: spec precedes implementation — see "What is deliberately not tested") |
+| `LOG_LEVEL` set to a value differing only in case (`INFO`, `Debug`) | Accepted — matching is case-insensitive (`backend-configuration.md` FR-4, amended [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), the value lowercased before comparison against the four enum values |
 | `--config` pointing at a directory, not a file | `Load` errors, names the path, does not attempt to parse a directory as TOML |
 | `--config` pointing at a file with no read permission | `Load` errors naming the path and that it could not be read, not a raw OS-level permission error surfaced verbatim — this test is skipped automatically when the test process has root/bypass privileges that make `chmod`-based denial unreliable (e.g. an `if os.Geteuid() == 0 { t.Skip(...) }` guard), rather than asserted unconditionally in every CI environment |
 | An environment variable set for a key not in FR-4's table (e.g. `HTTP_REQUEST_TIMEOUT`, the retired key name from an earlier draft) | Silently ignored — the blanket-environment-scan prohibition (API and contracts) means only named keys are ever read, so an unrelated or stale-named variable has no effect |
@@ -229,11 +232,6 @@ database credential, even in a temp file that gets deleted.
 - Concurrent calls to `config.Load` — the spec's own State transitions
   section says configuration is resolved once, synchronously, at startup;
   no concurrent-access property is claimed, so none is tested.
-- `LOG_LEVEL` case-sensitivity — the spec doesn't state whether matching
-  is case-insensitive; this is a genuine spec gap, not a test-plan
-  decision to make unilaterally. Flagged for a `backend-configuration.md`
-  amendment (a one-line addition to FR-4) and re-review before this case
-  is written in RED, per constitution §1.
 - Resolving `backend-configuration.md`'s own internal inconsistency
   between `config.Load(sources...)` (FR-1) and `config.Load(configPath)`
   (API and contracts) — this plan's tests are written against the intent

@@ -47,7 +47,7 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`domain-reading.md`](domain-reading.md) | Position, progress, bookmarks, highlights, preferences | 02 | `REVIEWED` (self + independent, approved with changes) |
 | [`domain-events.md`](domain-events.md) | Events the domain emits, and what may consume them | 02 | `REVIEWED` (self + independent, approved with changes) |
 | [`backend-service-lifecycle.md`](backend-service-lifecycle.md) | Startup, wiring, shutdown, failure to start | 03 | `APPROVED` |
-| [`backend-configuration.md`](backend-configuration.md) | Sources, precedence, validation, defaults, secrets | 03 | `APPROVED` |
+| [`backend-configuration.md`](backend-configuration.md) | Sources, precedence, validation, defaults, secrets | 03 | `APPROVED` (amended post-approval — `LOG_LEVEL` case-sensitivity, `0025`, needs re-confirmation) |
 | [`backend-errors-and-logging.md`](backend-errors-and-logging.md) | Taxonomy, transport mapping, log contract, redaction | 03 | `APPROVED` |
 | [`backend-http-transport.md`](backend-http-transport.md) | Router, middleware, limits, timeouts, response shape | 03 | `APPROVED` |
 | [`backend-persistence.md`](backend-persistence.md) | PostgreSQL connection lifecycle, migrations, repositories, transactions, corruption | 03 | `APPROVED` |

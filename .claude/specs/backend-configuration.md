@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `APPROVED` (amended post-approval — `LOG_LEVEL` case-sensitivity, self-reviewed, needs maintainer re-confirmation, see [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -107,7 +107,7 @@ file format, where it lives, or the actual validation each key needs.
   |---|---|---|---|---|
   | `DATABASE_URL` | connection string | Optional, no default — absence is a meaningful signal (FR-3's third category), never a validation failure | — | ADR 0004's addendum (Supabase dev stack); `architecture-system.md` Security considerations |
   | `BIND_ADDRESS` | host:port, host MUST be loopback (FR-8) | Optional | `127.0.0.1:0` (loopback, OS-assigned port) | `architecture-system.md` FR-3, constitution §6, FR-8 below |
-  | `LOG_LEVEL` | enum: `debug`/`info`/`warn`/`error` | Optional | `info` | `backend-errors-and-logging.md` |
+  | `LOG_LEVEL` | enum: `debug`/`info`/`warn`/`error`, matched case-insensitively | Optional | `info` | `backend-errors-and-logging.md` |
   | `SHUTDOWN_GRACE_PERIOD` | duration | Optional | `10s` | `backend-service-lifecycle.md` FR-5, `architecture-system.md` FR-9's placeholder |
   | `DB_POOL_MAX_CONNS` | integer | Optional | a number `backend-persistence.md` fixes (this spec only reserves the key) | `architecture-persistence.md` FR-3 |
   | `HTTP_MAX_BODY_BYTES` | integer (bytes) | Optional | a number `backend-http-transport.md` fixes (this spec only reserves the key) | `architecture-backend.md` FR-6, constitution §4 |
@@ -134,6 +134,14 @@ file format, where it lives, or the actual validation each key needs.
   fields (`ReadTimeout`/`WriteTimeout`/`IdleTimeout`) — an unusable
   reservation, since nothing consumed it. Split into three keys above,
   each mapped explicitly to the field it configures.
+  `LOG_LEVEL`'s matching was originally unspecified for case, a gap found
+  while writing this spec's test plan (`.claude/reviews/0024`): an
+  environment variable's incidental casing (`LOG_LEVEL=Info` vs `info`)
+  is not the kind of typo constitution §11's fail-loudly stance is meant
+  to punish, so matching is case-insensitive — the value is lowercased
+  before comparison against the four enum values, and validation and
+  redaction (FR-6, FR-7) are unaffected since `LOG_LEVEL` carries no
+  sensitive data.
 - **FR-5** The config file MUST be TOML, located at a path passed to
   `cmd/server` via a single command-line flag (`--config <path>`),
   optional — or, if the flag is absent, resolved from a fixed

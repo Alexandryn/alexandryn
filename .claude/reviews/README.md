@@ -69,3 +69,4 @@ next person from looking.
 | [0022](0022-phase03-cross-spec-review.md) | Phase 03 — all six specs and ADRs 0011–0013, cross-spec, two independent agents | 2026-08-14 | Needs rework at review time (2 Blocking, now fixed), genuinely independent (not self-reviewed) |
 | [0023](0023-test-plan-backend-service-lifecycle.md) | Test plan — `backend-service-lifecycle.md`, two independent agents | 2026-08-14 | Needs rework at review time (1 Blocking, now fixed), genuinely independent (not self-reviewed) |
 | [0024](0024-test-plan-backend-configuration.md) | Test plan — `backend-configuration.md`, two independent agents | 2026-08-14 | Needs rework at review time (7 Major, now fixed), genuinely independent (not self-reviewed) |
+| [0025](0025-spec-amendment-backend-configuration-log-level.md) | Spec amendment — `backend-configuration.md`, `LOG_LEVEL` case-sensitivity | 2026-08-14 | Approved with changes, self-reviewed — needs independent read |
