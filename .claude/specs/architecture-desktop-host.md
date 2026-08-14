@@ -12,9 +12,14 @@
 
 ## Context
 
-`architecture-system.md` (APPROVED) decided the process model — Electron
-spawns the Go server as a child, two processes, orphan-prevented via
-`prctl(PR_SET_PDEATHSIG)` on Linux (ADR 0005) — and explicitly left four
+`architecture-system.md` (`REVIEWED`, amended after its original approval —
+see its own header note) decided the process model — Electron spawns the
+Go server as a child, orphan-prevented via `prctl(PR_SET_PDEATHSIG)` on
+Linux (ADR 0005). Three processes, four on macOS, once the Go server's own
+bundled PostgreSQL (ADR 0007) is counted — that came after this spec was
+first drafted, doesn't change anything this spec itself decided, and is
+noted here only so this Context paragraph stops being the stale copy of a
+fact that changed elsewhere. `architecture-system.md` explicitly left four
 things owned by this spec: the macOS/Windows orphan-prevention mechanism,
 second-instance handling, the config/secrets channel across the spawn
 boundary, and the exact port-announcement/control-plane mechanism. This spec

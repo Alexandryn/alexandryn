@@ -16,6 +16,14 @@ domain layer may import the HTTP library — yes.
 - Status: `Proposed` → `Accepted` / `Rejected`, and later `Superseded` or
   `Deprecated`
 - Superseding creates a new ADR and updates both records. The old one stays.
+- **Extending, not superseding, gets an in-place `## Addendum — <what
+  changed> (<date>)` section instead of a new ADR.** Use this when a later
+  decision adds to or extends an Accepted ADR's finding without
+  contradicting it (e.g. ADR 0007 adding a third process to what ADR
+  0005's two-process finding still correctly describes at the Electron↔Go
+  layer). If the *original* decision itself would need to change, that's
+  supersession — a new ADR, not an addendum. (ADR 0004 and ADR 0005 both
+  already used this pattern before it was written down here.)
 
 Record the options that lost. The next person will think of them too and
 deserves to know they were already weighed.

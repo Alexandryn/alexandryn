@@ -42,21 +42,30 @@ first, batch it, show the complete result before acting on any of it.**
    Approved with changes / Needs rework / Rejected, `reviews/README.md`)
    already cover the same ground.
 4. **Assign one overall verdict for the batch**, not just per-finding
-   severities — the source skill's "overall review message" step. Highest
-   finding severity present drives it: any Blocking → Needs rework;
-   Major/Minor only, no Blocking → Approved with changes; Nit-only or
-   clean → Approved.
-5. **Show the complete batch before fixing anything** — file, line or
-   section, the finding, its severity, in one message. Not "found one
-   thing, fixing it, now looking for more." The maintainer sees the whole
-   result before any of it is acted on, same reason the source skill
-   requires `AskUserQuestion` approval before a GitHub post: the output is
-   something someone else has to read and trust, and a partial view of it
-   is worse than a short wait for the whole thing.
-6. **Only after the batch is shown, fix what's agreed** — matching how
-   every spec self-review this session has actually worked in practice
-   (draft findings, present, then fix), now made an explicit, required
-   step rather than something that happened to be the habit.
+   severities — the source skill's "overall review message" step. Finding
+   severity drives three of the four outcomes: any Blocking → Needs
+   rework; Major/Minor only, no Blocking → Approved with changes; Nit-only
+   or clean → Approved. **`Rejected` is not on that scale** — per
+   `reviews/README.md`, it means the *approach itself* is wrong, not that
+   findings piled up. Choose it independently of the tally, when the right
+   answer is "don't build this the way it's specified," not "fix these
+   things."
+5. **Write the batch to `.claude/reviews/NNNN-*.md` before fixing anything**
+   — this is the actual enforcement mechanism, not the prose instruction
+   alone. A batch that exists only in chat scrollback isn't checkable
+   months later, which is the entire stated purpose of recording reviews
+   at all (`reviews/README.md`). This also means: show the maintainer the
+   complete batch in the same message, same reasoning as the source
+   skill's `AskUserQuestion` gate before a GitHub post — the difference is
+   this project runs with standing authorization to proceed without a
+   blocking prompt between spec transitions, so the record substitutes for
+   the stop. Same self-review caveat as every other review this session:
+   mark it self-reviewed, needing independent confirmation, unless someone
+   other than the spec's author is actually running this pass.
+6. **Only after the batch is written and shown, fix what's agreed** —
+   matching how every spec self-review this session has actually worked in
+   practice (draft findings, present, then fix), now an explicit required
+   step with a checkable artifact behind it, not just a habit.
 
 ## Red flags — stop if thinking any of these
 
@@ -75,6 +84,23 @@ Directly from the source skill, relabeled for this repo's actual situation:
   — the discipline (draft first, batch, show before acting) has nothing to
   do with GitHub specifically; it's about not letting review quality
   degrade under momentum
+
+**If any of these fire**: this skill can't invoke itself
+(`disable-model-invocation: true`) — say the red flag out loud and ask the
+maintainer to run `/review`, don't silently self-apply the discipline
+without naming that a shortcut was about to happen.
+
+## Relationship to the built-in `code-review` skill
+
+`skills/README.md` already has an open question about whether the planned
+purpose-level "Code review" skill duplicates the built-in `code-review`
+skill. This one is a third, different thing: `code-review` reviews a
+diff/PR against general code-quality dimensions; this skill governs *when*
+a review must happen (spec transitions, pre-PR) and *how the finding batch
+is produced and recorded*, reusing this project's own severity vocabulary
+rather than a generic one. Not a duplicate — but worth checking again once
+the purpose-level "Code review" skill is actually written, in case the
+overlap grows then.
 
 ## Once PRs are real
 

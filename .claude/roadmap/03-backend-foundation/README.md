@@ -36,10 +36,12 @@ retrofit will ever catch up.
   responses
 - HTTP transport: router, middleware chain, timeouts, body size limits,
   panic recovery
-- Persistence: PostgreSQL connection pool and lifecycle, migration runner,
-  forward-only migration policy (ADR 0004); spawning and owning the bundled
-  Postgres process itself, including orphan-prevention per platform (ADR
-  0007, `architecture-persistence.md` FR-8/FR-9/FR-10)
+- Persistence: PostgreSQL connection pool and lifecycle (engine decided —
+  ADR 0004), migration runner, forward-only migration policy
+  (`architecture-persistence.md` FR-4/FR-5, not ADR 0004 — that ADR
+  decided the engine, not the migration policy); spawning and owning the
+  bundled Postgres process itself, including orphan-prevention per
+  platform (ADR 0007, `architecture-persistence.md` FR-8/FR-9/FR-10)
 - Repository interfaces for the phase 02 domain, with one real implementation
 - Health and readiness endpoints
 - Test infrastructure: integration harness against a real PostgreSQL instance,

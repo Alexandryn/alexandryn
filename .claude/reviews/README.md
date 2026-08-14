@@ -58,3 +58,4 @@ next person from looking.
 | [0011](0011-spec-architecture-backend.md) | Spec — `architecture-backend.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0012](0012-spec-architecture-frontend.md) | Spec — `architecture-frontend.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0013](0013-spec-architecture-testing.md) | Spec — `architecture-testing.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0014](0014-review-skill-first-run.md) | `/review` skill's first run, two independent agent reviews | 2026-08-14 | Approved with changes, genuinely independent (not self-reviewed) |
