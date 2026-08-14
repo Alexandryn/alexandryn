@@ -18,8 +18,8 @@ assumes the general one and adds only what is specific.
 
 **Top level (`skills/<name>/`, no subdirectory)** — repo-workflow automation
 that isn't engineering practice or domain knowledge, it's how this specific
-repo's Git/GitHub mechanics work: `commit`, `make-pr`. These aren't
-speculative — they exist because the workflow already exists (every
+repo's Git/GitHub mechanics work: `commit`, `make-pr`, `review`. These
+aren't speculative — they exist because the workflow already exists (every
 contributor commits; not every contributor knows this repo's specific
 conventions), so the "signal to write one" bar below doesn't apply the same
 way to this kind.
@@ -70,6 +70,7 @@ problem — they describe the repo's Git mechanics, not its architecture:
 |---|---|
 | [`commit`](commit/SKILL.md) | Conventional Commits, split-by-meaning, `Refs:` trailers, no `Co-Authored-By` ever |
 | [`make-pr`](make-pr/SKILL.md) | PR title convention (react-spectrum), body from `.github/pull_request_template.md`, checks whether a PR is even the right move yet — designed with the maintainer, not authored solo |
+| [`review`](review/SKILL.md) | Batched, structured review — draft every finding first, show the complete result before fixing anything. Required before opening a PR, and before moving spec to spec while we aren't making them |
 
 Planned `general/`/`purpose/` skills, roughly in the order they'll become
 real:
