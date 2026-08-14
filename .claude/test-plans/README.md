@@ -46,3 +46,4 @@ get a case. Constitution §10.
 | [`backend-configuration.md`](backend-configuration.md) | [`backend-configuration.md`](../specs/backend-configuration.md) | `REVIEWED` (independent, findings fixed — [`0024`](../reviews/0024-test-plan-backend-configuration.md)) |
 | [`backend-errors-and-logging.md`](backend-errors-and-logging.md) | [`backend-errors-and-logging.md`](../specs/backend-errors-and-logging.md) | `REVIEWED` (independent, findings fixed — [`0026`](../reviews/0026-test-plan-backend-errors-and-logging.md)) |
 | [`backend-http-transport.md`](backend-http-transport.md) | [`backend-http-transport.md`](../specs/backend-http-transport.md) | `REVIEWED` (independent, findings fixed — [`0027`](../reviews/0027-test-plan-backend-http-transport.md)) |
+| [`backend-persistence.md`](backend-persistence.md) | [`backend-persistence.md`](../specs/backend-persistence.md) | `REVIEWED` (independent, findings fixed — [`0029`](../reviews/0029-test-plan-backend-persistence.md)) |
