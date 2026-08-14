@@ -55,6 +55,28 @@ rigor the spec didn't do.
 
 No contradiction found against the constitution, ADR 0004, or CLAUDE.md.
 
+## Resolution (2026-08-13)
+
+Findings 2–6 fixed in the same commit as this update, at the maintainer's
+direction. Finding 1 (Blocking) held open deliberately — it needs the
+maintainer's call (prototype, or explicit override) before the spec's
+FR-1/FR-2 can be considered settled, and nothing below fixes or works around
+that.
+
+- **#2** — non-goal line added naming the gap; open question added
+  recommending phase 01's Specifications table get a decision (new spec vs.
+  fold into `architecture-backend.md`)
+- **#3** — promoted to FR-10 (Go server must exit if Electron does) and
+  FR-11 (second-instance handling); failure-mode table rows now reference
+  them
+- **#4** — FR-9 now states a bounded grace period (placeholder: 10s,
+  unmeasured), tracked in Open questions the same way the startup budget is
+- **#5** — new Security considerations bullet on the config/secrets spawn
+  channel, with an Open questions entry naming the owning spec
+- **#6** — non-goal line added for `architecture-testing.md`
+
+**Still open: Finding 1.** FR-1/FR-2 unchanged.
+
 ## What I did not review
 
 Whether FR-1/FR-2's conclusion (two processes) is actually *wrong* — I don't

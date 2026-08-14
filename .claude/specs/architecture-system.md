@@ -59,6 +59,11 @@ does each process do when the one next to it is slow, crashed, or hostile.
   design the credential
 - Multi-host or cloud deployment — explicitly out of scope for v1
   (phase 01's own scope says so)
+- Test tooling, fixtures, and what runs in CI — `architecture-testing.md`
+- Messaging architecture — the conditions under which work becomes
+  asynchronous (phase 01's scope lists this as in-scope for the phase, but no
+  spec in phase 01's Specifications table currently owns it, and it isn't
+  this one either; see Open questions)
 
 ## User stories
 
@@ -108,7 +113,20 @@ every contributor reasoning about failure:
 - **FR-9** Shutdown (app quit, OS signal) MUST attempt to let in-flight HTTP
   requests to the Go server complete or be cleanly refused, then terminate
   the Go server, then exit Electron — never the reverse order, and never a
-  hard kill as the first resort.
+  hard kill as the first resort. The grace period before falling back to a
+  hard kill is bounded (placeholder: 10 seconds, unmeasured — see Open
+  questions), not indefinite.
+- **FR-10** The Go server MUST terminate if the Electron main process that
+  spawned it exits or becomes unreachable, by crash or forced kill. It MUST
+  NOT continue running as an orphan holding its port bound — the exact
+  mechanism (process-group termination, a watchdog, an OS job object on
+  Windows) is undecided; see Open questions.
+- **FR-11** The system MUST prevent, or explicitly and visibly handle, a
+  second instance starting while one is already running against the same
+  PostgreSQL data. It MUST NOT allow two instances to run silently
+  divergent against the same data — either the second start is refused with
+  a clear message, or it focuses the existing window. Mechanism undecided;
+  see Open questions.
 
 ## Non-functional requirements
 
@@ -195,8 +213,8 @@ Illegal transitions worth naming explicitly, because they become tests:
 | PostgreSQL connection lost after startup | Query/health-check failure mid-session | In-flight actions that need storage fail with a clear message; read-only cached views (if any exist by then) may still render | Go server transitions `Ready -> Degraded`; does not crash |
 | Go server child process exits unexpectedly | Electron main's child-process exit handler | "The library service stopped unexpectedly. Restart Alexandryn." — not a blank or frozen window | Electron detects the exit, surfaces it, does not attempt an infinite silent respawn loop (a bounded retry with backoff is acceptable, an unbounded one masks a real problem) |
 | Loopback port already in use | Bind failure on Go server startup | "Alexandryn couldn't start (port in use)." with enough detail to actually debug it, not a raw stack trace (constitution §11) | Go server exits non-zero with a specific error; Electron surfaces it rather than silently retrying the exact same bind forever |
-| Electron main process crashes | OS-level; nothing left to detect it from inside the app | The window/app disappears | Go server, as the child, receives no more heartbeat/control signal — MUST also exit rather than becoming an orphaned process that keeps a port bound (this needs a concrete mechanism: process-group termination or a watchdog; flagged in Open questions) |
-| Two instances started on the same machine | Second instance's port bind, or a lock file | Either the second instance fails clearly, or focuses the first instance's window — not two silently-diverging instances against the same PostgreSQL data | Mechanism not yet decided; Open questions |
+| Electron main process crashes | OS-level; nothing left to detect it from inside the app | The window/app disappears | Go server, as the child, receives no more heartbeat/control signal — exits per FR-10 rather than becoming an orphaned process that keeps a port bound (mechanism undecided; Open questions) |
+| Two instances started on the same machine | Second instance's port bind, or a lock file | Either the second instance fails clearly, or focuses the first instance's window — not two silently-diverging instances against the same PostgreSQL data | Handled per FR-11; mechanism not yet decided, Open questions |
 
 ## Security considerations
 
@@ -230,6 +248,16 @@ Additional, specific to this spec:
   but still a boundary: if the port-announcement mechanism (stdout, above) is
   used, the main process must not trust anything else printed to that stream
   as a control message.
+- **Configuration and secrets handed to the spawned process** — the main
+  process must pass the Go server its configuration (today: `DATABASE_URL`;
+  later: credentials once phase 12 exists) at spawn time. Command-line
+  arguments are visible to any local user via `ps`; environment variables are
+  visible to same-user processes via `/proc/PID/environ` on Linux and
+  equivalent mechanisms elsewhere. Neither is safe for a real secret once one
+  exists. This spec does not pick the mechanism (a restricted-permission
+  file descriptor or config file, an OS keychain, or accepting env vars for
+  now since nothing passed today is more sensitive than a loopback-only dev
+  database URL) — see Open questions.
 
 ## Test strategy
 
@@ -289,6 +317,22 @@ execution:
   (OS-assigned ephemeral port vs. a fixed default with fallback). Owner:
   phase 03, informed by whatever `architecture-desktop-host.md` needs for the
   control-plane channel.
+- **Shutdown grace period (10 seconds, FR-9)** — a placeholder, same status
+  as the startup budget: not measured, needs phase 03 to confirm or replace
+  once there's a real service to time.
+- **Config/secrets across the spawn boundary** — argv and env vars are both
+  named as insufficient once a real secret exists (Security considerations,
+  above). Owner: `architecture-desktop-host.md`, since it owns the spawn
+  mechanism, informed by phase 03's `backend-configuration.md` and phase 12's
+  credential design once that exists.
+- **Messaging/async architecture has no owning spec** — phase 01's scope
+  lists "the conditions under which work becomes asynchronous" as in-scope
+  for the phase, but its Specifications table names no spec for it, and this
+  one explicitly isn't it (Non-goals). Needs either a new
+  `architecture-messaging.md` added to phase 01's spec table, or an explicit
+  decision to fold it into `architecture-backend.md`. Owner: whoever updates
+  `01-architecture/README.md` — flagging here since this spec is what
+  surfaced the gap.
 
 ## References
 
