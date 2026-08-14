@@ -88,4 +88,4 @@ All 2 Blocking, 12 Major, 9 Minor, and 2 Nit findings fixed in this pass:
 - **#14 (health response credential leak untested)** — Fixed: added to `backend-http-transport.md` FR-5 and acceptance criteria.
 - **#15–#26** — Fixed as described in each row above.
 
-Re-run through `/review`'s discipline once implementation begins is still expected practice (this record covers the specs, not code that doesn't exist yet). Maintainer's own read of this batch and the fixes remains outstanding, same status every phase 01/02 spec still carries.
+Re-run through `/review`'s discipline once implementation begins is still expected practice (this record covers the specs, not code that doesn't exist yet). Maintainer approved all six specs 2026-08-14; implementation has not started.

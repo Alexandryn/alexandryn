@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Specs approved, implementation not started |
 | **Depends on** | Phase 01, Phase 02 |
 | **Blocks** | 05, 06, 12 |
 
