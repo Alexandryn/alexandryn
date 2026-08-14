@@ -66,3 +66,4 @@ next person from looking.
 | [0019](0019-spec-domain-reading.md) | Spec — `domain-reading.md`, ADR 0009, ADR 0010 | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0020](0020-spec-domain-events.md) | Spec — `domain-events.md` | 2026-08-14 | Approved with changes (both findings fixed), self-reviewed — needs independent read |
 | [0021](0021-phase02-cross-spec-review.md) | Phase 02 — all five specs, cross-spec, two independent agents | 2026-08-14 | Needs rework at review time (3 Blocking, now fixed), genuinely independent (not self-reviewed) |
+| [0022](0022-phase03-cross-spec-review.md) | Phase 03 — all six specs and ADRs 0011–0013, cross-spec, two independent agents | 2026-08-14 | Needs rework at review time (2 Blocking, now fixed), genuinely independent (not self-reviewed) |
