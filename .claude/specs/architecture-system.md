@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `REVIEWED` (self-review only — see below) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-13 |
 | **Last updated** | 2026-08-13 |
 | **Supersedes** | — |
-| **Reviewed in** | — (not yet reviewed) |
+| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Needs rework, self-reviewed, not independent |
 
 ## Context
 
