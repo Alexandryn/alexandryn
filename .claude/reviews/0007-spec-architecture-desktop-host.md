@@ -13,12 +13,20 @@ Closes the four items `architecture-system.md` explicitly left open
 (macOS/Windows orphan prevention, second-instance handling, config/secrets
 channel, control-plane mechanism) with concrete, standard-pattern decisions
 — `app.requestSingleInstanceLock()`, a permissioned single-use config file,
-named platform-specific orphan mechanisms. Two real gaps found on
-self-review: the config file's origin (FR-5) is unaddressed for a real end
-user, not a developer with `.env`, and the Playwright E2E decision may
-belong to `architecture-testing.md` instead of here.
+named platform-specific orphan mechanisms. Real gaps found across two review
+passes: the config file's origin (FR-5) is unaddressed for a real end user,
+not a developer with `.env`; the Playwright E2E decision may belong to
+`architecture-testing.md`; and a requested overlap-verification pass against
+every other phase 01/03/05 document found one genuine internal contradiction
+(finding 6, now Blocking — FR-6 requires a UI state the system architecture
+says can't exist yet) and one confirmed duplicate decision against phase 05's
+own roadmap document (finding 7, fixed in this pass).
 
 ## Findings
+
+Findings 6 and 7 added after a requested overlap-verification pass across
+every FR against phase 01's other five specs, phase 05, and phase 03 —
+2026-08-13, same session.
 
 | # | Severity | Area | Finding | Required change |
 |---|---|---|---|---|
@@ -27,6 +35,8 @@ belong to `architecture-testing.md` instead of here.
 | 3 | Minor | Verification | The Playwright MCP's actual ability to drive an Electron app (not just a browser) is asserted from general Playwright library knowledge, not verified against what the *MCP server* specifically exposes. `claude mcp list` shows it connected; whether its tool surface includes an Electron launcher wasn't checked | Verify before phase 05 relies on it — a quick check of the MCP's tool list, or a small prototype the same way ADR 0005 prototyped the process model |
 | 4 | Minor | Security | FR-5's config file is described by permissions (`0600`) but not by creation method. A predictable path in a per-run temp directory is a TOCTOU/symlink-attack surface if not created atomically and unpredictably (e.g. `os.CreateTemp` / `mkstemp`-equivalent) | Add "created with a non-predictable name via the OS's atomic temp-file API" to FR-5's wording |
 | 5 | Minor | Completeness | Tray icon, dock behavior, and close-vs-quit semantics (does closing the window quit the app or minimize to tray?) are entirely unaddressed, but they directly affect when FR-9's Windows Job Object / FR-8's macOS monitor actually fire — "the app closed" is ambiguous without this | Add an explicit decision or non-goal with owner (could reasonably be v1: close = quit, no tray, simplest option — but say so) |
+| 6 | Blocking | Internal contradiction | FR-6 requires showing an `atStates`-based loading state while the Go server isn't ready — but `architecture-system.md` FR-6 says the web UI (where `atStates` lives) is *served by the Go server*. If the Go server isn't up, there's nothing to load the loading-state page from. Not a scope question, an actual contradiction between what this spec requires and what the system architecture says is possible | Resolved in this pass: added as an explicit open question with a likely-fix direction (a small Electron-bundled asset separate from the served web UI). Not fully decided — needs a real answer, likely jointly with `architecture-frontend.md`, before phase 05 can implement FR-6 as written |
+| 7 | Major | Scope | Phase 05's own roadmap document (`05-desktop-host/README.md`) independently lists "What 'healthy' means for the Go server before the window is shown — polling the health endpoint... timeout/failure UX" as *its own* open architecture decision — which is exactly what this spec's FR-6/FR-7 already answers. Two documents were quietly claiming the same open question | Fixed in this pass: `05-desktop-host/README.md` updated to point at FR-6/FR-7 as the decided pattern, with phase 05's own specs still owning the real implementation and a measured timeout. This spec also gained a "Relationship to phase 05's own specs" section explaining the general layering (pattern here, implementation there) so this doesn't recur silently for the rest of its FRs |
 
 ## Dimensions checked
 

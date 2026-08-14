@@ -289,6 +289,19 @@ Illegal transitions, restated for the window layer:
 - **15-second readiness timeout (FR-7)** — a placeholder, same status as
   `architecture-system.md`'s 3-second startup budget and 10-second shutdown
   grace period. Phase 03/05 should replace with a measured number.
+- **How can the window show a loading state before the Go server exists to
+  serve it?** FR-6 requires citing `atStates`' loading treatment while the
+  Go server isn't ready yet — but `architecture-system.md`'s FR-6 says the
+  web UI (which is where `atStates` lives, as a screen in the same design
+  system) is *served by the Go server*. If the Go server isn't up, Electron
+  has nothing to load a loading-state page from. This spec doesn't resolve
+  the contradiction. Likely fix: the loading/error chrome is a small
+  bundle Electron loads directly from disk (not over HTTP from the Go
+  server), separate from the main web UI bundle — which means it needs its
+  own minimal implementation of the `atStates` treatment, not a shared
+  component with the React app, or it needs `architecture-frontend.md` to
+  own a build target for it. Not decided here; flagged for whoever picks
+  this up, likely jointly with `architecture-frontend.md`.
 - **`atTablet`'s actual surface** — `.design-reference/ANALYSIS.md` flags
   that the Tablet screen is captured inside the host/Admin canvas, not the
   Web canvas ADR 0003 assigned it to. This spec doesn't resolve it; noting
@@ -300,6 +313,21 @@ Illegal transitions, restated for the window layer:
 - **macOS/Windows mechanisms (FR-8, FR-9) remain unverified** — same
   caveat as ADR 0005: named and specified, not tested. Phase 05 needs
   actual hardware or CI runners for both platforms to close this for real.
+
+## Relationship to phase 05's own specs
+
+Phase 05's `desktop-host-process-model.md`, `-ipc-surface.md`, and
+`-window-and-serving.md` cover almost exactly this spec's territory by name.
+That's intentional layering, not redundancy: this spec fixes the pattern and
+the requirements (FR-1 through FR-10); phase 05's specs own the actual
+implementation, the measured numbers replacing this spec's placeholders, and
+anything this spec left explicitly open (binary location in dev vs.
+packaged, schema-vs-hand-maintained preload generation, mid-session crash
+restart policy — none of those are decided here). Where this spec's FR-6/
+FR-7 directly answers a question phase 05's own roadmap document listed as
+its to decide (server-healthy timeout/failure UX), that document has been
+updated to say so rather than leaving two specs quietly claiming the same
+open question.
 
 ## References
 

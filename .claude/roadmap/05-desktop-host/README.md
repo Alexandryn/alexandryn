@@ -59,10 +59,20 @@ until phase 12 gives it a reason to change.
 
 - How the Go binary is located and launched in dev versus a packaged build
 - What "healthy" means for the Go server before the window is shown —
-  polling the health endpoint from phase 03, and the timeout/failure UX
+  **pattern decided** in phase 01's `architecture-desktop-host.md`
+  (FR-6/FR-7): poll `/health`, show a loading state citing the design
+  reference's `atStates` screen, error state with retry after a bounded
+  (placeholder, unmeasured) timeout. This phase's
+  `desktop-host-process-model.md` and `desktop-host-window-and-serving.md`
+  still own the actual implementation and a measured timeout number — the
+  phase 01 spec set the pattern, not the code
 - Whether the preload surface is generated from a schema or hand-maintained,
-  and how a new operation gets reviewed before it's addable at all
-- Restart behaviour if the Go server crashes mid-session
+  and how a new operation gets reviewed before it's addable at all —
+  phase 01's spec fixed the *shape* (one namespaced object, every method
+  validated in main) but left this question open too
+- Restart behaviour if the Go server crashes mid-session — not addressed by
+  phase 01's spec (which covers the *first* start, not mid-session crash
+  recovery); still fully this phase's to decide
 
 ## Risks
 
