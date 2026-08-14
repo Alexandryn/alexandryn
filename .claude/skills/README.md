@@ -3,7 +3,7 @@
 Reusable practice guides — the things a contributor (human or automated) should
 know how to do here, written once instead of re-explained per review.
 
-## Two kinds
+## Three kinds
 
 **`general/`** — engineering practice that would apply to any serious project:
 how a code review is conducted here, how an API is designed, how a security
@@ -15,6 +15,14 @@ handling, the Electron IPC conventions, RabbitMQ naming.
 
 Do not duplicate a general skill inside a purpose skill. A purpose skill
 assumes the general one and adds only what is specific.
+
+**Top level (`skills/<name>/`, no subdirectory)** — repo-workflow automation
+that isn't engineering practice or domain knowledge, it's how this specific
+repo's Git/GitHub mechanics work: `commit`, `make-pr`. These aren't
+speculative — they exist because the workflow already exists (every
+contributor commits; not every contributor knows this repo's specific
+conventions), so the "signal to write one" bar below doesn't apply the same
+way to this kind.
 
 ## When to write one
 
@@ -50,11 +58,21 @@ on it during planning, per the spec-before-build rule:
 
 ## Status
 
-**Empty by design.** The practices these would describe don't exist yet — the
-first ones become writable once Phase 01 settles the architecture and Phase 02
-settles the domain. Writing them now would be fiction.
+**`general/` and `purpose/` are still empty by design.** The practices they'd
+describe don't exist yet — the first ones become writable once Phase 01
+settles the architecture and Phase 02 settles the domain. Writing them now
+would be fiction.
 
-Planned, roughly in the order they'll become real:
+**Top-level workflow skills exist already**, since they don't have that
+problem — they describe the repo's Git mechanics, not its architecture:
+
+| Skill | Covers |
+|---|---|
+| [`commit`](commit/SKILL.md) | Conventional Commits, split-by-meaning, `Refs:` trailers, no `Co-Authored-By` ever |
+| `make-pr` | Not yet written — pending, being designed with the maintainer rather than authored solo |
+
+Planned `general/`/`purpose/` skills, roughly in the order they'll become
+real:
 
 | Skill | Kind | Writable after |
 |---|---|---|
