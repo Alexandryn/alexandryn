@@ -54,3 +54,7 @@ next person from looking.
 | [0007](0007-spec-architecture-desktop-host.md) | Spec — `architecture-desktop-host.md` | 2026-08-14 | Approved with changes (findings 2–7 fixed, finding 1 open by design), self-reviewed — needs independent read |
 | [0008](0008-adr-postgres-provisioning.md) | ADR 0007 — Production PostgreSQL bundled and managed | 2026-08-14 | Pending, self-reviewed — needs independent read |
 | [0009](0009-spec-architecture-persistence.md) | Spec — `architecture-persistence.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0010](0010-spec-architecture-contracts.md) | Spec — `architecture-contracts.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0011](0011-spec-architecture-backend.md) | Spec — `architecture-backend.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0012](0012-spec-architecture-frontend.md) | Spec — `architecture-frontend.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0013](0013-spec-architecture-testing.md) | Spec — `architecture-testing.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |

@@ -133,8 +133,10 @@ uniformly worse than designed logging, and by then nobody has time.
 
 ## Exit criteria
 
-- [ ] All seven specifications reviewed and `APPROVED`
-- [ ] Each has a recorded review in `.claude/reviews/`
+- [ ] All seven specifications reviewed and `APPROVED` — all seven now
+      `REVIEWED` (self, approved with changes), none yet `APPROVED`; needs
+      the maintainer's independent read per spec, not just this checkbox
+- [x] Each has a recorded review in `.claude/reviews/`
 - [ ] ADRs written for every decision listed above, with rejected options recorded
 - [ ] One concrete slice traced end to end through the proposed architecture
 - [ ] The three trust boundaries diagrammed
