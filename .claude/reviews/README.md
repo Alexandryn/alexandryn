@@ -71,3 +71,4 @@ next person from looking.
 | [0024](0024-test-plan-backend-configuration.md) | Test plan — `backend-configuration.md`, two independent agents | 2026-08-14 | Needs rework at review time (7 Major, now fixed), genuinely independent (not self-reviewed) |
 | [0025](0025-spec-amendment-backend-configuration-log-level.md) | Spec amendment — `backend-configuration.md`, `LOG_LEVEL` case-sensitivity | 2026-08-14 | Approved with changes, self-reviewed — needs independent read |
 | [0026](0026-test-plan-backend-errors-and-logging.md) | Test plan — `backend-errors-and-logging.md`, two independent agents | 2026-08-14 | Needs rework at review time (1 Blocking, now fixed), genuinely independent (not self-reviewed) |
+| [0027](0027-test-plan-backend-http-transport.md) | Test plan — `backend-http-transport.md`, two independent agents | 2026-08-14 | Needs rework at review time (6 Major, now fixed), genuinely independent (not self-reviewed) |
