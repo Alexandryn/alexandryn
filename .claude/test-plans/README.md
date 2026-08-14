@@ -43,3 +43,4 @@ get a case. Constitution §10.
 | Plan | Spec | Status |
 |---|---|---|
 | [`backend-service-lifecycle.md`](backend-service-lifecycle.md) | [`backend-service-lifecycle.md`](../specs/backend-service-lifecycle.md) | `REVIEWED` (independent, findings fixed — [`0023`](../reviews/0023-test-plan-backend-service-lifecycle.md)) |
+| [`backend-configuration.md`](backend-configuration.md) | [`backend-configuration.md`](../specs/backend-configuration.md) | `REVIEWED` (independent, findings fixed — [`0024`](../reviews/0024-test-plan-backend-configuration.md)) |

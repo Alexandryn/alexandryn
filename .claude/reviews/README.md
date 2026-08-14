@@ -68,3 +68,4 @@ next person from looking.
 | [0021](0021-phase02-cross-spec-review.md) | Phase 02 — all five specs, cross-spec, two independent agents | 2026-08-14 | Needs rework at review time (3 Blocking, now fixed), genuinely independent (not self-reviewed) |
 | [0022](0022-phase03-cross-spec-review.md) | Phase 03 — all six specs and ADRs 0011–0013, cross-spec, two independent agents | 2026-08-14 | Needs rework at review time (2 Blocking, now fixed), genuinely independent (not self-reviewed) |
 | [0023](0023-test-plan-backend-service-lifecycle.md) | Test plan — `backend-service-lifecycle.md`, two independent agents | 2026-08-14 | Needs rework at review time (1 Blocking, now fixed), genuinely independent (not self-reviewed) |
+| [0024](0024-test-plan-backend-configuration.md) | Test plan — `backend-configuration.md`, two independent agents | 2026-08-14 | Needs rework at review time (7 Major, now fixed), genuinely independent (not self-reviewed) |
