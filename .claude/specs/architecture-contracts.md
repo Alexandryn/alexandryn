@@ -79,12 +79,9 @@ gets caught before it ships.
 - **FR-2** The OpenAPI file MUST live at `api/openapi.yaml` (or `.json`) at
   the repository root, reviewed the same way any other spec-adjacent
   artifact is — a change to it is a change to the contract, not an
-  implementation detail. **Provisional**: this path assumes a repository
-  layout phase 01's own open-questions list still has undecided ("monorepo
-  layout and tooling"). If that decision produces a different top-level
-  structure, this path moves with it — the requirement that matters is
-  "one fixed, discoverable location, versioned with the code," not this
-  exact string.
+  implementation detail. Confirmed, not provisional: ADR 0008 (monorepo
+  layout) fixes the repository root as a stable location, resolving what
+  this FR originally flagged as pending.
 - **FR-3** Go handlers MUST be verified against the OpenAPI spec by an
   automated contract test — the spec and the implementation MUST NOT be
   allowed to drift silently. The specific tool (schema validation against

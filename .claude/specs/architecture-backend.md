@@ -55,9 +55,9 @@ precedence, or the transport middleware ordering.
 - Router library choice — phase 01's own "architecture decisions expected"
   list already assigns this to phase 03 ("standard library or a
   dependency, justified under constitution §9")
-- Monorepo layout above the Go module itself — still genuinely undecided
-  (phase 01's own open question); this spec assumes *a* Go module exists,
-  wherever the monorepo decision ends up placing it
+- Monorepo layout above the Go module itself — decided, ADR 0008: Go
+  module at the repository root, `web/` and `electron/` as npm workspace
+  packages alongside it
 
 ## User stories
 

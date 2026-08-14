@@ -64,7 +64,9 @@ next three phases actually need. Anything else goes on the open-questions list.
 
 ## Architecture decisions expected
 
-- Monorepo layout, and the tool that manages it
+- Monorepo layout decided — ADR 0008: Go module at the repository root,
+  `web/` and `electron/` as npm workspace packages, no build-orchestration
+  tool
 - Persistence engine decided — self-hosted PostgreSQL, ADR 0004. Production
   provisioning also decided — bundled, spawned and owned by the Go server,
   ADR 0007 (`architecture-persistence.md`) — a consequence of this was
