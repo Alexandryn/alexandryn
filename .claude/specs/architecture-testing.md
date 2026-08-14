@@ -85,6 +85,7 @@ sections:
 
 | Layer | Runs against | Tool | Owning spec |
 |---|---|---|---|
+| Build (ordered, before anything else) | `web/` first, then `go build ./cmd/server` (FR-8) | npm build, then `go build` | ADR 0008 |
 | Unit | Nothing external, pure functions | Go's `testing`, a JS test runner (phase 04's pick) | Every spec, own code |
 | Integration (backend) | Service-container Postgres (FR-3) | Go's `testing` + `database/sql` against real Postgres | `architecture-backend.md`, `architecture-persistence.md` |
 | Integration (persistence spawn) | The application's own bundled-Postgres mechanism (FR-3, kept separate from the above) | A dedicated suite, not the fast per-PR one | `architecture-persistence.md` FR-1/FR-8/FR-9/FR-10 |
@@ -154,6 +155,13 @@ sections:
   functions, factories) rather than checked-in binary or hand-maintained
   snapshot files that can drift silently from what they claim to
   represent.
+- **FR-8** (Added 2026-08-14, ADR 0008) CI MUST build `web/` before
+  `go build ./cmd/server` — ADR 0008's `go:embed` decision means `web/`'s
+  output is embedded into the Go binary, so a build that skips this step
+  doesn't fail, it silently ships a server with a stale or missing
+  frontend. This MUST be an explicit, ordered step in the pipeline, not an
+  assumption that whoever writes the workflow file remembers the
+  dependency.
 
 ## Non-functional requirements
 

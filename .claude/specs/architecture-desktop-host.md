@@ -328,13 +328,12 @@ Illegal transitions, restated for the window layer:
 - **Who owns building the bundled loading/error asset (FR-6, FR-7)?**
   Resolved architecturally: it's a separate, disk-loaded bundle, not served
   by the Go server (was a real contradiction, not just a scope question —
-  see review 0007 finding 6). What's still open is which spec owns the
-  actual build target and how it stays visually consistent with `atStates`
-  without depending on the frontend's React build. Two reasonable owners —
-  this spec (it's Electron-side, no server dependency, matches this spec's
-  own territory) or `architecture-frontend.md` (it needs the same design
-  tokens the real `atStates` component uses, and token drift between two
-  independent implementations is a real risk) — not decided here.
+  see review 0007 finding 6). Package ownership resolved too, by ADR 0008
+  (monorepo layout): it lives in `electron/`, since it's Electron-bundled
+  by definition. Still genuinely open: how it stays visually consistent
+  with `atStates` without depending on `web/`'s React build — token drift
+  between two independent implementations of the same design is a real
+  risk ADR 0008 didn't solve, only named where the code lives.
 - **`atTablet`'s actual surface** — `.design-reference/ANALYSIS.md` flags
   that the Tablet screen is captured inside the host/Admin canvas, not the
   Web canvas ADR 0003 assigned it to. This spec doesn't resolve it; noting

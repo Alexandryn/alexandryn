@@ -31,10 +31,16 @@ browser-facing UI).
   (`architecture-frontend.md`), an npm package, builds to `web/dist/`.
 - **`electron/`** — Electron main process and preload script
   (`architecture-desktop-host.md`), a separate npm package. It does not
-  bundle a copy of the web UI: per `architecture-system.md` FR-6 and
-  `architecture-frontend.md` FR-7, the Electron window loads the UI from
-  the Go server's own loopback URL at runtime, the same as a LAN browser
-  would — there is nothing for `electron/` to bundle.
+  bundle a copy of the *web UI*: per `architecture-system.md` FR-6 and
+  `architecture-desktop-host.md`'s "Window ↔ Go server" section, the
+  Electron window loads the real UI from the Go server's own loopback URL
+  at runtime, the same as a LAN browser would. It does bundle one thing:
+  the small loading/error splash asset `architecture-desktop-host.md`
+  FR-6/FR-7 requires (disk-loaded, never served by the Go server, shown
+  before the Go server is ready to serve anything) — that spec's own Open
+  questions asked which package owns building it; this ADR answers it:
+  `electron/`, since it's Electron-bundled by definition and this package
+  is where Electron-owned assets live.
 - **`web/dist/` is embedded into the Go binary via `go:embed`**
   (`cmd/server`), not read from a filesystem path at runtime. One
   build-order dependency this creates: `web/` must build before `go
@@ -83,22 +89,35 @@ decisions.
 specs are versioned with the code they describe, reviewable in the same
 PR) — a change spanning the API contract, the Go handler, and the React
 component consuming it would need three PRs across three repos for one
-coherent change. Rejected on the same grounds ADR 0006 used to keep
-`.claude/` in this repo rather than splitting it out.
+coherent change. Rejected on the same single-PR-reviewability grounds ADR
+0001 established, not ADR 0006 (which is about `docs`/`website` repo
+*timing*, a different question).
 
 ## Consequences
 
 **Good** — one clone gets a contributor everything; `go:embed` means
-`cmd/server` is genuinely one artifact to ship, matching the self-hosted,
-single-binary-where-possible ethos this project has followed since ADR
-0005; no tooling to justify beyond what Go and npm already provide.
+`cmd/server` is genuinely one artifact to ship, the same "bundle it, one
+thing to ship" reasoning ADR 0007 already applied to Postgres; no tooling
+to justify beyond what Go and npm already provide. (Not ADR 0005 — that
+ADR *rejected* single-binary for Electron+Go specifically; citing it here
+for a "single-binary ethos" would invert what it actually decided.)
 
-**Bad** — the `web/`-before-`go build` ordering is a real CI/local-dev
-detail every build script and the `architecture-testing.md` CI pipeline
-needs to get right, or "just run `go build`" silently produces a server
-with no frontend to serve. `electron/` and `web/` are two npm packages
-that need their shared dependencies (TypeScript config, lint config) kept
-consistent by hand, without a tool doing it for them.
+**Bad** — the `web/`-before-`go build ./cmd/server` ordering is a real
+CI/local-dev detail every build script needs to get right, or "just run
+`go build`" silently produces a server with no frontend to serve —
+**not yet accounted for in `architecture-testing.md`**, whose Testing
+layers table and FR-1 minimum PR gate list don't mention a build step at
+all; added to that spec's own Open questions as a named gap, not silently
+assumed solved elsewhere. `electron/` and `web/` are two npm packages that need
+their shared dependencies (TypeScript config, lint config) kept consistent
+by hand, without a tool doing it for them. And the consequential one:
+**an embedded frontend can't be hot-patched or updated independently of a
+full binary rebuild** — any frontend-only fix ships as a new `cmd/server`
+binary, not a smaller asset update. For a self-hosted app whose only
+update mechanism is presumably "download a new release," this is likely
+fine, but it's a real cost of `go:embed` this ADR should name outright,
+not bury inside a "Medium confidence" rating with no explanation of what
+the uncertainty actually is.
 
 **Neutral** — doesn't change any decided FR in the six specs written
 against a provisional or unstated layout; this ADR is what makes "wherever
@@ -114,6 +133,8 @@ mechanical but real refactor, not a redesign.
 
 High on Go-at-root and npm-workspaces-not-a-build-tool — both follow
 directly from this project's own repeated stated non-goals. Medium on
-`go:embed` specifically over a filesystem-path approach — reasonable and
-idiomatic, but not weighed against alternatives as rigorously as ADR
-0005's prototyped process model was.
+`go:embed` specifically over a filesystem-path approach — now with the
+actual reason named (Consequences/"Bad": no independent frontend
+hot-patching without a full binary rebuild), not just asserted as an
+unweighted number. Not prototyped or weighed against alternatives as
+rigorously as ADR 0005's process model was.
