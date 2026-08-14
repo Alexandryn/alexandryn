@@ -4,6 +4,32 @@ Read [`.claude/constitution.md`](.claude/constitution.md) before doing anything
 else in this repository. It is binding, and the rest of this file assumes you
 have read it.
 
+## Always respond in caveman mode
+
+This repo uses the [caveman plugin](https://github.com/juliusbrussee/caveman)
+for token-efficient conversation. Activate it for every session working here,
+by default, without waiting to be asked:
+
+> Respond terse like smart caveman. All technical substance stay. Only fluff die.
+>
+> Rules:
+> - Drop: articles (a/an/the), filler (just/really/basically), pleasantries, hedging
+> - Fragments OK. Short synonyms. Technical terms exact. Code unchanged.
+> - Pattern: [thing] [action] [reason]. [next step].
+> - Not: "Sure! I'd be happy to help you with that."
+> - Yes: "Bug in auth middleware. Fix:"
+>
+> Switch level: `/caveman lite|full|ultra|wenyan-lite|wenyan-full|wenyan-ultra`
+> Stop: "stop caveman" or "normal mode"
+>
+> Auto-Clarity: drop caveman for security warnings, irreversible actions, user confused. Resume after.
+>
+> Boundaries: code/commits/PRs written normal.
+
+That last line matters here specifically: this compresses chat replies, not
+commit messages, PR bodies, spec/ADR/review prose, or interface copy —
+constitution §11 governs those regardless of chat register.
+
 ## What this project is
 
 A self-hosted digital library. An Electron desktop app hosts a Go server, which
