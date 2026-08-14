@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — `LOG_LEVEL` case-sensitivity, self-reviewed, needs maintainer re-confirmation, see [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)) |
+| **Status** | `APPROVED` (amended post-approval twice — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)) and DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) — both self-reviewed, both need maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -160,7 +160,15 @@ file format, where it lives, or the actual validation each key needs.
   host:port, `LOG_LEVEL` not one of the enum values); the config file
   existing but containing invalid TOML syntax. The error message MUST
   name the specific key and what was wrong with it (constitution §11) —
-  never a generic "invalid configuration."
+  never a generic "invalid configuration." When the invalid-TOML-syntax
+  case's offending line or token is FR-7's `DATABASE_URL` (or any future
+  sensitive key), the error message MUST name the key generically (e.g.
+  "value for DATABASE_URL is invalid") and MUST NOT include the raw
+  parser-reported excerpt, which can otherwise echo the offending line's
+  actual content verbatim — the same class of leak `backend-http-transport.md`
+  FR-5 and `backend-service-lifecycle.md` FR-3 redact for the DSN
+  specifically, applied here to the TOML parser's own error text
+  (security review finding, 2026-08-14).
 - **FR-7** `DATABASE_URL`, and any future key whose value is a connection
   string or credential, MUST implement **both** `slog.LogValuer` and
   `json.Marshaler`, each returning the same fixed redacted placeholder

@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `APPROVED` (amended post-approval — DSN redaction in migration failure logging, self-reviewed, needs maintainer re-confirmation, see [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -184,6 +184,17 @@ Non-goal.
   for `backend-errors-and-logging.md` FR-1's `Internal` category and a
   specific log line, without exposing raw SQL to any client-facing
   surface (nothing client-facing exists at this point in startup anyway).
+  When `goose`'s own error wraps a connection failure from opening the
+  narrowly-scoped `*sql.DB` above (rather than a SQL-execution failure
+  against an already-open connection), the logged detail MUST NOT include
+  that underlying connection error's `Error()` string verbatim — it can
+  embed the DSN, the same failure mode `backend-http-transport.md` FR-5
+  and `backend-service-lifecycle.md` FR-3 already redact for their own
+  call sites; this spec's migration-failure logging uses the same fixed,
+  generic phrasing for the connection-failure case specifically, while
+  still naming the failing migration file and `goose`'s own error text
+  for a genuine SQL/schema failure, which carries no connection-string
+  risk (security review finding, 2026-08-14).
 - **FR-7** The next startup after a failed partial migration
   (`architecture-persistence.md` FR-5's "next startup attempt can detect
   and refuse to proceed past") MUST also fail at the same FR-6 step,

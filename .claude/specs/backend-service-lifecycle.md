@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `APPROVED` (amended post-approval — DSN redaction in startup failure logging, self-reviewed, needs maintainer re-confirmation, see [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -136,7 +136,16 @@ names as "the hardest thing to test here."
   connection, it is treated as an ordinary FR-3 startup failure like any
   other — logged, process exits non-zero — the bounded retry is a ceiling
   on how long `Degraded` is shown before giving up, never a path to
-  retrying forever.
+  retrying forever. When the failing step is FR-1 step 5 (obtaining a
+  reachable PostgreSQL) and a `DATABASE_URL` value is in play
+  (`backend-configuration.md` FR-4's third category), the logged message
+  MUST use a fixed, generic description of the failure (e.g. "could not
+  connect to the configured database") and MUST NOT include the
+  underlying driver error's `Error()` string verbatim — `pgx` connection
+  and parse errors can embed the DSN itself, the same failure mode
+  `backend-http-transport.md` FR-5 already redacts for `/readyz`'s
+  response body, applied here to this spec's startup log line instead
+  (security review finding, 2026-08-14).
 - **FR-4** On receiving a shutdown signal (`SIGTERM`, or the Electron
   control-plane channel's equivalent per `architecture-system.md`'s
   Open questions), the server MUST stop accepting new connections

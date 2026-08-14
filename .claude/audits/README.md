@@ -48,4 +48,4 @@ No phase closes with an open Critical or High finding.
 
 | Audit | Scope | Date | Critical | High | Verdict |
 |---|---|---|---|---|---|
-| — | | | | | |
+| [0001](0001-phase03-backend-specs.md) | Phase 03 backend foundation specs (6 specs, 3 ADRs), pre-implementation | 2026-08-14 | 0 | 0 | 1 Medium finding, fixed same session |
