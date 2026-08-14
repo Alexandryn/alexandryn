@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self-review only — see below) |
+| **Status** | `APPROVED` |
 | **Phase** | `01-architecture` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
+| **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira |
 | **Created** | 2026-08-13 |
 | **Last updated** | 2026-08-13 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending before this moves to `APPROVED` |
+| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes, all findings fixed |
 
 ## Context
 

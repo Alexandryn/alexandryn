@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Subject** | `.claude/specs/architecture-system.md` |
-| **Reviewer** | Claude (self-review — same author; needs an independent read before this counts as real review) |
+| **Reviewer** | Luann Moreira (independent read confirming Claude's self-review below) |
 | **Date** | 2026-08-13 |
-| **Verdict** | Approved with changes (all six findings addressed — see Resolution below); self-reviewed, independent read still pending |
+| **Verdict** | Approved with changes (all six findings addressed — see Resolution below) |
 
 ## Summary
 
@@ -83,9 +83,9 @@ reliably self-terminates when the parent is `SIGKILL`ed. Recorded as
 [ADR 0005](../decisions/0005-process-model.md). FR-1/FR-2 confirmed; FR-10
 resolved on Linux, still open on macOS/Windows (named mechanisms, unverified
 — tracked in the spec's Open questions, owner phase 05). This closes the
-finding; it does not close the ADR's own review
-([`0005-adr-process-model.md`](0005-adr-process-model.md)), which is
-separately pending.
+finding; the ADR's own review
+([`0005-adr-process-model.md`](0005-adr-process-model.md)) is a separate
+record, also approved.
 
 ## What I did not review
 

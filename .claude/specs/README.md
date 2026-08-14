@@ -34,4 +34,4 @@ Group by area, not by phase — features outlive the phase that introduced them.
 
 | Spec | Area | Phase | Status |
 |---|---|---|---|
-| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `REVIEWED` (self, approved with changes — all findings fixed) |
+| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `APPROVED` |

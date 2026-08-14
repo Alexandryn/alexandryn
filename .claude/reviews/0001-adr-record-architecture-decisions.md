@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Subject** | `.claude/decisions/0001-record-architecture-decisions.md` |
-| **Reviewer** | Luann Moreira (pending confirmation — drafted by Claude as a first pass, not self-approved) |
+| **Reviewer** | Luann Moreira |
 | **Date** | 2026-08-13 |
-| **Verdict** | Pending |
+| **Verdict** | Approved |
 
 ## Summary
 

@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Subject** | `.claude/decisions/0004-persistence-engine-postgresql.md` |
-| **Reviewer** | Luann Moreira (pending confirmation — drafted by Claude as a first pass, not self-approved) |
+| **Reviewer** | Luann Moreira |
 | **Date** | 2026-08-13 |
-| **Verdict** | Pending |
+| **Verdict** | Approved |
 
 ## Summary
 
