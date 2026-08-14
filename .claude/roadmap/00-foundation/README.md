@@ -61,7 +61,7 @@ in the constitutional sense. Phase 01 produces the first specs.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| The design reference is truncated; ~six screens and all prototype logic are missing | **Occurred** | High — phases 04, 06, 11 need them | Documented in `.design-reference/ANALYSIS.md`; a complete export must be obtained before phase 04 |
+| The design reference was truncated; ~six screens and all prototype logic were missing | **Largely resolved 2026-08-13** | Was High — phases 04, 06, 11 need them | Re-synced via `DesignSync`: four of five canvases now complete (split fixed the size cap, per ADR 0003). One screen (Design system) still genuinely missing — see `.design-reference/ANALYSIS.md` |
 | Licence deferred past the first outside contribution | Medium | High — becomes unfixable without everyone's consent | ADR 0002 raised now; repository stays private until resolved |
 | The `.claude/` system is written and then ignored | Medium | High — the whole method collapses quietly | Gates are enforceable and referenced from `CLAUDE.md`; phase closure requires the artefacts to exist |
 | Governance documents written aspirationally, then contradicted by the first real pressure | Medium | Medium | The constitution is short and specific enough to be checkable, and amendable by PR rather than by drift |
@@ -118,6 +118,8 @@ repository are the kind of thing that should be chosen, not inherited.
 - [x] Design reference captured, with its incompleteness documented
 - [x] Repository hygiene files
 - [ ] **Licence decided** (ADR 0002) — blocks public release, not phase closure
-- [ ] Complete design export obtained — blocks phase 04, not phase closure
+- [ ] Complete design export obtained — four of five canvases complete as of
+      2026-08-13; only the Design system screen is still missing. Blocks
+      phase 04, not phase closure
 - [ ] Branch protection applied
 - [ ] Maintainer approval recorded

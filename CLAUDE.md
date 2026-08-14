@@ -34,17 +34,29 @@ would be convenient. Constitution §3.
 | `.claude/templates/` | Use these; don't invent new document shapes |
 | `.design-reference/` | The design prototype — visual source of truth, **incomplete**, see below |
 
-## The design reference is truncated
+## The design reference
 
-`.design-reference/Alexandryn.dc.html` was retrieved through an API with a
-256 KiB cap and is cut off mid-element. It has no closing tags, and the
-trailing `<script data-dc-script>` block — which held all state logic and mock
-data — is missing entirely, along with the Tablet, Mobile, Remote, States and
-Design system screens.
+Per surface, per [ADR 0003](.claude/decisions/0003-design-canvas-split.md):
+`Alexandryn-Electron.dc.html` + `Alexandryn-Electron-Admin.dc.html` (Desktop/
+Host, split across two files because one alone hit the API's 256 KiB cap),
+`Alexandryn-Web.dc.html` (Web/Remote viewer), `Alexandryn-Mobile.dc.html`.
+All four are complete as of the 2026-08-13 sync — no truncation, full
+`data-dc-script` state/mock data.
 
-`.design-reference/ANALYSIS.md` records what could actually be extracted, and
-what couldn't. Do not infer the missing screens. If you need them, ask for a
-complete export.
+One screen is still genuinely missing: **Design system** — a nav link with
+no captured content behind it anywhere in the project. Do not infer it; ask
+for it to be captured if you need it.
+
+`.design-reference/ANALYSIS.md` has the full per-canvas breakdown, including
+one open question worth reading before treating the host/LAN-client screen
+boundary as settled: `atTablet` is captured inside the *Electron/Admin*
+(host) canvas, not the Web canvas ADR 0003 assigned it to.
+
+Re-pull before trusting this section is current — the design project changes
+independently of this repo. Use the `DesignSync` tool: `get_project` with
+project ID `78075626-e444-438f-8437-205d57129a37` to confirm it's still the
+right project, `list_files`, then `get_file` per path, diff against what's
+here before overwriting.
 
 The prototype is authoritative for *visual intent*, not for code structure.
 Extract the design system; do not port inline-styled divs into production.
