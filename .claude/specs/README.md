@@ -32,8 +32,6 @@ Group by area, not by phase — features outlive the phase that introduced them.
 
 ## Index
 
-No specifications yet. The first ones arrive with Phase 01.
-
 | Spec | Area | Phase | Status |
 |---|---|---|---|
-| — | | | |
+| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `DRAFT` |
