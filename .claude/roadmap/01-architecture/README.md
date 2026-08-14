@@ -65,10 +65,14 @@ next three phases actually need. Anything else goes on the open-questions list.
 ## Architecture decisions expected
 
 - Monorepo layout, and the tool that manages it
-- Persistence engine decided — self-hosted PostgreSQL, ADR 0004. This phase
-  designs schema ownership, connection lifecycle, and migration tooling
-  around it, and walks the concurrent-access assumption the ADR left at
-  medium confidence
+- Persistence engine decided — self-hosted PostgreSQL, ADR 0004. Production
+  provisioning also decided — bundled, spawned and owned by the Go server,
+  ADR 0007 (`architecture-persistence.md`) — a consequence of this was
+  amending `architecture-system.md`'s process count (FR-1, three processes,
+  four on macOS). Schema ownership, connection lifecycle, and the
+  forward-only migration policy are designed in `architecture-persistence.md`;
+  the concurrent-access assumption ADR 0004 left at medium confidence is
+  still unwalked
 - Process model decided — two processes, Electron spawns the Go server as a
   child, prototype-backed (ADR 0005, `architecture-system.md`). This phase's
   remaining specs build on it rather than reopening it

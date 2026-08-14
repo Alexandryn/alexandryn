@@ -34,5 +34,6 @@ Group by area, not by phase — features outlive the phase that introduced them.
 
 | Spec | Area | Phase | Status |
 |---|---|---|---|
-| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `APPROVED` |
+| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `REVIEWED` (amended post-approval, needs re-confirmation — ADR 0007) |
 | [`architecture-desktop-host.md`](architecture-desktop-host.md) | Electron processes, IPC surface, serving model, lifecycle | 01 | `REVIEWED` (self, approved with changes) |
+| [`architecture-persistence.md`](architecture-persistence.md) | Engine, schema ownership, migrations, corruption and backup | 01 | `REVIEWED` (self, approved with changes) |

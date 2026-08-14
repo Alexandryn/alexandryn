@@ -30,6 +30,7 @@ deserves to know they were already weighed.
 | [0004](0004-persistence-engine-postgresql.md) | Persistence engine is self-hosted PostgreSQL; Supabase is dev/test tooling only | Accepted |
 | [0005](0005-process-model.md) | Go server is a spawned child process, never embedded into one binary; prototype-backed | Accepted |
 | [0006](0006-docs-and-website-repos.md) | Documentation and the landing page live in separate repos (`docs`, `website`), created at phase 99 release | Accepted |
+| [0007](0007-postgres-provisioning.md) | Production PostgreSQL is bundled and managed by the Go server, never user-configured | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -38,7 +39,7 @@ Things known to need deciding, with the phase that will force the question:
 | Question | Forced by |
 |---|---|
 | Monorepo layout and tooling | Phase 01 |
-| Migration tooling, and recovery from a failed partial migration (engine decided — ADR 0004) | Phase 01 |
+| Migration tool choice (policy decided — forward-only, fail loudly, `architecture-persistence.md`) | Phase 03 |
 | Frontend data-fetching and state approach | Phase 01 |
 | Where the API contract is defined, and who owns it — format fixed as OpenAPI (ADR 0006); ownership/versioning/design still open | Phase 01 |
 | Whether RabbitMQ is warranted, and for exactly which work | Phase 09 |
