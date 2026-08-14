@@ -58,10 +58,21 @@ on it during planning, per the spec-before-build rule:
 
 ## Status
 
-**`general/` and `purpose/` are still empty by design.** The practices they'd
-describe don't exist yet — the first ones become writable once Phase 01
-settles the architecture and Phase 02 settles the domain. Writing them now
-would be fiction.
+**`general/` and `purpose/` are no longer empty.** Phase 01/02 settled the
+architecture and domain; phase 03's specs and ADRs settled the backend
+conventions these five describe:
+
+| Skill | Kind | Covers |
+|---|---|---|
+| [`purpose/domain-model-and-boundaries`](purpose/domain-model-and-boundaries/SKILL.md) | purpose | The three boundaries (constitution §3), the eleven aggregates, who owns each |
+| [`purpose/go-backend-conventions`](purpose/go-backend-conventions/SKILL.md) | purpose | Package layout, dependency direction, no globals, error taxonomy, redaction |
+| [`purpose/postgres-access-and-migrations`](purpose/postgres-access-and-migrations/SKILL.md) | purpose | `pgx` native, parameterized queries, transaction boundaries, `goose` migrations |
+| [`general/code-review`](general/code-review/SKILL.md) | general | This project's severity vocabulary and dimensions, layered on the built-in `code-review` skill |
+| [`general/security-review`](general/security-review/SKILL.md) | general | The four-attacker model and `audits/` recording format, layered on the built-in `security-review` skill |
+
+The overlap question these four carry (thin wrapper vs. from-scratch) is
+resolved: thin wrapper, adding only this project's own rules on top of
+the built-in mechanics — see each skill's own "not a duplicate" note.
 
 **Top-level workflow skills exist already**, since they don't have that
 problem — they describe the repo's Git mechanics, not its architecture:
@@ -72,17 +83,12 @@ problem — they describe the repo's Git mechanics, not its architecture:
 | [`make-pr`](make-pr/SKILL.md) | PR title convention (react-spectrum), body from `.github/pull_request_template.md`, checks whether a PR is even the right move yet — designed with the maintainer, not authored solo |
 | [`review`](review/SKILL.md) | Batched, structured review — draft every finding first, show the complete result before fixing anything. Required before opening a PR, and before moving spec to spec while we aren't making them |
 
-Planned `general/`/`purpose/` skills, roughly in the order they'll become
-real:
+Still-planned `general/`/`purpose/` skills, roughly in the order they'll
+become real (the five above are done, removed from this list):
 
 | Skill | Kind | Writable after |
 |---|---|---|
-| Domain model and boundaries | purpose | Phase 02 |
-| Go backend conventions | purpose | Phase 03 |
-| PostgreSQL access and migration conventions (ADR 0004) | purpose | Phase 03 |
 | Frontend component conventions | purpose | Phase 04 |
-| Code review | general | Phase 03 |
-| Security review | general | Phase 03 |
 | Accessibility review | general | Phase 04 |
 | Electron IPC conventions | purpose | Phase 05 |
 | Open Library integration | purpose | Phase 07 |
