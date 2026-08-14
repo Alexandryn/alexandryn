@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self + independent, approved with changes) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0017-spec-domain-library.md`](../reviews/0017-spec-domain-library.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`0017`](../reviews/0017-spec-domain-library.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
 
 ## Context
 
@@ -120,13 +120,25 @@ membership record that already exists.
   (the "want to read" case), a `Collection` member with zero
   `LibraryEntry`s referencing any of its `Edition`s.
 - **FR-7** At most one `LibraryEntry` MUST exist per `Edition` — adding an
-  already-owned `Edition` again is a no-op, not a second row. An empty
-  `Collection` (zero `Work`s) is a legal, ordinary state, same reasoning
-  as `domain-bibliographic.md` FR-3's "zero is not an error." `Collection`
-  membership carries its own added-at timestamp per `Work`, independent
-  of any `LibraryEntry`'s — you can want a book (in a collection) before
-  or after you own it (a `LibraryEntry`), and the two timestamps track
-  different events.
+  already-owned `Edition` again is a no-op, not a second row. This is
+  deliberately Edition-level, not Format-level: `domain-source.md`
+  tracks which `Format`s a `SourceOffering` provides separately, but
+  *which format was actually fetched or is cached* for a given owned
+  `Edition` is not this type's concern — it's a client-side question
+  (what a device chose to download or cache locally), addressed in
+  `domain-events.md`'s reasoning about the design reference's "offline
+  copies" concept, not modelled as a second dimension on `LibraryEntry`.
+- **FR-8** An empty `Collection` (zero `Work`s) is a legal, ordinary
+  state, same reasoning as `domain-bibliographic.md` FR-3's "zero is not
+  an error."
+- **FR-9** `Collection` membership carries its own added-at timestamp
+  per `Work`, independent of any `LibraryEntry`'s — you can want a book
+  (in a collection) before or after you own it (a `LibraryEntry`), and
+  the two timestamps track different events.
+- **FR-10** A `Collection` MUST be deletable. Deleting one removes its
+  membership records only — it MUST NOT cascade to `Work`, `Edition`, or
+  any `LibraryEntry`, the same non-cascading reasoning FR-6 already
+  applies to removing a `LibraryEntry`.
 
 ## Non-functional requirements
 
@@ -149,8 +161,8 @@ membership record that already exists.
 - **`Collection`** — internal ID, name (constrained per
   `domain-bibliographic.md` FR-5's validation pattern — a collection name
   is exactly the same class of hostile-input-adjacent string a title is),
-  member `Work` IDs each with their own added-at timestamp (FR-4, FR-7) —
-  legally empty.
+  member `Work` IDs each with their own added-at timestamp (FR-4, FR-9) —
+  legally empty (FR-8), deletable (FR-10).
 - **Computed, not stored**: "is this `Work` in the library" (FR-2), "which
   `Collection`s is this `Work` in."
 
@@ -228,6 +240,9 @@ ownership for collection membership.
       `LibraryEntry`, not two (FR-7)
 - [ ] A test proves removing a `LibraryEntry` never changes any
       `Collection`'s membership (FR-6)
+- [ ] A test proves deleting a `Collection` removes its membership rows
+      but leaves every `Work`, `Edition`, and `LibraryEntry` untouched
+      (FR-10)
 
 ## Open questions
 

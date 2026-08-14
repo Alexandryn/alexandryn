@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self + independent, approved with changes) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0018-spec-domain-source.md`](../reviews/0018-spec-domain-source.md) — Approved with changes, both findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`0018`](../reviews/0018-spec-domain-source.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
 
 ## Context
 

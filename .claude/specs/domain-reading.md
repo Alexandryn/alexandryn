@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self + independent, approved with changes) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0019-spec-domain-reading.md`](../reviews/0019-spec-domain-reading.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`0019`](../reviews/0019-spec-domain-reading.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec — found a Blocking ambiguity in the central mechanism, fixed) — both Approved with changes; maintainer's own read still pending |
 
 ## Context
 
@@ -65,14 +65,29 @@ devices report different progress for the same book.
 
 - **FR-1** `ReadingProgress` MUST attach to `Work`, not `Edition` or
   `File` (ADR 0009) — the record survives switching which `Edition` the
-  user reads.
-- **FR-2** `ReadingProgress` MUST carry a `Percentage` (0.0–1.0,
-  edition-independent, always meaningful) as its primary, portable value.
-  It MAY also carry a `PrecisePosition`, tagged with the `Edition` ID it
-  was recorded against — used only when the user is reading that *same*
-  `Edition` again; reading a *different* `Edition` of the same `Work`
-  falls back to `Percentage` as the best available estimate, per ADR
-  0009.
+  user reads. **There MUST be at most one `ReadingProgress` per `Work` —
+  a true singleton, not one row per reporting device.** This is stated
+  explicitly because the type also carries a `DeviceID` and an
+  `observed-at` timestamp (FR-2), which could otherwise be misread as
+  "one row per (Work, Device)," reconciled only lazily at read/sync
+  time — that reading would silently reproduce the exact stale-device-
+  wins bug ADR 0009 exists to prevent, without violating any other FR's
+  literal text. It doesn't, because this FR forbids it directly.
+- **FR-2** The canonical, singleton `ReadingProgress` (FR-1) carries a
+  `Percentage` (0.0–1.0, edition-independent, always meaningful) as its
+  primary, portable value; an optional `PrecisePosition` tagged with the
+  `Edition` ID it was recorded against; and `DeviceID`/`observed-at`
+  recording *provenance* — which device's report is currently reflected,
+  and when. These provenance fields describe the canonical record's
+  history, not a second, independently-stored copy. A `PrecisePosition`
+  is used only when the user is reading that *same* `Edition` again;
+  reading a *different* `Edition` of the same `Work` falls back to
+  `Percentage` as the best available estimate, per ADR 0009. An incoming
+  update from a device (a **`ProgressReport`** — `Work` ID, `Percentage`,
+  optional `PrecisePosition`, `DeviceID`, reported-at) is a distinct,
+  ephemeral type, never itself persisted — it exists only as
+  `ReconcileProgress`'s input (FR-6), which produces the next value of
+  the one canonical `ReadingProgress` row.
 - **FR-3** `Bookmark` and `Highlight` MUST attach to `Edition` (not
   `Work`), since their position data is inherently content/format-specific
   — a bookmark at "location 4210" is only meaningful for the exact
@@ -91,18 +106,20 @@ devices report different progress for the same book.
   no cross-device inheritance; a second device does not silently copy a
   first device's settings.
 - **FR-6** Conflict resolution (ADR 0009: furthest-`Percentage`-wins, with
-  an explicit override) MUST be a named domain operation
-  (`ReconcileProgress` or equivalent) taking two `ReadingProgress` reports
-  for the same `Work` and producing one canonical result — never implicit
-  in whichever write happens to land last in storage. `ReconcileProgress`
-  MUST be commutative and associative: reconciling any number of devices'
-  reports pairwise, in any order, MUST produce the same canonical result.
-  This is what makes multi-device sync (phase 14) correct regardless of
-  message arrival order — without it, two devices syncing in a different
-  order than two others could disagree about the canonical progress.
-  "Furthest wins" satisfies this by construction (it's a max function);
-  stated here as a requirement so a future change to the reconciliation
-  rule can't silently drop the property.
+  an explicit override) MUST be a named domain operation —
+  `ReconcileProgress(canonical ReadingProgress, incoming ProgressReport)
+  -> ReadingProgress` (FR-2's types) — taking the current singleton
+  (FR-1) and one incoming report for the same `Work` and producing the
+  next canonical value. Never implicit in whichever write happens to land
+  last in storage. `ReconcileProgress` MUST be commutative and
+  associative: folding any number of devices' reports into the canonical
+  value, in any order, MUST produce the same result. This is what makes
+  multi-device sync (phase 14) correct regardless of message arrival
+  order — without it, two devices syncing in a different order than two
+  others could disagree about the canonical progress. "Furthest wins"
+  satisfies this by construction (it's a max function); stated here as a
+  requirement so a future change to the reconciliation rule can't
+  silently drop the property.
 - **FR-7** `ReconcileProgress` (FR-6) MUST accept an explicit override
   (the user deliberately choosing the "earlier" position, e.g. after a
   real re-read) — furthest-wins is the *default*, not the *only* legal
@@ -133,9 +150,14 @@ devices report different progress for the same book.
 
 ## Domain model
 
-- **`ReadingProgress`** — internal ID, `Work` ID (required, FR-1),
-  `Percentage` (FR-2), `PrecisePosition` (optional, `Edition`-tagged,
-  FR-2), `DeviceID` that reported it, observed-at timestamp.
+- **`ReadingProgress`** — the canonical, singleton-per-`Work` record
+  (FR-1): internal ID, `Work` ID (required), `Percentage`,
+  `PrecisePosition` (optional, `Edition`-tagged — MUST belong to the same
+  `Work`), `DeviceID` and observed-at timestamp recording *provenance*
+  (which report is currently reflected), not a second stored copy.
+- **`ProgressReport`** — ephemeral, never persisted, `ReconcileProgress`'s
+  input only: `Work` ID, `Percentage`, `PrecisePosition` (optional),
+  `DeviceID`, reported-at (FR-2).
 - **`Bookmark`** — internal ID, `Edition` ID (required, FR-3), position,
   optional label.
 - **`Highlight`** — internal ID, `Edition` ID (required, FR-3), start
@@ -156,9 +178,10 @@ concern; phase 03/14 wire it to whatever sync mechanism reports progress.
 ## State transitions
 
 ```
-ReadingProgress created for a Work, no prior record -> stored as-is
-ReadingProgress reported again, same Work, from any Device
-    -> ReconcileProgress(existing, new) (FR-6)
+No ReadingProgress exists for a Work -> first ProgressReport becomes the
+    canonical ReadingProgress directly (no reconciliation needed, nothing to reconcile against)
+ReadingProgress already exists (FR-1's singleton) -> a new ProgressReport arrives, any Device
+    -> ReconcileProgress(canonical, report) -> next canonical value (FR-6)
     -> furthest Percentage wins by default (ADR 0009)
     -> explicit override accepted (FR-7), e.g. user chooses to go back
 Edition switched (same Work) -> Percentage carries over; PrecisePosition
@@ -171,13 +194,18 @@ Illegal: `ReadingProgress` constructed without a `Work` reference (FR-1,
 type-level, same pattern as `domain-bibliographic.md` FR-8); a
 `Percentage` outside `[0.0, 1.0]` (phase 02's own risk table: "progress
 never exceeds its bounds"); a `Highlight` with an end position before its
-start position within the same `Edition`.
+start position within the same `Edition`; a `PrecisePosition` whose
+tagged `Edition` does not belong to the `ReadingProgress`'s own `Work` —
+checked at construction (same construction-time-invariant pattern as
+`domain-bibliographic.md` FR-8), since nothing else stops a
+`PrecisePosition` for an unrelated `Work`'s `Edition` from being attached
+otherwise.
 
 ## Failure modes
 
 | Failure | Detected how | Caller sees | System does |
 |---|---|---|---|
-| Two devices report conflicting progress for the same `Work` | `ReconcileProgress` invoked (FR-6) | The reconciled result (furthest by default) | Never silently drops either report — both are known inputs to a deterministic function, auditable via `domain-events.md` |
+| Two devices report conflicting progress for the same `Work` | `ReconcileProgress` invoked (FR-6) | The reconciled result (furthest by default) | Never silently drops a report at the *function* level — `ReconcileProgress` is deterministic and both inputs are known to it. **Correction**: the superseded report's value is not currently captured by any event (`domain-events.md` FR-5 requires exactly one `ReadingProgressUpdated` per reconciliation) — it is not "auditable via events" as an earlier draft of this spec claimed. Only the winning, canonical value is observable after the fact. |
 | `Percentage` reported outside `[0.0, 1.0]` | Construction-time validation | A domain-level error | Refused; no `ReadingProgress` constructed with an out-of-bounds value |
 | `PrecisePosition` exists but the user is now reading a different `Edition` | FR-2's fallback rule | `Percentage`-based position only | `PrecisePosition` from the prior `Edition` is not applied to the new one, avoiding a nonsensical position (e.g. a PDF page number applied to an EPUB) |
 
@@ -212,6 +240,12 @@ start position within the same `Edition`.
 
 - [ ] `ReadingProgress` references `Work`, never `Edition` directly (ADR
       0009, FR-1)
+- [ ] A test proves at most one `ReadingProgress` row exists per `Work`
+      after any number of `ProgressReport`s from any number of devices
+      (FR-1's singleton requirement)
+- [ ] A test proves constructing a `ReadingProgress` with a
+      `PrecisePosition` tagged to an `Edition` of a *different* `Work`
+      is rejected
 - [ ] A test proves switching editions preserves `Percentage` and drops
       the now-inapplicable `PrecisePosition`
 - [ ] A test proves `ReconcileProgress` picks the furthest `Percentage` by

@@ -41,8 +41,8 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`architecture-backend.md`](architecture-backend.md) | Go package layout, dependency rules, transport, errors, config | 01 | `REVIEWED` (self, approved with changes) |
 | [`architecture-frontend.md`](architecture-frontend.md) | React layering, state ownership, data fetching, routing | 01 | `REVIEWED` (self, approved with changes) |
 | [`architecture-testing.md`](architecture-testing.md) | Layers, tooling, fixtures, determinism, CI shape | 01 | `REVIEWED` (self, approved with changes) |
-| [`domain-bibliographic.md`](domain-bibliographic.md) | Work, edition, author, subject, language, identity and dedup | 02 | `REVIEWED` (self, approved with changes) |
-| [`domain-library.md`](domain-library.md) | Library membership, collections, ownership, availability | 02 | `REVIEWED` (self, approved with changes) |
-| [`domain-source.md`](domain-source.md) | Source identity, capability model, availability, file references | 02 | `REVIEWED` (self, approved with changes) |
-| [`domain-reading.md`](domain-reading.md) | Position, progress, bookmarks, highlights, preferences | 02 | `REVIEWED` (self, approved with changes) |
-| [`domain-events.md`](domain-events.md) | Events the domain emits, and what may consume them | 02 | `REVIEWED` (self, approved with changes) |
+| [`domain-bibliographic.md`](domain-bibliographic.md) | Work, edition, author, subject, language, identity and dedup | 02 | `REVIEWED` (self + independent, approved with changes) |
+| [`domain-library.md`](domain-library.md) | Library membership, collections, ownership, availability | 02 | `REVIEWED` (self + independent, approved with changes) |
+| [`domain-source.md`](domain-source.md) | Source identity, capability model, availability, file references | 02 | `REVIEWED` (self + independent, approved with changes) |
+| [`domain-reading.md`](domain-reading.md) | Position, progress, bookmarks, highlights, preferences | 02 | `REVIEWED` (self + independent, approved with changes) |
+| [`domain-events.md`](domain-events.md) | Events the domain emits, and what may consume them | 02 | `REVIEWED` (self + independent, approved with changes) |

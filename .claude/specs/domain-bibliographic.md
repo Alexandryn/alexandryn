@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self + independent, approved with changes) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0016-spec-domain-bibliographic.md`](../reviews/0016-spec-domain-bibliographic.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`0016`](../reviews/0016-spec-domain-bibliographic.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
 
 ## Context
 
@@ -79,9 +79,14 @@ model can hold without downstream code having to re-check it.
   required, never the primary key.
 - **FR-2** An `Edition` MUST belong to exactly one `Work` (a required
   reference, not optional) and MUST have its own internal identifier,
-  independent of its parent Work's. An Edition's external references
-  (Open Library edition key, ISBN-10/13) are optional and independent of
-  whether the parent Work has any.
+  independent of its parent Work's. An Edition's *external references*
+  (Open Library edition key — a link to another catalog's record of this
+  edition) are optional and independent of whether the parent Work has
+  any. **ISBN is not an external reference** — unlike an Open Library
+  key, an ISBN is inherent data *about* the edition itself, not a pointer
+  to another system's record of it. It gets its own optional field,
+  validated by its own format rule (ISBN-10/13), not folded into the
+  external-references collection ADR 0010 describes.
 - **FR-3** A `Work` with zero Editions MUST be a legal, constructible
   state (a book known about but not yet catalogued at edition level, or
   metadata-only from Discover browsing before any edition enters a
@@ -136,9 +141,9 @@ model can hold without downstream code having to re-check it.
   cycle (a Work cannot, transitively, contain itself), checked the same
   way FR-8 checks merge cycles.
 - **FR-10** `Edition` MUST have its own `Language` field (FR-5's
-  constrained type), independent of `Work.language`. A translation is a
+  constrained type), independent of `Work.OriginalLanguage`. A translation is a
   same-`Work`, different-`Edition`, different-`Edition.Language` case —
-  this is the field that actually varies per translation. `Work.language`
+  this is the field that actually varies per translation. `Work.OriginalLanguage`
   is reinterpreted as the work's original/first-written language, a
   distinct and equally legal concept, not a duplicate of the same fact.
 
@@ -276,6 +281,14 @@ way to build one that skips it).
   resolve-through and FR-8 requires no cycles, but performance/complexity
   of a long merge chain isn't addressed. Unlikely at this project's scale
   (phase 01's own "one household" non-goal) but not proven, just assumed.
+- **Interaction between FR-9's containment graph and FR-4/FR-8's merge
+  graph** — each is checked for cycles independently, but nothing
+  addresses what happens if Work A contains Work B (FR-9), and B is
+  later merged into A (FR-4) — after merge resolution, A would contain
+  something that now resolves back to itself, a cycle FR-9's
+  containment-time check couldn't have caught since it happened
+  afterward. Not resolved here; flagged for whoever implements both
+  graphs in phase 03.
 
 ## References
 

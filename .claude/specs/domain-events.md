@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self + independent, approved with changes) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0020-spec-domain-events.md`](../reviews/0020-spec-domain-events.md) — Approved with changes, both findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`0020`](../reviews/0020-spec-domain-events.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec — the largest finding cluster of the phase) — both Approved with changes, all findings fixed; maintainer's own read still pending |
 
 ## Context
 
@@ -79,21 +79,35 @@ different one with a very different trust level).
   returning a compile-time-fixed value per event type (not computed from
   the event's own data) — enforced by the interface itself, not
   convention.
-- **FR-2** Every event `domain-reading.md` defines
+- **FR-2** Every event `domain-reading.md` describes
   (`ReadingProgressUpdated`, `BookmarkCreated`, `HighlightCreated`, and
-  any future reading-domain event) MUST return `Sensitive() == true`.
-  Every event from `domain-bibliographic.md` and `domain-source.md` MUST
-  return `Sensitive() == false`. From `domain-library.md`,
+  any future reading-domain event — see the note on provenance below)
+  MUST return `Sensitive() == true`. Every event from
+  `domain-bibliographic.md` and `domain-source.md` MUST return
+  `Sensitive() == false`. From `domain-library.md`,
   `LibraryEntryAdded`/`LibraryEntryRemoved` MUST return
   `Sensitive() == true` — they reveal what books a user owns, "what
   someone reads" broadly read (constitution §8 doesn't distinguish
   "owns" from "reads"). The same reasoning applies to
   `CollectionMemberAdded`/`CollectionMemberRemoved` — a curated "want to
   read" list reveals book-level interest exactly as directly as ownership
-  does — so those are `Sensitive() == true` too. `CollectionCreated`
-  (creating an empty collection, no book referenced yet) stays
-  `Sensitive() == false`: it reveals nothing about interest in any
-  specific book.
+  does — so those are `Sensitive() == true` too. **`CollectionCreated`
+  is also `Sensitive() == true`**: a collection's user-chosen *name* is
+  free-form text that can itself disclose sensitive interest (a health
+  condition, an identity, a topic) with zero members required — the same
+  protective reasoning this FR already applies to membership applies at
+  least as strongly to the name. No event in this catalog is
+  non-sensitive purely because it references no `Work` — the content of
+  the event itself matters too.
+  
+  **Provenance, stated plainly**: none of the four sibling specs
+  actually names a concrete event type anywhere in their own text — each
+  only says generically "emits events via `domain-events.md`'s pattern."
+  Every event name in this spec's catalog is this spec's own invention,
+  not a citation of something the sibling specs already defined. Read
+  "domain-reading.md defines" and similar phrasing throughout this
+  document as "domain-reading.md's mutations are what this event
+  corresponds to," not as a citation of a name that exists elsewhere.
 - **FR-3** A `Sensitive` event MUST NOT be passed to any consumer whose
   output can become a system-level log line, metric label, or crash
   report (phase 15's observability pipeline, or any future one) — this
@@ -102,10 +116,15 @@ different one with a very different trust level).
   `Sensitive` events at compile time or construction time), not left to
   the logging code to remember to filter.
 - **FR-4** A `Sensitive` event MAY be consumed by a first-party,
-  user-facing feature reading the *same user's own* data back to them
-  (an Activity feed) — this is not a logging destination and constitution
-  §8 does not restrict it; a user seeing their own reading history is the
-  feature, not the leak this spec's other requirements exist to prevent.
+  user-facing feature reading the instance's own data back to whoever is
+  using it (an Activity feed) — this is not a logging destination and
+  constitution §8 does not restrict it. (Worded as "the instance's own
+  data," not "the same user's own data": no `User` entity exists in this
+  phase's single-shared-library model, `domain-library.md`'s own
+  Non-goal. If phase 12 introduces accounts, this FR needs revisiting
+  alongside that phase's access-control design — not assumed compatible
+  now.) Seeing the instance's own reading history is the feature, not the
+  leak this spec's other requirements exist to prevent.
 - **FR-5** Every domain mutation that has an event type defined (FR-2's
   list, extensible) MUST emit exactly one event per logical change — not
   zero (silently mutating with no event, defeating phase 15/Activity's
@@ -133,18 +152,33 @@ different one with a very different trust level).
 - **`Event`** (interface/shape, FR-1) — `Type() string`, `AggregateID()`
   (opaque ID of whichever entity changed), `OccurredAt() time.Time`,
   `Sensitive() bool` (FR-1, fixed per concrete type).
-- **Non-sensitive event types**: `WorkCreated`, `WorkMerged`,
-  `WorkMergeUndone` (named here on `domain-bibliographic.md` FR-4's
-  behalf — that spec requires merges be reversible but doesn't name the
-  undo event itself; confirm this name against that spec before
-  implementation), `AuthorMerged` (`domain-bibliographic.md`);
-  `CollectionCreated` (`domain-library.md`); `SourceCreated`,
-  `SourceRemoved`, `SourceOfferingObserved` (`domain-source.md`).
+- **Non-sensitive event types**: `WorkCreated`, `EditionCreated`,
+  `WorkMerged`, `WorkMergeUndone` (both undo-event names invented by
+  this spec, not cited from `domain-bibliographic.md`, per the
+  provenance note above), `AuthorCreated`, `AuthorMerged`,
+  `AuthorMergeUndone` (symmetric with `WorkMergeUndone` — FR-7 of
+  `domain-bibliographic.md` requires the same reversibility for Author
+  merges, so its event coverage must match), `WorkContainsAdded`,
+  `WorkContainsRemoved` (FR-9's omnibus containment mutation — cycle-
+  checked the same way merges are, and just as much a real domain
+  mutation) (`domain-bibliographic.md`); `CollectionCreated` — moved to
+  the *sensitive* list below — `SourceCreated`, `SourceRemoved`,
+  `SourceOfferingObserved`, `SourceOfferingRemoved` (the removal
+  counterpart `domain-source.md` FR-6's cascade-delete requirement
+  needs) (`domain-source.md`).
 - **Sensitive event types** (FR-2): `LibraryEntryAdded`,
-  `LibraryEntryRemoved`, `CollectionMemberAdded`,
+  `LibraryEntryRemoved`, `CollectionCreated`, `CollectionMemberAdded`,
   `CollectionMemberRemoved` (`domain-library.md`);
   `ReadingProgressUpdated`, `BookmarkCreated`, `HighlightCreated`
   (`domain-reading.md`).
+
+This list was built the first time by naming each sibling spec's headline
+mutation rather than systematically walking every state-changing FR —
+worth naming as the actual failure mode, not just listing the specific
+gaps it produced: `Edition`/`Author` creation, containment mutations, and
+a removal counterpart were all missed the same way. Anyone adding a new
+FR to a sibling spec should check it against this list directly, not
+assume a "matching" event already exists.
 
 ## API and contracts
 
@@ -203,8 +237,10 @@ This entire spec is a security/privacy control. Restated concretely:
 
 ## Acceptance criteria
 
-- [ ] Every event type from all four sibling domain specs is enumerated
-      here or added with a corresponding `Sensitive()` test
+- [ ] Every state-changing FR across all four sibling domain specs is
+      checked against this spec's event catalog, not just each spec's
+      headline mutation — every entry has a corresponding `Sensitive()`
+      test
 - [ ] A test proves a logging-shaped consumer cannot be constructed
       against a `Sensitive` event stream
 - [ ] A test proves an Activity-feed-shaped consumer *can* be constructed

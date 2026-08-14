@@ -134,6 +134,9 @@ history from leaking into logs by accident.
 - [ ] Books with no external metadata are a tested normal case
 - [x] ADRs recorded for progress attachment (0009) and identity strategy
       (0010)
-- [ ] Every entity in the design prototype's data bindings maps to something in
-      the model, or is explicitly recorded as presentation-only
+- [x] Every entity in the design prototype's data bindings maps to something in
+      the model, or is explicitly recorded as presentation-only — done via
+      review 0021's cross-check; one real gap found (client-side "offline
+      copies") and recorded as an explicit non-goal with reasoning, not
+      modelled as a new backend entity
 - [ ] Maintainer approval recorded
