@@ -62,3 +62,4 @@ next person from looking.
 | [0015](0015-adr-monorepo-layout.md) | ADR 0008 — Monorepo layout, two independent agent reviews | 2026-08-14 | Needs rework at review time (Blocking, now fixed), genuinely independent (not self-reviewed) |
 | [0016](0016-spec-domain-bibliographic.md) | Spec — `domain-bibliographic.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0017](0017-spec-domain-library.md) | Spec — `domain-library.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
+| [0018](0018-spec-domain-source.md) | Spec — `domain-source.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
