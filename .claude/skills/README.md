@@ -69,7 +69,7 @@ problem — they describe the repo's Git mechanics, not its architecture:
 | Skill | Covers |
 |---|---|
 | [`commit`](commit/SKILL.md) | Conventional Commits, split-by-meaning, `Refs:` trailers, no `Co-Authored-By` ever |
-| `make-pr` | Not yet written — pending, being designed with the maintainer rather than authored solo |
+| [`make-pr`](make-pr/SKILL.md) | PR title convention (react-spectrum), body from `.github/pull_request_template.md`, checks whether a PR is even the right move yet — designed with the maintainer, not authored solo |
 
 Planned `general/`/`purpose/` skills, roughly in the order they'll become
 real:
