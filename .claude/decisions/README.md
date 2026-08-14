@@ -42,6 +42,9 @@ deserves to know they were already weighed.
 | [0008](0008-monorepo-layout.md) | Monorepo layout: Go module at root, two npm workspace packages, no build-orchestration tool | Accepted |
 | [0009](0009-progress-attachment.md) | Reading progress attaches to Work, Edition-scoped precise position as fallback-capable secondary | Accepted |
 | [0010](0010-bibliographic-identity-strategy.md) | Bibliographic identity is internal-ID-primary; external references optional, never required | Accepted |
+| [0011](0011-http-router-and-middleware.md) | HTTP routing uses the standard library's `ServeMux`; middleware is hand-rolled, no router framework | Accepted |
+| [0012](0012-postgres-driver.md) | PostgreSQL access uses `pgx` natively, not `database/sql` | Accepted |
+| [0013](0013-migration-tool.md) | Schema migrations use `goose`, embedded via `go:embed` | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -49,7 +52,6 @@ Things known to need deciding, with the phase that will force the question:
 
 | Question | Forced by |
 |---|---|
-| Migration tool choice (policy decided — forward-only, fail loudly, `architecture-persistence.md`) | Phase 03 |
 | Frontend data-fetching and state approach | Phase 01 |
 | Where the API contract is defined, and who owns it — format fixed as OpenAPI (ADR 0006); ownership/versioning/design still open | Phase 01 |
 | Whether RabbitMQ is warranted, and for exactly which work | Phase 09 |
