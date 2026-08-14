@@ -21,7 +21,7 @@ Each outline is expanded into a full phase document when its dependencies close.
 |---|---|---|---|
 | [00](00-foundation/) | Foundation | Repository, engineering memory, CI skeleton | **In progress** |
 | [01](01-architecture/) | Architecture | System, frontend, backend, host, persistence and messaging design | In progress |
-| [02](02-domain/) | Domain | The model: works, editions, files, sources, progress | Not started |
+| [02](02-domain/) | Domain | The model: works, editions, files, sources, progress | In progress |
 | [03](03-backend-foundation/) | Backend foundation | Go service skeleton, config, logging, errors, migrations, health | Not started |
 | [04](04-frontend-foundation/) | Frontend foundation | React shell, design tokens, component library, routing, data layer | Not started |
 | [05](05-desktop-host/) | Desktop host | Electron shell, IPC boundary, lifecycle, loopback serving | Not started |

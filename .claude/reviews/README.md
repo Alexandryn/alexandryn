@@ -60,3 +60,4 @@ next person from looking.
 | [0013](0013-spec-architecture-testing.md) | Spec — `architecture-testing.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
 | [0014](0014-review-skill-first-run.md) | `/review` skill's first run, two independent agent reviews | 2026-08-14 | Approved with changes, genuinely independent (not self-reviewed) |
 | [0015](0015-adr-monorepo-layout.md) | ADR 0008 — Monorepo layout, two independent agent reviews | 2026-08-14 | Needs rework at review time (Blocking, now fixed), genuinely independent (not self-reviewed) |
+| [0016](0016-spec-domain-bibliographic.md) | Spec — `domain-bibliographic.md` | 2026-08-14 | Approved with changes (all findings fixed), self-reviewed — needs independent read |
