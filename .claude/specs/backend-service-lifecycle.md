@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in startup failure logging, needs maintainer re-confirmation, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md); job-worker-pool shutdown ordering added for phase 09, [`0036`](../reviews/0036-phase09-cross-spec-review.md), both need maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in startup failure logging, needs maintainer re-confirmation, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md); job-worker-pool shutdown ordering added for phase 09, [`0036`](../reviews/0036-phase09-cross-spec-review.md), re-confirmed 2026-08-15 — DSN redaction amendment still needs re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0036`](../reviews/0036-phase09-cross-spec-review.md) — FR-6 extended with job-worker-pool shutdown ordering for `backend-job-queue.md` (phase 09), cross-spec-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0036`](../reviews/0036-phase09-cross-spec-review.md) — FR-6 extended with job-worker-pool shutdown ordering for `backend-job-queue.md` (phase 09), cross-spec-reviewed, re-confirmed by maintainer 2026-08-15 |
 
 ## Context
 

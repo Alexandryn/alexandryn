@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed (reviewed in [`0036`](../reviews/0036-phase09-cross-spec-review.md), findings fixed; awaiting maintainer approval) |
+| **Status** | Accepted (reviewed in [`0036`](../reviews/0036-phase09-cross-spec-review.md), findings fixed; approved by maintainer 2026-08-15) |
 | **Date** | 2026-08-15 |
 | **Deciders** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Supersedes** | — |
