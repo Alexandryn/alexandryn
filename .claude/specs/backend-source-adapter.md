@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15) |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; approved by maintainer 2026-08-15. Amended post-approval, [`0037`](../reviews/0037-phase10-cross-spec-review.md) — FR-15 added, formalising `Provider.List` as a phase-10-reusable Go capability alongside the already-named `Provider.Resolve`, cross-spec-reviewed, awaiting maintainer re-confirmation |
+| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; approved by maintainer 2026-08-15. Amended post-approval, [`0037`](../reviews/0037-phase10-cross-spec-review.md) — FR-15 added, formalising `Provider.List` as a phase-10-reusable Go capability alongside the already-named `Provider.Resolve`, cross-spec-reviewed, re-confirmed by maintainer 2026-08-15 |
 
 ## Context
 

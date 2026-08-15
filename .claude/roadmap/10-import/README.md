@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Specs reviewed, findings fixed, awaiting maintainer approval |
+| **Status** | Specs approved, implementation not started |
 | **Depends on** | Phase 07, Phase 08, Phase 09 |
 | **Blocks** | 11 |
 | **Opened** | — |
