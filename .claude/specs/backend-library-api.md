@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Status** | `APPROVED` (amended post-approval — `formats` field added to FR-5 for phase 11, [`0038`](../reviews/0038-phase11-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
 | **Phase** | `06-library` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
+| **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0038`](../reviews/0038-phase11-cross-spec-review.md) — FR-5 extended with a `formats` field for `frontend-library-screens.md`'s "Read" gate (phase 11), cross-spec-reviewed, findings fixed, awaiting maintainer re-confirmation |
 
 ## Context
 
@@ -159,6 +159,22 @@ named.
   absent from the response object, not present-but-null — an additive,
   non-breaking shape for phase 07/08 to extend, per this spec's own
   Non-goals.
+
+  **Amended for phase 11**: each owned `Edition` in this response
+  additionally carries `formats: string[]` — the distinct `Format`
+  values (`domain-source.md` FR-2) across every `SourceOffering`
+  referencing that `Edition`, deduplicated. This is exactly the kind of
+  additive, non-breaking field this FR's own text already anticipated
+  ("per-source availability... for phase 07/08 to extend") — phase 11
+  is the first caller that actually needs to know, without a separate
+  lookup, whether a given owned `Edition` is available as an EPUB
+  (`frontend-library-screens.md` FR-5's amended "Read" action gate).
+  An `Edition` with zero `SourceOffering`s (a legal state, though an
+  unusual one for something with a `LibraryEntry`) returns `formats:
+  []`, never omits the field — unlike the cover-URL/availability
+  fields this FR's original text describes, `formats` is now a field
+  this phase *does* produce, so it's always present on every owned
+  `Edition`, empty array or not.
 - **FR-6** Collections: `POST /api/v1/collections` (body: `{ name:
   string }`, `201` with the created collection); `GET
   /api/v1/collections` (list, no pagination — a household's collection

@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Status** | `APPROVED` (amended post-approval — "Read" action added to FR-5 for phase 11, [`0038`](../reviews/0038-phase11-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
 | **Phase** | `06-library` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
+| **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0038`](../reviews/0038-phase11-cross-spec-review.md) — FR-5 extended with a "Read" entry point for `frontend-reader.md` (phase 11), cross-spec-reviewed, awaiting maintainer re-confirmation |
 
 ## Context
 
@@ -136,7 +136,25 @@ fixtures for routes this phase doesn't touch.
   editions (the "want to read" case, `domain-library.md`'s own State
   transitions) still renders correctly — no editions section, or an
   explicit "not yet in your library" state, never an empty/broken
-  layout.
+  layout. **Amended for phase 11**: each owned edition whose
+  `backend-library-api.md` FR-5's own amended `formats` array
+  includes `"epub"` gets a "Read" action, navigating to
+  `frontend-reader.md`'s `/read/:workId/:editionId` route — this
+  screen's own URL already carries `:id` (the `Work` ID, `/book/:id`),
+  so both IDs the reader needs are available here without a further
+  lookup, closing the gap a route carrying only `editionId` would
+  otherwise leave (`frontend-reader.md`'s own progress-reporting calls
+  need a `Work` ID, per `domain-reading.md` FR-1's Work-scoped
+  singleton) — the entry point that spec's own Non-goals originally
+  left unnamed,
+  filled in here rather than invented awkwardly inside the reader spec
+  itself, matching this project's existing amendment discipline for a
+  downstream phase filling a gap an upstream screen left open. An
+  edition whose `formats` doesn't include `"epub"` (a PDF- or
+  CBZ-only edition, or one with zero `SourceOffering`s at all) MUST
+  NOT show this action, since no current phase reads those formats —
+  this is now a real, API-exposed signal (`formats`), not a guessed
+  or assumed property of the `Edition` itself.
 - **FR-6** The MSW mock (`frontend-shell-and-routing.md` FR-6) for
   `GET /api/v1/library` and `GET /api/v1/works/:id` is **removed
   outright**, not regenerated: at phase 04, `api/openapi.yaml` held only
