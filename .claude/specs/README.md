@@ -52,9 +52,9 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`backend-http-transport.md`](backend-http-transport.md) | Router, middleware, limits, timeouts, response shape | 03 | `APPROVED` |
 | [`backend-persistence.md`](backend-persistence.md) | PostgreSQL connection lifecycle, migrations, repositories, transactions, corruption | 03 | `APPROVED` (amended post-approval — DSN redaction, `0028`, needs re-confirmation) |
 | [`backend-test-harness.md`](backend-test-harness.md) | Integration harness, fixtures, controllable clock, CI | 03 | `APPROVED` |
-| [`frontend-tooling.md`](frontend-tooling.md) | Bundler, lint/format/typecheck, bundle budget, CI hooks | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
-| [`frontend-design-tokens.md`](frontend-design-tokens.md) | Token taxonomy, extraction process, dark-palette decision | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
-| [`frontend-component-primitives.md`](frontend-component-primitives.md) | Every primitive: states, a11y contract, Radix-vs-hand-built split | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
-| [`frontend-generated-covers.md`](frontend-generated-covers.md) | Layer composition, seeding, degradation ladder, performance budget | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
-| [`frontend-shell-and-routing.md`](frontend-shell-and-routing.md) | Shell composition, router/data-fetching libraries, capability gating, mock strategy | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
-| [`frontend-accessibility.md`](frontend-accessibility.md) | Keyboard map, focus order, screen-reader text conventions, axe CI gate | 04 | `REVIEWED` (independent, cross-spec, findings fixed — `0031`) |
+| [`frontend-tooling.md`](frontend-tooling.md) | Bundler, lint/format/typecheck, bundle budget, CI hooks | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| [`frontend-design-tokens.md`](frontend-design-tokens.md) | Token taxonomy, extraction process, dark-palette decision | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| [`frontend-component-primitives.md`](frontend-component-primitives.md) | Every primitive: states, a11y contract, Radix-vs-hand-built split | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| [`frontend-generated-covers.md`](frontend-generated-covers.md) | Layer composition, seeding, degradation ladder, performance budget | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| [`frontend-shell-and-routing.md`](frontend-shell-and-routing.md) | Shell composition, router/data-fetching libraries, capability gating, mock strategy | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| [`frontend-accessibility.md`](frontend-accessibility.md) | Keyboard map, focus order, screen-reader text conventions, axe CI gate | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
