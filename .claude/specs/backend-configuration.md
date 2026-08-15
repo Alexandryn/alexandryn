@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval twice — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)) and DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) — both self-reviewed, both need maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval three times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), and `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)) — all need maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -114,6 +114,7 @@ file format, where it lives, or the actual validation each key needs.
   | `HTTP_READ_TIMEOUT` | duration | Optional | a duration `backend-http-transport.md` FR-2 fixes | constitution §4 |
   | `HTTP_WRITE_TIMEOUT` | duration | Optional | a duration `backend-http-transport.md` FR-2 fixes | constitution §4 |
   | `HTTP_IDLE_TIMEOUT` | duration | Optional | a duration `backend-http-transport.md` FR-2 fixes | constitution §4 |
+  | `OPEN_LIBRARY_USER_AGENT` | string, non-empty | Required, no default — a placeholder default would misidentify this client to Open Library, which FR-3's "required" category exists to prevent | — | `backend-metadata-adapter.md` FR-6, Open Library usage policy |
 
   This table is the authoritative key list at the time this spec is
   written; a later phase adding a key extends this table rather than
