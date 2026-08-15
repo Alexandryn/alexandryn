@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `APPROVED` (amended post-approval — static asset serving, FR-8, cross-phase review finding, self-reviewed, needs maintainer re-confirmation, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) — FR-8 static asset serving added, closing a real conflict phase 05's cross-spec review found (FR-6's JSON-only rule left no way for the Go server to serve the frontend at all), self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -174,19 +174,44 @@ stdlib `ServeMux`.
   could embed it (`pgx` connection errors can include the DSN in their
   error text; the handler MUST use a fixed, generic message for this
   case, never the raw driver error's `Error()` string).
-- **FR-6** Every response, success or error, MUST set
-  `Content-Type: application/json` — no endpoint returns HTML, plain
-  text, or an undeclared content type, keeping the contract uniform for
+- **FR-6** Every `/api/v1/...`, `/healthz`, and `/readyz` response,
+  success or error, MUST set `Content-Type: application/json` — no
+  endpoint under those paths returns HTML, plain text, or an undeclared
+  content type, keeping the contract uniform for
   `architecture-contracts.md`'s eventual contract test to validate against
-  a single expectation.
+  a single expectation. FR-8 below is this rule's one deliberate
+  exception, scoped to a disjoint path space, not a carve-out inside the
+  API surface itself.
 - **FR-7** The router (`ServeMux`, ADR 0011) MUST register
   `/api/v1/...` paths (`architecture-contracts.md` FR-4) separately from
   `/healthz`/`/readyz` (FR-5), and MUST return a `NotFound`-category
   (`backend-errors-and-logging.md`) JSON response, via the same shared
-  error helper every other endpoint uses, for any unmatched path — never
-  `ServeMux`'s own default plain-text 404 page, which would violate FR-6
-  and bypass `backend-errors-and-logging.md` FR-5's shared response
-  shape.
+  error helper every other endpoint uses, for any unmatched `/api/v1/...`
+  path — never `ServeMux`'s own default plain-text 404 page, which would
+  violate FR-6 and bypass `backend-errors-and-logging.md` FR-5's shared
+  response shape. FR-8 below governs unmatched paths outside
+  `/api/v1/...`.
+- **FR-8** (Added 2026-08-14, cross-phase review finding — see amendment
+  note below) The router additionally serves the embedded frontend build
+  (`web/dist`, `frontend-tooling.md` FR-1/FR-6, embedded via `go:embed`
+  per ADR 0008) at every path that is neither `/api/v1/...` nor
+  `/healthz`/`/readyz`: a request matching a real file in the embedded
+  filesystem is served with the `Content-Type` its extension implies
+  (`.html` → `text/html`, `.js` → `text/javascript`, `.css` → `text/css`,
+  via Go's standard `mime.TypeByExtension`, never a hardcoded map that
+  drifts from the standard library's own registry); a request matching
+  no real file falls back to serving `index.html` (200, `text/html`) —
+  the standard SPA-fallback pattern `frontend-shell-and-routing.md`
+  FR-1's client-side routing requires, since a direct navigation or
+  reload at e.g. `/library` has no corresponding file in the build
+  output and must still resolve to the app shell, not a 404. This uses
+  Go's standard `http.FileServerFS` (or an equivalent thin wrapper)
+  against the embedded `fs.FS`, never constructing a filesystem path
+  from the request URL by hand — the embed is compiled into the binary
+  as read-only content, so classic path-traversal-to-arbitrary-file-read
+  isn't reachable the way it would be against a real filesystem, but
+  using the standard library's own safe serving primitive is still the
+  correct default rather than reason to hand-roll path joining.
 
 ## Non-functional requirements
 
@@ -241,8 +266,9 @@ states of their own. `/readyz`'s 200/503 split is a direct projection of
 | Client holds connection open past the read timeout | FR-2's `ReadTimeout` | Connection closed | `net/http` enforces the timeout; no custom handling needed beyond configuring it |
 | PostgreSQL unreachable before the pool reference is populated | `/readyz` reads an empty reference | 503, body naming "not yet started" | `/readyz` returns 503; `/healthz` still returns 200 (the process itself is fine) |
 | PostgreSQL connection lost after the pool reference is populated | `/readyz`'s liveness query fails | 503, body naming "lost the connection," never the raw driver error text | `/readyz` returns 503 with a fixed generic message, not `pgx`'s own error string (which can embed the DSN) |
-| Unmatched route requested | `ServeMux`'s no-match case | `NotFound` JSON response, not a plain-text 404 | FR-7's explicit handling, not `ServeMux`'s bundled default |
+| Unmatched `/api/v1/...` route requested | `ServeMux`'s no-match case, scoped to that path prefix | `NotFound` JSON response, not a plain-text 404 | FR-7's explicit handling, not `ServeMux`'s bundled default |
 | A handler panics mid-request | Recovery middleware (FR-3) | `Internal` JSON response with correlation ID | Recovered, logged server-side with stack trace, generic response returned |
+| A request outside `/api/v1/...`/health paths matches no real file in the embedded build | FR-8's own fallback logic | `index.html` served (200), never a 404 | SPA-fallback routing lets the client-side router (`frontend-shell-and-routing.md` FR-1) resolve the path |
 
 ## Security considerations
 
@@ -267,12 +293,20 @@ states of their own. `/readyz`'s 200/503 split is a direct projection of
   shared helper) is exactly the kind of drift `architecture-contracts.md`
   FR-3's contract test is meant to catch, so this spec closes it at the
   source rather than relying on the contract test to notice.
-- **`Content-Type` always `application/json` (FR-6)** — closes off a
-  category of content-sniffing/XSS-adjacent risk that only matters for
-  HTML responses; since this server never intentionally serves HTML from
-  `/api/v1` or its health endpoints, declaring the type explicitly (never
-  leaving it to `net/http`'s content-sniffing default) removes any
-  ambiguity for a client that might otherwise guess wrong.
+- **`Content-Type` always `application/json` within the API surface
+  (FR-6)** — closes off a category of content-sniffing/XSS-adjacent risk
+  that only matters for HTML responses; since `/api/v1` and the health
+  endpoints never intentionally serve HTML, declaring the type explicitly
+  (never leaving it to `net/http`'s content-sniffing default) removes any
+  ambiguity for a client that might otherwise guess wrong. FR-8's static
+  serving is a disjoint path space with its own, correct content type per
+  file — not an exception inside the JSON API's own surface.
+- **FR-8's static serving reads only from the compiled-in embed, never
+  the host filesystem** — `http.FileServerFS` against an `embed.FS`
+  cannot be redirected to read an arbitrary host path regardless of what
+  a request URL contains, unlike serving from a real directory would be;
+  this is what makes FR-8 safe without needing its own path-traversal
+  validation logic layered on top.
 - **Health responses never leak `DATABASE_URL` or driver detail (FR-5)** —
   restates phase 03's own named Security consideration ("credentials
   never in the log, never in an error, never in a health response, with a
@@ -292,6 +326,7 @@ states of their own. `/readyz`'s 200/503 split is a direct projection of
 | Unit | Middleware composition order (FR-1), limits enforcement (FR-2) against an oversized/slow synthetic request, `/healthz`/`/readyz` logic against a faked database dependency |
 | Integration | `/readyz` against a real PostgreSQL: reachable → 200, connection dropped mid-test → 503, full middleware chain end to end (`architecture-backend.md`'s own Test strategy names this explicitly) |
 | Contract | `architecture-contracts.md` FR-3's contract test validates `/api/v1` responses against `api/openapi.yaml`, including this spec's FR-6 (`Content-Type`) and FR-5's error shape |
+| Static serving | FR-8: a request for a real embedded file gets the correct `Content-Type` and body; a request for an unknown path outside `/api/v1`/health falls back to `index.html`; an `/api/v1/...` unmatched path still gets FR-7's JSON 404, never the SPA fallback — the boundary between the two fallback behaviors proven, not assumed |
 | Concurrency | Idle/read/write timeout behavior under concurrent slow clients — proven, not assumed, given phase 03's own emphasis on this being the hardest thing to get right |
 
 ## Acceptance criteria
@@ -312,6 +347,12 @@ states of their own. `/readyz`'s 200/503 split is a direct projection of
 - [ ] An unmatched route returns the shared JSON error shape, not
       `ServeMux`'s default, proven with a test
 - [ ] Every FR maps to a line in phase 03's own exit criteria
+- [ ] A real embedded static file is served with the correct
+      `Content-Type` (FR-8), proven per extension
+- [ ] A path outside `/api/v1`/health matching no real file falls back
+      to `index.html`, while the same kind of unmatched path *under*
+      `/api/v1` still gets FR-7's JSON 404 — both proven in the same
+      test to confirm the boundary is real, not assumed
 
 ## Open questions
 
@@ -332,6 +373,12 @@ states of their own. `/readyz`'s 200/503 split is a direct projection of
 
 ## References
 
+- ADR 0008 — `go:embed`/monorepo layout, the embedded `web/dist` FR-8
+  serves
+- `frontend-tooling.md` FR-1/FR-6 — `web/dist`'s build output, the exact
+  artifact FR-8 embeds and serves
+- `frontend-shell-and-routing.md` FR-1 — client-side routing, the reason
+  FR-8 needs an `index.html` fallback rather than a 404 for unknown paths
 - `architecture-backend.md` FR-4 (error category shape, filled in by
   `backend-errors-and-logging.md`), FR-6 (middleware order, implemented
   here)
