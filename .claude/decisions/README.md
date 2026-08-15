@@ -45,6 +45,7 @@ deserves to know they were already weighed.
 | [0011](0011-http-router-and-middleware.md) | HTTP routing uses the standard library's `ServeMux`; middleware is hand-rolled, no router framework | Accepted |
 | [0012](0012-postgres-driver.md) | PostgreSQL access uses `pgx` natively, not `database/sql` | Accepted |
 | [0013](0013-migration-tool.md) | Schema migrations use `goose`, embedded via `go:embed` | Accepted |
+| [0014](0014-job-queue-backend-postgresql.md) | Background job queue is PostgreSQL-backed, not a dedicated message broker | Proposed |
 
 ## Open questions not yet ADRs
 
@@ -54,7 +55,7 @@ Things known to need deciding, with the phase that will force the question:
 |---|---|
 | Frontend data-fetching and state approach | Phase 01 |
 | Where the API contract is defined, and who owns it — format fixed as OpenAPI (ADR 0006); ownership/versioning/design still open | Phase 01 |
-| Whether RabbitMQ is warranted, and for exactly which work | Phase 09 |
+| ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
 | How the reader renders EPUB, and in what sandbox | Phase 11 |
 | Credential storage on the host | Phase 12 |
 | Transport security on the LAN | Phase 13 |

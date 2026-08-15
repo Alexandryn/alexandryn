@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — DSN redaction in startup failure logging, self-reviewed, needs maintainer re-confirmation, see [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) |
+| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in startup failure logging, needs maintainer re-confirmation, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md); job-worker-pool shutdown ordering added for phase 09, [`0036`](../reviews/0036-phase09-cross-spec-review.md), both need maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0036`](../reviews/0036-phase09-cross-spec-review.md) — FR-6 extended with job-worker-pool shutdown ordering for `backend-job-queue.md` (phase 09), cross-spec-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -165,7 +165,15 @@ names as "the hardest thing to test here."
   gracefully or by timing out), the server MUST close the database
   connection pool before the process exits, so a forcibly-terminated
   request never leaves a pooled connection in an indeterminate state for
-  the next startup to inherit.
+  the next startup to inherit. **Amended for phase 09**: if a job worker
+  pool (`backend-job-queue.md`) is running, its own shutdown (stop
+  claiming, cancel running handlers' contexts, using this FR-5's same
+  grace period as its bound) MUST be signalled between FR-4's HTTP
+  shutdown and this FR's pool close — after the HTTP server stops
+  accepting new work, before the shared `pgxpool` a running job's
+  heartbeat/completion write depends on is closed out from under it.
+  Ordering: FR-4 (HTTP `Shutdown`) → job worker pool shutdown → this
+  FR-6 (close `pgxpool`) → process exit.
 - **FR-7** The readiness endpoint (`architecture-system.md` FR-7,
   `backend-http-transport.md` FR-5) MUST reflect "alive but not ready"
   from the moment the HTTP listener is bound (FR-1 step 4) until
