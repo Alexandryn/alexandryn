@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (two independent agents, cross-spec, findings fixed — `0032`) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
 | **Phase** | `05-desktop-host` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; awaiting maintainer approval |
+| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
 
 ## Context
 

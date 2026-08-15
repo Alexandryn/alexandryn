@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — static asset serving, FR-8, cross-phase review finding, self-reviewed, needs maintainer re-confirmation, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
+| **Status** | `APPROVED` (amended post-approval — static asset serving, FR-8, cross-phase review finding, self-reviewed, re-confirmed by maintainer 2026-08-14, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) — FR-8 static asset serving added, closing a real conflict phase 05's cross-spec review found (FR-6's JSON-only rule left no way for the Go server to serve the frontend at all), self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) — FR-8 static asset serving added, closing a real conflict phase 05's cross-spec review found (FR-6's JSON-only rule left no way for the Go server to serve the frontend at all), self-reviewed, re-confirmed by maintainer 2026-08-14 |
 
 ## Context
 

@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — second extraction output `tokens.css`, cross-phase review finding, self-reviewed, needs maintainer re-confirmation, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
+| **Status** | `APPROVED` (amended post-approval — second extraction output `tokens.css`, cross-phase review finding, self-reviewed, re-confirmed by maintainer 2026-08-14, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
 | **Phase** | `04-frontend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0031`](../reviews/0031-phase04-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) — added `tokens.css` as a second FR-2 output, closing a citation gap phase 05's cross-spec review found (both independent reviewers, same finding), self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0031`](../reviews/0031-phase04-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) — added `tokens.css` as a second FR-2 output, closing a citation gap phase 05's cross-spec review found (both independent reviewers, same finding), self-reviewed, re-confirmed by maintainer 2026-08-14 |
 
 ## Context
 
