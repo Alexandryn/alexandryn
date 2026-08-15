@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval three times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), and `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)) — all need maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval three times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
