@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; approved by maintainer 2026-08-15 |
+| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; approved by maintainer 2026-08-15. Amended post-approval, [`0037`](../reviews/0037-phase10-cross-spec-review.md) — FR-15 added, formalising `Provider.List` as a phase-10-reusable Go capability alongside the already-named `Provider.Resolve`, cross-spec-reviewed, awaiting maintainer re-confirmation |
 
 ## Context
 
@@ -405,6 +405,23 @@ UI can trust.
   simultaneous health checks (FR-1/FR-2's automatic checks, for
   instance, if several sources are edited in quick succession) is
   exactly the case this cap protects against.
+- **FR-15** **Amended for phase 10**: both provider implementations
+  (`local-folder`, `opds`) expose a shared Go-level `Provider`
+  interface, `List(ctx, cursor string, limit int) (items
+  []SourceCandidate, nextCursor string, err error)` alongside FR-15's
+  sibling `Resolve(ctx, FileReference) (io.ReadCloser, error)` (already
+  named in this spec's Non-goals as a phase-10-reusable capability,
+  formalised here alongside its counterpart) — `List` is the same
+  underlying call FR-7's `GET /api/v1/sources/:id/browse` handler
+  already makes; this FR states explicitly that it is *also* callable
+  directly, in-process, by another package (`backend-import-pipeline.md`,
+  phase 10), the same way `Resolve` already was, closing a gap that
+  spec's own citation found: `Resolve` was named as reusable, `List`
+  never explicitly was, despite both being the same shape of
+  capability. A caller using `List` directly gets FR-7's own
+  validation, pagination, and FR-11's SSRF/redirect protections for
+  free — there is no separate, unprotected code path; the HTTP
+  handler and any internal caller share one implementation.
 
 ## Non-functional requirements
 
