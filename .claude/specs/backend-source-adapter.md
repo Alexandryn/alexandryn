@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `REVIEWED` |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-15 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | — |
+| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; awaiting maintainer approval |
 
 ## Context
 
@@ -152,9 +152,12 @@ UI can trust.
   not a hard create-time rejection) for "doesn't exist" or "not
   readable," since the folder may exist later (an unmounted external
   drive, for instance). The Go server process is assumed to run under
-  the same OS user account as the desktop session that spawned it
-  (`architecture-desktop-host.md`'s existing process model) — this spec
-  does not itself solve cross-user filesystem permission scenarios.
+  the same OS user account as the desktop session that spawned it —
+  this spec's own reasoned inference from Electron spawning the Go
+  server as a child process (`architecture-desktop-host.md`'s general
+  process-spawning model), not a requirement that spec states
+  explicitly itself. This spec does not itself solve cross-user
+  filesystem permission scenarios.
 - **FR-4** OPDS `config.baseUrl` MUST be validated as a well-formed
   `http`/`https` URL at create/update time (`InvalidInput` otherwise).
   A configured credential (FR-1) is sent as an HTTP `Authorization:
@@ -214,8 +217,11 @@ UI can trust.
   one.
 - **FR-7** `GET /api/v1/sources/:id/browse?cursor=<opaque>&limit=<n>`
   (`limit` integer `[1, 50]`, default `20`, `InvalidInput` outside
-  range — same bound discipline `backend-library-api.md` FR-1 and
-  `backend-metadata-adapter.md` FR-1 both already established) MUST
+  range — the exact numbers match `backend-metadata-adapter.md` FR-1's
+  own precedent; `backend-library-api.md` FR-1 established the general
+  "validate and reject out-of-range" discipline this FR also follows,
+  but with different numbers of its own (default `50`, max `100`), not
+  a matching bound) MUST
   return `{ items: SourceCandidate[], nextCursor: string | null }`.
   For `local-folder`: `items` are the directory's files (not recursing
   into subdirectories in this phase — flagged in Open questions),
@@ -251,7 +257,12 @@ UI can trust.
   field name reaches this shape or anything beyond this adapter — the
   same normalise-at-the-boundary discipline `backend-metadata-adapter.md`
   already established, applied here to two upstream formats instead of
-  one.
+  one. Duplicate entries within a single upstream page (the same OPDS
+  entry `id`, or Atom `<id>`, appearing twice in one feed page) MUST be
+  de-duplicated, later occurrences dropped — the same rule
+  `backend-metadata-adapter.md` established for duplicate Open Library
+  search results (review `0034` finding #17), applied here to the
+  structurally identical case for both OPDS versions.
 - **FR-10** `SourceCandidate` MUST NOT be, or be convertible into, a
   `domain-source.md` `SourceOffering` — no `Edition` exists to attach
   it to yet (that match is phase 10's job). This adapter has no code
@@ -375,6 +386,25 @@ UI can trust.
   identical; no separate error category is introduced for this case,
   and the source's own next health check is what surfaces the
   distinguishing `auth-rejected` detail.
+- **FR-14** Outbound requests to sources (health checks, browse, search,
+  continuation-link fetches combined) MUST be bounded by a **global cap
+  of 50 concurrent in-flight requests**, tracked by a simple counting
+  semaphore — a request arriving when the cap is already reached MUST
+  return `503 Unavailable` immediately, never queued. Unlike
+  `backend-metadata-adapter.md` FR-7's shared rate limiter (a single
+  external service, Open Library, with one stated rate policy this
+  system must not exceed), sources are independent hosts with no shared
+  external policy to respect — so this FR's purpose is purely this
+  system's own resource protection (bounded goroutines/connections),
+  not courtesy to an upstream rate limit, which is why a wait-then-retry
+  design (FR-7's 5-second budget) isn't adopted here: there's no
+  external ceiling to wait out, only this system's own concurrency
+  budget, so rejecting immediately is simpler and equally correct. This
+  is a single global counter across every configured source, not
+  per-source — a user with many configured sources triggering many
+  simultaneous health checks (FR-1/FR-2's automatic checks, for
+  instance, if several sources are edited in quick succession) is
+  exactly the case this cap protects against.
 
 ## Non-functional requirements
 
@@ -410,6 +440,28 @@ element set (no XML namespace complexity beyond what `encoding/xml`
 already handles); no third-party XML dependency is introduced. OPDS
 2.0 parsing uses stdlib `encoding/json`, matching `backend-metadata-adapter.md`'s
 own approach to Open Library's JSON responses.
+
+**Local key file over OS-keychain integration**: the roadmap's own
+Architecture decisions expected section assigns this spec the job of
+concretely justifying this choice, not assuming it. Electron's
+`safeStorage` API (backed by macOS Keychain, Windows DPAPI, or Linux
+`libsecret`/`kwallet`) is Node-only — reachable from the main process,
+not from the Go backend, which is a separate OS process. Using it would
+require a new enumerated IPC round trip (`desktop-host-ipc-surface.md`'s
+mechanism) for every credential encrypt/decrypt operation, coupling
+this system's credential storage to Electron's own process being alive
+and reachable — true today (Electron always spawns the Go server,
+`desktop-host-process-model.md`), but an unnecessary coupling for a
+capability the Go backend can provide itself with three stdlib
+packages. A locally-generated key file keeps credential storage
+entirely within the Go backend's own persistence layer, consistent
+with how every other piece of this system's state (the database
+itself, `DATABASE_URL`) is already owned there, and avoids a
+platform-specific dependency (Linux's `libsecret` in particular is not
+guaranteed present on every desktop environment this project might
+eventually target) for a self-hosted, single-user system where the
+key file's own filesystem permissions (FR-13) are a proportionate
+control.
 
 ## Domain model
 
@@ -465,10 +517,14 @@ if the operator adds it, without ever passing through unreachable).
 | OPDS source returns a `4xx` on an authenticated request | HTTP status check | Health status "unreachable," `detail: "auth-rejected"` | Distinguishes bad-credential from other `4xx` explicitly |
 | OPDS source returns malformed/unparseable XML or JSON | Parse failure | Health status "unreachable," `detail: "unparseable-response"` | Logs at `info`, raw body never logged |
 | Local-folder path doesn't exist or isn't readable | `os.Stat`/permission check | Health status "unreachable," `detail: "path-not-found"` or `"path-not-readable"` | No filesystem operation attempted beyond the check itself |
-| Browse cursor resolves off-origin (SSRF attempt, FR-11) | Origin comparison before fetch | `400 InvalidInput` | Rejected before any upstream fetch; logs at `warn` |
-| Filename resolves outside configured `basePath` (traversal attempt, FR-12) | Prefix check after `filepath.Clean` | Item silently omitted from the browse result | Logs at `warn`, no filesystem operation against the offending path |
+| Browse cursor, or a discovered search-link, resolves off-origin (SSRF attempt, FR-11) | Origin comparison before fetch | `400 InvalidInput` (cursor) or `CanSearch: false` (search link) | Rejected before any upstream fetch; logs at `warn`, host only, never the full URL/query string |
+| Source responds with a `3xx` redirect (FR-11) | Redirect-following disabled, `CheckRedirect` short-circuits | Health status "unreachable," `detail: "http-3xx-unsupported"`; a browse/search call returns `Unavailable` | No redirect followed |
+| Filename resolves outside configured `basePath` after symlink resolution (traversal attempt, FR-12) | `filepath.EvalSymlinks` + prefix check against the resolved real `basePath` | Item silently omitted from the browse result | Logs at `warn`, no filesystem operation against the offending path |
 | `search` called on a source with `CanSearch: false` | FR-5's stored capability check | `409 Conflict`, distinct from an empty result | No upstream call made |
-| Credential decryption fails (corrupted/regenerated key) | AES-GCM authentication tag mismatch | Health status "unreachable," `detail: "auth-rejected"` | Logs at `info`; the ambiguity with a genuinely wrong password is intentional (FR-13) |
+| Credential decryption fails (corrupted/regenerated key) | AES-GCM authentication tag mismatch | Health status "unreachable," `detail: "auth-rejected"`; a browse/search call instead returns `Unavailable` immediately (FR-13) | Logs at `info`; the ambiguity with a genuinely wrong password is intentional |
+| Credential key file missing with existing credentialed sources (FR-13) | Startup check against `Source` rows | Affected sources show `auth-rejected` on next health check | Startup logs `warn` with the affected count; new key generated |
+| Duplicate entry within one upstream page (FR-9) | Repeated `id` within a single response | Item appears once in the result, not twice | Later duplicate dropped |
+| Global outbound concurrency cap reached (FR-14) | Semaphore full | `503 Unavailable` for the newly-arriving request | Rejected immediately, never queued |
 
 ## Security considerations
 
@@ -476,16 +532,20 @@ if the operator adds it, without ever passing through unreachable).
   example) — every response and filename from it is validated,
   size-capped, and timeout-bounded before this system trusts anything
   it says.
-- **SSRF via continuation links (FR-11)** — the concrete mitigation for
-  this phase's sharpest named risk; a cursor is only ever fetched after
-  an explicit same-origin check against the source's own configured
-  `baseUrl`, never trusted as an arbitrary URL merely because this
-  system's own opaque wrapper produced it.
-- **Path traversal via filenames (FR-12)** — `domain-source.md`'s
-  generic named risk, closed concretely: `filepath.Clean` plus a
-  prefix check, applied before any filesystem operation, not a
-  string-contains check on the raw filename (which `../` variants and
-  symlinks can defeat).
+- **SSRF via continuation links and search links (FR-11)** — the
+  concrete mitigation for this phase's sharpest named risk, closed
+  against both places an upstream-supplied URL enters this adapter (a
+  browse cursor, a discovered search link), and against a same-origin
+  URL being redirected off-origin after the fact (redirect-following
+  disabled entirely, every `3xx` treated as failure) — an origin check
+  on the initial URL alone would have left that second path open.
+- **Path traversal via filenames, including symlinks (FR-12)** —
+  `domain-source.md`'s generic named risk, closed concretely against
+  the specific attack named as the motivating example: `filepath.Clean`
+  alone does not resolve symlinks and cannot detect a symlink whose
+  target escapes `basePath`; this spec resolves the real path
+  (`filepath.EvalSymlinks`) before the prefix check, with a named,
+  accepted TOCTOU residual (Functional requirements, FR-12).
 - **Credential encryption at rest (FR-13)** — AES-256-GCM with a
   locally-generated key, `0600`-permissioned key file, dual-interface
   redaction from logs/JSON per `backend-errors-and-logging.md` FR-8.
@@ -501,23 +561,39 @@ if the operator adds it, without ever passing through unreachable).
   still no authentication between the LAN client and this host; the
   authentication this spec adds is outbound only (this system to a
   source), matching the phase 08 roadmap's own framing.
+- **Resource exhaustion (FR-14)** — a global 50-concurrent-request cap
+  across every configured source, rejecting immediately rather than
+  queuing, bounds how many goroutines/connections a user (or a
+  compromised renderer) can force this adapter to hold open at once.
+- **Basic Auth over plain HTTP (FR-4)** — named explicitly as an
+  accepted risk, not silently assumed away: a credential attached to an
+  `http://` source is sent in near-cleartext on every request, within
+  this project's existing self-hosted/household-scale threat model
+  (constitution §6's own reasoning, applied here to outbound rather
+  than inbound traffic); `frontend-source-management.md` FR-5 surfaces
+  this to the user at the point they attach a credential to such a
+  source.
 
 ## Test strategy
 
 | Layer | What it covers |
 |---|---|
-| Unit | OPDS 1.2 Atom parsing and OPDS 2.0 JSON parsing against real, recorded fixtures of each format; credential encryption/decryption round-trip, including a corrupted-ciphertext case (FR-13); path-traversal rejection (FR-12) with a symlink-outside-basePath fixture; SSRF rejection (FR-11) with an off-origin continuation-link fixture; capability detection per source `kind` and per feed shape |
+| Unit | OPDS 1.2 Atom parsing and OPDS 2.0 JSON parsing against real, recorded fixtures of each format, including a fixture with a duplicated entry `id` (FR-9); credential encryption/decryption round-trip, including a corrupted-ciphertext case and the key-loss-with-existing-credentials startup path (FR-13); path-traversal rejection (FR-12) with a symlink-outside-`basePath` fixture, resolved via `EvalSymlinks`, not a lexical-only check; SSRF rejection (FR-11) with both an off-origin continuation-link fixture and an off-origin search-link fixture; a redirect-response fixture asserting no redirect is followed (FR-11); capability detection per source `kind` and per feed shape; the 50-concurrent-request cap (FR-14) rejecting a 51st in-flight request |
 | Integration | Source CRUD against a real PostgreSQL instance (`backend-test-harness.md`'s harness); health checks against a fake local temp directory and a fake OPDS HTTP server (never a real, live OPDS catalog in CI); a full create → health-check → browse round trip per `kind` |
 | Contract | `architecture-contracts.md` FR-3's `kin-openapi` tool (`backend-library-api.md` FR-8's tool, reused, not re-decided), extended to `/api/v1/sources*` |
-| E2E | Add a local-folder source → see it reachable → browse its contents; add an OPDS source with Basic Auth → see it reachable → search it — both against fakes; a credential decryption-failure scenario (corrupt the key file, confirm the source reports `auth-rejected` rather than crashing) |
+| E2E | Add a local-folder source → see it reachable → browse its contents; add an OPDS source with Basic Auth → see it reachable → search it — both against fakes; a credential decryption-failure scenario (corrupt the key file, confirm the source reports `auth-rejected` rather than crashing, and that a concurrent browse/search call for that source returns `Unavailable`) |
 | Accessibility | Not applicable at this layer — `frontend-source-management.md`'s concern |
 
 Tests that must fail before implementation begins: a test asserting a
-browse cursor pointing at a different host than the source's `baseUrl`
-is rejected before any HTTP call is made; a test asserting a filename
-resolving outside `basePath` is silently omitted, not surfaced as an
-error; a test asserting a captured log/JSON dump of a `Source` with a
-credential never contains the raw username or password.
+browse cursor or a discovered search link pointing at a different host
+than the source's `baseUrl` is rejected before any HTTP call is made; a
+test asserting a redirect response is never followed; a test asserting
+a filename whose *resolved* path lies outside `basePath` (a symlink,
+specifically — not just a lexical `../`) is silently omitted, not
+surfaced as an error; a test asserting a captured log/JSON dump of a
+`Source` with a credential never contains the raw username or
+password; a test asserting a 51st concurrent outbound request is
+rejected with `503`, not queued.
 
 ## Acceptance criteria
 
@@ -535,9 +611,13 @@ credential never contains the raw username or password.
       test covering both the single-field and whole-struct logging
       paths (`backend-errors-and-logging.md` FR-8's own dual-path
       concern)
-- [ ] An off-origin browse cursor is rejected before any upstream fetch
-- [ ] A filename resolving outside the configured `basePath` never
-      reaches a filesystem operation
+- [ ] An off-origin browse cursor or search link is rejected before any
+      upstream fetch, and no redirect is ever followed
+- [ ] A filename whose resolved (symlink-followed) path lies outside
+      the configured `basePath` never reaches a filesystem operation
+- [ ] A missing credential key file with existing credentialed sources
+      logs a distinct startup warning, not silent regeneration
+- [ ] A 51st concurrent outbound source request is rejected with `503`
 - [ ] The contract test passes against `/api/v1/sources*`
 
 ## Open questions
@@ -572,8 +652,11 @@ credential never contains the raw username or password.
   consistency, not literal precedent
 - `backend-metadata-adapter.md` (phase 07) — external-boundary
   discipline precedent (size/shape/timeout, DTO-not-aggregate,
-  per-field degradation); the SSRF bug review `0034` found and fixed
-  there is the direct precedent for this spec's FR-11
+  per-field degradation, shared rate limiting, duplicate-entry
+  de-duplication); review `0034`'s cover-URL finding there is a related
+  but distinct precedent for FR-11 ("don't trust an externally-supplied
+  continuation value"), not the same SSRF mechanism — this spec's FR-11
+  is this project's first actual backend-side SSRF closure
 - `backend-library-api.md` (phase 06) FR-1, FR-2, FR-8 — cursor-
   pagination and search-bound precedent; `kin-openapi` contract tool
 - `desktop-host-ipc-surface.md` (phase 05) — amended (FR-6) to add

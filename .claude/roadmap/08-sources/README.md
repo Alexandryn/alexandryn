@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Specs in progress |
+| **Status** | Specs reviewed, findings fixed, awaiting maintainer approval |
 | **Depends on** | Phase 06 |
 | **Blocks** | 09, 10 |
 | **Opened** | — |
@@ -142,7 +142,7 @@ layer to build on rather than co-designing it under them.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| A malicious or compromised OPDS source returns a crafted next-page link pointing off-origin (SSRF via a caller-echoed pagination cursor) | Medium | High | The exact class of bug this project's own phase 07 review (`0034`) just found and fixed for cover URLs; `backend-source-adapter.md` must validate any server-continuation cursor resolves to the same origin as the source's configured base URL before ever fetching it, checked explicitly in Security considerations, not assumed |
+| A malicious or compromised OPDS source returns a crafted next-page or search link pointing off-origin, or 3xx-redirects a same-origin request elsewhere (SSRF) | Medium | High | Related in spirit to this project's own phase 07 review (`0034`, a proxy-bypass bug, not itself SSRF) but this project's first actual backend-side SSRF vector; `backend-source-adapter.md` validates every server-supplied URL (continuation cursor, search link) against the source's configured origin before fetching, and disables redirect-following entirely, checked explicitly in Security considerations, not assumed |
 | A local-folder source's configured path, or a filename it returns, is used to escape the configured directory (path traversal) | Medium | High | `domain-source.md` FR-4 already keeps `FileReference` from being interpretable as a path anywhere in the domain; this phase's adapter is where that boundary is actually enforced with a real traversal-safe resolution (`filepath.Clean` + prefix check against the configured root, never raw concatenation) |
 | Credential encryption key handling done carelessly (key logged, key stored unencrypted alongside the data it protects with no access restriction) | Low | High | Constitution §8's "never logged" list gets a concrete new member (source credentials); this phase's key file gets explicit filesystem-permission and no-log requirements, tested, not just asserted |
 | OPDS 1.2 (Atom/XML) and OPDS 2.0 (JSON) turn out to need meaningfully different capability-detection or pagination logic that this phase's shared abstractions don't actually accommodate | Medium | Medium | `backend-source-adapter.md`'s own normalisation layer is scoped explicitly per-version from the start (two parsers, one shared output DTO), not retrofitted after building against only one version |

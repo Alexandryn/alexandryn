@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amendment pending — `source.pickLocalFolder` operation proposed for phase 08, under cross-spec review as part of that phase's batch; not yet maintainer-reconfirmed) |
+| **Status** | `APPROVED` (amended post-approval — `source.pickLocalFolder` operation added for phase 08, [`0035`](../reviews/0035-phase08-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
 | **Phase** | `05-desktop-host` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. `source.pickLocalFolder` (FR-6) proposed post-approval as part of phase 08's batch, following this spec's own Non-goals-anticipated extension point ("any domain-feature operation... arrives with its own feature phase") — pending phase 08's cross-spec review and maintainer re-confirmation, not yet granted |
+| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. `source.pickLocalFolder` (FR-6) added post-approval as part of phase 08's batch, following this spec's own Non-goals-anticipated extension point ("any domain-feature operation... arrives with its own feature phase"); cross-spec-reviewed in [`0035`](../reviews/0035-phase08-cross-spec-review.md), findings fixed, awaiting maintainer re-confirmation |
 
 ## Context
 

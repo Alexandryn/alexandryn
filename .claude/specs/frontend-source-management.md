@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `REVIEWED` |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-15 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | — |
+| **Reviewed in** | [`0035`](../reviews/0035-phase08-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking, 8 Major, 5 Minor), all findings fixed; awaiting maintainer approval |
 
 ## Context
 
@@ -92,13 +92,21 @@ questions).
   /api/v1/sources`; on success, the new source's card appears with
   whatever health status the create-time check (`backend-source-adapter.md`
   FR-1) returned — not assumed healthy just because creation succeeded.
-- **FR-3** Health status renders one of six distinct, plainly-worded
-  states matching `backend-source-adapter.md` FR-6's closed `detail`
-  vocabulary (constitution §11: specific, no apology, no exclamation
-  marks): "Checking..." (in flight), "Reachable," "Can't connect
-  — timed out," "Can't connect — connection refused," "Wrong username
-  or password," "Folder not found," "Folder isn't readable,"
-  "Received an unexpected response" (the `unparseable-response` case).
+- **FR-3** Health status renders one of eleven distinct, plainly-worded
+  states: two non-`detail` states ("Checking..." while in flight,
+  "Reachable" on success) plus one dedicated state per
+  `backend-source-adapter.md` FR-6's full closed `detail` vocabulary —
+  all **nine** values, not a partial subset (constitution §11: specific,
+  no apology, no exclamation marks) — when unreachable: "Can't connect
+  — timed out" (`timeout`), "Can't connect — connection refused"
+  (`connection-refused`), "Wrong username or password" (`auth-rejected`,
+  covering both a bad credential and the decrypt-failure case FR-13
+  deliberately makes indistinguishable), "This source returned an
+  error" (`http-4xx`, excluding the auth case above), "This source is
+  having a problem right now" (`http-5xx`), "This source tried to
+  redirect, which isn't supported" (`http-3xx-unsupported`), "Received
+  an unexpected response" (`unparseable-response`), "Folder not found"
+  (`path-not-found`), "Folder isn't readable" (`path-not-readable`).
   Each unreachable state offers a "Check again" action calling
   `POST /api/v1/sources/:id/health-check` directly, without requiring
   the user to re-open the edit form.
@@ -110,9 +118,10 @@ questions).
   (is this connection authorized for host-only content) than the one
   this field asks (is a native OS dialog available at all). Clicking
   "Browse..." calls `window.alexandryn.source.pickLocalFolder()`
-  (`desktop-host-ipc-surface.md` FR-6, amended for this spec) and fills
-  the text field with the returned path, or leaves it unchanged if the
-  user cancels (`null`). When `window.alexandryn` is undefined (a LAN
+  (`desktop-host-ipc-surface.md` FR-6, amended for this spec), which
+  resolves to `{ path: string } | null`, and fills the text field with
+  `result.path` when non-`null`, or leaves the field unchanged on
+  cancel. When `window.alexandryn` is undefined (a LAN
   browser tab), the "Browse..." button simply isn't rendered — the text
   field alone remains, fully functional, no degraded messaging needed
   since typing a path is the field's normal, always-available mode, not
@@ -128,11 +137,19 @@ questions).
   path in this screen that could display a previously-entered
   credential even if a future bug tried to, since the API response this
   screen consumes (`hasCredential: boolean`) structurally cannot carry
-  one.
+  one. When the credential sub-form is revealed for a source whose
+  `baseUrl` (FR-2) doesn't start with `https://`, a visible,
+  non-blocking inline warning is shown — "This source doesn't use
+  HTTPS. Your password will be sent unencrypted." — surfacing
+  `backend-source-adapter.md` FR-4's accepted-risk decision concretely
+  at the one point a user is about to act on it, rather than leaving it
+  silent; the form remains submittable, matching that spec's own choice
+  not to block an `http://` source with a credential outright.
 - **FR-6** A source's browse view (`/sources/:id`) shows its contents as
   a list of `SourceCandidate` items (`backend-source-adapter.md` FR-9:
-  title, author, format, size) with infinite scroll driven by
-  `useInfiniteQuery` against `GET /api/v1/sources/:id/browse`'s cursor
+  `title`, `author`, `fileReference` — itself carrying format and size
+  — and `coverUrl`) with infinite scroll driven by `useInfiniteQuery`
+  against `GET /api/v1/sources/:id/browse`'s cursor
   (`frontend-library-screens.md` FR-3's same TanStack Query primitive
   and justification — this endpoint has a real server-provided cursor
   to page with, the same reasoning that made offset/limit the right
@@ -142,15 +159,23 @@ questions).
   list to `GET /api/v1/sources/:id/search`'s results, debounced 300ms
   matching this project's established convention
   (`frontend-library-screens.md` FR-1, `frontend-discover-screen.md`
-  FR-1). This view reuses `frontend-discover-screen.md`'s
-  `<DiscoverResultGrid>` cover-tile/title-text rendering primitives
-  where the shapes align (title, author, cover), not a third
-  independent grid component — `SourceCandidate` and
-  `NormalisedSearchResult` are different DTOs from different specs, but
-  both are "an unmatched candidate with a title, maybe an author, maybe
-  a cover," the same rendering need `<DiscoverResultGrid>` already
-  serves; this view does not, however, reuse `<WorkGrid>`, for the same
-  reason `frontend-discover-screen.md` FR-1 already gave (no
+  FR-1). This introduces a new, small **`<SourceCandidateList>`**
+  component — deliberately not a reuse of `<DiscoverResultGrid>`:
+  `<DiscoverResultGrid>` (`frontend-discover-screen.md` FR-1) is typed
+  to `NormalisedSearchResult`, and that same FR's own reasoning for
+  *not* generalising `<WorkGrid>` to fit a second DTO applies here
+  identically to a third — `SourceCandidate` has no `openLibraryWorkKey`
+  and carries a `fileReference` neither of the other two DTOs has;
+  forcing it through `<DiscoverResultGrid>` would repeat the exact
+  distortion that spec already rejected one level up.
+  `<SourceCandidateList>` instead reuses the same lower-level cover-tile
+  and title/author-text primitives (`frontend-component-primitives.md`,
+  `frontend-generated-covers.md`) that `<DiscoverResultGrid>` itself was
+  built from, so the two views stay visually consistent without sharing
+  a data contract — the same relationship `<DiscoverResultGrid>` has to
+  `<WorkGrid>`, applied one level further down the same chain. This view
+  does not reuse `<WorkGrid>` either, for the same reason
+  `frontend-discover-screen.md` FR-1 already gave (no
   ownership/collection-membership fields exist for an unmatched
   candidate).
 - **FR-7** Removing a source (FR-1's card, a "Remove" action) shows a
@@ -255,7 +280,7 @@ expresses. The credential sub-form: `hidden → editing → submitted
 
 | Layer | What it covers |
 |---|---|
-| Unit | Health-status text mapping for each of FR-3's six `detail` values; credential sub-form's collapsed/expanded states; the `window.alexandryn` presence check rendering or hiding "Browse..." |
+| Unit | Health-status text mapping for each of FR-3's nine `detail` values plus the two non-`detail` states; credential sub-form's collapsed/expanded states; the `window.alexandryn` presence check rendering or hiding "Browse..."; the HTTPS warning (FR-5) rendering only for a non-`https` `baseUrl` |
 | Integration | Add/edit/remove flow against MSW fixtures shaped like `backend-source-adapter.md`'s real response types (tier-(a) contract-generated, `frontend-shell-and-routing.md`'s existing two-tier strategy); a mocked `window.alexandryn.source.pickLocalFolder` exercising both the successful-pick and cancel (`null`) paths |
 | Contract | Reuses `backend-source-adapter.md`'s `kin-openapi` contract test — no separate frontend contract test |
 | E2E | Add a local-folder source (fake backend, fake `window.alexandryn`) → see it reachable → browse it; add an OPDS source with a credential → replace the credential → confirm the old one is never displayed; remove a source with confirmation |
@@ -265,14 +290,14 @@ Tests that must fail before implementation begins: a test asserting no
 DOM node, at any point in the edit flow, ever contains a previously-
 entered password value; a test asserting the "Browse..." button is
 absent when `window.alexandryn` is undefined; a test asserting each of
-FR-3's six `detail` values renders distinct, non-generic copy.
+FR-3's nine `detail` values renders distinct, non-generic copy.
 
 ## Acceptance criteria
 
 - [ ] A local-folder source can be added via native picker (inside
       Electron) or typed path (LAN browser), both landing correctly
 - [ ] An OPDS source can be added with or without a credential
-- [ ] Health status shows one of FR-3's six distinct states, never a
+- [ ] Health status shows one of FR-3's eleven distinct states, never a
       single generic "error"
 - [ ] A stored credential is never displayed or echoed back anywhere in
       this screen
