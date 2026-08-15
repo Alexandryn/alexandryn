@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Status** | `APPROVED` (amendment pending — `source.pickLocalFolder` operation proposed for phase 08, under cross-spec review as part of that phase's batch; not yet maintainer-reconfirmed) |
 | **Phase** | `05-desktop-host` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
+| **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. `source.pickLocalFolder` (FR-6) proposed post-approval as part of phase 08's batch, following this spec's own Non-goals-anticipated extension point ("any domain-feature operation... arrives with its own feature phase") — pending phase 08's cross-spec review and maintainer re-confirmation, not yet granted |
 
 ## Context
 
@@ -139,6 +139,28 @@ is a shape, not yet a thing anyone can point at and say "like that one."
   network access) — it exists purely to prove FR-2/FR-3's mechanism
   works end to end with something real, not to be a meaningfully useful
   feature.
+- **FR-6** `source.pickLocalFolder(): Promise<{ path: string } | null>` —
+  the first domain-feature operation added since this spec shipped,
+  following the extension point this spec's own Non-goals section
+  already reserved ("any domain-feature operation... arrives with its
+  own feature phase"). Added for `frontend-source-management.md`
+  (phase 08): opens the OS's native folder-selection dialog
+  (`dialog.showOpenDirectory` in the main process) and returns the
+  chosen absolute path, or `null` if the user cancels. Takes **no
+  argument** — this is the concrete reason FR-6 doesn't violate FR-4's
+  "no operation accepts a free-form string used as... a file path" rule:
+  the renderer never supplies a path here, it only ever *receives* one
+  the OS dialog UI produced from the user's own selection; the main
+  process performs no filesystem access with this path itself (it
+  neither reads nor writes anything at the returned path) — the
+  renderer forwards the chosen path to the Go backend's own
+  `POST /api/v1/sources` over the normal loopback HTTP API
+  (`backend-source-adapter.md`), where it is validated as a real,
+  readable directory before anything trusts it, the same hostile-input
+  discipline every path this project handles gets. This operation is
+  only ever meaningful when the renderer is running inside Electron —
+  `frontend-source-management.md`'s own concern is detecting that and
+  falling back to a plain text field otherwise, not this spec's.
 
 ## Non-functional requirements
 
@@ -188,6 +210,8 @@ operation in this phase's scope has multi-step state.
 | Renderer calls an operation with a malformed/oversized argument | FR-2's Zod schema, checked first in the handler | The `Promise` rejects with a generic error (never a raw validation-library stack trace, constitution §11) | Logged server-side (Observability), request never reaches business logic |
 | Renderer attempts to invoke a channel that doesn't correspond to any declared operation | Electron's own `ipcMain` — no handler registered for an undeclared channel | The `invoke` call rejects (Electron's default behavior for no registered handler) | No custom handling needed; this is the mechanism's own structural guarantee — nothing to add a handler for could exist outside `operations.ts` |
 | A future contributor adds an operation without following FR-3's checklist | Code review; a CI check can verify test-file existence (item 3) and Zod-schema presence (item 1) mechanically, but not items 2/4 | N/A — caught before merge, not a runtime failure | PR blocked at review, not a defect that ships |
+| `source.pickLocalFolder` (FR-6) called from a LAN browser tab with no `window.alexandryn` global | Renderer's own capability check (`frontend-source-management.md`'s concern) never calls the operation in the first place | The text-field fallback is shown instead — no error, since the operation was never invoked | N/A — this spec has no defined behavior for the impossible case of a non-Electron caller reaching `window.alexandryn`, since that global doesn't exist there |
+| User cancels the native folder dialog | `dialog.showOpenDirectory`'s own cancel result | The renderer's text field stays as it was, no error shown | Returns `null`, not an error — cancellation is a normal outcome, not a failure |
 
 ## Security considerations
 
@@ -233,6 +257,9 @@ operation in this phase's scope has multi-step state.
 - [ ] `contextIsolation`, `sandbox` on and `nodeIntegration` off are
       verified by an automated test — `architecture-desktop-host.md`
       FR-2's own requirement, this spec's concrete proof of it
+- [ ] `source.pickLocalFolder` (FR-6) returns the OS-selected path on a
+      real selection, and `null` on cancel, proven by an integration
+      test through the real preload/main boundary
 - [ ] Every FR maps to an exit criterion in phase 05's own document
 
 ## Open questions
