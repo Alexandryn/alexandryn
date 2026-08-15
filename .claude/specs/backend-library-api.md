@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — `formats` field added to FR-5 for phase 11, [`0038`](../reviews/0038-phase11-cross-spec-review.md), findings fixed; awaiting maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval — `formats` field added to FR-5 for phase 11, [`0038`](../reviews/0038-phase11-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15) |
 | **Phase** | `06-library` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0038`](../reviews/0038-phase11-cross-spec-review.md) — FR-5 extended with a `formats` field for `frontend-library-screens.md`'s "Read" gate (phase 11), cross-spec-reviewed, findings fixed, awaiting maintainer re-confirmation |
+| **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0038`](../reviews/0038-phase11-cross-spec-review.md) — FR-5 extended with a `formats` field for `frontend-library-screens.md`'s "Read" gate (phase 11), cross-spec-reviewed, findings fixed, re-confirmed by maintainer 2026-08-15 |
 
 ## Context
 

@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
 | **Phase** | `11-reader` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
+| **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
 | **Last updated** | 2026-08-15 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0038`](../reviews/0038-phase11-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (7 Blocking across the batch, 3 confirmed independently by both passes; 9 Major, 6 Minor), all findings fixed; awaiting maintainer approval |
+| **Reviewed in** | [`0038`](../reviews/0038-phase11-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (7 Blocking across the batch, 3 confirmed independently by both passes; 9 Major, 6 Minor), all findings fixed; approved by maintainer 2026-08-15 |
 
 ## Context
 
