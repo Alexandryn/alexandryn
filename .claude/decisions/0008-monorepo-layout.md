@@ -138,3 +138,20 @@ actual reason named (Consequences/"Bad": no independent frontend
 hot-patching without a full binary rebuild), not just asserted as an
 unweighted number. Not prototyped or weighed against alternatives as
 rigorously as ADR 0005's process model was.
+
+## Addendum — container packaging artifacts (2026-08-16)
+
+ADR 0015's container-hosted deployment target adds two new files at the
+repository root: `Dockerfile` (builds `web/` then `go build ./cmd/server`,
+the same ordering `architecture-testing.md` FR-8 already requires for CI,
+then copies the resulting binary into a minimal runtime image) and
+`docker-compose.yml` (defines the `backend` and `postgres` services, the
+latter behind a Compose profile). Neither changes anything this ADR
+decided: the Go module stays at the root, `web/` and `electron/` stay npm
+workspace packages, `go:embed` is unchanged, and no build-orchestration
+tool is introduced — a `Dockerfile` describes a container image build, not
+a monorepo build-orchestration concern, and doesn't compete with the
+reasoning that rejected Turborepo/Nx here. Recorded because this
+directory's own rule (`.claude/README.md`) is that status fields and file
+inventories stay honest, not because anything above needed to change to
+accommodate it.
