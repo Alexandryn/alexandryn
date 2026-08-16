@@ -122,3 +122,40 @@ orphan-prevention where no parent-side mechanism exists).  Not a
 supersession — the pdeathsig mechanism and the one-binary rejection this ADR
 records are unchanged and still apply at the Electron↔Go-server level. See
 ADR 0007 for the extension.
+
+## Addendum — scoped to the Electron-hosted target (2026-08-16)
+
+ADR 0015 adds a second, container-hosted deployment target: the Go server
+runs as a container, started and stopped by a container orchestrator
+(Docker Compose or equivalent), never spawned by Electron because no
+Electron process exists in that target at all. Read literally, this ADR's
+Decision text — "not a system service launched independently of the
+app" — and Option C's rejection ("Go server as an independently launched
+background service... Electron as just a client") could be read as
+forbidding this. They don't, for two reasons this addendum states rather
+than assumes.
+
+First, Option C as considered and rejected was a different proposal than
+the container target: Option C kept Electron present, as a thin client of
+a systemd/launchd-managed Go server, on the same single-machine
+installation. The container target has no Electron anywhere — it isn't
+"Electron as just a client," it's a wholly separate deployment surface.
+Second, and more directly: this ADR's own rejection reasoning named the
+broader question explicitly and declined to answer it — *"it reopens a
+question `architecture-system.md` deliberately declined to answer for
+v1 — whether the server should keep serving LAN clients with no desktop
+app running. That's a real product question, but not one this ADR is
+deciding by accident via a packaging choice."* That question is what ADR
+0015 answers, directly and on purpose, not by accident.
+
+This is stated as an addendum, not a supersession, because the finding
+this ADR actually records — the Electron-hosted target uses a spawned
+child process, never a system service, and that remains true — is
+unchanged. What's added is that a second target now exists where the
+question this ADR explicitly declined to decide has been decided
+elsewhere. If that reading of this ADR's own hedge language turns out to
+be wrong — if "not a system service" and Option C's rejection were meant
+as a permanent, general rule rather than a scoped one — this addendum is
+the wrong instrument and ADR 0015 should have superseded this ADR
+instead. Recorded as a real possibility in ADR 0015's own text, not
+resolved unilaterally here.
