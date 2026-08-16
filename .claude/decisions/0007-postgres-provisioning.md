@@ -130,3 +130,41 @@ confidence on *bundled-and-spawned* specifically over other zero-config
 shapes (e.g., a background-installed system service instead of a spawned
 child) — that comparison wasn't weighed as rigorously as ADR 0005's process
 model was, because it wasn't prototyped. Flagged, not hidden.
+
+## Addendum — scoped to the Electron-hosted target (2026-08-16)
+
+ADR 0015 adds a second, container-hosted deployment target whose Postgres
+is a separate, sibling container the Go server connects to over the
+network — never spawned or owned by it. Read literally, this ADR's Decision
+text ("Pointing Alexandryn at an external, user-managed Postgres instance
+is explicitly **not** a v1 goal") forbids exactly this. It doesn't, for the
+container target, and this addendum states the reasoning rather than
+asserting the exemption.
+
+Every reason this ADR actually gives for rejecting Option B ("User brings
+their own Postgres") is scoped to the Electron-hosted product's default
+experience specifically: *"requires a setup screen the design reference
+doesn't have, requires the target user... to already run or stand up
+Postgres themselves. Wrong default for this product."* None of that
+reasoning argues an externally managed Postgres is unsafe or unworkable in
+general — only that it's the wrong default for someone who wants a
+double-click desktop app with no setup screen. This ADR itself named a
+"future 'Advanced' option" as plausible, deliberately undecided for lack of
+demand: *"deciding that now would be guessing at a requirement nobody has
+asked for yet."* The container target isn't that Advanced-tab option
+specifically — it's a separate deployment surface with no Electron and no
+settings UI to gate anything — but it's the same underlying shape
+(operator-supplied Postgres, not spawned by the app), now with the demand
+this ADR said was missing: the maintainer asked for it directly, for that
+target, when ADR 0015 was drafted.
+
+This is an addendum, not a supersession, because the finding this ADR
+actually records — the Electron-hosted target bundles and spawns its own
+Postgres, invisible to the user, no setup screen — is unchanged and still
+the right default for that target. What's added is a second target where
+the opposite is the right default. As with ADR 0005's parallel addendum:
+if "explicitly not a v1 goal" was meant as a permanent, general
+prohibition rather than a statement about this product's *default*, this
+addendum is the wrong instrument and ADR 0015 should have superseded this
+ADR instead. Not resolved unilaterally here — named in ADR 0015 as an open
+question about original intent.
