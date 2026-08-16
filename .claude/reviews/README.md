@@ -86,3 +86,4 @@ next person from looking.
 | [0039](0039-adr-container-topology.md) | ADR 0015 — Container topology | 2026-08-16 | Approved with changes (both findings fixed before this review), self-reviewed — needs independent read |
 | [0040](0040-spec-architecture-system-container-topology.md) | Spec — `architecture-system.md`, second amendment (container topology, ADR 0015) | 2026-08-16 | Approved with changes (finding fixed before this review), self-reviewed — needs independent read |
 | [0041](0041-spec-architecture-backend-container-topology.md) | Spec — `architecture-backend.md`, amendment (container topology, ADR 0015) | 2026-08-16 | Approved with changes (no findings), self-reviewed — needs independent read |
+| [0042](0042-spec-backend-configuration-container-topology.md) | Spec — `backend-configuration.md`, amendment (container topology, ADR 0015) | 2026-08-16 | Approved with changes (finding fixed before this review), self-reviewed — needs independent read |

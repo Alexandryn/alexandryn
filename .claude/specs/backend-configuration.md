@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval three times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15) |
+| **Status** | `APPROVED` (amended post-approval four times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-15 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation. Amended again, [`0042`](../reviews/0042-spec-backend-configuration-container-topology.md) — `DATABASE_URL`'s meaning made target-dependent for ADR 0015, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -105,7 +105,7 @@ file format, where it lives, or the actual validation each key needs.
 
   | Key | Type | Required? | Default | Source of the requirement |
   |---|---|---|---|---|
-  | `DATABASE_URL` | connection string | Optional, no default — absence is a meaningful signal (FR-3's third category), never a validation failure | — | ADR 0004's addendum (Supabase dev stack); `architecture-system.md` Security considerations |
+  | `DATABASE_URL` | connection string | Optional, no default — absence is a meaningful signal (FR-3's third category), never a validation failure | — | ADR 0004's addendum (Supabase dev stack); `architecture-system.md` Security considerations; ADR 0015 (container target, where its presence is normal) |
   | `BIND_ADDRESS` | host:port, host MUST be loopback (FR-8) | Optional | `127.0.0.1:0` (loopback, OS-assigned port) | `architecture-system.md` FR-3, constitution §6, FR-8 below |
   | `LOG_LEVEL` | enum: `debug`/`info`/`warn`/`error`, matched case-insensitively | Optional | `info` | `backend-errors-and-logging.md` |
   | `SHUTDOWN_GRACE_PERIOD` | duration | Optional | `10s` | `backend-service-lifecycle.md` FR-5, `architecture-system.md` FR-9's placeholder |
@@ -118,14 +118,23 @@ file format, where it lives, or the actual validation each key needs.
 
   This table is the authoritative key list at the time this spec is
   written; a later phase adding a key extends this table rather than
-  inventing a parallel one elsewhere. `DATABASE_URL`'s absence
-  specifically is the signal `backend-persistence.md` FR-5 uses to choose
-  between connecting directly (a value is present — the developer/CI/test
-  path) and spawning and owning a bundled Postgres instance itself (no
-  value present — the production, Electron-spawned path); `config.Load`
-  itself does not need to know which case it's in, it only needs to never
-  treat the key's absence as an error, which is what FR-3's third category
-  guarantees. Earlier drafts of this table described the key as
+  inventing a parallel one elsewhere. `DATABASE_URL`'s presence or
+  absence specifically is the signal `backend-persistence.md` FR-5 uses to
+  choose between connecting directly (a value is present) and spawning and
+  owning a bundled Postgres instance itself (no value present) — what that
+  signal *means* now depends on which deployment target is running
+  (amended 2026-08-16, ADR 0015; previously described as a dev/CI-vs-
+  production split, before a second target existed): in the
+  **Electron-hosted target**, its absence is the production case (the Go
+  server spawns and owns Postgres) and its presence is the
+  developer/CI/test override; in the **container-hosted target**, its
+  presence is the *normal* production case (either the bundled sibling
+  container's Compose-computed address, or an operator-supplied external
+  instance) and there is no spawn-and-own path available to fall back to
+  at all. `config.Load` itself does not need to know which target or
+  which case it's in — it only needs to never treat the key's absence as
+  an error, which is what FR-3's third category guarantees regardless of
+  target. Earlier drafts of this table described the key as
   "required in dev," which FR-3 above no longer permits — reconciled here
   by dropping that framing and letting the mode-selection logic live in
   the code that reads the value's presence (`backend-persistence.md`
@@ -252,11 +261,19 @@ states of its own.
 
 ## Security considerations
 
-- **`DATABASE_URL` never read in production (FR-4)** — restates
-  `architecture-system.md`'s Security considerations directly: production
-  generates its own connection internally; this spec's config surface
-  exists for the dev/CI path, and the type system (FR-7) prevents the
-  value from leaking into logs even in that path.
+- **`DATABASE_URL`'s production meaning is target-dependent (FR-4, amended
+  2026-08-16, ADR 0015)** — in the Electron-hosted target, it is never
+  read in production: production generates its own connection internally
+  (restating `architecture-system.md`'s Security considerations), and this
+  key's surface there exists for the dev/CI path only. In the
+  container-hosted target, the reverse is true by design: `DATABASE_URL`
+  is the normal way production learns where Postgres is, whether that's
+  the bundled sibling container or an operator-supplied external
+  instance. Both statements are true, of different targets — an earlier
+  version of this paragraph stated the first as an unqualified rule before
+  a second target existed. The type system (FR-7) prevents the value from
+  leaking into logs in either target, unconditionally — that protection
+  was never target-specific and needs no amendment.
 - **No blanket environment scan (API and contracts, above)** — reading
   only named keys, never enumerating `os.Environ()`, is itself a
   narrow-surface security property: a host environment variable that
@@ -344,4 +361,6 @@ states of its own.
   sits in the startup sequence, and the no-globals rule this spec's
   single-struct design supports
 - `backend-errors-and-logging.md` — the redaction contract FR-7 ties into
+- ADR 0015 — the container-hosted target `DATABASE_URL`'s FR-4 row and
+  Security considerations were amended 2026-08-16 to cover
 - Constitution §8 (never log secrets), §11 (copy)
