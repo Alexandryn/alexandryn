@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self, approved with changes; amended post-review 2026-08-16, needs re-confirmation) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0011-spec-architecture-backend.md`](../reviews/0011-spec-architecture-backend.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`.claude/reviews/0011-spec-architecture-backend.md`](../reviews/0011-spec-architecture-backend.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending. Amendment covered by [`0041`](../reviews/0041-spec-architecture-backend-container-topology.md) |
 
 ## Context
 
@@ -104,16 +104,27 @@ precedence, or the transport middleware ordering.
   MUST NOT know about HTTP status codes — that mapping lives in
   `internal/transport/http`, one place, not scattered per handler.
 - **FR-5** Configuration MUST be resolved in a fixed precedence order:
-  compiled-in defaults, then the config file ADR 0007/
-  `architecture-desktop-host.md` FR-5 delivers at spawn time (this is how
-  a packaged instance is always configured), then environment variables as
+  compiled-in defaults, then a config file if one is present, then
+  environment variables as an override. Two deployment targets deliver
+  configuration differently at that second and third step, neither more
+  "packaged" than the other (amended 2026-08-16, ADR 0015; this FR
+  previously named only the first as how "a packaged instance is always
+  configured," written before a second target existed). **Electron-hosted
+  target**: the config file ADR 0007/`architecture-desktop-host.md` FR-5
+  delivers at spawn time is the normal source; environment variables are
   an *additional* override available when running `cmd/server` directly
   outside Electron entirely (a backend developer iterating with `go run`,
-  with no spawn-time file to read) — decided here for the first time, not
-  citing a prior decision; ADR 0004's addendum was about Claude Code's own
-  MCP tooling access, a different concern that happens to look similar.
-  No silent fallback if a required value is missing at any level. Startup
-  MUST fail loudly and specifically, not proceed with a guessed default.
+  with no spawn-time file to read). **Container-hosted target**: there is
+  no spawn-time file delivery mechanism at all — Compose's own
+  `environment:`/`.env` handling is the normal source, read the same way
+  the Electron target's dev/`go run` override already is, not as a
+  workaround. `config.Load`'s per-key precedence algorithm
+  (`backend-configuration.md` FR-2) does not need to know which target
+  it's running under to apply this correctly — it resolves the same three
+  steps regardless of source, which is exactly what makes both targets
+  legitimate without new logic. No silent fallback if a required value is
+  missing at any level, in either target. Startup MUST fail loudly and
+  specifically, not proceed with a guessed default.
 - **FR-6** The HTTP middleware chain MUST apply, in this order, to every
   request before it reaches a handler: panic recovery (outermost — a
   panic must never reach the client as a raw stack trace, constitution
@@ -230,6 +241,8 @@ middleware chain doesn't introduce a new place for that request to get lost.
   `internal/persistence/postgres` and `cmd/pg-supervisor`
 - `architecture-desktop-host.md` FR-5 — the config-file source FR-5 here
   incorporates into precedence
+- ADR 0015 — the container-hosted target FR-5 was amended 2026-08-16 to
+  cover, alongside the Electron-hosted target
 - `.claude/roadmap/03-backend-foundation/README.md` — owns the actual
   implementation of everything this spec fixes the pattern for
 - Constitution §3 (domain boundaries), §4 (hostile input), §9
