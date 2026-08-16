@@ -51,7 +51,7 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`backend-errors-and-logging.md`](backend-errors-and-logging.md) | Taxonomy, transport mapping, log contract, redaction | 03 | `APPROVED` |
 | [`backend-http-transport.md`](backend-http-transport.md) | Router, middleware, limits, timeouts, response shape | 03 | `APPROVED` (amended post-approval — static asset serving FR-8, `0032`, re-confirmed 2026-08-14) |
 | [`backend-persistence.md`](backend-persistence.md) | PostgreSQL connection lifecycle, migrations, repositories, transactions, corruption | 03 | `APPROVED` (amended post-approval twice — DSN redaction `0028`, container topology `0043`, both need re-confirmation) |
-| [`backend-test-harness.md`](backend-test-harness.md) | Integration harness, fixtures, controllable clock, CI | 03 | `APPROVED` |
+| [`backend-test-harness.md`](backend-test-harness.md) | Integration harness, fixtures, controllable clock, CI | 03 | `APPROVED` (amended post-approval — container-target test coverage, `0045`, needs re-confirmation) |
 | [`frontend-tooling.md`](frontend-tooling.md) | Bundler, lint/format/typecheck, bundle budget, CI hooks | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
 | [`frontend-design-tokens.md`](frontend-design-tokens.md) | Token taxonomy, extraction process, dark-palette decision | 04 | `APPROVED` (amended post-approval — `tokens.css` second output, `0032`, re-confirmed 2026-08-14) |
 | [`frontend-component-primitives.md`](frontend-component-primitives.md) | Every primitive: states, a11y contract, Radix-vs-hand-built split | 04 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |

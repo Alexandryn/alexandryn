@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` |
+| **Status** | `APPROVED` (amended post-approval — container-target test coverage added, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md), needs maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md) — FR-10 added for ADR 0015's container target, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -183,7 +183,9 @@ test").
   scope, omitted from an earlier draft of this spec — review 0022 caught
   the gap; a specific coverage tool and threshold are not fixed here,
   only that the stage exists and its output is captured), (8) dependency
-  vulnerability scan (`govulncheck`, `architecture-testing.md` FR-5).
+  vulnerability scan (`govulncheck`, `architecture-testing.md` FR-5), (9)
+  the container-target test (FR-10, added 2026-08-16, ADR 0015) — builds
+  the `Dockerfile` image and runs the `docker compose` startup assertion.
   Every stage MUST block merge on failure (`architecture-testing.md`
   FR-1) except where a later FR in this spec names an explicit exception
   (FR-7's spawn suite, potentially a different trigger).
@@ -191,6 +193,24 @@ test").
   the unit and integration test runs in CI — phase 03's own exit
   criterion ("tests pass with the race detector enabled"), made a
   concrete CI flag rather than left as an aspiration.
+- **FR-10** (Added 2026-08-16, ADR 0015) A dedicated container-target test
+  MUST exist alongside FR-7's bundled-spawn suite, exercising the
+  container-hosted target's own startup path rather than the
+  Electron-hosted target's: build the `Dockerfile` image, run
+  `docker compose --profile bundled-db up` against the repository-root
+  `docker-compose.yml`, and assert the `backend` container reaches
+  `Ready` (`/readyz` returns 200) against the sibling `postgres`
+  container — proving the `DATABASE_URL`-present branch
+  (`backend-persistence.md` FR-5) actually connects, migrates
+  (`architecture-persistence.md` FR-5), and serves, not just that the
+  code compiles. Unlike FR-7's bundled-spawn suite, this test has no
+  platform-specific spawn/orphan-prevention mechanism to exercise — it is
+  expected to be fast and platform-independent (Docker itself, not the
+  application, owns process supervision), so it MUST run in the same
+  per-PR CI job as the routine integration suite rather than needing
+  FR-7's separate, possibly-different-cadence job, unless measurement
+  after implementation shows otherwise (same placeholder-pending-
+  measurement pattern FR-7's own cadence question already uses).
 
 ## Non-functional requirements
 
@@ -241,6 +261,7 @@ Not applicable.
 | A test leaves data behind that affects a later test | FR-3's isolation requirement violated | A flaky-looking failure in an unrelated test | This is the failure FR-3 exists to prevent; if it happens, it's a defect in that test's teardown, not a harness gap to route around |
 | `web/` build step skipped or fails before `go build` | FR-8's ordering | CI red at the build stage, before any test runs | Workflow fails fast — no test stage runs against a stale/missing embedded frontend (ADR 0008's named risk) |
 | Bundled-spawn suite (FR-7) takes long enough to slow every PR | Measured once it exists | A slower merge queue | Per FR-7, may move to a different trigger — not pre-decided, flagged as a real possibility |
+| Container image builds but the `backend` container never reaches `Ready` against the sibling `postgres` container (FR-10) | The compose-startup assertion's own timeout | CI red at the container-target test stage | This is exactly the failure FR-10 exists to catch — a config or connection defect the unit/integration suites, which never build an image, cannot see |
 
 ## Security considerations
 
@@ -299,6 +320,10 @@ against it.
       branch
 - [ ] `-race` is enabled on unit and integration CI runs (FR-9), proven
       by the workflow file itself, not just claimed
+- [ ] The container-target test (FR-10) builds the image, brings the
+      compose stack up, and asserts `Ready`, proven by a CI run — and
+      proven to actually fail if the `backend`/`postgres` service
+      definitions are deliberately broken, not just proven to pass once
 - [ ] Every FR maps to a line in phase 03's own exit criteria
 
 ## Open questions
@@ -307,6 +332,14 @@ against it.
   "nightly/on-merge-to-main" is not decided; needs a real runtime
   measurement once the suite exists, same placeholder-pending-measurement
   pattern this whole phase has used.
+- **Container-target test's exact tooling (FR-10)** — whether the compose-
+  startup assertion is a shell script CI step, a Go test driving `docker
+  compose` via `os/exec`, or a dedicated tool (e.g. `testcontainers-go`'s
+  compose support) is not fixed here; FR-10 only requires that the
+  assertion exists and blocks merge. Owner: the new deployment spec this
+  ADR's amendment plan names (`.claude/audits/0002-topology-gap.md`
+  A-02-11), since it also owns the `Dockerfile`/`docker-compose.yml`
+  content this test runs against.
 - **`internal/testutil`'s exact package location/name** — a naming
   placeholder in this spec (FR-4, FR-5, FR-6); `architecture-backend.md`'s
   `internal/` layout doesn't currently name it, so this spec's
@@ -345,3 +378,6 @@ against it.
   as FR-6's randomness-injection example
 - Constitution §9 (dependencies), phase 03's own risk table and exit
   criteria (race detector, determinism)
+- ADR 0015 — the container-hosted target FR-10 adds coverage for, and the
+  new deployment spec its amendment plan names, which owns the actual
+  `Dockerfile`/`docker-compose.yml` this test runs against
