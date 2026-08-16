@@ -214,12 +214,22 @@ every contributor reasoning about failure:
   inverse is not required — a supervisor that keeps the Go server alive after
   Electron dies would imply LAN clients can be served with no desktop app
   running, which is a different product decision this spec does not make).
-- **Observability** — the Go server's structured logging (phase 03) and the
-  Electron main process's own logs are separate log streams; this spec
-  requires that a correlation ID generated for an HTTP request is visible in
-  both if the request path crosses into Electron-mediated operations (e.g. a
-  native file dialog triggered by an IPC call that also touches the API) —
-  full logging contract is phase 03's `backend-errors-and-logging.md`.
+- **Observability** — **in the Electron-hosted target**, the Go server's
+  structured logging (phase 03) and the Electron main process's own logs
+  are separate log streams; this spec requires that a correlation ID
+  generated for an HTTP request is visible in both if the request path
+  crosses into Electron-mediated operations (e.g. a native file dialog
+  triggered by an IPC call that also touches the API) — full logging
+  contract is phase 03's `backend-errors-and-logging.md`. **In the
+  container-hosted target** (amended 2026-08-16, ADR 0015), there is no
+  Electron process and no second log stream to correlate against — the Go
+  server's structured logging is the entire log surface for that target.
+  The container orchestrator's own log aggregation (e.g. `docker compose
+  logs`, which interleaves the `backend` and `postgres` containers'
+  output by timestamp) is the analogous surface to an operator, but it is
+  not a second application-level stream this spec needs a correlation
+  requirement for — Postgres's own log lines carry no correlation ID and
+  aren't expected to.
 
 ## Domain model
 

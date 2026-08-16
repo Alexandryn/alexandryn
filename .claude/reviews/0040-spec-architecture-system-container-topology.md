@@ -22,6 +22,7 @@ resolve. This is this spec's second post-approval amendment; the first
 | # | Severity | Area | Finding | Required change |
 |---|---|---|---|---|
 | 1 | Major | Non-goals | The first drafting pass amended FR-1/FR-2/Security considerations for the container topology but left the Non-goals section's "Multi-host or cloud deployment — explicitly out of scope for v1" unchanged, directly contradicting the new FR-1 | Fixed — split into "multi-host remains out of scope" / "cloud deployment is no longer a non-goal," with the reasoning stated |
+| 2 | Minor | Observability NFR | The amendment plan's own item for this gap (`0002-topology-gap.md`) named the Observability NFR as needing a container-target paragraph; the first commit against this file amended FR-1/FR-2/Security considerations/Non-goals but missed it | Fixed — added a clause stating the container target has no Electron log stream to correlate against, and that the orchestrator's own log aggregation is an operator-facing surface, not a second application-level stream this spec needs a correlation requirement for |
 
 ## Dimensions checked
 
