@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in startup failure logging, needs maintainer re-confirmation, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md); job-worker-pool shutdown ordering added for phase 09, [`0036`](../reviews/0036-phase09-cross-spec-review.md), re-confirmed 2026-08-15 — DSN redaction amendment still needs re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval three times — DSN redaction in startup failure logging, needs maintainer re-confirmation, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md); job-worker-pool shutdown ordering added for phase 09, [`0036`](../reviews/0036-phase09-cross-spec-review.md), re-confirmed 2026-08-15; FR-1 step 5 re-scoped for the container topology, [`0044`](../reviews/0044-spec-backend-service-lifecycle-container-topology.md), needs maintainer re-confirmation — DSN redaction amendment also still needs re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-15 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0036`](../reviews/0036-phase09-cross-spec-review.md) — FR-6 extended with job-worker-pool shutdown ordering for `backend-job-queue.md` (phase 09), cross-spec-reviewed, re-confirmed by maintainer 2026-08-15 |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (a self-contradiction between this spec's own startup ordering and its readiness claim), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0036`](../reviews/0036-phase09-cross-spec-review.md) — FR-6 extended with job-worker-pool shutdown ordering for `backend-job-queue.md` (phase 09), cross-spec-reviewed, re-confirmed by maintainer 2026-08-15. Amended again, [`0044`](../reviews/0044-spec-backend-service-lifecycle-container-topology.md) — FR-1 step 5 re-scoped for ADR 0015, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -91,12 +91,15 @@ names as "the hardest thing to test here."
   phase 03 itself registers none (Non-goals); (4) bind the listening
   socket and start `http.Server.Serve` — the process is now "alive,"
   `/healthz` reachable, `/readyz` correctly reporting not-yet-started;
-  (5) obtain a reachable PostgreSQL (in production, initialize the data
-  directory if absent and spawn the platform-appropriate managed instance,
-  `backend-persistence.md` FR-5; when a `DATABASE_URL` value is present
-  instead — the developer/CI/test path, `backend-configuration.md` FR-4's
-  third category — connect to it directly and skip the spawn step
-  entirely) and run pending migrations (`architecture-persistence.md`
+  (5) obtain a reachable PostgreSQL — in the Electron-hosted target's
+  production use, initialize the data directory if absent and spawn the
+  platform-appropriate managed instance (`backend-persistence.md` FR-5);
+  when a `DATABASE_URL` value is present instead — the Electron target's
+  developer/CI/test path, *or* the container-hosted target's normal
+  production path (amended 2026-08-16, ADR 0015; `backend-configuration.md`
+  FR-4's third category, `backend-persistence.md` FR-5) — connect to it
+  directly and skip the spawn step entirely — and run pending migrations
+  (`architecture-persistence.md`
   FR-5, ADR 0013); (6) construct the connection pool
   (`backend-persistence.md` FR-1) and store it in the atomic reference
   step 3's handlers already read — `/readyz` now performs its real
@@ -367,3 +370,5 @@ truncated or hung response, for any of them.
   Test strategy
 - Constitution §11 (copy), phase 03's own risk table ("global state and
   package-level singletons creeping in early")
+- ADR 0015 — the container-hosted target FR-1 step 5 was amended
+  2026-08-16 to cover, alongside the Electron-hosted target
