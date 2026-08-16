@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — DSN redaction in migration failure logging, self-reviewed, needs maintainer re-confirmation, see [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)) |
+| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in migration failure logging ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), container-target Postgres connection ([`0043`](../reviews/0043-spec-backend-persistence-container-topology.md)), both need maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0043`](../reviews/0043-spec-backend-persistence-container-topology.md) — FR-5 and Security considerations made target-dependent for ADR 0015, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -142,24 +142,34 @@ Non-goal.
   domain operation is exposed as one repository method that internally
   manages its own transaction, not as several methods the caller must
   sequence correctly.
-- **FR-5** In production (spawned by Electron via
-  `architecture-system.md`'s process model, `DATABASE_URL` absent per
-  `backend-configuration.md` FR-4's third category), `cmd/server` MUST
-  perform `architecture-persistence.md` FR-1 (data directory init if
-  absent) and FR-8/FR-9 (platform-specific spawn with orphan-prevention
-  on Linux/Windows) or FR-10 (on macOS, via FR-8 below) before attempting
-  to connect — implemented as a small
+- **FR-5** Which of two paths `cmd/server` takes at this step depends on
+  `DATABASE_URL`'s presence, and what that presence *means* is
+  target-dependent (amended 2026-08-16, ADR 0015; this FR previously
+  described the presence branch as a dev/CI/test-only path, before a
+  second target existed). **In the Electron-hosted target's production
+  use** (spawned by Electron via `architecture-system.md`'s process
+  model, `DATABASE_URL` absent per `backend-configuration.md` FR-4's
+  third category), `cmd/server` MUST perform `architecture-persistence.md`
+  FR-1 (data directory init if absent) and FR-8/FR-9 (platform-specific
+  spawn with orphan-prevention on Linux/Windows) or FR-10 (on macOS, via
+  FR-8 below) before attempting to connect — implemented as a small
   `internal/persistence/postgres/supervisor` (naming placeholder) package
   invoked from `backend-service-lifecycle.md` FR-1 step 5, on Linux and
   Windows directly (`os/exec` with the platform `SysProcAttr`,
   `architecture-persistence.md` FR-8/FR-9), and via a call to the
   separate `cmd/pg-supervisor` binary on macOS (FR-8 below,
-  `architecture-backend.md` FR-1's package layout). When a `DATABASE_URL`
-  value is present instead (`go run`, tests, CI — the developer/CI/test
-  path `backend-configuration.md` FR-4's table describes), this spawn
-  step MUST be skipped entirely — the process connects directly to
-  whatever `DATABASE_URL` points at, treating it as already running,
-  unmanaged by this process.
+  `architecture-backend.md` FR-1's package layout). **When a
+  `DATABASE_URL` value is present**, this spawn step MUST be skipped
+  entirely — the process connects directly to whatever `DATABASE_URL`
+  points at, treating it as already running, unmanaged by this process.
+  This is the Electron target's developer/CI/test override (`go run`,
+  tests, CI, per `backend-configuration.md` FR-4's table) **and** the
+  container-hosted target's normal production path (ADR 0015) — the code
+  path is identical either way; only which target is running determines
+  whether taking it is the exception or the rule. The container-hosted
+  target has no spawn-and-own alternative to fall back to at all — it is
+  not that its spawn step is skipped, it is that no such step exists for
+  that target to take.
 - **FR-6** Migrations (ADR 0013) run via `goose.Up`, invoked immediately
   after a successful connection (FR-5, or the direct `DATABASE_URL` path)
   and before `backend-service-lifecycle.md` FR-1 step 6's repository
@@ -315,16 +325,21 @@ FR-1.step5 -> (production: FR-5 init data dir + spawn Postgres per
   implementation (however unlikely, given ADR 0012's Postgres-specific
   choice) from being blocked by a domain-level API that assumes one
   driver's transaction type.
-- **`DATABASE_URL` bypass (FR-5) only active outside production** —
-  restates `architecture-system.md`'s Security considerations and
-  `backend-configuration.md` FR-4's split concretely: the spawn-skip path
-  exists for developer/test convenience and MUST NOT be reachable when
-  `cmd/server` is running as Electron's spawned child (there is no
-  Electron-supplied `DATABASE_URL` in that path at all, per
-  `backend-configuration.md` FR-4's table, so there's nothing to
-  accidentally trust — the two paths are distinguished by which
-  environment variable exists, not by a runtime flag someone could get
-  wrong).
+- **`DATABASE_URL` bypass (FR-5) is target-dependent, not universally
+  dev-only (amended 2026-08-16, ADR 0015)** — in the Electron-hosted
+  target, the spawn-skip path exists for developer/test convenience only
+  and MUST NOT be reachable when `cmd/server` is running as Electron's
+  spawned child (there is no Electron-supplied `DATABASE_URL` in that
+  path at all, per `backend-configuration.md` FR-4's table, so there's
+  nothing to accidentally trust). In the container-hosted target, the
+  same path is the *only* path — there is no spawn-and-own alternative to
+  fall back to, and reaching it is correct, not a bypass. Both statements
+  hold simultaneously because the two targets are mutually exclusive at
+  runtime (a given `cmd/server` process is started by exactly one of
+  them): the distinguishing signal is still which environment variable
+  exists, never a runtime flag someone could get wrong, exactly as
+  before — what changed is only that a second, legitimate reason for that
+  variable to exist now exists alongside the original one.
 - **The migration runner's narrow `database/sql` exception (FR-6) is
   scoped tightly on purpose** — the `pgx/v5/stdlib`-backed `*sql.DB` lives
   only inside the function that calls `goose.Up`, opened and closed
@@ -408,6 +423,8 @@ FR-1.step5 -> (production: FR-5 init data dir + spawn Postgres per
   side of
 - `architecture-testing.md` FR-3 — the dedicated bundled-spawn test suite
   distinct from routine integration tests
+- ADR 0015 — the container-hosted target FR-5 and Security considerations
+  were amended 2026-08-16 to cover, alongside the Electron-hosted target
 - `domain-bibliographic.md` FR-4/FR-7 — the reversible-merge operation
   cited as FR-4's motivating transactional example
 - Constitution §3 (domain boundaries), §4 (hostile input — FR-3's SQL
