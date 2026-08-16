@@ -46,6 +46,7 @@ deserves to know they were already weighed.
 | [0012](0012-postgres-driver.md) | PostgreSQL access uses `pgx` natively, not `database/sql` | Accepted |
 | [0013](0013-migration-tool.md) | Schema migrations use `goose`, embedded via `go:embed` | Accepted |
 | [0014](0014-job-queue-backend-postgresql.md) | Background job queue is PostgreSQL-backed, not a dedicated message broker | Accepted |
+| [0015](0015-container-topology.md) | A second deployment target ships the backend as a container, composed with PostgreSQL, alongside the Electron-hosted target | Accepted |
 
 ## Open questions not yet ADRs
 
