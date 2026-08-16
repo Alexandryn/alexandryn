@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` — amended after approval, moved back deliberately (see note) |
+| **Status** | `REVIEWED` — amended twice after approval, moved back deliberately both times (see notes) |
 | **Phase** | `01-architecture` |
-| **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira; amended 2026-08-14 |
+| **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira; amended 2026-08-14, amended again 2026-08-16 |
 | **Created** | 2026-08-13 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-16 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes 2026-08-13; amendment below not yet re-reviewed |
+| **Reviewed in** | [`.claude/reviews/0004-spec-architecture-system.md`](../reviews/0004-spec-architecture-system.md) — Approved with changes 2026-08-13; first amendment below not yet re-reviewed at the time of the second; both covered by [`0040`](../reviews/0040-spec-architecture-system-container-topology.md) |
 
 **Amendment note (2026-08-14):** drafting `architecture-persistence.md`
 surfaced that production PostgreSQL needs to be bundled and managed by the
@@ -20,6 +20,20 @@ this spec's original FR-1 ("exactly two"). Per constitution §1 and
 through review rather than let the amendment happen silently — FR-1, FR-2,
 new FR-12, Security considerations, and Open questions are updated below.
 Status moved back to `REVIEWED` until the maintainer confirms the amendment.
+
+**Amendment note (2026-08-16):** ADR 0015 adds a second, additive deployment
+target — the backend containerized, composed with PostgreSQL, no Electron
+process at all — alongside the target this spec described exhaustively.
+FR-1 and FR-2 stated "a running instance MUST consist of..." as if only one
+topology were legal; Security considerations stated that an
+externally-supplied `DATABASE_URL` "is not how a shipped instance gets its
+database," which is no longer true of the container-hosted target. This
+amendment scopes those statements to the Electron-hosted target
+specifically and adds the container-hosted target as an equally legal
+second shape, rather than treating the first amendment's topology as the
+only one anyone would ever add. FR-1, FR-2, Security considerations, and
+Open questions are updated below. Status stays `REVIEWED`, unconfirmed by
+the maintainer for this second amendment.
 
 ## Context
 
@@ -68,8 +82,14 @@ does each process do when the one next to it is slow, crashed, or hostile.
 - Authentication and pairing — phase 12, phase 13. This spec places the
   boundary where the credential will eventually be checked; it does not
   design the credential
-- Multi-host or cloud deployment — explicitly out of scope for v1
-  (phase 01's own scope says so)
+- Multi-host deployment — a single running instance's processes (Electron
+  target) or containers (container target, ADR 0015) spread across more
+  than one host — remains explicitly out of scope; each target's two
+  containers or three-to-four processes run on one host. **Cloud
+  deployment is no longer a non-goal**: ADR 0015's container target is
+  designed to run unmodified on a cloud host exactly as it runs on a home
+  server — this bullet originally conflated the two, before that target
+  existed
 - Test tooling, fixtures, and what runs in CI — `architecture-testing.md`
 - Messaging architecture — the conditions under which work becomes
   asynchronous (phase 01's scope lists this as in-scope for the phase, but no
@@ -91,28 +111,41 @@ every contributor reasoning about failure:
 
 ## Functional requirements
 
-- **FR-1** A running instance MUST consist of three long-running processes
-  on the host — the Electron application (main + renderer), the Go server,
-  and a bundled PostgreSQL instance the Go server spawns and owns (ADR
-  0007 — amended 2026-08-14; this spec originally said "exactly two,"
-  written before production Postgres provisioning was decided) — **or four
-  on macOS specifically**, where PostgreSQL orphan-prevention needs an
-  additional small supervisor process Alexandryn writes
-  (`architecture-persistence.md` FR-10), because macOS has no parent-side
-  spawn-time death-signal mechanism the way Linux and Windows do. None of
-  these are ever compiled or run as a single binary. Postgres is never
-  spawned by anything other than the Go server (or, on macOS, the
-  supervisor acting on the Go server's behalf) — this keeps FR-5's "only
-  the Go server talks to Postgres" true of process ownership, not just
-  network access.
-- **FR-2** The Electron main process MUST spawn the Go server as a child
-  process on application start, and MUST terminate it on application quit —
-  the Go server's lifetime is a subset of the Electron app's lifetime, never
-  the reverse. The Go server MUST spawn PostgreSQL the same way, one level
-  down: Postgres's lifetime is a subset of the Go server's, which is a
-  subset of Electron's. Orphan-prevention (ADR 0005, `FR-10` below) applies
-  at each level — the Go server must not survive Electron's disappearance,
-  and Postgres must not survive the Go server's.
+- **FR-1** A running instance MUST take one of two legal shapes (ADR 0015 —
+  amended 2026-08-16; this FR previously described only the first shape as
+  if it were exhaustive). **The Electron-hosted target**: three
+  long-running processes on the host — the Electron application (main +
+  renderer), the Go server, and a bundled PostgreSQL instance the Go server
+  spawns and owns (ADR 0007 — amended 2026-08-14; this spec originally said
+  "exactly two," written before production Postgres provisioning was
+  decided) — **or four on macOS specifically**, where PostgreSQL
+  orphan-prevention needs an additional small supervisor process Alexandryn
+  writes (`architecture-persistence.md` FR-10), because macOS has no
+  parent-side spawn-time death-signal mechanism the way Linux and Windows
+  do. Within this target, none of its processes are ever compiled or run as
+  a single binary, and Postgres is never spawned by anything other than the
+  Go server (or, on macOS, the supervisor acting on the Go server's
+  behalf) — this keeps FR-5's "only the Go server talks to Postgres" true
+  of process ownership, not just network access, for this target
+  specifically. **The container-hosted target** (ADR 0015): two containers
+  — the Go server and a separate PostgreSQL instance — with no Electron
+  process at all and no spawn relationship between them; each is started
+  and stopped by the container orchestrator, not by the other.
+- **FR-2** **In the Electron-hosted target**, the Electron main process
+  MUST spawn the Go server as a child process on application start, and
+  MUST terminate it on application quit — the Go server's lifetime is a
+  subset of the Electron app's lifetime, never the reverse. The Go server
+  MUST spawn PostgreSQL the same way, one level down: Postgres's lifetime
+  is a subset of the Go server's, which is a subset of Electron's.
+  Orphan-prevention (ADR 0005, `FR-10` below) applies at each level — the
+  Go server must not survive Electron's disappearance, and Postgres must
+  not survive the Go server's. **In the container-hosted target** (ADR
+  0015), there is no spawn relationship: the Go server and PostgreSQL are
+  independent containers, each started and stopped by the container
+  orchestrator, and the Go server connects to Postgres over the network
+  using a configured `DATABASE_URL` (`backend-configuration.md` FR-4,
+  `backend-persistence.md` FR-5) rather than spawning and owning it.
+  Neither target's shutdown ordering constrains the other.
 - **FR-3** The Go server MUST bind to `127.0.0.1` (loopback) only, on a port
   chosen at startup, until phase 12/13 introduce authenticated LAN binding
   (constitution §6). The port MUST NOT be hardcoded such that two instances
@@ -280,15 +313,23 @@ Additional, specific to this spec:
   application's own bundled binary, never a path influenced by
   renderer-supplied or environment-supplied input, or a compromised renderer
   could attempt to have Electron spawn something else.
-- **PostgreSQL as a spawned child process (ADR 0007)** — same requirement,
-  one level down: the Go server chooses the bundled `postgres` binary path
-  and initializes its own data directory, never influenced by renderer- or
-  network-supplied input. In production, the Go server generates its own
+- **PostgreSQL as a spawned child process (ADR 0007), in the
+  Electron-hosted target** — same requirement, one level down: the Go
+  server chooses the bundled `postgres` binary path and initializes its own
+  data directory, never influenced by renderer- or network-supplied input.
+  In that target's production use, the Go server generates its own
   connection string after spawning Postgres itself — it does not receive
-  `DATABASE_URL` from an external source the way the dev setup does
-  (ADR 0004's addendum, Supabase CLI stack). That dev-only external-config
-  path stays real for development; it is not how a shipped instance gets
-  its database.
+  `DATABASE_URL` from an external source the way the dev setup does (ADR
+  0004's addendum, Supabase CLI stack). **In the container-hosted target
+  (ADR 0015), the opposite is true by design**: `DATABASE_URL` is the
+  normal, expected way the Go server learns where Postgres is — either the
+  bundled sibling container's Compose-network address (the zero-config
+  default) or an externally managed instance the operator points it at (the
+  customization/cloud-migration path). An earlier version of this paragraph
+  stated flatly that the external-config path "is not how a shipped
+  instance gets its database" — that was true only of the Electron-hosted
+  target, corrected here rather than left as a project-wide absolute it was
+  never meant to be once a second target existed.
 - **Control-plane channel (main ↔ Go server)** — narrower than the HTTP API,
   but still a boundary: if the port-announcement mechanism (stdout, above) is
   used, the main process must not trust anything else printed to that stream
@@ -370,6 +411,20 @@ execution:
   above). Owner: `architecture-desktop-host.md`, since it owns the spawn
   mechanism, informed by phase 03's `backend-configuration.md` and phase 12's
   credential design once that exists.
+- **`BIND_ADDRESS`'s loopback-only rule inside a container's own network
+  namespace (ADR 0015, `backend-configuration.md` FR-8)** — "loopback"
+  and "unreachable from outside the process's own network boundary" are
+  the same statement on bare metal and a different one inside a
+  container, where a process bound to `0.0.0.0` may still be reachable by
+  nothing outside its own isolated Compose network before Docker
+  publishes a port. Not resolved here; owner is the new deployment spec
+  ADR 0015's amendment plan names (`.claude/audits/0002-topology-gap.md`
+  A-02-11).
+- **Local-dev parity between the Electron target's Supabase-backed dev
+  loop, its own bundled-Postgres mechanism, and the container target's
+  Compose file (ADR 0015)** — three separate Postgres-provisioning
+  mechanisms now exist; whether any should be retired or unified is a real
+  open question, not decided by this amendment or by ADR 0015 itself.
 - **Messaging/async architecture has no owning spec** — phase 01's scope
   lists "the conditions under which work becomes asynchronous" as in-scope
   for the phase, but its Specifications table names no spec for it, and this
@@ -390,6 +445,8 @@ execution:
 - ADR 0007 — production PostgreSQL is bundled and managed by the Go server;
   the reason FR-1, FR-2, FR-10, and Security considerations were amended
   2026-08-14
+- ADR 0015 — a second, container-hosted deployment target; the reason FR-1,
+  FR-2, and Security considerations were amended again 2026-08-16
 - `architecture-desktop-host.md` — resolved second-instance handling (FR-4)
 - `.claude/roadmap/01-architecture/README.md` — this spec's parent phase
 - `.claude/roadmap/03-backend-foundation/README.md`,
