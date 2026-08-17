@@ -34,10 +34,14 @@ labels are load-bearing — automated contributors gate on them.
 to what replaced them. The wrong turns are part of the record; a future
 contributor needs to know an option was tried, not just that it isn't here.
 
-**Detail decreases with distance.** Near phases are specified thoroughly.
-Distant phases are outlines, because writing detailed requirements for phase 14
-before phase 02 exists produces confident fiction. Outlines are marked as such
-and expanded when the phase is approached.
+**Detail decreases with distance — measured in undecided dependencies, not
+a fixed phase number.** Phases whose dependencies haven't closed are
+outlines, because writing detailed requirements for phase 14 before
+phase 12/13 exist produces confident fiction. Outlines are marked as such
+and expanded when the phase is approached — as of this writing, that's
+phases 00 through 11; 12 onward are still outlines. Check
+`roadmap/README.md`'s own status table for the current line, not this
+paragraph, since this one won't be updated every time a phase closes.
 
 **No secrets, no personal data.** This directory will be public.
 
