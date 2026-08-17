@@ -6,9 +6,9 @@
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-16 |
+| **Last updated** | 2026-08-17 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md) — FR-10 added for ADR 0015's container target, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md) — FR-10 added for ADR 0015's container target, self-reviewed, needs maintainer re-confirmation; FR-10's mechanism corrected 2026-08-17 (loopback-safe healthcheck observation, not a network-based check) |
 
 ## Context
 
@@ -193,17 +193,30 @@ test").
   the unit and integration test runs in CI — phase 03's own exit
   criterion ("tests pass with the race detector enabled"), made a
   concrete CI flag rather than left as an aspiration.
-- **FR-10** (Added 2026-08-16, ADR 0015) A dedicated container-target test
-  MUST exist alongside FR-7's bundled-spawn suite, exercising the
-  container-hosted target's own startup path rather than the
-  Electron-hosted target's: build the `Dockerfile` image, run
-  `docker compose --profile bundled-db up` against the repository-root
-  `docker-compose.yml`, and assert the `backend` container reaches
-  `Ready` (`/readyz` returns 200) against the sibling `postgres`
-  container — proving the `DATABASE_URL`-present branch
-  (`backend-persistence.md` FR-5) actually connects, migrates
-  (`architecture-persistence.md` FR-5), and serves, not just that the
-  code compiles. Unlike FR-7's bundled-spawn suite, this test has no
+- **FR-10** (Added 2026-08-16, ADR 0015; mechanism corrected same day —
+  see Open questions) A dedicated container-target test MUST exist
+  alongside FR-7's bundled-spawn suite, exercising the container-hosted
+  target's own startup path rather than the Electron-hosted target's:
+  build the `Dockerfile` image, which MUST declare a `HEALTHCHECK`
+  hitting the backend's own `/healthz` (or `/readyz`, once distinct
+  liveness/readiness checks are wired to Docker's health status — an
+  implementation detail, not fixed here) over loopback *from inside the
+  container's own namespace* — compatible with `backend-configuration.md`
+  FR-8's loopback-only bind, since a `HEALTHCHECK` command executes the
+  same way `docker exec` does, never from outside the container. The
+  test itself runs `docker compose --profile bundled-db up --wait`
+  against the repository-root `docker-compose.yml` — Compose's `--wait`
+  flag blocks until every service with a healthcheck reports healthy (or
+  the configured timeout elapses) and exits non-zero on failure, so the
+  assertion is made through the daemon's own health status, never by a
+  test runner or sibling service reaching over the Compose network. This
+  proves the `DATABASE_URL`-present branch (`backend-persistence.md`
+  FR-5) actually connects, migrates (`architecture-persistence.md`
+  FR-5), and serves, not just that the code compiles — the assertion is
+  unweakened by observing it this way rather than externally; it is
+  still "did the backend actually become ready," just checked through
+  the mechanism that doesn't require relaxing the loopback bind to ask
+  the question. Unlike FR-7's bundled-spawn suite, this test has no
   platform-specific spawn/orphan-prevention mechanism to exercise — it is
   expected to be fast and platform-independent (Docker itself, not the
   application, owns process supervision), so it MUST run in the same
@@ -332,14 +345,20 @@ against it.
   "nightly/on-merge-to-main" is not decided; needs a real runtime
   measurement once the suite exists, same placeholder-pending-measurement
   pattern this whole phase has used.
-- **Container-target test's exact tooling (FR-10)** — whether the compose-
-  startup assertion is a shell script CI step, a Go test driving `docker
-  compose` via `os/exec`, or a dedicated tool (e.g. `testcontainers-go`'s
-  compose support) is not fixed here; FR-10 only requires that the
-  assertion exists and blocks merge. Owner: the new deployment spec this
-  ADR's amendment plan names (`.claude/audits/0002-topology-gap.md`
-  A-02-11), since it also owns the `Dockerfile`/`docker-compose.yml`
-  content this test runs against.
+- **Container-target test's exact CI invocation (FR-10)** — the
+  observation *mechanism* is fixed (`HEALTHCHECK` inside the container,
+  `docker compose ... --wait` observing the daemon's own health status,
+  never a network-based check crossing the loopback boundary), corrected
+  2026-08-16 after an initial draft implied the assertion might be made
+  from outside the container, which `backend-configuration.md` FR-8's
+  loopback bind would have made impossible. What's still open: whether
+  `--wait`'s exit code alone is a sufficient CI assertion, or whether a
+  follow-up `docker inspect --format='{{.State.Health.Status}}'` check
+  should run too for a clearer failure message; and the exact healthcheck
+  target (`/healthz` vs `/readyz`) and interval/timeout/retries tuning.
+  Owner: the new deployment spec this ADR's amendment plan names
+  (`.claude/audits/0002-topology-gap.md` A-02-11), since it also owns the
+  `Dockerfile`/`docker-compose.yml` content this test runs against.
 - **`internal/testutil`'s exact package location/name** — a naming
   placeholder in this spec (FR-4, FR-5, FR-6); `architecture-backend.md`'s
   `internal/` layout doesn't currently name it, so this spec's

@@ -4,8 +4,8 @@
 |---|---|
 | **Subject** | `.claude/specs/backend-test-harness.md` |
 | **Reviewer** | Claude (Sonnet 5), self-reviewed — independent read still pending |
-| **Date** | 2026-08-16 |
-| **Verdict** | Approved with changes (finding below fixed before this review) |
+| **Date** | 2026-08-16, mechanism finding added 2026-08-17 |
+| **Verdict** | Approved with changes (both findings fixed before this review) |
 
 ## Summary
 
@@ -21,6 +21,15 @@ Acceptance criteria, and Open questions to match.
 | # | Severity | Area | Finding | Required change |
 |---|---|---|---|---|
 | 1 | Minor | FR-10 cadence | An early draft of FR-10 mirrored FR-7's "MAY run on a different trigger/cadence" language without arguing for it — FR-7's own reasoning for a possibly-different cadence is platform-sensitivity (macOS/Windows/Linux orphan-prevention differ), which has no equivalent for a container test that's the same on every CI runner | Fixed — FR-10 states the opposite default (same per-PR job as routine integration tests) and gives the actual reason (Docker owns process supervision, no platform-specific spawn mechanism to be slow or flaky), rather than defaulting to FR-7's shape for no stated reason |
+| 2 | Blocking | FR-10 mechanism | The version of FR-10 first drafted said the test would "assert the backend container reaches Ready... against the sibling postgres container" without naming a mechanism, which was about to be implemented as a network-based check from a test runner or sibling container — genuinely impossible against `backend-configuration.md` FR-8's loopback-only bind, since nothing outside a container's own namespace can reach its loopback address. Caught before drafting the deployment spec that would have had to implement it. | Fixed — FR-10 now specifies `HEALTHCHECK` in the `Dockerfile`, executing inside the container's own namespace (the same relationship `docker exec` has to the container, confirmed against Docker's own Compose reference documentation), observed via `docker compose ... --wait`'s exit code against the daemon's own health status — never a network path crossing the loopback boundary. No amendment to `backend-configuration.md` FR-8 needed; constitution §6 is not reinterpreted |
+
+**On Finding 2:** this was raised as a stop condition in this session rather
+than resolved unilaterally — two approved documents (this FR as first
+drafted, and `backend-configuration.md` FR-8) appeared to conflict, with no
+code yet to settle which one was wrong. Verified against Docker's own
+documentation before acting on the correction, per the same "cite before
+you claim it" discipline this project's review process already requires
+everywhere else.
 
 ## Dimensions checked
 
