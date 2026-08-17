@@ -8,12 +8,20 @@ A phase closes when its exit criteria are met — not when the happy path works.
 
 ## How to read this
 
-**Detail decreases with distance.** Phases 00–05 are specified in depth because
-they are next. Phases 06 onward are outlines, and say so at the top. Writing
-detailed requirements for phase 14 before the domain model exists produces
-confident fiction that later gets treated as a decision.
+**Detail decreases with distance — but "distance" means undecided
+dependencies, not a fixed phase number.** Phases 00–11 are now specified in
+full: each has approved specs, not an outline. Phases 12–17 and 99 are
+still outlines, and say so at the top, because their dependencies (
+authentication, network exposure, the reader) haven't closed yet. Writing
+detailed requirements for phase 14 before phase 12/13 exist produces
+confident fiction that later gets treated as a decision — the same
+reasoning that applied to phase 06 before phase 03/04 closed, and no
+longer applies to it now that they have.
 
-Each outline is expanded into a full phase document when its dependencies close.
+Each outline is expanded into a full phase document when its dependencies
+close, at which point this section's phase-count above stops being
+accurate for it — check the phase's own status line, not this paragraph,
+for what's currently true.
 
 ## The phases
 
@@ -22,15 +30,15 @@ Each outline is expanded into a full phase document when its dependencies close.
 | [00](00-foundation/) | Foundation | Repository, engineering memory, CI skeleton | **In progress** |
 | [01](01-architecture/) | Architecture | System, frontend, backend, host, persistence and messaging design | In progress |
 | [02](02-domain/) | Domain | The model: works, editions, files, sources, progress | In progress |
-| [03](03-backend-foundation/) | Backend foundation | Go service skeleton, config, logging, errors, migrations, health | Not started |
-| [04](04-frontend-foundation/) | Frontend foundation | React shell, design tokens, component library, routing, data layer | Not started |
-| [05](05-desktop-host/) | Desktop host | Electron shell, IPC boundary, lifecycle, loopback serving | Not started |
-| [06](06-library/) | Library | Browse, collections, search, filter, sort — the first real slice | Not started |
-| [07](07-metadata/) | Metadata | Open Library adapter, normalisation, caching, Discover | Not started |
-| [08](08-sources/) | Sources | Source abstraction, capabilities, first provider | Not started |
-| [09](09-async-jobs/) | Async jobs | Background work where it is actually justified | Not started |
-| [10](10-import/) | Import | Discovery → extraction → matching → confirmation → persistence | Not started |
-| [11](11-reader/) | Reader | Reading, position, preferences | Not started |
+| [03](03-backend-foundation/) | Backend foundation | Go service skeleton, config, logging, errors, migrations, health | Specs approved (+1 pending), implementation not started |
+| [04](04-frontend-foundation/) | Frontend foundation | React shell, design tokens, component library, routing, data layer | Specs approved, implementation not started |
+| [05](05-desktop-host/) | Desktop host | Electron shell, IPC boundary, lifecycle, loopback serving | Specs approved, implementation not started |
+| [06](06-library/) | Library | Browse, collections, search, filter, sort — the first real slice | Specs approved, implementation not started |
+| [07](07-metadata/) | Metadata | Open Library adapter, normalisation, caching, Discover | Specs approved, implementation not started |
+| [08](08-sources/) | Sources | Source abstraction, capabilities, first provider | Specs approved, implementation not started |
+| [09](09-async-jobs/) | Async jobs | Background work where it is actually justified | Specs approved, implementation not started |
+| [10](10-import/) | Import | Discovery → extraction → matching → confirmation → persistence | Specs approved, implementation not started |
+| [11](11-reader/) | Reader | Reading, position, preferences | Specs approved, implementation not started |
 | [12](12-authentication/) | Authentication | Accounts, sessions, authorisation | Not started |
 | [13](13-network-access/) | Network access | LAN exposure, binding, pairing, transport security | Not started |
 | [14](14-devices-and-sync/) | Devices and sync | Device management, progress across devices | Not started |
