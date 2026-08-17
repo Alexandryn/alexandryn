@@ -23,6 +23,47 @@ cp .env.example .env      # DATABASE_URL matches the URL supabase start prints
 `supabase stop` when done. Nothing here is a cloud dependency — no Supabase
 account needed, no data leaves the machine.
 
+## Commands
+
+**No build exists yet.** There is no `go.mod`, no `package.json`, and no
+CI workflow file in this repository — every command below is what the
+approved specs require to exist, not something you can run today. Each is
+traced to the functional requirement that mandates it, so this list stays
+checkable against the spec set rather than becoming its own, separately
+maintainable claim.
+
+| Purpose | Command | Required by |
+|---|---|---|
+| Build backend | `go build ./cmd/server` (and `./cmd/pg-supervisor` on macOS) | `backend-test-harness.md` FR-8, `architecture-testing.md` FR-8 |
+| Build frontend | `npm run build` (inside `web/`, produces `web/dist`) | `frontend-tooling.md` FR-1/FR-6, must run **before** the backend build (ADR 0008's `go:embed` ordering) |
+| Build container image | `docker build .` | `deployment-container-packaging.md` FR-1 |
+| Run unit tests | `go test ./...` (no tag; MUST NOT require PostgreSQL, Docker, or any external service) | `backend-test-harness.md` FR-1 |
+| Run integration tests | `go test -tags=integration ./...`, with `TEST_DATABASE_URL` set | `backend-test-harness.md` FR-2 |
+| Run the bundled-spawn suite | `go test -tags=spawn ./...` (`spawn` is the spec's own named example — *"`//go:build spawn`, or an equivalent distinct tag"* — not fixed as the literal, final tag name) | `backend-test-harness.md` FR-7 |
+| Run with the race detector | `go test -race ./...` (unit and integration) | `backend-test-harness.md` FR-9 |
+| Bring up the container target | `docker compose --profile bundled-db up --wait` | `deployment-container-packaging.md` FR-4, `backend-test-harness.md` FR-10 |
+| Run frontend unit/component tests | Vitest (exact `npm` script alias not fixed by any FR — the tool is `frontend-tooling.md` FR-7's, the invocation is an implementation choice) | `frontend-tooling.md` FR-7 |
+| Run frontend lint | ESLint, with `typescript-eslint` and `eslint-plugin-jsx-a11y` (same caveat — tool fixed, script alias not) | `frontend-tooling.md` FR-3 |
+| Dependency vulnerability scan (Go) | `govulncheck ./...` | `architecture-testing.md` FR-5, `backend-test-harness.md` FR-8 stage 8 |
+| Run backend dev server | `go run ./cmd/server [--config <path>]` | `backend-configuration.md` FR-5 |
+| Run frontend dev server | `npm run dev` (inside `web/`, Vite) | `frontend-tooling.md` FR-1; referenced by `desktop-host-process-model.md` |
+
+**Where a tool is genuinely unchosen, this list says so instead of
+guessing:**
+
+- **Backend general lint** — `golangci-lint` is referenced by name across
+  several specs (`backend-test-harness.md` Non-goals, `backend-configuration.md`
+  review `0024`) as the presumed tool, but no ADR or spec FR formally
+  selects it, and its rule configuration is explicitly deferred
+  (`architecture-testing.md` Non-goals: *"Specific lint rule
+  configuration... phase 03/04's to tune"*). No command given.
+- **Backend import-boundary lint** — the mechanism that enforces
+  `architecture-backend.md` FR-2/FR-3 (domain must not import
+  persistence/transport) is unchosen among three named candidates: *"a
+  `go/analysis` pass, a `golangci-lint` custom rule, or an interim
+  grep-based CI script"* (`architecture-backend.md` Open questions,
+  `backend-configuration.md` review `0024`). No command given.
+
 ## The short version
 
 1. Behaviour changes start with a specification, not a branch.
