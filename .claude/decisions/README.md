@@ -54,8 +54,8 @@ Things known to need deciding, with the phase that will force the question:
 
 | Question | Forced by |
 |---|---|
-| Frontend data-fetching and state approach | Phase 01 |
-| Where the API contract is defined, and who owns it — format fixed as OpenAPI (ADR 0006); ownership/versioning/design still open | Phase 01 |
+| ~~Frontend data-fetching and state approach~~ — resolved without an ADR, see `frontend-shell-and-routing.md` FR-2 (TanStack Query, v5, pinned major) | Phase 01 |
+| ~~Where the API contract is defined, and who owns it~~ — format fixed as OpenAPI (ADR 0006); ownership/versioning/design resolved without an ADR, see `architecture-contracts.md` FR-4 (path-based versioning, `/api/v1/...`) | Phase 01 |
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
 | How the reader renders EPUB, and in what sandbox | Phase 11 |
 | Credential storage on the host | Phase 12 |
