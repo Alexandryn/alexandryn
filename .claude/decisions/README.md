@@ -7,6 +7,24 @@ ask "why on earth is it like this?"
 Not every choice needs an ADR. Which HTTP library — probably not. Whether the
 domain layer may import the HTTP library — yes.
 
+**A decision meeting that bar gets its own ADR even when it's first made
+while drafting a spec, not only when drafting an ADR directly.** Two
+choices of the same weight as the backend's own ADR 0011–0014 —
+`frontend-shell-and-routing.md` FR-2 (TanStack Query as the data-fetching
+library, constraining every later frontend spec that fetches data) and
+`architecture-contracts.md` FR-4 (the API's path-based versioning scheme,
+constraining every endpoint-owning spec since) — were settled as spec FRs
+only, with no standalone ADR, found during the 2026-08-16/17 spec-set
+review. Both meet the criterion above (constrains later specs; a
+reviewer would reasonably ask "why is it like this"); neither is
+retroactively getting an ADR now, since retro-fitting one for an
+already-settled, working decision has less value than fixing the gap
+going forward — a spec's FR is where a decision meeting this bar is
+*applied*, and may cite an ADR, but does not substitute for filing one.
+When drafting or reviewing a spec, a decision inside it that independently
+meets this page's own criterion needs its own ADR, filed alongside the
+spec, not folded silently into the FR text.
+
 ## Conventions
 
 - Filename: `NNNN-short-kebab-title.md`, numbered sequentially, never reused
