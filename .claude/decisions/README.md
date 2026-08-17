@@ -60,3 +60,4 @@ Things known to need deciding, with the phase that will force the question:
 | How the reader renders EPUB, and in what sandbox | Phase 11 |
 | Credential storage on the host | Phase 12 |
 | Transport security on the LAN | Phase 13 |
+| Non-loopback bind for the container-hosted target (ADR 0015) — `backend-configuration.md` FR-8 stays literal until then; when authentication exists, this needs an explicit amendment through the review gate, gated on an explicit container-mode signal rather than defaulted, with `deployment-container-packaging.md` FR-6's CI guard updated to match rather than removed | Phase 12/13 |
