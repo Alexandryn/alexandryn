@@ -113,6 +113,66 @@ what's done, what's unresolved, what's risky, and wait.
 Specs move `DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED`. Nothing
 below `APPROVED` gets built.
 
+## Boundaries
+
+Every entry here restates something the constitution or an existing
+Reflex already binds — nothing below is a new rule invented for this
+list.
+
+**Always**
+- Spec before implementation; nothing below `APPROVED` gets built (§1).
+- Write the failing test before the code that makes it pass (§2).
+- Keep metadata / source / Alexandryn boundaries separate; normalise at
+  the boundary (§3).
+- Validate every external input — source response, book file, network
+  request, IPC message — with a size limit, shape check, and timeout (§4).
+- Enumerate the Electron preload surface; validate every argument in the
+  main process (§5).
+- Bind the host to loopback until phase 12/13's authentication exists
+  (§6).
+- Treat accessibility as part of "done," not a follow-up pass (§7).
+- Emit structured logs, request IDs, health checks, and useful failure
+  messages from the first line of server code (§8).
+- Record a reason for every new dependency: what it does, why not
+  stdlib, what breaks if it's abandoned (§9).
+- Run the four-attacker adversarial pass before a substantial feature
+  closes; record findings in `.claude/audits/`, rated honestly (§10).
+- Write interface copy that's plain, specific, and calm (§11).
+- State uncertainty plainly — if something's unverified or a test was
+  skipped, say so (§12).
+
+**Ask first**
+- Amending the constitution itself (its own "Amending this document"
+  clause).
+- Crossing either review gate — after the spec review, after the security
+  audit. The constitution states an automated contributor "must not cross
+  a gate on its own judgement" (Review gates).
+- Anything that changes behaviour, per `CONTRIBUTING.md`'s own line: a
+  typo or CI fix is a PR, anything else starts as an issue and a spec.
+- Adding a new dependency — before adding it, not only recorded after
+  (§9; `CODEOWNERS` singling out `package.json`/`go.mod`/lockfiles for
+  required review is the same rule enforced mechanically).
+
+**Never**
+- Implement anything below `APPROVED` spec status (§1).
+- Delete or skip a failing test to make a build green (§2).
+- Let a metadata provider's response shape reach the UI, or a source's
+  protocol reach the domain (§3).
+- Treat "the user configured it, so it's fine" as a threat model (§4).
+- Disable context isolation or the sandbox, enable Node integration in a
+  renderer, or expose a general-purpose file/shell/network primitive from
+  the preload (§5).
+- Ship a build where the library is reachable from another machine
+  without a credential (§6).
+- Log source credentials, session tokens, full home-directory paths, or
+  the contents of what someone is reading (§8).
+- Add a dependency with no recorded reason (§9).
+- Inflate or deflate a security finding's severity (§10).
+- Use marketing voice, apologise, or use exclamation marks in interface
+  copy (§11).
+- Record a guess as a decision instead of as a guess, in an ADR, for the
+  next person to re-examine (§12).
+
 ## Reflexes for this codebase
 
 - Treat every source response, book file, network request, and IPC message as
