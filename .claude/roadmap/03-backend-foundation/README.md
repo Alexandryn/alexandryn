@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Specs approved, implementation not started |
+| **Status** | Original six specs approved, implementation not started; `deployment-container-packaging.md` (added 2026-08-17) `REVIEWED`, awaiting approval |
 | **Depends on** | Phase 01, Phase 02 |
 | **Blocks** | 05, 06, 12 |
 
@@ -48,6 +48,10 @@ retrofit will ever catch up.
   deterministic fixtures, and a clock that tests control
 - CI: build, vet, lint, test, race detector, coverage reporting, dependency
   audit
+- Container deployment packaging: the Dockerfile and docker-compose.yml
+  for the container-hosted target (ADR 0015), unreachable by design until
+  phase 12/13 — the baseline packaging design, not release-time
+  hardening, which stays phase 99's
 
 **Out**
 
@@ -67,6 +71,7 @@ retrofit will ever catch up.
 | `backend-http-transport.md` | Router, middleware, limits, timeouts, response shape |
 | `backend-persistence.md` | PostgreSQL connection lifecycle, migrations, repositories, transactions, corruption |
 | `backend-test-harness.md` | Integration harness, fixtures, controllable clock, CI |
+| `deployment-container-packaging.md` | Dockerfile, docker-compose.yml, container-target health checks and CI guard |
 
 ## Architecture decisions expected
 
@@ -136,9 +141,12 @@ readiness.
 
 ## Exit criteria
 
-- [x] All six specifications `APPROVED` with recorded reviews — self +
-      independent review (`0022`), all findings fixed, approved by the
-      maintainer 2026-08-14
+- [x] All six original specifications `APPROVED` with recorded reviews —
+      self + independent review (`0022`), all findings fixed, approved
+      by the maintainer 2026-08-14
+- [ ] `deployment-container-packaging.md` `APPROVED`, added 2026-08-17 for
+      ADR 0015's container target — currently `REVIEWED`, self-reviewed
+      only, needs maintainer approval
 - [ ] The service starts, serves health, and shuts down gracefully under load
 - [ ] Migrations apply to an empty database and to a populated one
 - [ ] Tests pass with the race detector enabled

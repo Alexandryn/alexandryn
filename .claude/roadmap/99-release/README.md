@@ -19,7 +19,11 @@ document and show: `docs` and `website` (ADR 0006).
 **In**
 
 - Electron installers (Linux, macOS, Windows)
-- Docker/Compose self-hosting stack
+- Docker/Compose self-hosting stack: release-time hardening and
+  verification (persistent volumes, image tagging/versioning, registry
+  publishing) of the baseline `Dockerfile`/`docker-compose.yml` phase 03's
+  `deployment-container-packaging.md` (ADR 0015) already designs — this
+  phase doesn't design the container target from scratch
 - Semantic versioning, changelog, public release process
 - The `alexandryn` repo's OpenAPI spec finalised and published as this
   repo's own API-contract artifact (`architecture-contracts.md`, phase 01) —
@@ -40,7 +44,8 @@ document and show: `docs` and `website` (ADR 0006).
 ## Exit criteria
 
 - [ ] Installers built and tested on all three desktop platforms
-- [ ] Docker self-hosting stack verified with persistent volumes
+- [ ] Docker self-hosting stack (phase 03's baseline, hardened here)
+      verified with persistent volumes
 - [ ] OpenAPI spec published and versioned alongside the release it describes
 - [ ] `docs` repo created, with self-hosting and admin documentation complete
 - [ ] `website` repo created, with the landing page live
