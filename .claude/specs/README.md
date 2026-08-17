@@ -76,3 +76,4 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`backend-reader-content.md`](backend-reader-content.md) | EPUB content resolution, sanitisation, sandbox-supporting response headers | 11 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
 | [`backend-reading-api.md`](backend-reading-api.md) | ReadingProgress/Bookmark/Highlight/ReadingPreferences persistence, `/api/v1/reading*` | 11 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
 | [`frontend-reader.md`](frontend-reader.md) | Reader UI: rendering engine, pagination/scrolling, typography, TOC, bookmarks/highlights | 11 | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| [`deployment-container-packaging.md`](deployment-container-packaging.md) | Dockerfile, docker-compose.yml, container-target health checks and CI guard | 03 | `REVIEWED` (self, approved with changes) |
