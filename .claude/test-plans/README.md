@@ -1,7 +1,11 @@
 # Test plans
 
 A test plan accompanies each specification and is written *before* the
-implementation. Start from [`../templates/test-plan.md`](../templates/test-plan.md).
+implementation — concretely, before that specification's own phase
+reaches its RED step, not immediately upon the spec's own approval; see
+[ADR 0016](../decisions/0016-test-plan-cadence.md) for why phases 04
+onward having no test plan yet is the intended cadence, not a gap. Start
+from [`../templates/test-plan.md`](../templates/test-plan.md).
 
 The plan's job is not to enumerate every test. It is to decide where confidence
 needs to come from, so that effort lands on the parts most likely to be wrong

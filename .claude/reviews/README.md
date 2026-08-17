@@ -91,3 +91,4 @@ next person from looking.
 | [0044](0044-spec-backend-service-lifecycle-container-topology.md) | Spec — `backend-service-lifecycle.md`, amendment (container topology, ADR 0015) | 2026-08-16 | Approved with changes (no findings), self-reviewed — needs independent read |
 | [0045](0045-spec-backend-test-harness-container-topology.md) | Spec — `backend-test-harness.md`, amendment (container topology, ADR 0015 — FR-10 added) | 2026-08-16 | Approved with changes (finding fixed before this review), self-reviewed — needs independent read |
 | [0046](0046-spec-deployment-container-packaging.md) | Spec — `deployment-container-packaging.md` (new) | 2026-08-17 | Approved with changes (finding fixed before this review), self-reviewed — needs independent read |
+| [0047](0047-adr-test-plan-cadence.md) | ADR 0016 — Test plan cadence | 2026-08-17 | Approved with changes (maintainer selected the option directly), self-reviewed — needs independent read |
