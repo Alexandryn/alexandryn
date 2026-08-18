@@ -272,7 +272,7 @@ states of its own.
 | Config file has invalid TOML syntax | FR-6's parse step | Startup failure naming the file and the parse error, not a raw parser stack trace | Same as above |
 | A key's value fails type/enum validation | FR-6's validation | Startup failure naming the key and what was expected | Same as above |
 | Config file path (via `--config`) points to a file that doesn't exist | FR-5's resolution | Startup failure naming the missing path, if the flag was explicitly passed (an explicitly wrong path is a real error, distinct from "no flag given, file absent is fine") | `config.Load` returns an error — this is the one case where "file absent" is treated as a failure, because the user explicitly pointed at it |
-| `BIND_ADDRESS` resolves to a non-loopback host | FR-8's validation | Startup failure naming the offending address and that only loopback is accepted | `config.Load` returns an error before any other startup step runs — same treatment as any other FR-6 validation failure |
+| `BIND_ADDRESS` resolves to a publicly routable host with no valid certificate | FR-8's validation | Startup failure naming the offending address and the missing/invalid certificate condition | `config.Load` returns an error before any other startup step runs — same treatment as any other FR-6 validation failure |
 
 ## Security considerations
 
@@ -306,12 +306,15 @@ states of its own.
   a developer's own shell; this spec does not need to defend against a
   hostile path here the way `domain-source.md` defends against a
   hostile filename from an external source.
-- **Loopback-only `BIND_ADDRESS` (FR-8) is this spec's concrete
-  implementation of constitution §6 and phase 03's own named exit
-  criterion** — a config file or environment variable setting
-  `BIND_ADDRESS` to a non-loopback host now fails startup the same way
-  a missing required key does, rather than silently binding a LAN- or
-  internet-reachable socket before phase 12/13's authentication exists.
+- **`BIND_ADDRESS`'s two-mode classification (FR-8) is this spec's
+  concrete implementation of constitution §6 and ADR 0017** — a config
+  file or environment variable setting `BIND_ADDRESS` to a publicly
+  routable host with no valid certificate configured now fails startup
+  the same way a missing required key does, rather than silently
+  binding an internet-reachable socket with nothing to authenticate the
+  connection or terminate TLS in-process. Loopback and private-range
+  binds remain always legal, unconditionally — the check that changed
+  is which addresses require a certificate, not whether the check runs.
 - **Dual-interface redaction (FR-7) closes a real gap the single-interface
   version left open** — `slog.LogValuer` alone protects a value logged as
   its own attribute; it does not protect the same value nested inside a
@@ -325,7 +328,7 @@ states of its own.
 
 | Layer | What it covers |
 |---|---|
-| Unit | Precedence resolution (FR-2) per key, in isolation, with fake sources; every FR-6 failure case, proven to return an error and never a partial `Config`; FR-8's loopback rejection, proven with a deliberately non-loopback `BIND_ADDRESS`; FR-7's redaction, proven two ways — a known `DATABASE_URL` value logged directly, and the *whole* `Config` struct logged as one attribute — both asserted absent from captured output |
+| Unit | Precedence resolution (FR-2) per key, in isolation, with fake sources; every FR-6 failure case, proven to return an error and never a partial `Config`; FR-8's two-mode classification, proven with loopback/private addresses accepted unconditionally, a publicly routable address accepted with a valid certificate and rejected with an invalid, expired, or missing one; FR-7's redaction, proven two ways — a known `DATABASE_URL` value logged directly, and the *whole* `Config` struct logged as one attribute — both asserted absent from captured output |
 | Integration | `backend-service-lifecycle.md`'s own startup test already covers config load as step 1 — no separate integration layer needed here |
 | Contract | N/A |
 | Accessibility | N/A |
@@ -336,8 +339,12 @@ states of its own.
       never a partial struct — proven with a test per FR-6 failure case
 - [ ] Every key in FR-4's table has a passing precedence test (default →
       file → environment, each overriding the last)
-- [ ] A non-loopback `BIND_ADDRESS` (e.g. `0.0.0.0:8080`) is rejected at
-      startup, proven with a test — phase 03's own named exit criterion
+- [ ] A publicly routable `BIND_ADDRESS` (e.g. `0.0.0.0:8080`) with no
+      valid certificate is rejected at startup, proven with a test —
+      phase 03's own named exit criterion, updated for ADR 0017's
+      two-mode rule; a publicly routable address *with* a valid
+      certificate, and loopback/private addresses unconditionally, are
+      proven accepted by the same test suite
 - [ ] A test proves `DATABASE_URL` never appears in any log line or error
       string produced by a `Config` load, whether successful or failed,
       including when the whole `Config` struct is logged as one attribute
