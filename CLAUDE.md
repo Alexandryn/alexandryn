@@ -70,6 +70,19 @@ would be convenient. Constitution §3.
 | `.claude/templates/` | Use these; don't invent new document shapes |
 | `.design-reference/` | The design prototype — visual source of truth, **incomplete**, see below |
 
+### Where the task list actually lives
+
+This repo has no single `tasks/todo.md` or `tasks/plan.md` as its task list —
+generic tooling that expects one should not conclude none exists. The real
+task list is distributed: `.claude/roadmap/<NN>-*/README.md`'s Exit criteria
+section names what closes each phase, and `.claude/specs/README.md`'s status
+column names what's approved, implemented, or still outstanding for each
+spec within it. Root-level `SPEC.md` and `tasks/plan.md` are thin pointer
+files that exist only so tooling built around those conventional paths can
+find this section instead of finding nothing; they are not the task list
+themselves, and editing them to add content duplicates what's already
+authoritative in `.claude/`.
+
 ## The design reference
 
 Per surface, per [ADR 0003](.claude/decisions/0003-design-canvas-split.md):
