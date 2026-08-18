@@ -76,7 +76,7 @@ Things known to need deciding, with the phase that will force the question:
 | ~~Frontend data-fetching and state approach~~ — resolved without an ADR, see `frontend-shell-and-routing.md` FR-2 (TanStack Query, v5, pinned major) | Phase 01 |
 | ~~Where the API contract is defined, and who owns it~~ — format fixed as OpenAPI (ADR 0006); ownership/versioning/design resolved without an ADR, see `architecture-contracts.md` FR-4 (path-based versioning, `/api/v1/...`) | Phase 01 |
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
-| How the reader renders EPUB, and in what sandbox | Phase 11 |
+| ~~How the reader renders EPUB, and in what sandbox~~ — resolved without an ADR, see `frontend-reader.md` FR-1 (`foliate-js` rendering engine; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`) and `backend-reader-content.md` FR-6/FR-9 (server-side HTML/CSS sanitisation, `Content-Security-Policy: default-src 'self'; script-src 'none'...`) | Phase 11 |
 | Credential storage on the host | Phase 12 |
 | Transport security on the LAN | Phase 13 |
 | Non-loopback bind for the container-hosted target (ADR 0015) — `backend-configuration.md` FR-8 stays literal until then; when authentication exists, this needs an explicit amendment through the review gate, gated on an explicit container-mode signal rather than defaulted, with `deployment-container-packaging.md` FR-6's CI guard updated to match rather than removed | Phase 12/13 |
