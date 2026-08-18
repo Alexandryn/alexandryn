@@ -37,6 +37,14 @@ Mark the dimension checklist honestly. An unchecked box is useful information.
 A falsely checked one is worse than no checklist at all, because it stops the
 next person from looking.
 
+A review that approves a status change is not complete until the indexes
+that summarize it are current — `roadmap/README.md`'s status table and
+phase-detail framing, `specs/README.md`'s status column, `decisions/README.md`'s
+status column and open-questions table, and `skills/README.md`'s own status
+table when a skill's status changes. Treat a stale index the same as any
+other contradiction found during review: something to fix before the
+verdict is recorded, not a follow-up.
+
 ## Naming
 
 `NNNN-<subject>.md`, sequential.

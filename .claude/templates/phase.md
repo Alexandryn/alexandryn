@@ -66,6 +66,9 @@ Checkable, not aspirational. "Works well" is not an exit criterion.
 
 - [ ] 
 - [ ] All specs in this phase are `VERIFIED`
+- [ ] Test plans exist for every spec in this phase, written before this
+      phase's own RED step (ADR 0016) — or an explicit deferral is
+      recorded the same way
 - [ ] Security audit recorded in `.claude/audits/` with no open Critical or High findings
 - [ ] Documentation updated
 - [ ] Maintainer approval recorded

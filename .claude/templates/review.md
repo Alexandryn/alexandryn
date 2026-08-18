@@ -44,6 +44,9 @@ damage.
 - [ ] **Observability** — will we know when this breaks in the wild?
 - [ ] **Maintainability** — will this be legible in two years?
 - [ ] **Evolution** — what does this make harder to change later?
+- [ ] **Indexes** — does this change move a spec/ADR/phase's status, or resolve
+      an open question? If so, are `roadmap/README.md`, `specs/README.md`,
+      `decisions/README.md`, and `skills/README.md` all current with it?
 
 ## Contradictions and gaps
 
