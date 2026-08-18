@@ -67,6 +67,7 @@ deserves to know they were already weighed.
 | [0015](0015-container-topology.md) | A second deployment target ships the backend as a container, composed with PostgreSQL, alongside the Electron-hosted target | Accepted |
 | [0016](0016-test-plan-cadence.md) | Test plans are written per-phase, at RED-step time, not per-spec at approval time | Proposed |
 | [0018](0018-go-lint-tool.md) | General Go static analysis uses `golangci-lint`; the import-boundary check stays a separate, interim script | Accepted |
+| [0019](0019-toml-library.md) | Config-file parsing uses `pelletier/go-toml/v2`, decoded into a `map[string]any` for the per-key lookup `internal/config` already uses | Accepted |
 
 ## Open questions not yet ADRs
 

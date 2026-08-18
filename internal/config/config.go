@@ -1,18 +1,23 @@
 // Package config resolves Alexandryn's backend configuration: one
-// compiled-in default, then a config file (added in a later task), then
-// an environment variable, each overriding the previous source for that
-// one key independently (backend-configuration.md FR-2). This is the one
-// package allowed to read an environment variable directly
+// compiled-in default, then a config file, then an environment variable,
+// each overriding the previous source for that one key independently
+// (backend-configuration.md FR-2). This is the one package allowed to
+// read an environment variable or the config file directly
 // (architecture-backend.md FR-1) — everything else receives a *Config,
 // constructed once at startup.
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pelletier/go-toml/v2"
 )
 
 // Config is Alexandryn's fully resolved, validated backend configuration.
@@ -148,11 +153,28 @@ var defaults = map[string]any{
 // Load resolves and validates every configuration key and returns a
 // fully populated Config, or the first error encountered — never a
 // partially populated value (backend-configuration.md FR-1).
-func Load() (*Config, error) {
+//
+// configPath is the operator-supplied --config value, or "" if the flag
+// was absent (in which case userConfigDir locates the well-known
+// fallback location, per FR-5). readFile and userConfigDir are injected
+// so Load never touches the real filesystem in a test — production
+// callers pass os.ReadFile and os.UserConfigDir directly.
+func Load(configPath string, readFile func(path string) ([]byte, error), userConfigDir func() (string, error)) (*Config, error) {
+	fileValues, err := loadFileValues(configPath, readFile, userConfigDir)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{}
 
 	for _, f := range fields {
 		raw, present := os.LookupEnv(f.key)
+		if !present || raw == "" {
+			if fv, ok := fileValues[strings.ToLower(f.key)]; ok {
+				raw, present = fv, true
+			}
+		}
+
 		if !present || raw == "" {
 			switch f.category {
 			case categoryRequired:
@@ -174,6 +196,72 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// loadFileValues resolves the config file's path (explicit --config, or
+// the well-known fallback) and, if a file is present, parses it into a
+// key-to-string map every field's own parse function can consume the
+// same way it consumes an environment value (ADR 0019).
+func loadFileValues(configPath string, readFile func(string) ([]byte, error), userConfigDir func() (string, error)) (map[string]string, error) {
+	path := configPath
+	explicit := configPath != ""
+	if !explicit {
+		dir, err := userConfigDir()
+		if err != nil {
+			return nil, fmt.Errorf("could not resolve the default configuration directory: %w", err)
+		}
+		path = filepath.Join(dir, "alexandryn", "config.toml")
+	}
+
+	data, err := readFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			if explicit {
+				return nil, fmt.Errorf("config file %s does not exist", path)
+			}
+			// No --config flag and nothing at the fallback location:
+			// not an error (FR-5) — every key resolves from the
+			// environment or its default.
+			return map[string]string{}, nil
+		}
+		return nil, fmt.Errorf("could not read config file %s: %w", path, err)
+	}
+
+	var raw map[string]any
+	if err := toml.Unmarshal(data, &raw); err != nil {
+		// Deliberately never include the underlying parser error's own
+		// text: it can echo the offending line's raw content verbatim,
+		// which is exactly what FR-6 forbids when that line holds
+		// DATABASE_URL or any future sensitive key. Position (line,
+		// column) is safe; the parser's own formatted message is not.
+		var decodeErr *toml.DecodeError
+		if errors.As(err, &decodeErr) {
+			row, col := decodeErr.Position()
+			return nil, fmt.Errorf("config file %s contains invalid TOML syntax at line %d, column %d", path, row, col)
+		}
+		return nil, fmt.Errorf("config file %s contains invalid TOML syntax", path)
+	}
+
+	values := make(map[string]string, len(raw))
+	for k, v := range raw {
+		values[k] = tomlValueToString(v)
+	}
+	return values, nil
+}
+
+func tomlValueToString(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case int64:
+		return strconv.FormatInt(t, 10)
+	case float64:
+		return strconv.FormatFloat(t, 'g', -1, 64)
+	case bool:
+		return strconv.FormatBool(t)
+	default:
+		return fmt.Sprintf("%v", t)
+	}
 }
 
 func parseLogLevel(raw string) (any, error) {

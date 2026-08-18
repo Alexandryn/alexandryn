@@ -54,7 +54,7 @@ func TestLoad_Precedence(t *testing.T) {
 				t.Setenv(tc.key, tc.setEnv)
 			}
 
-			cfg, err := config.Load()
+			cfg, err := config.Load("", noFile, fakeUserConfigDir)
 			if err != nil {
 				t.Fatalf("Load() error = %v, want nil", err)
 			}
@@ -73,7 +73,7 @@ func TestLoad_Precedence(t *testing.T) {
 func TestLoad_DefaultAppliesWhenNothingSet(t *testing.T) {
 	validEnv(t)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
@@ -96,7 +96,7 @@ func TestLoad_EveryOptionalKeySetSimultaneouslyResolvesIndependently(t *testing.
 	t.Setenv("HTTP_WRITE_TIMEOUT", "4s")
 	t.Setenv("HTTP_IDLE_TIMEOUT", "5s")
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
@@ -126,7 +126,7 @@ func TestLoad_EveryOptionalKeySetSimultaneouslyResolvesIndependently(t *testing.
 
 func TestLoad_RequiredKeyMissingErrors(t *testing.T) {
 	// OPEN_LIBRARY_USER_AGENT deliberately left unset.
-	_, err := config.Load()
+	_, err := config.Load("", noFile, fakeUserConfigDir)
 	if err == nil {
 		t.Fatal("Load() error = nil, want an error naming the missing required key")
 	}
@@ -137,7 +137,7 @@ func TestLoad_RequiredKeyMissingErrors(t *testing.T) {
 
 func TestLoad_OptionalWithDefaultKeyAbsentReturnsDefaultNotError(t *testing.T) {
 	validEnv(t)
-	cfg, err := config.Load()
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil (LOG_LEVEL is optional with a default)", err)
 	}
@@ -148,7 +148,7 @@ func TestLoad_OptionalWithDefaultKeyAbsentReturnsDefaultNotError(t *testing.T) {
 
 func TestLoad_DatabaseURLAbsentIsZeroValueNotError(t *testing.T) {
 	validEnv(t)
-	cfg, err := config.Load()
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil — DATABASE_URL's absence is a meaningful signal, not a failure", err)
 	}
@@ -201,7 +201,7 @@ func TestLoad_TypeValidation(t *testing.T) {
 			validEnv(t)
 			t.Setenv(tc.key, tc.value)
 
-			_, err := config.Load()
+			_, err := config.Load("", noFile, fakeUserConfigDir)
 			if tc.wantErr && err == nil {
 				t.Fatalf("Load() error = nil, want an error for %s=%q", tc.key, tc.value)
 			}
@@ -244,7 +244,7 @@ func TestLoad_ErrorContentNamesTheKey(t *testing.T) {
 				t.Setenv(tc.key, tc.value)
 			}
 
-			_, err := config.Load()
+			_, err := config.Load("", noFile, fakeUserConfigDir)
 			if err == nil {
 				t.Fatalf("Load() error = nil, want an error naming %q", tc.wantSub)
 			}
@@ -264,7 +264,7 @@ func TestLoad_UnrelatedEnvironmentVariableIsIgnored(t *testing.T) {
 	validEnv(t)
 	t.Setenv("HTTP_REQUEST_TIMEOUT", "5s") // retired key name, not in FR-4's table
 
-	if _, err := config.Load(); err != nil {
+	if _, err := config.Load("", noFile, fakeUserConfigDir); err != nil {
 		t.Fatalf("Load() error = %v, want nil — an unrelated variable must have no effect", err)
 	}
 }
@@ -273,7 +273,7 @@ func TestLoad_DatabaseURLGarbageTextIsPassedThroughUnexamined(t *testing.T) {
 	validEnv(t)
 	t.Setenv("DATABASE_URL", "not a connection string at all")
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil — this spec defines no parse rule for DATABASE_URL", err)
 	}
