@@ -19,6 +19,9 @@ func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
 		"HTTP_WRITE_TIMEOUT":      categoryOptionalDefault,
 		"HTTP_IDLE_TIMEOUT":       categoryOptionalDefault,
 		"OPEN_LIBRARY_USER_AGENT": categoryRequired,
+		"BIND_ADDRESS":            categoryOptionalDefault,
+		"TLS_CERT_FILE":           categoryOptionalNoDefault,
+		"TLS_KEY_FILE":            categoryOptionalNoDefault,
 	}
 
 	got := map[string]category{}

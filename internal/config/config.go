@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -54,6 +55,17 @@ type Config struct {
 	// would misidentify this client to Open Library, which FR-3's
 	// required category exists to prevent.
 	OpenLibraryUserAgent string
+
+	// BindAddress is classified per FR-8/ADR 0017: loopback or a private
+	// range is always legal; a publicly routable address is legal only
+	// with TLSCertFile/TLSKeyFile both present and valid.
+	BindAddress string
+
+	// TLSCertFile and TLSKeyFile are required only when BindAddress
+	// resolves to a publicly routable address; otherwise unread
+	// (backend-configuration.md FR-4).
+	TLSCertFile string
+	TLSKeyFile  string
 }
 
 type category int
@@ -136,6 +148,24 @@ var fields = []fieldSpec{
 		parse:    parseString,
 		apply:    func(cfg *Config, v any) { cfg.OpenLibraryUserAgent = v.(string) },
 	},
+	{
+		key:      "BIND_ADDRESS",
+		category: categoryOptionalDefault,
+		parse:    parseHostPort,
+		apply:    func(cfg *Config, v any) { cfg.BindAddress = v.(string) },
+	},
+	{
+		key:      "TLS_CERT_FILE",
+		category: categoryOptionalNoDefault,
+		parse:    parseString,
+		apply:    func(cfg *Config, v any) { cfg.TLSCertFile = v.(string) },
+	},
+	{
+		key:      "TLS_KEY_FILE",
+		category: categoryOptionalNoDefault,
+		parse:    parseString,
+		apply:    func(cfg *Config, v any) { cfg.TLSKeyFile = v.(string) },
+	},
 }
 
 // defaults holds each categoryOptionalDefault key's compiled default,
@@ -150,6 +180,7 @@ var defaults = map[string]any{
 	"HTTP_READ_TIMEOUT":     15 * time.Second,
 	"HTTP_WRITE_TIMEOUT":    15 * time.Second,
 	"HTTP_IDLE_TIMEOUT":     60 * time.Second,
+	"BIND_ADDRESS":          "127.0.0.1:0",
 }
 
 // Load resolves and validates every configuration key and returns a
@@ -197,7 +228,18 @@ func Load(configPath string, readFile func(path string) ([]byte, error), userCon
 		f.apply(cfg, v)
 	}
 
+	if err := validateBindAddress(cfg, readFile); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+func parseHostPort(raw string) (any, error) {
+	if _, _, err := net.SplitHostPort(raw); err != nil {
+		return nil, fmt.Errorf("must be host:port: %w", err)
+	}
+	return raw, nil
 }
 
 // loadFileValues resolves the config file's path (explicit --config, or
