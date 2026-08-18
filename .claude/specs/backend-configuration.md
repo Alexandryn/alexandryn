@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval four times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval five times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation; FR-8's `BIND_ADDRESS` classification rewritten for ADR 0017 (2026-08-18), maintainer-directed, self-reviewed) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-16 |
+| **Last updated** | 2026-08-18 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation. Amended again, [`0042`](../reviews/0042-spec-backend-configuration-container-topology.md) — `DATABASE_URL`'s meaning made target-dependent for ADR 0015, self-reviewed, needs maintainer re-confirmation |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation. Amended again, [`0042`](../reviews/0042-spec-backend-configuration-container-topology.md) — `DATABASE_URL`'s meaning made target-dependent for ADR 0015, self-reviewed, needs maintainer re-confirmation. Amended again, ADR 0017 (2026-08-18) — FR-8 replaces the loopback-only rule with the two-mode classification ADR 0017 decided, maintainer-directed in the same session that produced the ADR, self-reviewed |
 
 ## Context
 
@@ -106,7 +106,8 @@ file format, where it lives, or the actual validation each key needs.
   | Key | Type | Required? | Default | Source of the requirement |
   |---|---|---|---|---|
   | `DATABASE_URL` | connection string | Optional, no default — absence is a meaningful signal (FR-3's third category), never a validation failure | — | ADR 0004's addendum (Supabase dev stack); `architecture-system.md` Security considerations; ADR 0015 (container target, where its presence is normal) |
-  | `BIND_ADDRESS` | host:port, host MUST be loopback (FR-8) | Optional | `127.0.0.1:0` (loopback, OS-assigned port) | `architecture-system.md` FR-3, constitution §6, FR-8 below |
+  | `BIND_ADDRESS` | host:port, host classified per FR-8 (loopback/private always legal; public requires a valid cert) | Optional | `127.0.0.1:0` (loopback, OS-assigned port) | `architecture-system.md` FR-3, constitution §6, ADR 0017, FR-8 below |
+  | `TLS_CERT_FILE` / `TLS_KEY_FILE` | filesystem paths | Required only when `BIND_ADDRESS` resolves to a publicly routable address (FR-8); otherwise unread | — | ADR 0017, FR-8 below |
   | `LOG_LEVEL` | enum: `debug`/`info`/`warn`/`error`, matched case-insensitively | Optional | `info` | `backend-errors-and-logging.md` |
   | `SHUTDOWN_GRACE_PERIOD` | duration | Optional | `10s` | `backend-service-lifecycle.md` FR-5, `architecture-system.md` FR-9's placeholder |
   | `DB_POOL_MAX_CONNS` | integer | Optional | a number `backend-persistence.md` fixes (this spec only reserves the key) | `architecture-persistence.md` FR-3 |
@@ -202,16 +203,30 @@ file format, where it lives, or the actual validation each key needs.
   specifically, since config is the first place a sensitive value exists
   in the process.
 
-- **FR-8** `config.Load` MUST reject any `BIND_ADDRESS` whose host
-  component does not resolve to a loopback address (`127.0.0.0/8` on
-  IPv4, `::1` on IPv6, or the literal string `localhost`) — this is
-  phase 03's own named exit criterion ("the service refuses to bind to a
-  non-loopback address") and constitution §6's "LAN binding physically
-  absent rather than merely discouraged," made concrete as a validation
-  rule rather than left as a documentation-only expectation. This check
-  runs at the same validation step as every other FR-6 case — a
-  non-loopback `BIND_ADDRESS` fails startup before any other subsystem
-  initializes, exactly like a missing required key.
+- **FR-8** `config.Load` MUST classify `BIND_ADDRESS`'s resolved host into
+  exactly one of three categories, and enforce the matching rule, per ADR
+  0017:
+  - **Loopback or private-range** (`127.0.0.0/8`, `::1`, `localhost`, an
+    RFC 1918 IPv4 private range, or an IPv6 unique local address) — always
+    legal. No certificate is required of this process; TLS, if any,
+    terminates upstream (a reverse proxy), outside this guarantee.
+  - **Publicly routable, with `TLS_CERT_FILE`/`TLS_KEY_FILE` both present
+    and valid** (loads, parses, key matches certificate, not expired) —
+    legal. An invalid or missing certificate while `BIND_ADDRESS` resolves
+    to a public address MUST fail startup before any other subsystem
+    initializes, exactly like a missing required key — never a degrade to
+    an unencrypted listener on a public address.
+  - **Publicly routable, with no valid certificate configured** — MUST
+    fail startup. This is the only case FR-8 previously covered in full;
+    it remains rejected, now as one of three classified outcomes rather
+    than the only one.
+  This is phase 03's own named exit criterion ("the service refuses to
+  bind to a non-loopback address"), phase 13's `TLS_CERT_FILE`/`TLS_KEY_FILE`
+  keys, and constitution §6's condition made concrete as a validation rule
+  — not a documentation-only expectation, and not weakened by this
+  amendment: what changes is which addresses are legal, not whether the
+  check is enforced at startup, unconditionally, before any other
+  subsystem initializes.
 
 ## Non-functional requirements
 

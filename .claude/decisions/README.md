@@ -66,6 +66,7 @@ deserves to know they were already weighed.
 | [0014](0014-job-queue-backend-postgresql.md) | Background job queue is PostgreSQL-backed, not a dedicated message broker | Accepted |
 | [0015](0015-container-topology.md) | A second deployment target ships the backend as a container, composed with PostgreSQL, alongside the Electron-hosted target | Accepted |
 | [0016](0016-test-plan-cadence.md) | Test plans are written per-phase, at RED-step time, not per-spec at approval time | Proposed |
+| [0017](0017-network-exposure-condition-gated.md) | Network exposure is gated on TLS and authentication being verifiably true, not on a phase number or deployment target | Accepted |
 | [0018](0018-go-lint-tool.md) | General Go static analysis uses `golangci-lint`; the import-boundary check stays a separate, interim script | Accepted |
 | [0019](0019-toml-library.md) | Config-file parsing uses `pelletier/go-toml/v2`, decoded into a `map[string]any` for the per-key lookup `internal/config` already uses | Accepted |
 
@@ -80,5 +81,7 @@ Things known to need deciding, with the phase that will force the question:
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
 | ~~How the reader renders EPUB, and in what sandbox~~ — resolved without an ADR, see `frontend-reader.md` FR-1 (`foliate-js` rendering engine; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`) and `backend-reader-content.md` FR-6/FR-9 (server-side HTML/CSS sanitisation, `Content-Security-Policy: default-src 'self'; script-src 'none'...`) | Phase 11 |
 | Credential storage on the host | Phase 12 |
+| CSRF protection for state-changing requests, once sessions are cookie-based | Phase 12 |
+| Open-redirect protection for any post-authentication redirect target | Phase 12 |
 | Transport security on the LAN | Phase 13 |
-| Non-loopback bind for the container-hosted target (ADR 0015) — `backend-configuration.md` FR-8 stays literal until then; when authentication exists, this needs an explicit amendment through the review gate, gated on an explicit container-mode signal rather than defaulted, with `deployment-container-packaging.md` FR-6's CI guard updated to match rather than removed | Phase 12/13 |
+| ~~Non-loopback bind for the container-hosted target (ADR 0015)~~ — the *rule* is resolved: ADR 0017 replaces the phase-gate with a two-mode condition (in-process TLS on a public bind, or upstream TLS with the process bound private-only), both authentication-gated and fail-closed. `backend-configuration.md` FR-8 and `deployment-container-packaging.md` FR-6 are amended to match. What's still Phase 12/13's: actually building authentication and the certificate/reverse-proxy configuration surface the rule depends on | Phase 12/13 (implementation only — the rule itself is decided) |

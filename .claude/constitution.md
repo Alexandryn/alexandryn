@@ -88,14 +88,38 @@ renderer is already compromised.
 Navigation to non-local origins is blocked. External links open in the user's
 browser, never in an Electron window.
 
-## 6. Network exposure is opt-in and authenticated
+## 6. Network exposure is opt-in, authenticated, and condition-gated
 
-The host binds to loopback by default. Serving to the local network is a
-deliberate act by the user, and it does not happen before authentication
-exists.
+The host binds to loopback by default. Any broader exposure — the local
+network or beyond — is a deliberate act by the user, gated on a runtime
+condition being verifiably true, never on which phase shipped the code or
+which deployment target is running.
 
-There is no build in which the library is reachable from another machine
-without a credential.
+The condition: authentication is enforced on every non-health route, and
+one of two mutually exclusive modes holds for the bound address —
+
+- **In-process TLS.** The bound address is publicly routable, and the
+  server itself holds a certificate loaded and validated at startup. An
+  invalid or missing certificate fails startup; it does not degrade to an
+  unencrypted listener.
+- **Upstream TLS.** The bound address resolves to loopback or a private
+  range only, never a publicly routable one. A reverse proxy in front of
+  it may terminate TLS; the server's own guarantee is narrower and
+  different in kind — it is never itself directly reachable from a public
+  address, regardless of what sits in front of it.
+
+Both modes fail closed at the point of binding — checked against the
+address and certificate state actually present, not against a
+configuration flag asserting which mode was intended. ADR 0017 records the
+reasoning.
+
+There is no build, and no configuration, in which the library is reachable
+from another machine without both a credential and one of these two
+verified transport guarantees. Alexandryn itself operates no relay,
+tunnel, or traffic-mediating infrastructure on any user's behalf, under
+either mode — where a user's own instance is reachable from, beyond that,
+is the user's decision to make and configure, not a project-imposed
+ceiling.
 
 ## 7. Accessibility is part of "done"
 
