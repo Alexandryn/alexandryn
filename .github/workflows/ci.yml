@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# backend-test-harness.md FR-8 fixes nine ordered stages for this
+# workflow. Phase 03 doesn't yet have something real for every stage to
+# check — only what does is here, each one a real gate, not a green tick
+# on nothing (phase 00's own README warns against exactly that). Absent
+# stages are noted in place, with what unblocks each:
+#
+#   1. web/ build (ADR 0008)               — phase 04; no web/ exists yet
+#   5. integration tests                    — needs TEST_DATABASE_URL
+#                                              fail-loud convention (T2)
+#                                              and a real integration
+#                                              suite (T12+)
+#   6. contract test                        — architecture-contracts.md
+#                                              FR-3's tool isn't chosen
+#                                              or built yet
+#   9. container-target test                — deployment-container-
+#                                              packaging.md is REVIEWED,
+#                                              not APPROVED (D7,
+#                                              tasks/plan.md); gated on
+#                                              that approval
+#
+# Stages 2, 3, 4, 7, 8 below are real as of this workflow.
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Stage 2 — go build ./cmd/server and ./cmd/pg-supervisor
+      # (architecture-testing.md FR-8).
+      - name: Build
+        run: go build ./...
+
+      # Stage 3 — go vet and lint, including the import-boundary check
+      # (architecture-backend.md FR-3, FR-7; ADR 0018).
+      - name: Vet
+        run: go vet ./...
+
+      - name: Import-boundary check self-test
+        run: bash scripts/check-import-boundaries_test.sh
+
+      - name: Import-boundary check
+        run: bash scripts/check-import-boundaries.sh .
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+
+      - name: golangci-lint
+        run: golangci-lint run ./...
+
+      # Stage 4 — unit tests, race detector (FR-1, FR-9). No build tag:
+      # must never require PostgreSQL, Docker, or any external service.
+      # Produces the coverage profile stage 7 reports below, rather than
+      # running the suite twice.
+      - name: Unit tests
+        run: go test -race -coverprofile=coverage.out ./...
+
+      # Stage 7 — coverage reporting. No tool or threshold is fixed yet
+      # (open question); this only proves the stage exists and its
+      # output is captured.
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out
+
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+      # Stage 8 — dependency vulnerability scan (architecture-testing.md
+      # FR-5).
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
