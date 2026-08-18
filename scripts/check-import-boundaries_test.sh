@@ -109,6 +109,28 @@ func dsn() string {
 EOF
 assert_fail "rule (b): os.Getenv outside internal/config" "$d" "internal/persistence/postgres/pool.go"
 
+d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/pool.go" <<'EOF'
+package postgres
+
+import "github.com/pelletier/go-toml/v2"
+
+func decode(data []byte, v any) error {
+	return toml.Unmarshal(data, v)
+}
+EOF
+assert_fail "rule (b): TOML decode import outside internal/config" "$d" "internal/persistence/postgres/pool.go"
+
+d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/fixture.go" <<'EOF'
+package postgres
+
+// A path like "config.toml" here is a string literal in test fixture
+// data, not an import — the checker must not flag it.
+var fixturePath = "config.toml"
+EOF
+assert_pass "rule (b): \"toml\" inside a non-import string literal is not a violation" "$d"
+
 # --- Rule (c): no package-level var holding a logger/pool/config ---
 
 d="$(new_fixture)"

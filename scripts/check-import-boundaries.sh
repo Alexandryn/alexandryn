@@ -37,11 +37,22 @@ if [ -d "$DOMAIN_DIR" ]; then
 fi
 
 # (b) only internal/config may read the environment or decode TOML.
+# The TOML half is scoped to actual import lines, not any string literal
+# containing "toml" — a fixture path or a comment shouldn't trip this.
+import_lines() {
+	awk '
+		/^import \(/ { inblock = 1; next }
+		inblock && /^\)/ { inblock = 0; next }
+		inblock { print; next }
+		/^import "/ { print }
+	' "$1"
+}
+
 while IFS= read -r f; do
 	case "$f" in
 	"$CONFIG_DIR"/*) continue ;;
 	esac
-	if grep -Eq '\bos\.(Getenv|LookupEnv)\(' "$f" || grep -Eiq '"[^"]*toml[^"]*"' "$f"; then
+	if grep -Eq '\bos\.(Getenv|LookupEnv)\(' "$f" || import_lines "$f" | grep -Eiq 'toml'; then
 		add_violation "$f: only internal/config may read an environment variable or decode TOML (backend-configuration.md FR-1)"
 	fi
 done < <(find "$ROOT/internal" "$ROOT/cmd" -name '*.go' -type f 2>/dev/null)
