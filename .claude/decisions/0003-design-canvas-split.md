@@ -121,3 +121,67 @@ boundary independent of this ADR; aligning the design canvases to it removes
 a mismatch rather than introducing a new judgement call. The only genuinely
 open question is whether the specific screen-to-canvas grouping above is
 final, which is cheap to revisit given the low reversal cost.
+
+## Addendum — scope authority separated from visual authority (2026-08-17)
+
+**Context.** A 2026-08-17 review found specs whose UI premise was never
+checked against a captured, contradicting screen (`frontend-import-confirmation.md`/
+`backend-import-pipeline.md` against the captured `atImport` wizard — nine
+phases deep before caught) and specs that repeatedly claimed no capture
+existed after one already did (`frontend-discover-screen.md`,
+`frontend-source-management.md`, `frontend-import-confirmation.md`,
+`frontend-reader.md` — all four dated 2026-08-15, two days after the
+2026-08-13 sync that falsified the claim). Underneath both: the roadmap and
+the design reference were being read as one undifferentiated authority. A
+follow-up pass, reading the design project directly via the `DesignSync`
+MCP rather than inferring from the local export, then found live component
+state (not just prose) assuming things no roadmap phase claims — a cloud
+relay for off-LAN reachability, an asynchronous acquire/download queue — which
+is exactly the risk of treating a capture as decided when it was never
+approved.
+
+**Decision.**
+
+1. The roadmap (`.claude/roadmap/`) is the sole authority for **what is in
+   scope** — which capabilities and screens exist at all, and when. A canvas
+   being captured, complete, and non-truncated does not by itself commit the
+   roadmap to anything.
+2. `.design-reference/`'s canvases are the sole authority for **how an
+   already-in-scope surface looks and behaves**, once the roadmap has
+   separately committed to it.
+3. Every canvas — and, where a single canvas mixes claimed and unclaimed
+   content, every route or distinct piece of state within one — is marked in
+   `.design-reference/ANALYSIS.md` as one of three states:
+   - **Binding** — a named roadmap phase (cited) claims this. The
+     design-conformance gate applies in full.
+   - **Exploratory** — captured, but no roadmap phase claims it, and that
+     absence has been checked and recorded as a deliberate non-claim, not
+     silence.
+   - **Unclassified** — captured, no roadmap phase claims it, and nobody has
+     yet checked whether that absence is deliberate or an oversight. This is
+     not a synonym for exploratory. The design-conformance gate MUST flag an
+     unclassified screen or state explicitly — a named stop-and-ask item —
+     rather than proceeding as though it were settled in either direction.
+4. Default, absent explicit marking: **unclassified**, not exploratory.
+   Silence is not a commitment either way, and it is not safe to treat
+   silence as a decision that nothing is owed here — that was this
+   addendum's own precipitating mistake, just pointed the opposite direction
+   from the Import miss.
+5. `atMobile` is **binding**, but only for the content ADR 0003's own
+   original Decision already grouped it under (`atRemote`, `atMobile`,
+   `atTablet` as one "Web/Remote viewer" surface): reading, browsing,
+   library/discover/collections at phone width — the responsive-viewer
+   content phases 04/12/13 already claim. The Mobile canvas's own framing
+   beyond that (a distinct "companion app," an offline shelf, host selection)
+   is not covered by this binding and is classified separately per item 3.
+
+**Consequences.** Good — closes the Import gap's failure mode without
+over-correcting into treating every sketch as a mandate, and closes a second,
+opposite failure mode (silently calling unexamined content "exploratory")
+the first fix would otherwise have introduced. Bad — one more field to keep
+current, same maintenance burden this ADR's own original "Bad" consequence
+already named for canvas content generally. Neutral — doesn't reopen this
+ADR's file-split reasoning.
+
+**Reversal cost.** Low — documentation convention, no code/schema
+dependency.

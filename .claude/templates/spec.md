@@ -9,6 +9,7 @@
 | **Last updated** | YYYY-MM-DD |
 | **Supersedes** | — |
 | **Reviewed in** | `.claude/reviews/…` (once reviewed) |
+| **Design reference** | Canvas(es) consulted (per ADR 0003) and the `.design-reference/ANALYSIS.md` sync date as read at drafting time — e.g. `Alexandryn-Electron.dc.html`, synced 2026-08-13. If no UI surface, `N/A`. If the surface's canvas has no captured screen for this spec as of that sync date, say so explicitly rather than leaving this blank. |
 
 <!--
 Status moves DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED and never
