@@ -6,9 +6,9 @@
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-17 |
+| **Last updated** | 2026-08-18 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md) — FR-10 added for ADR 0015's container target, self-reviewed, needs maintainer re-confirmation; FR-10's mechanism corrected 2026-08-17 (loopback-safe healthcheck observation, not a network-based check) |
+| **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0045`](../reviews/0045-spec-backend-test-harness-container-topology.md) — FR-10 added for ADR 0015's container target, self-reviewed, needs maintainer re-confirmation; FR-10's mechanism corrected 2026-08-17 (loopback-safe healthcheck observation, not a network-based check). Non-goals' `golangci-lint` reference corrected 2026-08-18 to cite `architecture-backend.md` FR-7 / ADR 0018 as the tool's actual selection point, rather than assuming it uncited |
 
 ## Context
 
@@ -51,10 +51,12 @@ test").
 
 ## Non-goals
 
-- The specific `golangci-lint` rule configuration —
-  `architecture-testing.md`'s own Non-goals already deferred this to
-  phase 03/04's tuning; this spec fixes that the lint step exists and
-  runs, not its rule set
+- The specific `golangci-lint` rule configuration — the tool itself is
+  `architecture-backend.md` FR-7's pick (ADR 0018, 2026-08-18; this line
+  previously named the tool before any FR had formally chosen it, an
+  uncited assumption now corrected), and `architecture-testing.md`'s own
+  Non-goals already deferred rule-configuration tuning to phase 03/04;
+  this spec fixes that the lint step exists and runs, not its rule set
 - Docker/dependency vulnerability scanning tool specifics —
   `architecture-testing.md` FR-4/FR-5 name the requirement; specific
   scanner choice stays deferred to phase 99/04 as those FRs already state
@@ -381,6 +383,9 @@ against it.
 - ADR 0008 — the `web/`-before-`go build` ordering FR-8 encodes
 - `architecture-contracts.md` FR-3 — the contract test FR-8 stage 6 runs
 - `architecture-backend.md` FR-3 — import-boundary lint, FR-8 stage 3
+- `architecture-backend.md` FR-7 / ADR 0018 — `golangci-lint` as the
+  general-lint tool FR-8 stage 3 also runs, the tool this Non-goals
+  section now cites instead of assuming
 - `.claude/roadmap/03-backend-foundation/README.md` — "coverage
   reporting," the CI scope item FR-8 stage 7 satisfies, and "how the
   clock, filesystem and randomness are injected," which FR-5/FR-6

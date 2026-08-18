@@ -6,9 +6,9 @@
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-16 |
+| **Last updated** | 2026-08-18 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0011-spec-architecture-backend.md`](../reviews/0011-spec-architecture-backend.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending. Amendment covered by [`0041`](../reviews/0041-spec-architecture-backend-container-topology.md) |
+| **Reviewed in** | [`.claude/reviews/0011-spec-architecture-backend.md`](../reviews/0011-spec-architecture-backend.md) — Approved with changes, all findings fixed; self-reviewed, independent read still pending. Amendment covered by [`0041`](../reviews/0041-spec-architecture-backend-container-topology.md). FR-7 added 2026-08-18 (lint tool selection, ADR 0018) — self-reviewed, needs maintainer re-confirmation alongside the existing amendment |
 
 ## Context
 
@@ -133,6 +133,16 @@ precedence, or the transport middleware ordering.
   section), then routing. Authentication inserts once phase 12 exists,
   between logging and routing — this spec reserves the slot, phase 12
   designs what fills it.
+- **FR-7** (Added 2026-08-18, ADR 0018) General Go static analysis in CI
+  MUST run through `golangci-lint`, configured by a project-root
+  `.golangci.yml`. This is separate from FR-2/FR-3's import-boundary
+  check, which is not a stock lint rule any general-purpose Go linter
+  ships with opinions about — that check stays `tasks/plan.md`'s D0
+  interim grep/file-walk script (`scripts/check-import-boundaries.sh`)
+  until reimplemented as a `golangci-lint` custom rule or `go/analysis`
+  pass, per D0's own stated revisit condition. FR-7 resolves this spec's
+  previously-open "lint tool choice" question; ADR 0018 carries the full
+  options considered and the constitution §9 dependency justification.
 
 ## Non-functional requirements
 
@@ -219,10 +229,15 @@ middleware chain doesn't introduce a new place for that request to get lost.
 - [ ] Config startup fails loudly on a missing required value, proven with
       a test that removes one
 - [ ] Every FR maps to an exit criterion in phase 03's own document
+- [ ] `golangci-lint` runs in CI (FR-7) and blocks merge on a finding,
+      proven not asserted
 
 ## Open questions
 
-- **Lint tool choice** — phase 03's to pick (FR-3).
+- **Lint tool choice** — resolved 2026-08-18, FR-7 / ADR 0018:
+  `golangci-lint` for general Go lint. The import-boundary check itself
+  stays `tasks/plan.md`'s D0 interim script, unaffected by this
+  resolution.
 - **Exact error category list** — phase 03's `backend-errors-and-logging.md`.
 - **`cmd/pg-supervisor`'s relationship to `internal/persistence/postgres`**
   — does the supervisor binary share code with the main server's Postgres-
@@ -241,6 +256,8 @@ middleware chain doesn't introduce a new place for that request to get lost.
   `internal/persistence/postgres` and `cmd/pg-supervisor`
 - `architecture-desktop-host.md` FR-5 — the config-file source FR-5 here
   incorporates into precedence
+- ADR 0018 — `golangci-lint` selection (FR-7) and its constitution §9
+  dependency justification
 - ADR 0015 — the container-hosted target FR-5 was amended 2026-08-16 to
   cover, alongside the Electron-hosted target
 - `.claude/roadmap/03-backend-foundation/README.md` — owns the actual

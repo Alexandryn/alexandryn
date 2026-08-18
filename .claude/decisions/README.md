@@ -66,6 +66,7 @@ deserves to know they were already weighed.
 | [0014](0014-job-queue-backend-postgresql.md) | Background job queue is PostgreSQL-backed, not a dedicated message broker | Accepted |
 | [0015](0015-container-topology.md) | A second deployment target ships the backend as a container, composed with PostgreSQL, alongside the Electron-hosted target | Accepted |
 | [0016](0016-test-plan-cadence.md) | Test plans are written per-phase, at RED-step time, not per-spec at approval time | Proposed |
+| [0018](0018-go-lint-tool.md) | General Go static analysis uses `golangci-lint`; the import-boundary check stays a separate, interim script | Accepted |
 
 ## Open questions not yet ADRs
 
