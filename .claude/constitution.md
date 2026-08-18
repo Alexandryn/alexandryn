@@ -152,12 +152,21 @@ A confident wrong answer costs more than an honest "I don't know yet."
 
 ## Review gates
 
-Major roadmap phases stop for human approval at two points: after the spec is
-reviewed, and after the phase's implementation is audited. Between those, work
-proceeds without check-ins.
+A spec or ADR stops for approval **before it's drafted**, not after: state
+the scope and the key decisions it will make, and wait. Once approved,
+draft it, self-review it, and mark it `APPROVED` directly — a second stop
+to re-approve the same content already agreed is not required. If drafting
+surfaces a decision outside what was described and approved, that specific
+divergence gets its own check-in before continuing; the rest doesn't.
 
-An automated contributor must not cross a gate on its own judgement. Report
-what was built, what is unresolved, and what the risks are — then wait.
+Major roadmap phases keep a second gate, later and different in kind: after
+the phase's implementation is audited, before the phase closes. That gate
+checks whether the built thing holds up under adversarial review — it is
+not a repeat of the first.
+
+An automated contributor must not cross either gate on its own judgement.
+State what's about to happen, then wait — don't state what already happened
+and ask if that was fine.
 
 ## Amending this document
 

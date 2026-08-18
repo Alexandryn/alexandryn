@@ -131,7 +131,10 @@ Discover → Spec → Review → Test plan → RED → Implement → GREEN
 
 Two points stop for the maintainer:
 
-1. **After the spec review** — before any implementation begins.
+1. **Before each spec is drafted** — state its scope and the key decisions
+   it will make, and wait. Once approved, drafting, self-review, and
+   `APPROVED` status all proceed without a second stop for the same
+   content.
 2. **After the security audit** — before the phase is marked closed.
 
 Between those, work proceeds without check-ins. An automated contributor must

@@ -13,7 +13,7 @@ DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED
 |---|---|
 | `DRAFT` | Being written. Nobody should build against it. |
 | `REVIEWED` | A reviewer has been through it and recorded findings in `../reviews/`. |
-| `APPROVED` | Findings resolved, maintainer signed off. **Implementation may begin.** |
+| `APPROVED` | Findings resolved, self-reviewed against the maintainer-approved scope. **Implementation may begin.** |
 | `IMPLEMENTED` | Code exists and tests pass. |
 | `VERIFIED` | Audited, accessibility-checked, and confirmed against acceptance criteria. |
 

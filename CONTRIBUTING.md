@@ -88,7 +88,8 @@ Everything lives in `.claude/`, and it's meant to be read:
 
 A phase moves through: discover, specify, review, plan tests, implement
 test-first, QA, security audit, document, close. Two points stop for a
-maintainer's approval — after the spec review, and after the audit.
+maintainer's approval — before each spec is drafted (its scope and key
+decisions, not its finished text), and after the audit.
 
 ## Making a change
 

@@ -106,9 +106,13 @@ Discover → Spec → Review → Test plan → RED → Implement → GREEN
         → Refactor → QA → Security audit → Document → Close
 ```
 
-**Stop and ask** at two points in every phase: after the spec review, and after
-the security audit. Do not cross either gate on your own judgement — report
-what's done, what's unresolved, what's risky, and wait.
+**Stop and ask** at two points in every phase: before drafting each spec —
+state its scope and the key decisions it will make, and wait for approval —
+and after the security audit. Once a spec's scope is approved, draft it,
+self-review it, and mark it `APPROVED` directly; don't stop a second time
+to re-approve the same content. Do not cross either gate on your own
+judgement — report what's about to happen or what's done, what's
+unresolved, what's risky, and wait.
 
 Specs move `DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED`. Nothing
 below `APPROVED` gets built.
