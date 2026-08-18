@@ -27,8 +27,10 @@ type Config struct {
 	// DatabaseURL is optional with no compiled default: its absence is
 	// itself a meaningful signal backend-persistence.md FR-5 uses to
 	// choose between connecting to it and spawning a bundled instance
-	// (backend-configuration.md FR-3's third category).
-	DatabaseURL string
+	// (backend-configuration.md FR-3's third category). Its type carries
+	// FR-7's redaction — call .Reveal() to get the real value, never log
+	// or print this field directly by any other means.
+	DatabaseURL RedactedString
 
 	// LogLevel is one of "debug", "info", "warn", "error", matched
 	// case-insensitively and stored lowercased.
@@ -84,7 +86,7 @@ var fields = []fieldSpec{
 		key:      "DATABASE_URL",
 		category: categoryOptionalNoDefault,
 		parse:    func(raw string) (any, error) { return raw, nil },
-		apply:    func(cfg *Config, v any) { cfg.DatabaseURL = v.(string) },
+		apply:    func(cfg *Config, v any) { cfg.DatabaseURL = RedactedString(v.(string)) },
 	},
 	{
 		key:      "LOG_LEVEL",
