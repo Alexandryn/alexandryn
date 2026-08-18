@@ -155,6 +155,30 @@ var logger *slog.Logger
 EOF
 assert_fail "rule (c): package-level logger global" "$d" "internal/transport/http/router.go"
 
+# --- Raw-string fixture data must not trip any rule ---
+
+d="$(new_fixture)"
+cat >"$d/internal/transport/http/proof.go" <<'EOF'
+package http
+
+// fixtureSource embeds another file's source as fixture data for a
+// meta-test — an env-var read call, a domain-boundary-crossing import,
+// and a package-level logger, none of it this file's own code, so the
+// checker must not flag it.
+var fixtureSource = `
+package fixture
+
+import "github.com/Alexandryn/alexandryn/internal/persistence/postgres"
+
+var logger *slog.Logger
+
+func read() string {
+	return os.Getenv("SOME_VAR")
+}
+`
+EOF
+assert_pass "raw-string fixture data (Getenv, boundary import, global var) is not this file's own code" "$d"
+
 if [ "$fail" -ne 0 ]; then
 	echo "check-import-boundaries_test.sh: FAILED"
 	exit 1
