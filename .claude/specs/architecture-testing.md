@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self, approved with changes; amended post-review 2026-08-18 — FR-9/FR-10 added, maintainer-directed, needs re-confirmation) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-18 |
 | **Supersedes** | — |
-| **Reviewed in** | [`.claude/reviews/0013-spec-architecture-testing.md`](../reviews/0013-spec-architecture-testing.md) — Approved with changes, both findings fixed; self-reviewed, independent read still pending |
+| **Reviewed in** | [`.claude/reviews/0013-spec-architecture-testing.md`](../reviews/0013-spec-architecture-testing.md) — Approved with changes, both findings fixed; self-reviewed, independent read still pending. FR-9 (gitleaks) and FR-10 (CodeQL) added 2026-08-18, maintainer-directed in the same session that decided them, self-reviewed, needs maintainer re-confirmation |
 
 ## Context
 
@@ -94,7 +94,9 @@ sections:
 | E2E (Electron) | A real Electron app, `xvfb`-backed in CI | `@playwright/test`'s `_electron` (FR-2) — never the MCP | `architecture-desktop-host.md` |
 | Accessibility | Rendered content | Playwright MCP's accessibility snapshot | `architecture-frontend.md` FR-5 |
 | Lint / static | Source code, no execution | Go linter + import-boundary check (`architecture-backend.md` FR-3), JS linter (phase 04) | `architecture-backend.md` |
-| Security scanning | Built artifacts and dependency manifests | Dependency scanner (FR-5), Docker scanner (FR-4) | This spec |
+| Security scanning (dependencies/images) | Built artifacts and dependency manifests | Dependency scanner (FR-5), Docker scanner (FR-4) | This spec |
+| Security scanning (secrets) | Full repository history and working tree | GitHub native secret scanning + push protection (settings, not CI — repository configuration, no workflow), `gitleaks` (FR-9, CI) | This spec |
+| Static analysis (SAST) | The Go module's own source | CodeQL (FR-10) — configured now, activated no earlier than phase 08 | This spec |
 
 ## Functional requirements
 
@@ -162,6 +164,39 @@ sections:
   frontend. This MUST be an explicit, ordered step in the pipeline, not an
   assumption that whoever writes the workflow file remembers the
   dependency.
+- **FR-9** (Added 2026-08-18) `gitleaks` MUST run in CI, scanning full
+  repository history (not only the current diff) for credential-shaped
+  strings, with the same Critical/High severity bar and blocking
+  behavior as FR-4/FR-5. This is deliberately not a duplicate of GitHub's
+  own native secret scanning and push protection: those are enabled
+  directly in repository settings (the maintainer's own action, not a
+  CI workflow, and not this spec's concern to configure), and push
+  protection in particular blocks a credential *before it reaches the
+  remote at all* — strictly earlier, and strictly better, than anything
+  a CI run can do after the fact. `gitleaks` exists for what that
+  boundary doesn't cover: history predating push protection's
+  enablement, and pattern shapes outside GitHub's own built-in detector
+  set. Trigger cadence (every PR against the diff only, vs. a
+  scheduled full-history scan, whose cost grows with repository size)
+  is left to whichever task implements this — not fixed here, flagged
+  in Open questions.
+- **FR-10** (Added 2026-08-18) Static application security analysis
+  (SAST) for the Go module MUST use CodeQL. The tool and this
+  requirement are decided now; activation as a blocking — or even
+  advisory — CI gate MUST NOT happen before phase 08 (`08-sources`).
+  Nothing built before phase 08 has a meaningful attack surface for a
+  SAST tool to find: phase 03 is configuration, logging, and transport
+  plumbing operating on already-validated input; the first genuinely
+  hostile-input-shaped code — parsing an external source's protocol
+  response, following a source's redirects, handling a source-supplied
+  filename, and phase 10's import-pipeline file handling that builds on
+  it — arrives with phase 08. Turning CodeQL on earlier buys either a
+  permanently-green check finding nothing (the "green tick that means
+  nothing" phase 00's own README already warns against, restated here
+  for a different mechanism) or noise from speculative findings against
+  code that doesn't yet do anything security-relevant. Fixing the tool
+  and the trigger now means phase 08 activates it, rather than
+  re-litigating the choice.
 
 ## Non-functional requirements
 
@@ -170,7 +205,10 @@ sections:
   something to time, same placeholder pattern used everywhere else in
   phase 01.
 - **Security** — FR-4/FR-5 *are* the security requirement at this spec's
-  level: vulnerabilities caught before release, not after.
+  level: vulnerabilities caught before release, not after. FR-9 extends
+  the same discipline to secrets; FR-10 extends it to first-party code,
+  deliberately deferred until there's a real attack surface for it to
+  examine.
 - **Accessibility** — `architecture-frontend.md` FR-5 is the requirement;
   this spec's job is only to confirm the Playwright MCP's accessibility
   snapshot is a real, available mechanism for checking it during
@@ -202,6 +240,8 @@ Not applicable.
 | A PR's tests fail | GitHub Actions run | Red status check, blocking merge | Nothing merges until fixed — no override path assumed, branch protection (phase 00's recommendation) is what enforces this once applied |
 | A dependency scan finds a Critical/High CVE | FR-5's scan step | A failed check naming the vulnerable package and severity | Blocks merge/release, same as any other Critical/High finding under this project's existing taxonomy |
 | A test is flaky (passes/fails nondeterministically) | Repeated CI runs disagree on the same commit | Confusing, erodes trust in CI | Per FR-6, this is a defect to fix, not something to route around with retries — no auto-retry-on-failure mechanism is assumed or recommended |
+| `gitleaks` finds a credential-shaped string in history | FR-9's scan step | A failed check naming the file and commit, not the secret's own value | Blocks merge, same Critical/High bar as FR-4/FR-5 |
+| A credential is pushed before `gitleaks` or CodeQL ever run | GitHub push protection (repository settings, not this spec's workflow) | The push itself is rejected | Never reaches CI at all — the earliest point in the whole pipeline, ahead of everything else in this table |
 
 ## Security considerations
 
@@ -215,6 +255,22 @@ Not applicable.
   "never logged, never in an error" bar constitution §8 already sets for
   the application itself. Real design work for phase 03/99 when there's an
   actual secret to handle.
+- **Push protection is the earliest gate, and it's not this spec's to
+  configure** — GitHub's native secret scanning and push protection are
+  enabled directly in repository settings (the maintainer's own
+  decision and action), not a workflow file this spec's FRs govern.
+  FR-9's `gitleaks` is deliberately scoped to what push protection
+  can't reach: history predating its enablement, and detector patterns
+  outside GitHub's own built-in set — not a redundant second copy of
+  the same check.
+- **CodeQL's activation is deferred on purpose, not forgotten** — FR-10
+  fixes the tool and records the decision now so it doesn't need
+  re-deciding at phase 08, but explicitly does not turn it on: a SAST
+  tool running against code with no real hostile-input surface yet
+  (phase 03 through 07) either finds nothing and becomes a check nobody
+  reads, or raises speculative noise against code that isn't the kind
+  this tool exists to examine. Recorded as a decided-but-dormant FR
+  rather than either building it early or leaving the choice open.
 
 ## Test strategy
 
@@ -237,6 +293,13 @@ every gate in FR-1 actually exists and actually blocks.
 - [ ] Docker and dependency scans block on Critical/High, proven with a
       deliberately vulnerable dependency in a test branch, not just
       configured and assumed working
+- [ ] `gitleaks` runs in CI and blocks on a deliberately committed test
+      secret in a test branch (FR-9), proven not assumed
+- [ ] CodeQL is configured for the Go module and phase 08 is recorded
+      as its activation trigger (FR-10) — this criterion is about the
+      decision being recorded and the tool configured, not about a
+      blocking gate existing yet; that belongs to phase 08's own exit
+      criteria, not phase 03's
 
 ## Open questions
 
@@ -247,6 +310,10 @@ every gate in FR-1 actually exists and actually blocks.
 - **Specific scanner tools (FR-4, FR-5's JS side)** — deferred to phase
   99/04 respectively, per the established pattern-here/tool-there layering
   this entire phase has used throughout.
+- **`gitleaks` trigger cadence** (every PR against the diff only, vs. a
+  scheduled full-history scan) — FR-9 leaves this to whichever task
+  implements it, same deferred-tool-mechanics pattern as FR-4/FR-5
+  above.
 
 ## References
 
@@ -266,4 +333,9 @@ every gate in FR-1 actually exists and actually blocks.
   rather than inventing a new one
 - `.claude/roadmap/00-foundation/README.md` — branch protection
   recommendation this spec's FR-1 gives a concrete mechanism to enforce
+- `.claude/roadmap/08-sources/README.md` — FR-10's CodeQL activation
+  trigger; phase 10 (`10-import`) extends the same hostile-input surface
+  FR-10's own reasoning points to, without being the named trigger itself
+- Constitution §4 (all external input is hostile) — the property FR-10
+  defers activation until there's code shaped to violate
 - Constitution §8 (no logging secrets), §9 (dependencies are liabilities)
