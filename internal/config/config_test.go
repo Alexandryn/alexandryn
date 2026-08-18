@@ -106,7 +106,7 @@ func TestLoad_EveryOptionalKeySetSimultaneouslyResolvesIndependently(t *testing.
 		got  any
 		want any
 	}{
-		{"DatabaseURL", cfg.DatabaseURL, "postgres://fixture/proof"},
+		{"DatabaseURL", cfg.DatabaseURL.Reveal(), "postgres://fixture/proof"},
 		{"LogLevel", cfg.LogLevel, "warn"},
 		{"ShutdownGracePeriod", cfg.ShutdownGracePeriod, 5 * time.Second},
 		{"DBPoolMaxConns", cfg.DBPoolMaxConns, 25},
