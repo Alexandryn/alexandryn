@@ -91,6 +91,34 @@ responsive layout driven by a tab bar (`library` / `discover` /
 `collections` / `more`), not a multi-screen flow. Full state and mock data
 present.
 
+## Scope classification (ADR 0003 addendum, 2026-08-17)
+
+Binding / exploratory / unclassified, per canvas or per distinct piece of
+captured content within one where a single canvas mixes claimed and
+unclaimed material. Unclassified is not exploratory — it is a flagged,
+unresolved question the design-conformance gate must surface, not a quiet
+default.
+
+| Screen / state | Canvas | Classification | Basis |
+|---|---|---|---|
+| `atLibrary`, `atBook`, `atCollection(s)`, `atDiscover` | Electron, Web | Binding | Phases 06/07, approved specs |
+| `atSources`, `atSourceDetail` | Electron, Web | Binding | Phase 08, approved spec — content partially contradicted (5 assumed source kinds vs. the spec's 2), tracked separately, not a classification problem |
+| `atImport` | Electron | Binding | Phase 10 names it — premise contradicted by `frontend-import-confirmation.md`'s Source-gated design, tracked separately |
+| `atReader` | Web | Binding | Phase 11, approved spec; confirmed intentionally single-captured (`architecture-system.md` FR-6, `frontend-reader.md` NFRs) |
+| `atConnect`, `atAccess` | Web | Binding | Phases 12/13 name pairing/access, correctly deferred (outline only) |
+| `atActivity` | Electron | Binding | Phase 15 names it, correctly deferred (outline only) |
+| Acquire queue (`acqActive`/`acqQueued`/`acqDone`/`acqFailed`, per-edition `Acquire`/`Open`/`Find` actions) | Electron | **Unclassified** | No phase claims an async download/acquisition mechanism distinct from Import; not resolved, not exempted — see the ingest-model discussion |
+| Cloud relay (`hostModes`'s `'cloud'` option specifically — `stellar.alexandryn.cloud`, an Alexandryn-operated tunnel) | Web | Exploratory | Resolved 2026-08-18: Alexandryn operates no relay/tunnel infrastructure on a user's behalf, declined as a matter of decision, not left open. This specific toggle does not become real; the canvas stays as visual reference only |
+| User-operated remote reachability (own domain, own host, own certificate) | Not captured in any canvas | N/A — no UI exists yet | Supported per ADR 0017/`roadmap/13-network-access/README.md`, but distinct from the declined item above: no canvas models "enter your own domain" anywhere, including the Web canvas's own `hostModes` (its only non-local option is the declined cloud-relay toggle). The host-side configuration surface for this is `atSettings` → Network → Advanced, tracked in the row below |
+| Offline file cache (`off`, `offlineCount`/`offlineSize`, `Save offline`, Mobile's `downloads` list) | Web, Mobile | **Unclassified** | No phase claims client-side file caching (phase 14 covers progress/bookmark/highlight sync only); coupled to the cloud-relay question, tracked with it |
+| `atMobile` — library/discover/collections/reader-equivalent tab content | Mobile | Binding | ADR 0003's original grouping (`atRemote`/`atMobile`/`atTablet` as one Web/Remote surface); matches phases 04/12/13's already-claimed scope |
+| `atMobile` — "companion app" framing, native packaging | Mobile | **Unclassified** | No phase names a native mobile client; Mobile's own captured state doesn't even model host-selection (only `hostShort`, a fixed LAN IP) — the framing is prose, not built into this canvas's own state the way the Web canvas's cloud-relay toggle is |
+| `atTablet` | Electron-Admin | Binding, location TBD | Same responsive-viewer grouping as Mobile; ADR 0003 assigned it to Web/Remote, it's physically captured in the Host canvas instead — file-placement question stays open, unchanged by this classification pass |
+| `atStates` | Electron-Admin | Binding | Actively relied on (`architecture-desktop-host.md`, phase 05's Architecture-decisions-expected) for loading/error copy conventions; "final home" file-location question stays open, unchanged |
+| `atSettings` → Network tab → Advanced panel (bind address, TLS certificate, mDNS name) | Electron-Admin | Binding, contents uncaptured | `roadmap/13-network-access/README.md` (2026-08-18) names this panel directly as phase 13's UI home for bind/certificate/domain configuration. The panel itself is drawn (`sgNetwork`'s "Advanced" disclosure row); what's behind "Open advanced" is not — no domain field, no cert-upload/ACME UI exists in any canvas. The surface is committed, the detail is not; phase 13 fills it in, doesn't invent it from nothing |
+| `atSettings` (remaining tabs), `atSystem`, `atFirstRun` | Electron-Admin | **Unclassified** | No phase, any status, claims these beyond the one panel above; not resolved here — see "where they belong" |
+| Design system | nav label only, no canvas | N/A | Genuinely uncaptured, not a classification question |
+
 ## Conclusion
 
 All five files are now complete (no truncation) and extractable. The one

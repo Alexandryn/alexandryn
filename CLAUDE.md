@@ -114,6 +114,25 @@ to re-approve the same content. Do not cross either gate on your own
 judgement — report what's about to happen or what's done, what's
 unresolved, what's risky, and wait.
 
+**Stating scope includes a design-conformance check, not just a description
+of it.** Before drafting a UI-facing spec, re-read `.design-reference/`'s
+canvas(es) for that spec's surface (per ADR 0003's split) fresh — not from
+memory of an earlier read — and check whether a captured screen exists for
+it and, if so, whether the spec's intended flow matches what's drawn. This
+check must leave evidence, not just have been performed: the spec records
+which canvas it consulted and the `ANALYSIS.md` sync date as read at
+drafting time (a template field exists for this, see
+`.claude/templates/spec.md`). If a captured screen contradicts the intended
+scope, that's a stop-and-ask before drafting continues, the same as any
+other scope conflict — not something to reason around and footnote.
+
+The roadmap decides what is in scope; the design reference decides how an
+in-scope surface looks (ADR 0003's addendum). Check `ANALYSIS.md`'s
+per-canvas classification: **binding** means match it or escalate;
+**exploratory** means no spec is owed; **unclassified** — the default for
+anything not explicitly marked — is neither, and must itself be flagged as
+a stop-and-ask, not silently treated as either state.
+
 Specs move `DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED`. Nothing
 below `APPROVED` gets built.
 
