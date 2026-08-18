@@ -1,0 +1,36 @@
+version: 2
+
+updates:
+  # Go module dependencies (go.mod / go.sum).
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      go-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    # Major version bumps stay ungrouped, one PR each — a major can carry
+    # a breaking API change and deserves its own review, not a batch.
+
+  # GitHub Actions used by the CI workflow(s).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+# Security updates run on their own, independent of the schedule above —
+# that's Dependabot's own separate "security updates" mechanism (a
+# repository setting, not something this file configures), and it's left
+# to run on its own trigger rather than waiting for Monday.
+#
+# npm/pnpm ecosystems (web/, electron/) are not added yet: those
+# manifests don't exist until phase 04.
