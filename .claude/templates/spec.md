@@ -15,6 +15,18 @@
 Status moves DRAFT → REVIEWED → APPROVED → IMPLEMENTED → VERIFIED and never
 backwards. If reality contradicts an APPROVED spec, amend the spec and note the
 change here — do not let the code become the new truth silently.
+
+Cross-checking this spec against agent-skills:spec-driven-development's six
+core areas (objective, commands, project structure, code style, testing
+strategy, boundaries)? Objective, testing strategy, and boundaries map onto
+this template's own Context/Problem/Goals, Test strategy, and Security
+considerations sections. Commands, project structure, and code style are
+repo-wide, not per-spec, and live outside this file: Commands and "How work
+is organised" (project structure) are in `CONTRIBUTING.md`; boundaries are
+also restated in `CLAUDE.md`'s own Boundaries section. Code style has no
+single formalised document yet — `architecture-testing.md`'s Non-goals
+defers specific lint rule configuration to phase 03/04 tuning; treat that as
+the current, honest answer rather than a gap in this template.
 -->
 
 ## Context
@@ -98,6 +110,16 @@ Threats and concrete mitigations. Walk the checklist that applies:
 
 "Validated" is not a mitigation. Say what is checked and what happens when the
 check fails.
+
+The checklist above already covers STRIDE's six categories, under different
+names: authentication (Spoofing), input validation and injection (Tampering),
+observability's request IDs and structured logs (Repudiation), secret
+handling (Information disclosure), resource exhaustion (Denial of service),
+and authorisation (Elevation of privilege). A STRIDE-based pass
+(`agent-skills:security-and-hardening`) can walk this section
+category-by-category without needing a second, separate threat-modelling
+pass — the mapping exists so that cross-check doesn't have to be rediscovered
+per spec.
 
 ## Test strategy
 
