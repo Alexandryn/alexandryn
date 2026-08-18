@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `REVIEWED` (self, approved with changes; amended for ADR 0017's TLS/bind condition, 2026-08-18, maintainer-directed) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-17 |
-| **Last updated** | 2026-08-17 |
+| **Last updated** | 2026-08-18 |
 | **Supersedes** | — |
 | **Reviewed in** | [`.claude/reviews/0046-spec-deployment-container-packaging.md`](../reviews/0046-spec-deployment-container-packaging.md) — Approved with changes, findings fixed; self-reviewed, independent read still pending |
 
@@ -128,21 +128,34 @@ ordinary future change to the compose file.
   `depends_on: { postgres: { condition: service_healthy } }` so Compose
   itself, not application-level retry logic, keeps `backend` from
   starting before `postgres` is ready to accept connections.
-- **FR-5** `docker-compose.yml` MUST NOT publish any port for the
-  `backend` service (no `ports:` entry) and MUST NOT set
-  `network_mode: host` for it. This is not a placeholder pending later
-  design — it is the correct, intended state until phase 12/13 ships
-  authentication, per `architecture-system.md`'s constitution-§6-derived
-  loopback requirement, extended to this target: nothing reachable is
-  correct before there's a credential to check.
-- **FR-6** CI MUST include a check that fails the build if the committed
-  `docker-compose.yml` (or any tracked compose override file) contains a
-  `ports:` entry for the `backend` service or sets
-  `network_mode: host` on it — a static check against the compose file's
-  own YAML, not a runtime test, since the property being guarded is "this
-  file was never edited to publish a port," not "the running container
+- **FR-5** `docker-compose.yml`'s default profile MUST NOT publish any
+  port for the `backend` service (no `ports:` entry) and MUST NOT set
+  `network_mode: host` for it. This is the correct default per ADR 0017's
+  Mode B (bound private-only): nothing reachable from outside the
+  Compose network is correct before both authentication and a transport
+  guarantee exist. A separately tracked override file MAY publish a port
+  for `backend`, legal only when it also satisfies ADR 0017's Mode A in
+  full — `TLS_CERT_FILE`/`TLS_KEY_FILE` mounted into the container and
+  authentication enabled in `backend`'s own configuration — never a
+  published port on its own. This is deployment-time operator
+  configuration for a remote-reachable instance, not this spec's default
+  file.
+- **FR-6** CI MUST include a check that fails the build if any tracked
+  compose file contains a `ports:` entry for the `backend` service or sets
+  `network_mode: host` on it, **unless** that same file also declares both
+  `TLS_CERT_FILE`/`TLS_KEY_FILE` mounted into `backend` and an
+  authentication-enabled setting in `backend`'s environment — ADR 0017's
+  Mode A, checked structurally (the keys are present in the file), not
+  semantically (this check does not validate the certificate itself; FR-8
+  in `backend-configuration.md` does that at the process's own startup).
+  A `ports:` entry with neither condition present still fails the build,
+  unchanged from before. This is a static check against the compose
+  file's own YAML, not a runtime test — the property guarded is "this
+  file was never edited to publish a port without also wiring the
+  condition that makes doing so legal," not "the running container
   behaves correctly." This is what keeps FR-5's guarantee from depending
-  on every future contributor remembering it.
+  on every future contributor remembering it, now for two legal shapes
+  instead of one.
 
 ## Non-functional requirements
 
@@ -192,28 +205,33 @@ restate it.
 
 ## Security considerations
 
-**Why the default posture is "unreachable," and why that's not relaxed
-here.** The alternative to FR-5 — binding `backend` to `0.0.0.0` inside
-its own namespace and relying on the absence of a `ports:` line to keep it
-unreachable — was considered and rejected for this spec, not merely left
-undesigned. Loopback (`127.0.0.1`) is enforced by the kernel at bind time:
-a process bound to it cannot be reached from outside its own network
-namespace no matter what else is misconfigured around it. It fails closed.
-A `0.0.0.0` bind protected only by "nobody added a `ports:` line" fails
-open the moment any one of several ordinary, plausible mistakes happens:
-a stray `ports:` entry added while debugging and left in, a
+**Why the default posture is "unreachable," and why FR-5's default file
+doesn't relax it.** Binding `backend` to `0.0.0.0` inside its own
+namespace and relying only on the absence of a `ports:` line to keep it
+unreachable was considered and rejected for the default file. Loopback/
+private-range binding (ADR 0017's Mode B) is enforced by network topology
+at bind time: a process bound this way cannot be reached from outside its
+own network no matter what else is misconfigured around it. It fails
+closed. A `0.0.0.0` bind protected only by "nobody added a `ports:` line"
+fails open the moment any one of several ordinary, plausible mistakes
+happens: a stray `ports:` entry added while debugging and left in, a
 `docker-compose.override.yml` a contributor creates locally and commits
 by accident, `network_mode: host` added to solve an unrelated networking
 problem, or a future sibling service on the same Compose network that
 didn't exist when this guarantee was designed. Under that alternative,
-the actual security boundary moves from something the kernel guarantees
+the actual security boundary moves from something the topology guarantees
 to something a compose file's continued correctness guarantees — a weaker
-property, silently. FR-8 in `backend-configuration.md` stays literal
-specifically to keep the guarantee where it's strongest. This is the
-reasoning phase 12/13 will need when a non-loopback bind for this target
-becomes genuinely necessary — recorded here, and cross-referenced in
-`decisions/README.md`'s open-questions table, so it isn't rediscovered
-from scratch.
+property, silently.
+
+ADR 0017 now gives a second, equally fail-closed shape for the case where
+a published port is genuinely wanted — Mode A, a validated certificate
+loaded in-process, checked at startup by `backend-configuration.md` FR-8
+and structurally by FR-6 above. What stays rejected, in both modes, is a
+port published on *convention alone* — "nobody added a `ports:` line" was
+never the guarantee; either the topology itself is closed, or a verified
+certificate is present. FR-6's conditional check and FR-8's startup
+validation are what keep this from depending on every future contributor
+remembering it, for whichever of the two legal shapes applies.
 
 **FR-6 exists because "we agreed not to" isn't a control.** The same
 reasoning applies one level up: FR-5 states the correct default, FR-6 is
@@ -261,15 +279,12 @@ binary.
 
 ## Open questions
 
-- **Non-loopback bind for the container target, once phase 12/13 ships
-  authentication** — not designed here, deliberately. When it becomes
-  necessary, `backend-configuration.md` FR-8 requires an explicit
-  amendment through the full review gate (not a quiet loosening), the
-  bind gated on an explicit container-mode signal rather than defaulted
-  to non-loopback, and FR-6's CI guard updated to match whatever the new,
-  reviewed default becomes rather than simply removed. Recorded in
-  `decisions/README.md`'s open-questions table as well, so phase 12/13
-  inherits this without re-deriving it.
+- ~~Non-loopback bind for the container target~~ — resolved by ADR 0017
+  and reflected in FR-5/FR-6 above and `backend-configuration.md` FR-8;
+  the rule is decided (two fail-closed modes, TLS+auth gated, checked
+  structurally in Compose and at process startup), phase 12/13 still owns
+  actually building the authentication and certificate/proxy
+  configuration surface the rule depends on.
 - **`/healthz` versus `/readyz` as the `HEALTHCHECK` target (FR-3)** — the
   distinction `architecture-system.md` FR-7 draws (alive vs. can-serve-
   storage-backed-requests) exists at the application layer; whether

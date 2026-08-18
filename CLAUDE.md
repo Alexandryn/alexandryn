@@ -151,8 +151,9 @@ list.
   request, IPC message — with a size limit, shape check, and timeout (§4).
 - Enumerate the Electron preload surface; validate every argument in the
   main process (§5).
-- Bind the host to loopback until phase 12/13's authentication exists
-  (§6).
+- Bind the host to loopback by default; any broader bind is legal only
+  when authentication is enforced and one of ADR 0017's two fail-closed
+  TLS conditions holds, never on a phase number alone (§6).
 - Treat accessibility as part of "done," not a follow-up pass (§7).
 - Emit structured logs, request IDs, health checks, and useful failure
   messages from the first line of server code (§8).
@@ -202,8 +203,13 @@ list.
   hostile. Size limit, shape check, timeout. Constitution §4.
 - The Electron preload exposes an enumerated list of operations, never a
   general primitive. Validate arguments in the main process. §5.
-- The host binds to loopback. LAN exposure requires authentication to exist
-  first — the phases are ordered that way deliberately. §6.
+- The host binds to loopback by default. Broader exposure — LAN or a
+  user-operated remote deployment at their own domain — requires
+  authentication plus one of ADR 0017's two fail-closed TLS conditions;
+  phase 12 still builds authentication before phase 13 builds the bind/
+  certificate surface, but the gate itself is the condition, not the
+  phase number. Alexandryn operates no relay or tunnel on any user's
+  behalf, under either mode. §6.
 - Never log source credentials, session tokens, home-directory paths, or what
   someone is reading. §8.
 - New dependency? Justify it in the PR: what it does, why not stdlib, what
