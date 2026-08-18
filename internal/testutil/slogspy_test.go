@@ -62,6 +62,41 @@ func TestSpyHandler_WithAttrsCarriesBoundFieldsIntoCapturedRecord(t *testing.T) 
 	}
 }
 
+func TestSpyHandler_WithGroupNestsBoundAttrs(t *testing.T) {
+	spy := testutil.NewSpyHandler()
+	logger := slog.New(spy).WithGroup("request").With("id", "abc-123")
+
+	logger.Info("handled")
+
+	records := spy.Records()
+	if len(records) != 1 {
+		t.Fatalf("Records() len = %d, want 1", len(records))
+	}
+
+	var group slog.Value
+	found := false
+	records[0].Attrs(func(a slog.Attr) bool {
+		if a.Key == "request" {
+			group = a.Value
+			found = true
+		}
+		return true
+	})
+	if !found {
+		t.Fatal(`captured record missing the "request" group`)
+	}
+
+	inner := false
+	for _, a := range group.Group() {
+		if a.Key == "id" && a.Value.String() == "abc-123" {
+			inner = true
+		}
+	}
+	if !inner {
+		t.Fatal(`"request" group missing "id"="abc-123"`)
+	}
+}
+
 func TestSpyHandler_ContainsChecksMessageAndAttrValues(t *testing.T) {
 	spy := testutil.NewSpyHandler()
 	logger := slog.New(spy)
