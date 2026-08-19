@@ -141,7 +141,16 @@ func run(ctx context.Context, deps runDeps) int {
 
 	pool, err := deps.newPool(ctx, cfg)
 	if err != nil {
-		logger.Error("startup failed", "step", "pool", "error", err.Error())
+		msg := err.Error()
+		if cfg.DatabaseURL != "" {
+			// Same leak as the postgres step above: pgxpool.ParseConfig's
+			// own error embeds the connection string (pgx redacts only
+			// the password, not host/user/dbname) when DATABASE_URL is
+			// malformed. Never surface a driver/parser error's own text
+			// here when a DATABASE_URL is in play.
+			msg = "could not construct the connection pool for the configured database"
+		}
+		logger.Error("startup failed", "step", "pool", "error", msg)
 		return 1
 	}
 	poolRef.Set(pool)
