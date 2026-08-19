@@ -74,9 +74,14 @@ type errorBody struct {
 	CorrelationID string `json:"correlationId"`
 }
 
-func writeError(w http.ResponseWriter, status int, category domain.Category, message, correlationID string) {
+// WriteError is the one shared helper every error response goes through
+// (backend-errors-and-logging.md FR-5): it maps category to its HTTP
+// status (StatusForCategory) and writes architecture-contracts.md FR-5's
+// wire shape as JSON. No handler or middleware builds an error body by
+// hand.
+func WriteError(w http.ResponseWriter, category domain.Category, message, correlationID string) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
+	w.WriteHeader(StatusForCategory(category))
 	_ = json.NewEncoder(w).Encode(errorBody{
 		Code:          string(category),
 		Message:       message,
@@ -115,7 +120,7 @@ func Recovery(logger *slog.Logger, newID func() string) Middleware {
 					"stack", string(debug.Stack()),
 				)
 
-				writeError(w, StatusForCategory(domain.Internal), domain.Internal, "an internal error occurred", id)
+				WriteError(w, domain.Internal, "an internal error occurred", id)
 			}()
 			next.ServeHTTP(w, r)
 		})

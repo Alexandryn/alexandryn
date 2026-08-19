@@ -39,7 +39,7 @@ func Limits(maxBodyBytes int64) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.ContentLength >= 0 && r.ContentLength >= maxBodyBytes {
-				writeError(w, StatusForCategory(domain.InvalidInput), domain.InvalidInput,
+				WriteError(w, domain.InvalidInput,
 					"request body exceeds the maximum allowed size", CorrelationIDFromContext(r.Context()))
 				return
 			}
@@ -56,7 +56,7 @@ func Limits(maxBodyBytes int64) Middleware {
 // default plain-text 404 (FR-7).
 func NotFoundHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, StatusForCategory(domain.NotFound), domain.NotFound,
+		WriteError(w, domain.NotFound,
 			"no such endpoint", CorrelationIDFromContext(r.Context()))
 	})
 }
