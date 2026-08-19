@@ -9,6 +9,29 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
+// backend-errors-and-logging.md FR-7: the correlation ID "MUST be a
+// randomly generated value ... never derived from anything
+// request-supplied." Every other test in this codebase exercises the
+// logging/recovery middleware against testutil.FakeIDGenerator for
+// determinism — this is the one test of the real generator itself,
+// proving it actually produces distinct values rather than a fixed or
+// predictable one.
+func TestNewCorrelationID_ProducesDistinctValues(t *testing.T) {
+	const n = 1000
+	seen := make(map[string]bool, n)
+
+	for i := 0; i < n; i++ {
+		id := newCorrelationID()
+		if id == "" {
+			t.Fatal("newCorrelationID() returned an empty string")
+		}
+		if seen[id] {
+			t.Fatalf("newCorrelationID() produced a duplicate after %d calls: %q", i, id)
+		}
+		seen[id] = true
+	}
+}
+
 // Checkpoint F's security review (MEDIUM): without a per-attempt timeout,
 // a host that accepts the TCP connection but never completes Postgres's
 // own startup handshake could block a single connectPostgres attempt
