@@ -59,6 +59,11 @@ fi
 # (b) only internal/config may read the environment or decode TOML.
 # The TOML half is scoped to actual import lines, not any string literal
 # containing "toml" — a fixture path or a comment shouldn't trip this.
+# An _integration_test.go file is exempt from the env-var half: reading
+# TEST_DATABASE_URL directly, not through internal/config, is
+# backend-test-harness.md FR-2's own explicit rule for the test harness
+# — test-only plumbing, distinct from the application's own runtime
+# configuration, not a violation of this check's intent.
 import_lines() {
 	strip_raw_strings "$1" | awk '
 		/^import \(/ { inblock = 1; next }
@@ -71,6 +76,7 @@ import_lines() {
 while IFS= read -r f; do
 	case "$f" in
 	"$CONFIG_DIR"/*) continue ;;
+	*_integration_test.go) continue ;;
 	esac
 	if strip_raw_strings "$f" | grep -Eq '\bos\.(Getenv|LookupEnv)\(' || import_lines "$f" | grep -Eiq 'toml'; then
 		add_violation "$f: only internal/config may read an environment variable or decode TOML (backend-configuration.md FR-1)"
