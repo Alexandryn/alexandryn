@@ -98,6 +98,30 @@ EOF
 assert_pass "rule (b): os.Getenv confined to internal/config" "$d"
 
 d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/migrate_integration_test.go" <<'EOF'
+package postgres_test
+
+import "os"
+
+func testDSN() string {
+	return os.Getenv("TEST_DATABASE_URL")
+}
+EOF
+assert_pass "rule (b): TEST_DATABASE_URL read directly in an _integration_test.go file (backend-test-harness.md FR-2)" "$d"
+
+d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/pool_test.go" <<'EOF'
+package postgres_test
+
+import "os"
+
+func leaky() string {
+	return os.Getenv("SOME_VAR")
+}
+EOF
+assert_fail "rule (b): os.Getenv in an ordinary _test.go file (not _integration_test.go) is still a violation" "$d" "pool_test.go"
+
+d="$(new_fixture)"
 cat >"$d/internal/persistence/postgres/pool.go" <<'EOF'
 package postgres
 
