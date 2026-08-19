@@ -39,20 +39,66 @@ func (l *fakeListener) Close() error {
 }
 func (l *fakeListener) Addr() net.Addr { return &net.TCPAddr{IP: net.IPv4zero, Port: 0} }
 
+// fakeServer satisfies shutdownableServer without opening a real socket.
+// Serve blocks until Shutdown is called (or serveErr is set, for the
+// "server crashed on its own" case); Shutdown records every context it was
+// called with and appends "shutdown" to order, so tests can assert both
+// call count/deadline and ordering relative to pool.Close.
+type fakeServer struct {
+	order        *[]string
+	served       chan struct{}
+	serveErr     error
+	shutdownErr  error
+	shutdownCtxs []context.Context
+}
+
+func newFakeServer(order *[]string) *fakeServer {
+	return &fakeServer{order: order, served: make(chan struct{})}
+}
+
+func (s *fakeServer) Serve(net.Listener) error {
+	if s.serveErr != nil {
+		return s.serveErr
+	}
+	<-s.served
+	return http.ErrServerClosed
+}
+
+func (s *fakeServer) Shutdown(ctx context.Context) error {
+	*s.order = append(*s.order, "shutdown")
+	s.shutdownCtxs = append(s.shutdownCtxs, ctx)
+	select {
+	case <-s.served:
+	default:
+		close(s.served)
+	}
+	return s.shutdownErr
+}
+
 // fakePool satisfies the pgPool interface (Ping + Close) run.go's step 6
-// needs, without a real *pgxpool.Pool.
+// needs, without a real *pgxpool.Pool. When order is non-nil, Close
+// appends "poolClose" to it, so tests can assert FR-6's ordering relative
+// to shutdown.
 type fakePool struct {
 	pingErr error
+	order   *[]string
 }
 
 func (p *fakePool) Ping(context.Context) error { return p.pingErr }
-func (p *fakePool) Close()                     {}
+func (p *fakePool) Close() {
+	if p.order != nil {
+		*p.order = append(*p.order, "poolClose")
+	}
+}
 
 // recordingDeps builds a runDeps whose constructors each append their step
 // name to order before returning, proving FR-1's step sequencing and that
 // no later step's fake runs before an earlier one has returned. logger
 // writes to a testutil.SpyHandler so tests can assert on logged content
-// (redaction, step names) without parsing raw JSON.
+// (redaction, step names) without parsing raw JSON. The default server and
+// pool fakes also append "shutdown"/"poolClose" to order, so a full
+// successful run's order ends [..., "pool", "shutdown", "poolClose"] once
+// ctx is cancelled.
 func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler) {
 	t.Helper()
 	fl := newFakeListener()
@@ -64,9 +110,10 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 		loadConfig: func() (*config.Config, error) {
 			*order = append(*order, "config")
 			return &config.Config{
-				LogLevel:         "info",
-				BindAddress:      "127.0.0.1:0",
-				HTTPMaxBodyBytes: 1 << 20,
+				LogLevel:            "info",
+				BindAddress:         "127.0.0.1:0",
+				HTTPMaxBodyBytes:    1 << 20,
+				ShutdownGracePeriod: 10 * time.Second,
 			}, nil
 		},
 		newLogger: func(cfg *config.Config) *slog.Logger {
@@ -87,6 +134,10 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 			*order = append(*order, "listen")
 			return fl, nil
 		},
+		newServer: func(cfg *config.Config, handler http.Handler) shutdownableServer {
+			return newFakeServer(order)
+		},
+		clock: testutil.NewFakeClock(time.Unix(0, 0)),
 		obtainPostgres: func(ctx context.Context, cfg *config.Config) error {
 			*order = append(*order, "postgres")
 			return nil
@@ -100,7 +151,7 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 		},
 		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, error) {
 			*order = append(*order, "pool")
-			return &fakePool{}, nil
+			return &fakePool{order: order}, nil
 		},
 		stderr: &bytes.Buffer{},
 	}
@@ -117,7 +168,7 @@ func TestRun_ExecutesFR1StepsInOrder(t *testing.T) {
 
 	run(ctx, deps)
 
-	want := []string{"config", "logger", "router", "listen", "postgres", "migrate", "pool"}
+	want := []string{"config", "logger", "router", "listen", "postgres", "migrate", "pool", "shutdown", "poolClose"}
 	if len(order) != len(want) {
 		t.Fatalf("call order = %v, want %v", order, want)
 	}
@@ -227,7 +278,7 @@ func TestRun_PostgresRetrySucceedsWithinBudget(t *testing.T) {
 	if len(slept) != 2 {
 		t.Fatalf("sleep was called %d times, want 2 (one backoff per failed attempt)", len(slept))
 	}
-	want := []string{"config", "logger", "router", "listen", "postgres", "migrate", "pool"}
+	want := []string{"config", "logger", "router", "listen", "postgres", "migrate", "pool", "shutdown", "poolClose"}
 	if len(order) != len(want) {
 		t.Fatalf("call order = %v, want %v — migrate/pool must run exactly once after the retry succeeds", order, want)
 	}
@@ -283,10 +334,11 @@ func TestRun_PostgresFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
 	deps.loadConfig = func() (*config.Config, error) {
 		order = append(order, "config")
 		return &config.Config{
-			LogLevel:         "info",
-			BindAddress:      "127.0.0.1:0",
-			HTTPMaxBodyBytes: 1 << 20,
-			DatabaseURL:      config.RedactedString(fakeStartupDSNMarker),
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 10 * time.Second,
+			DatabaseURL:         config.RedactedString(fakeStartupDSNMarker),
 		}, nil
 	}
 	deps.obtainPostgres = func(ctx context.Context, cfg *config.Config) error {
@@ -416,10 +468,11 @@ func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T
 	deps.loadConfig = func() (*config.Config, error) {
 		order = append(order, "config")
 		return &config.Config{
-			LogLevel:         "info",
-			BindAddress:      "127.0.0.1:0",
-			HTTPMaxBodyBytes: 1 << 20,
-			DatabaseURL:      config.RedactedString(fakeStartupDSNMarker),
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 10 * time.Second,
+			DatabaseURL:         config.RedactedString(fakeStartupDSNMarker),
 		}, nil
 	}
 	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
@@ -436,5 +489,151 @@ func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T
 	}
 	if !spy.Contains("could not construct the connection pool for the configured database") {
 		t.Fatal("pool-construction failure log doesn't use a fixed generic message")
+	}
+}
+
+// FR-4/FR-5, Unit layer: sending the shutdown signal invokes
+// http.Server.Shutdown with a context whose deadline is exactly
+// clock.Now() + the configured grace period — a fake clock, no real
+// waiting for the deadline itself.
+func TestRun_Shutdown_UsesConfiguredGracePeriodDeadline(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	fc := testutil.NewFakeClock(fixed)
+	deps.clock = fc
+
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 7 * time.Second,
+		}, nil
+	}
+
+	var srv *fakeServer
+	deps.newServer = func(cfg *config.Config, handler http.Handler) shutdownableServer {
+		srv = newFakeServer(&order)
+		return srv
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	run(ctx, deps)
+
+	if len(srv.shutdownCtxs) != 1 {
+		t.Fatalf("Shutdown was called %d times, want exactly 1", len(srv.shutdownCtxs))
+	}
+	gotDeadline, ok := srv.shutdownCtxs[0].Deadline()
+	if !ok {
+		t.Fatal("the context passed to Shutdown has no deadline")
+	}
+	wantDeadline := fixed.Add(7 * time.Second)
+	if !gotDeadline.Equal(wantDeadline) {
+		t.Fatalf("Shutdown deadline = %v, want %v (clock.Now() + ShutdownGracePeriod)", gotDeadline, wantDeadline)
+	}
+}
+
+// FR-6: the pool closes only after Shutdown returns — never before, never
+// concurrently.
+func TestRun_Shutdown_PoolClosesStrictlyAfterShutdownReturns(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	run(ctx, deps)
+
+	shutdownIdx, closeIdx := -1, -1
+	for i, step := range order {
+		switch step {
+		case "shutdown":
+			shutdownIdx = i
+		case "poolClose":
+			closeIdx = i
+		}
+	}
+	if shutdownIdx == -1 {
+		t.Fatal("Shutdown was never called on a clean shutdown signal")
+	}
+	if closeIdx == -1 {
+		t.Fatal("the pool was never closed on a clean shutdown signal")
+	}
+	if closeIdx <= shutdownIdx {
+		t.Fatalf("pool closed at index %d, Shutdown called at index %d — pool must close strictly after Shutdown returns", closeIdx, shutdownIdx)
+	}
+}
+
+// FR-4's timeout case: Shutdown returning context.DeadlineExceeded (the
+// grace period expired with requests still in flight) is not treated as a
+// startup/runtime error — the process still proceeds to close the pool and
+// exits 0, per the Failure modes table ("the grace period is a ceiling,
+// not a guarantee every request finishes").
+func TestRun_Shutdown_GracePeriodExpiryStillClosesPoolAndExitsZero(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+	deps.newServer = func(cfg *config.Config, handler http.Handler) shutdownableServer {
+		s := newFakeServer(&order)
+		s.shutdownErr = context.DeadlineExceeded
+		return s
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	code := run(ctx, deps)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 — grace-period expiry is expected, not a failure", code)
+	}
+	shutdownIdx, closeIdx := -1, -1
+	for i, step := range order {
+		switch step {
+		case "shutdown":
+			shutdownIdx = i
+		case "poolClose":
+			closeIdx = i
+		}
+	}
+	if shutdownIdx == -1 || closeIdx == -1 || closeIdx <= shutdownIdx {
+		t.Fatalf("call order = %v, want shutdown then poolClose even when Shutdown times out", order)
+	}
+}
+
+// FR-6 applies regardless of why the process is exiting: if the server
+// stops on its own (never via a shutdown signal), no Shutdown is called,
+// but the pool must still close before the process exits.
+func TestRun_UnexpectedServerCrash_ClosesPoolWithoutCallingShutdown(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.newServer = func(cfg *config.Config, handler http.Handler) shutdownableServer {
+		s := newFakeServer(&order)
+		s.serveErr = errors.New("listener closed unexpectedly")
+		return s
+	}
+
+	code := run(context.Background(), deps)
+
+	if code == 0 {
+		t.Fatal("exit code = 0, want non-zero on an unexpected server crash")
+	}
+	for _, step := range order {
+		if step == "shutdown" {
+			t.Fatalf("Shutdown must not be called on an unexpected crash, got order %v", order)
+		}
+	}
+	found := false
+	for _, step := range order {
+		if step == "poolClose" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("pool must still be closed on an unexpected server crash, got order %v", order)
+	}
+	if !spy.Contains("http server stopped unexpectedly") {
+		t.Fatal("no log line reports the unexpected server crash")
 	}
 }
