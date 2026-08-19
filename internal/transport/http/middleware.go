@@ -115,7 +115,7 @@ func Recovery(logger *slog.Logger, newID func() string) Middleware {
 					"stack", string(debug.Stack()),
 				)
 
-				writeError(w, http.StatusInternalServerError, domain.Internal, "an internal error occurred", id)
+				writeError(w, StatusForCategory(domain.Internal), domain.Internal, "an internal error occurred", id)
 			}()
 			next.ServeHTTP(w, r)
 		})
