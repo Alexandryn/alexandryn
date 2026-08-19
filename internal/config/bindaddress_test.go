@@ -83,7 +83,17 @@ func TestLoad_BindAddress_MalformedRejected(t *testing.T) {
 // --- New cases (T6, tasks/plan.md): the two-mode rule ADR 0017 added,
 // not present in the test plan written before that amendment ---
 
-func TestLoad_BindAddress_PubliclyRoutableWithValidCertAccepted(t *testing.T) {
+// Checkpoint F's security review (T17-T19, cmd/server): a valid
+// certificate here used to satisfy FR-8's validation while nothing in
+// cmd/server actually called ServeTLS — the process would bind a public
+// address and silently serve plaintext HTTP despite Load succeeding.
+// Validating a certificate that's never used is worse than no validation
+// at all, since it looks enforced but isn't. Until TLS serving actually
+// exists (ADR 0017 Mode A, phase 13), a publicly routable BIND_ADDRESS is
+// rejected outright, even with an otherwise-valid certificate — stricter
+// than backend-configuration.md FR-8's current text, deliberately, until
+// that spec is amended to match.
+func TestLoad_BindAddress_PubliclyRoutableRejectedEvenWithValidCert(t *testing.T) {
 	validEnv(t)
 	t.Setenv("BIND_ADDRESS", "203.0.113.5:8080")
 	t.Setenv("TLS_CERT_FILE", "/tls/cert.pem")
@@ -95,8 +105,9 @@ func TestLoad_BindAddress_PubliclyRoutableWithValidCertAccepted(t *testing.T) {
 		"/tls/key.pem":  keyPEM,
 	})
 
-	if _, err := config.Load("", readFile, fakeUserConfigDir); err != nil {
-		t.Fatalf("Load() error = %v, want nil — publicly routable with a valid certificate is Mode A, legal", err)
+	_, err := config.Load("", readFile, fakeUserConfigDir)
+	if err == nil {
+		t.Fatal("Load() error = nil, want an error — no build-time TLS serving exists yet, so a public bind must be refused regardless of certificate validity")
 	}
 }
 
