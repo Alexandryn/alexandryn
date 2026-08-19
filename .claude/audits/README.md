@@ -49,3 +49,4 @@ No phase closes with an open Critical or High finding.
 | Audit | Scope | Date | Critical | High | Verdict |
 |---|---|---|---|---|---|
 | [0001](0001-phase03-backend-specs.md) | Phase 03 backend foundation specs (6 specs, 3 ADRs), pre-implementation | 2026-08-14 | 0 | 0 | 1 Medium finding, fixed same session |
+| [0003](0003-cmd-server-startup-shutdown.md) | `cmd/server` startup/shutdown sequence, Checkpoint F (T17-T20) | 2026-08-19 | 0 | 1 | 5 of 6 findings fixed same session; 1 (spec-text amendment) open, deliberately deferred |
