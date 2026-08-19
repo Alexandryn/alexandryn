@@ -62,12 +62,12 @@ func Readyz(ref *PoolRef) http.Handler {
 
 		pinger, ok := ref.Get()
 		if !ok {
-			writeError(w, StatusForCategory(domain.Unavailable), domain.Unavailable, "not yet started", id)
+			WriteError(w, domain.Unavailable, "not yet started", id)
 			return
 		}
 
 		if err := pinger.Ping(r.Context()); err != nil {
-			writeError(w, StatusForCategory(domain.Unavailable), domain.Unavailable, "lost the connection", id)
+			WriteError(w, domain.Unavailable, "lost the connection", id)
 			return
 		}
 
