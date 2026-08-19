@@ -11,10 +11,17 @@ import (
 
 // validateBindAddress enforces FR-8/ADR 0017: BindAddress's resolved host
 // must be loopback or a private range (always legal, Mode B — upstream
-// TLS or none, outside this process's guarantee), or publicly routable
-// with TLSCertFile/TLSKeyFile both present and valid (Mode A — in-process
-// TLS). An invalid or missing certificate on a public bind fails startup
-// unconditionally; it never degrades to an unencrypted listener.
+// TLS or none, outside this process's guarantee); a publicly routable
+// address is FR-8's Mode A (in-process TLS via TLSCertFile/TLSKeyFile) in
+// spec text, but is rejected outright here regardless of certificate
+// validity — cmd/server does not yet call ServeTLS anywhere, so Mode A's
+// "legal" outcome would otherwise mean Load succeeding while the process
+// silently serves plaintext HTTP on a public address. Validating a
+// certificate that's never used to actually encrypt anything is worse
+// than no validation, since it looks enforced but isn't (Checkpoint F
+// security review, T17-T19). Revert to calling
+// validatePublicBindCertificate once ServeTLS is actually wired
+// (phase 13) — that function is kept, tested, and ready for that switch.
 func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) error {
 	host, _, err := net.SplitHostPort(cfg.BindAddress)
 	if err != nil {
@@ -29,7 +36,10 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		return nil
 	}
 
-	return validatePublicBindCertificate(cfg, readFile)
+	if err := validatePublicBindCertificate(cfg, readFile); err != nil {
+		return err
+	}
+	return fmt.Errorf("BIND_ADDRESS %s is publicly routable; this build does not yet serve TLS (no ServeTLS wiring exists), so public binds are refused regardless of certificate validity until that lands", cfg.BindAddress)
 }
 
 // isLoopbackOrPrivate classifies host without a real DNS lookup: only a
