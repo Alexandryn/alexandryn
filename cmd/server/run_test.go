@@ -404,3 +404,37 @@ func TestRun_PoolConstructionFailureStopsBeforeReady(t *testing.T) {
 		t.Fatal("no log line names the failing step (pool)")
 	}
 }
+
+// FR-3's DSN-redaction requirement isn't step-5-specific — it applies "at
+// every log call it introduces" (spec's own Security considerations).
+// pgxpool.ParseConfig's own error embeds the connection string (pgx
+// redacts only the password, not host/user/dbname) when DATABASE_URL is
+// malformed, so step 6's failure log needs the same guard step 5 has.
+func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:         "info",
+			BindAddress:      "127.0.0.1:0",
+			HTTPMaxBodyBytes: 1 << 20,
+			DatabaseURL:      config.RedactedString(fakeStartupDSNMarker),
+		}, nil
+	}
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+		return nil, errors.New("cannot parse `" + fakeStartupDSNMarker + "`: invalid port")
+	}
+
+	code := run(context.Background(), deps)
+
+	if code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	if spy.Contains(fakeStartupDSNMarker) {
+		t.Fatal("pool-construction failure log leaked the DSN")
+	}
+	if !spy.Contains("could not construct the connection pool for the configured database") {
+		t.Fatal("pool-construction failure log doesn't use a fixed generic message")
+	}
+}
