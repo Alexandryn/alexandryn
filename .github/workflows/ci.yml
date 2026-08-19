@@ -12,10 +12,6 @@ on:
 # stages are noted in place, with what unblocks each:
 #
 #   1. web/ build (ADR 0008)               — phase 04; no web/ exists yet
-#   5. integration tests                    — needs TEST_DATABASE_URL
-#                                              fail-loud convention (T2)
-#                                              and a real integration
-#                                              suite (T12+)
 #   6. contract test                        — architecture-contracts.md
 #                                              FR-3's tool isn't chosen
 #                                              or built yet
@@ -25,12 +21,25 @@ on:
 #                                              tasks/plan.md); gated on
 #                                              that approval
 #
-# Stages 2, 3, 4, 7, 8 below are real as of this workflow.
+# Stages 2, 3, 4, 5, 7, 8 below are real as of this workflow.
 
 jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: alexandryn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
 
@@ -72,6 +81,17 @@ jobs:
       # running the suite twice.
       - name: Unit tests
         run: go test -race -coverprofile=coverage.out ./...
+
+      # Stage 5 — integration tests, against the Postgres service
+      # container above (architecture-testing.md FR-3: never the
+      # application's own bundled-spawn mechanism for this fast, per-PR
+      # suite). TEST_DATABASE_URL points at the service by its Docker
+      # network alias, port 5432 in-network regardless of the mapped
+      # host port above.
+      - name: Integration tests
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/alexandryn_test?sslmode=disable
+        run: go test -race -tags=integration ./...
 
       # Stage 7 — coverage reporting. No tool or threshold is fixed yet
       # (open question); this only proves the stage exists and its
