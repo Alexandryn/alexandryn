@@ -166,6 +166,44 @@ func TestRecovery_NoPanicPassesThroughUnaffected(t *testing.T) {
 	}
 }
 
+// backend-errors-and-logging.md FR-10's non-error-panic-value case: a
+// nil-valued panic must still be recovered like any other, never
+// producing a second panic from the recovery path's own attempt to
+// format the value. Go 1.21+ converts panic(nil) to a non-nil
+// runtime.PanicNilError specifically so recover() can't mistake it for
+// "nothing panicked" — this test proves Recovery handles that value
+// correctly rather than relying on the language guarantee alone.
+func TestRecovery_PanicWithNilValue_StillRecoversWithoutASecondPanic(t *testing.T) {
+	logger := slog.New(testutil.NewSpyHandler())
+	ids := testutil.NewFakeIDGenerator("nil-panic-id")
+
+	panicking := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic(nil)
+	})
+	handler := transporthttp.Recovery(logger, ids.NewID)(panicking)
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+
+	var body struct {
+		Code          string `json:"code"`
+		CorrelationID string `json:"correlationId"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("response body isn't valid JSON: %v", err)
+	}
+	if body.Code != "Internal" {
+		t.Fatalf("code = %q, want Internal", body.Code)
+	}
+	if body.CorrelationID == "" {
+		t.Fatal("correlationId is empty")
+	}
+}
+
 // --- FR-4: logging middleware skeleton ---
 
 func TestLogging_EmitsDebugStartAndInfoCompletionWithTheSameCorrelationID(t *testing.T) {
@@ -236,6 +274,43 @@ func TestLogging_AttachesTheCorrelationIDToTheRequestContext(t *testing.T) {
 
 	if seen != "ctx-id" {
 		t.Fatalf("correlation ID seen by the handler = %q, want ctx-id", seen)
+	}
+}
+
+// FR-7: the ID MUST be randomly generated, "never derived from anything
+// request-supplied" — a client-supplied X-Correlation-Id header must
+// never be trusted as the log-tying value, well-formed or not, since
+// that would let a malicious client inject an ID chosen to collide with
+// or spoof another request's logs.
+func TestLogging_IgnoresClientSuppliedCorrelationIDHeader(t *testing.T) {
+	cases := []struct {
+		name   string
+		header string
+	}{
+		{"well-formed spoofed value", "client-supplied-spoofed-id"},
+		{"malformed value", "\x00not\x01valid\x02"},
+		{"empty value", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := slog.New(testutil.NewSpyHandler())
+			ids := testutil.NewFakeIDGenerator("server-generated-id")
+
+			var seen string
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				seen = transporthttp.CorrelationIDFromContext(r.Context())
+			})
+			handler := transporthttp.Logging(logger, ids.NewID)(next)
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("X-Correlation-Id", tc.header)
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+
+			if seen != "server-generated-id" {
+				t.Fatalf("correlation ID seen by handler = %q, want the server-generated one regardless of the client-supplied header", seen)
+			}
+		})
 	}
 }
 
