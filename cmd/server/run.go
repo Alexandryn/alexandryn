@@ -16,12 +16,35 @@ import (
 
 // pgPool is the minimal interface run's step 6 needs from whatever
 // internal/persistence/postgres.NewPool returns: transporthttp.Pinger for
-// /readyz, plus Close for the graceful-shutdown sequence T19 adds. A real
+// /readyz, plus Close for the graceful-shutdown sequence (FR-6). A real
 // *pgxpool.Pool already implements both natively; tests use a fake.
 type pgPool interface {
 	transporthttp.Pinger
 	Close()
 }
+
+// shutdownableServer is the minimal interface run needs from whatever
+// serves HTTP: Serve to start (step 4), Shutdown to stop cleanly (FR-4). A
+// real *http.Server already implements both natively; tests use a fake
+// that never opens a real socket.
+type shutdownableServer interface {
+	Serve(l net.Listener) error
+	Shutdown(ctx context.Context) error
+}
+
+// clock is the one method run needs from "now" — FR-5's grace-period
+// deadline is computed from it instead of time.Now() directly, so a test
+// can fix it and assert the exact deadline without any real waiting
+// (go-backend-conventions: inject Clock, never call time.Now() inline).
+// testutil.FakeClock satisfies this structurally.
+type clock interface {
+	Now() time.Time
+}
+
+// realClock is production's clock: the real wall clock.
+type realClock struct{}
+
+func (realClock) Now() time.Time { return time.Now() }
 
 // runDeps carries every one of run's constructor dependencies as fields,
 // never package-level state (backend-service-lifecycle.md FR-2). main
@@ -32,6 +55,8 @@ type runDeps struct {
 	newLogger  func(cfg *config.Config) *slog.Logger
 	newRouter  func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef) http.Handler
 	listen     func(network, address string) (net.Listener, error)
+	newServer  func(cfg *config.Config, handler http.Handler) shutdownableServer
+	clock      clock
 
 	// obtainPostgres makes one attempt at FR-1 step 5's "obtain a
 	// reachable PostgreSQL" (spawn-or-connect, chosen by DATABASE_URL's
@@ -81,10 +106,10 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 // reference wired to /healthz and /readyz (FR-7); bind the listener and
 // start serving (the process is now "alive"); obtain a reachable
 // PostgreSQL with FR-3's bounded retry, run migrations, construct the
-// pool and populate the reference; then report ready.
-//
-// Graceful shutdown (FR-4/5/6) is not implemented yet — this is where it
-// slots in, replacing the bare wait at the end.
+// pool and populate the reference; then report ready. On ctx's
+// cancellation (a shutdown signal), it stops accepting new connections
+// and lets in-flight requests finish within the configured grace period
+// before closing the pool (FR-4/5/6).
 //
 // Each step logs a line on success at info level (FR-1's observability
 // requirement) once the logger exists; config failure — the only step
@@ -112,7 +137,7 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
-	srv := transporthttp.NewServer(cfg, router)
+	srv := deps.newServer(cfg, router)
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(listener) }()
 
@@ -165,17 +190,38 @@ func run(ctx context.Context, deps runDeps) int {
 
 	logger.Info("ready")
 
-	// T19 replaces this bare wait with FR-4/5/6's graceful shutdown
-	// sequence (stop accepting new connections, Shutdown(ctx) with the
-	// configured grace period, then close the pool).
 	select {
 	case <-ctx.Done():
+		// FR-4: stop accepting new connections immediately and let
+		// in-flight requests finish within the configured grace period
+		// (FR-5) — Shutdown does both. FR-6: the pool closes only after
+		// Shutdown returns, whether it completed cleanly or the grace
+		// period expired, never before and never concurrently.
+		logger.Info("shutdown signal received")
+		shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			// A DeadlineExceeded here means the grace period expired
+			// with requests still in flight — expected under load
+			// (Failure modes table), not an error to report; any other
+			// error is unexpected and worth a line, but neither stops
+			// the pool from closing below.
+			logger.Error("shutdown did not complete cleanly", "error", err.Error())
+		}
+		pool.Close()
+		logger.Info("shutdown complete")
 		return 0
 	case err := <-serveErr:
+		// The server stopped on its own, not via a shutdown signal — no
+		// Shutdown was called, but FR-6's "close the pool before the
+		// process exits" applies regardless of why the process is
+		// exiting.
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("http server stopped unexpectedly", "error", err.Error())
+			pool.Close()
 			return 1
 		}
+		pool.Close()
 		return 0
 	}
 }

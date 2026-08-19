@@ -49,8 +49,12 @@ func main() {
 		newLogger: func(cfg *config.Config) *slog.Logger {
 			return logging.New(cfg.LogLevel, os.Stdout)
 		},
-		newRouter:           newProductionRouter,
-		listen:              net.Listen,
+		newRouter: newProductionRouter,
+		listen:    net.Listen,
+		newServer: func(cfg *config.Config, handler http.Handler) shutdownableServer {
+			return transporthttp.NewServer(cfg, handler)
+		},
+		clock:               realClock{},
 		obtainPostgres:      obtainPostgres,
 		postgresMaxAttempts: postgresReadyMaxAttempts,
 		postgresBackoff:     postgresReadyBackoff,
