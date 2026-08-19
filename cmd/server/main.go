@@ -30,9 +30,17 @@ import (
 // spawn/start timing than this spec; ~30 seconds is a provisional guess
 // pending that number, not a considered decision — revisit here once
 // backend-persistence.md fixes one.
+//
+// postgresConnectAttemptTimeout bounds each individual connect attempt:
+// without it, a host that accepts the TCP handshake but never completes
+// Postgres's own startup message exchange could block a single attempt
+// far longer than postgresReadyBackoff implies, turning the "~30 second"
+// budget above into an unbounded one (found in Checkpoint F's security
+// review — DATABASE_URL is operator-supplied, constitution §4).
 const (
-	postgresReadyMaxAttempts = 30
-	postgresReadyBackoff     = time.Second
+	postgresReadyMaxAttempts      = 30
+	postgresReadyBackoff          = time.Second
+	postgresConnectAttemptTimeout = 5 * time.Second
 )
 
 func main() {
@@ -58,7 +66,7 @@ func main() {
 		obtainPostgres:      obtainPostgres,
 		postgresMaxAttempts: postgresReadyMaxAttempts,
 		postgresBackoff:     postgresReadyBackoff,
-		sleep:               time.Sleep,
+		sleep:               sleepOrDone,
 		runMigrations: func(ctx context.Context, cfg *config.Config) error {
 			return postgres.Migrate(ctx, cfg.DatabaseURL.Reveal())
 		},
@@ -96,14 +104,41 @@ func spawnPostgres(ctx context.Context) error {
 // connectPostgres returns a connect function for postgres.SelectStartupPath:
 // one attempt at establishing (and immediately closing) a real connection
 // to cfg.DatabaseURL — proof of reachability, per FR-1 step 5, without
-// building the long-lived pool step 6 owns.
+// building the long-lived pool step 6 owns. Bounded by
+// postgresConnectAttemptTimeout so a host that accepts the TCP connection
+// but never completes Postgres's own handshake can't block a single
+// attempt indefinitely.
 func connectPostgres(cfg *config.Config) func(ctx context.Context) error {
+	return connectPostgresWithTimeout(cfg, postgresConnectAttemptTimeout)
+}
+
+// connectPostgresWithTimeout is connectPostgres with an injectable
+// timeout, so a test can prove the bound is actually applied without
+// waiting out the real production duration.
+func connectPostgresWithTimeout(cfg *config.Config, timeout time.Duration) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
-		conn, err := pgx.Connect(ctx, cfg.DatabaseURL.Reveal())
+		attemptCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		conn, err := pgx.Connect(attemptCtx, cfg.DatabaseURL.Reveal())
 		if err != nil {
 			return err
 		}
-		return conn.Close(ctx)
+		return conn.Close(attemptCtx)
+	}
+}
+
+// sleepOrDone waits for d or ctx's cancellation, whichever comes first —
+// production's real implementation of runDeps.sleep, so a shutdown signal
+// arriving during the Postgres-reachability retry loop's backoff wait
+// interrupts it immediately instead of being absorbed by a real
+// time.Sleep that ignores ctx entirely.
+func sleepOrDone(ctx context.Context, d time.Duration) {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+	case <-ctx.Done():
 	}
 }
 

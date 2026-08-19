@@ -43,13 +43,17 @@ func (l *fakeListener) Addr() net.Addr { return &net.TCPAddr{IP: net.IPv4zero, P
 // Serve blocks until Shutdown is called (or serveErr is set, for the
 // "server crashed on its own" case); Shutdown records every context it was
 // called with and appends "shutdown" to order, so tests can assert both
-// call count/deadline and ordering relative to pool.Close.
+// call count/deadline and ordering relative to pool.Close. closeCalls
+// counts Close invocations, so tests can assert the force-close-on-
+// grace-period-timeout behavior.
 type fakeServer struct {
 	order        *[]string
 	served       chan struct{}
 	serveErr     error
 	shutdownErr  error
 	shutdownCtxs []context.Context
+	closeCalls   int
+	closeErr     error
 }
 
 func newFakeServer(order *[]string) *fakeServer {
@@ -73,6 +77,11 @@ func (s *fakeServer) Shutdown(ctx context.Context) error {
 		close(s.served)
 	}
 	return s.shutdownErr
+}
+
+func (s *fakeServer) Close() error {
+	s.closeCalls++
+	return s.closeErr
 }
 
 // fakePool satisfies the pgPool interface (Ping + Close) run.go's step 6
@@ -144,7 +153,7 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 		},
 		postgresMaxAttempts: 3,
 		postgresBackoff:     0,
-		sleep:               func(time.Duration) {},
+		sleep:               func(context.Context, time.Duration) {},
 		runMigrations: func(ctx context.Context, cfg *config.Config) error {
 			*order = append(*order, "migrate")
 			return nil
@@ -266,7 +275,7 @@ func TestRun_PostgresRetrySucceedsWithinBudget(t *testing.T) {
 	}
 	deps.postgresMaxAttempts = 5
 	deps.postgresBackoff = 10 * time.Millisecond
-	deps.sleep = func(d time.Duration) { slept = append(slept, d) }
+	deps.sleep = func(ctx context.Context, d time.Duration) { slept = append(slept, d) }
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -300,7 +309,7 @@ func TestRun_PostgresRetryExhaustsBudgetThenFails(t *testing.T) {
 	deps.postgresMaxAttempts = 4
 	deps.postgresBackoff = time.Millisecond
 	var slept []time.Duration
-	deps.sleep = func(d time.Duration) { slept = append(slept, d) }
+	deps.sleep = func(ctx context.Context, d time.Duration) { slept = append(slept, d) }
 
 	code := run(context.Background(), deps)
 
@@ -575,10 +584,11 @@ func TestRun_Shutdown_PoolClosesStrictlyAfterShutdownReturns(t *testing.T) {
 func TestRun_Shutdown_GracePeriodExpiryStillClosesPoolAndExitsZero(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
+	var srv *fakeServer
 	deps.newServer = func(cfg *config.Config, handler http.Handler) shutdownableServer {
-		s := newFakeServer(&order)
-		s.shutdownErr = context.DeadlineExceeded
-		return s
+		srv = newFakeServer(&order)
+		srv.shutdownErr = context.DeadlineExceeded
+		return srv
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -599,6 +609,14 @@ func TestRun_Shutdown_GracePeriodExpiryStillClosesPoolAndExitsZero(t *testing.T)
 	}
 	if shutdownIdx == -1 || closeIdx == -1 || closeIdx <= shutdownIdx {
 		t.Fatalf("call order = %v, want shutdown then poolClose even when Shutdown times out", order)
+	}
+	// FR-4: Shutdown alone never touches active connections, only waits
+	// for them — a grace-period timeout must force-close what's left via
+	// Close, or those connections are cleanly cancelled only by process
+	// exit killing them out from under Shutdown, which is exactly what
+	// FR-4 forbids.
+	if srv.closeCalls != 1 {
+		t.Fatalf("Close was called %d times, want exactly 1 after a grace-period timeout", srv.closeCalls)
 	}
 }
 
@@ -635,5 +653,156 @@ func TestRun_UnexpectedServerCrash_ClosesPoolWithoutCallingShutdown(t *testing.T
 	}
 	if !spy.Contains("http server stopped unexpectedly") {
 		t.Fatal("no log line reports the unexpected server crash")
+	}
+}
+
+// FR-4: a shutdown signal arriving while waitForPostgres's retry loop is
+// still running must be treated as a shutdown, not absorbed into the
+// retry loop and eventually reported as an ordinary FR-3 startup failure.
+// Checkpoint F's review found this empirically: cancelling ctx mid-retry
+// used to make run() burn the rest of the retry budget and exit via
+// return 1 without ever calling Shutdown.
+func TestRun_ShutdownSignalDuringPostgresRetry_CallsShutdownNotOrdinaryFailure(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	attempts := 0
+	deps.obtainPostgres = func(ctx context.Context, cfg *config.Config) error {
+		attempts++
+		if attempts == 1 {
+			cancel()
+		}
+		return errors.New("connection refused")
+	}
+	deps.postgresMaxAttempts = 30
+	deps.postgresBackoff = time.Hour // would hang the test if the shutdown check didn't interrupt it
+	deps.sleep = func(ctx context.Context, d time.Duration) {
+		<-ctx.Done() // the real sleepOrDone's shape: returns on ctx cancellation
+	}
+
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, deps) }()
+
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("exit code = %d, want 0 — a shutdown signal is not a startup failure", code)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("run() did not return — the shutdown signal was not observed during the retry loop")
+	}
+
+	if attempts > 2 {
+		t.Fatalf("obtainPostgres was called %d times, want at most 2 — the retry loop must stop immediately on cancellation, not keep retrying", attempts)
+	}
+	shutdownCalled := false
+	for _, step := range order {
+		if step == "shutdown" {
+			shutdownCalled = true
+		}
+	}
+	if !shutdownCalled {
+		t.Fatalf("Shutdown was never called, call order = %v — a mid-startup shutdown signal must still attempt Shutdown (FR-4)", order)
+	}
+}
+
+// Same gap, at the migration step: a shutdown signal arriving while
+// runMigrations is in flight must route to Shutdown, not be logged as an
+// ordinary migration failure.
+func TestRun_ShutdownSignalDuringMigration_CallsShutdownNotOrdinaryFailure(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	deps.runMigrations = func(ctx context.Context, cfg *config.Config) error {
+		order = append(order, "migrate")
+		cancel()
+		return errors.New("migration failed: context canceled")
+	}
+
+	code := run(ctx, deps)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 — a shutdown signal is not a startup failure", code)
+	}
+	if spy.Contains("could not run migrations") {
+		t.Fatal("a mid-startup shutdown signal was logged as an ordinary migration failure")
+	}
+	shutdownCalled := false
+	for _, step := range order {
+		if step == "shutdown" {
+			shutdownCalled = true
+		}
+	}
+	if !shutdownCalled {
+		t.Fatalf("Shutdown was never called, call order = %v", order)
+	}
+}
+
+// Same gap, at the pool-construction step.
+func TestRun_ShutdownSignalDuringPoolConstruction_CallsShutdownNotOrdinaryFailure(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+		order = append(order, "pool")
+		cancel()
+		return nil, errors.New("pool: context canceled")
+	}
+
+	code := run(ctx, deps)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 — a shutdown signal is not a startup failure", code)
+	}
+	if spy.Contains("could not construct the connection pool") {
+		t.Fatal("a mid-startup shutdown signal was logged as an ordinary pool-construction failure")
+	}
+	shutdownCalled := false
+	for _, step := range order {
+		if step == "shutdown" {
+			shutdownCalled = true
+		}
+	}
+	if !shutdownCalled {
+		t.Fatalf("Shutdown was never called, call order = %v", order)
+	}
+}
+
+// Defense in depth (Checkpoint F review, LOW finding): the migrate step's
+// failure log needs the same DSN-redaction guard the postgres/pool steps
+// have, even though today internal/persistence/postgres.RunMigrations
+// already pre-sanitizes connection-class failures — this is the
+// regression guard for if that ever stops being true.
+func TestRun_MigrationFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 10 * time.Second,
+			DatabaseURL:         config.RedactedString(fakeStartupDSNMarker),
+		}, nil
+	}
+	deps.runMigrations = func(ctx context.Context, cfg *config.Config) error {
+		return errors.New("could not connect: " + fakeStartupDSNMarker)
+	}
+
+	code := run(context.Background(), deps)
+
+	if code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	if spy.Contains(fakeStartupDSNMarker) {
+		t.Fatal("migration failure log leaked the DSN")
+	}
+	if !spy.Contains("could not run migrations against the configured database") {
+		t.Fatal("migration failure log doesn't use a fixed generic message")
 	}
 }
