@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self + independent, approved with changes) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Two amendments pending: FR-6's cascade must be **declared atomic** for [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)'s transaction contract to engage with it, and FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0018`](../reviews/0018-spec-domain-source.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
+| **Reviewed in** | [`0018`](../reviews/0018-spec-domain-source.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer read and approved 2026-08-19; correctness pass [`0048`](../reviews/0048-phase02-correctness-review.md) |
 
 ## Context
 

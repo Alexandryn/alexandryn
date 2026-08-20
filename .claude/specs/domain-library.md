@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self + independent, approved with changes) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 8, 3 and 6 — the state-transition cascade line corrected to match FR-6, FR-2's computed membership now runs over the merge-resolved `Edition` set, and the Edition-existence check moved from construction to the owning domain service per [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md)). One item open: FR-7's deferral to `domain-events.md` for the "offline copies" reasoning still points at a passage that does not exist there ([`0048`](../reviews/0048-phase02-correctness-review.md) finding 13) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0017`](../reviews/0017-spec-domain-library.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
+| **Reviewed in** | [`0017`](../reviews/0017-spec-domain-library.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer read and approved 2026-08-19; correctness pass [`0048`](../reviews/0048-phase02-correctness-review.md) |
 
 ## Context
 
@@ -88,6 +88,19 @@ membership record that already exists.
   `Edition`s has a `LibraryEntry`," derived at query time, never persisted
   as a separate fact that could drift out of sync with the `LibraryEntry`
   records it's derived from.
+
+  **"Its `Edition`s" means the merge-resolved set.** A `Work` merged into
+  another keeps its own `Edition`s — `domain-bibliographic.md` FR-4's
+  merge moves nothing — so this computation MUST run over the union of the
+  `Work`'s `Edition`s and those of every `Work` merged into it,
+  transitively, exactly as that FR requires of any read that walks a
+  `Work`'s relations. Computed over raw parentage instead, it answers
+  *false* for a book the user demonstrably owns the moment a phase-10
+  automated match merges its `Work` — the `LibraryEntry` is untouched and
+  correct, and the derived answer is wrong
+  ([`0048`](../reviews/0048-phase02-correctness-review.md), finding 3).
+  This is the one place where a bibliographic operation changes a library
+  answer, and neither spec previously mentioned the other.
 - **FR-3** A `LibraryEntry`'s existence MUST NOT depend on current
   availability (`domain-source.md`'s concern) — creating one doesn't
   require the source to be reachable at that instant (a user might add a
@@ -179,12 +192,20 @@ Edition has no LibraryEntry -> LibraryEntry created (FR-1) -> Work "in library" 
 LibraryEntry exists, source becomes unreachable -> LibraryEntry unchanged (FR-3); availability (elsewhere) changes
 LibraryEntry removed -> Work/Edition records unchanged (FR-6); Work "in library" recomputes,
                          possibly still true if another Edition's entry exists
-LibraryEntry removed -> removed from any Collection it was part of (FR-6)
+LibraryEntry removed -> every Collection is untouched (FR-6): Collections hold
+                         Works, never LibraryEntrys, so there is no cascade to
+                         perform. A Work stays a Collection member with zero
+                         LibraryEntrys — the "want to read" case
 ```
 
-Illegal: a `LibraryEntry` for an `Edition` that doesn't exist (prevented
-by requiring a valid `Edition` reference at construction, same pattern as
-`domain-bibliographic.md` FR-8); a `Collection` containing a dangling
+Illegal: a `LibraryEntry` for an `Edition` that doesn't exist — rejected by
+the domain service that owns entry creation, **not** at construction, since
+whether an `Edition` exists is a property of the database rather than of the
+ID value and no value constructor can decide it
+([ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md); an
+earlier draft claimed a construction-time check,
+[`0048`](../reviews/0048-phase02-correctness-review.md) finding 6). A foreign
+key backs the same rule in the schema as defence in depth; a `Collection` containing a dangling
 `Work` reference after that `Work`'s last `LibraryEntry` is removed —
 membership in a collection is about the `Work` existing and being wanted,
 not about current ownership, so this is actually legal: **a `Work` can be
@@ -197,7 +218,7 @@ ownership for collection membership.
 
 | Failure | Detected how | Caller sees | System does |
 |---|---|---|---|
-| Attempt to create a `LibraryEntry` for a nonexistent `Edition` | Construction-time reference check | A domain-level error | Refused; no entry created |
+| Attempt to create a `LibraryEntry` for a nonexistent `Edition` | The entry-creation domain service's reference check (ADR 0020), backed by a foreign key | A domain-level error | Refused; no entry created |
 | Source goes offline after a `LibraryEntry` exists | Not this spec's concern to detect (`domain-source.md`) | The `LibraryEntry` unaffected; availability reads separately reflect the outage | Nothing — this is FR-3's whole point |
 | `LibraryEntry` removed while its `Work` is in two `Collection`s | FR-6 | Both `Collection`s unaffected — they reference the `Work`, never the `LibraryEntry` (FR-4) | Only the `LibraryEntry` is deleted; no `Collection`-level cascade exists to perform (FR-6) |
 | Same `Edition` added to the library twice | FR-7's uniqueness rule | No visible change the second time | No-op; no second `LibraryEntry` row created |

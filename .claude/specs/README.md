@@ -41,11 +41,11 @@ Group by area, not by phase — features outlive the phase that introduced them.
 | [`architecture-backend.md`](architecture-backend.md) | Go package layout, dependency rules, transport, errors, config | 01 | `REVIEWED` (self, approved with changes; amended post-review — container topology, ADR 0015, needs re-confirmation) |
 | [`architecture-frontend.md`](architecture-frontend.md) | React layering, state ownership, data fetching, routing | 01 | `REVIEWED` (self, approved with changes) |
 | [`architecture-testing.md`](architecture-testing.md) | Layers, tooling, fixtures, determinism, CI shape | 01 | `REVIEWED` (self, approved with changes) |
-| [`domain-bibliographic.md`](domain-bibliographic.md) | Work, edition, author, subject, language, identity and dedup | 02 | `REVIEWED` (self + independent, approved with changes) |
-| [`domain-library.md`](domain-library.md) | Library membership, collections, ownership, availability | 02 | `REVIEWED` (self + independent, approved with changes) |
-| [`domain-source.md`](domain-source.md) | Source identity, capability model, availability, file references | 02 | `REVIEWED` (self + independent, approved with changes) |
-| [`domain-reading.md`](domain-reading.md) | Position, progress, bookmarks, highlights, preferences | 02 | `REVIEWED` (self + independent, approved with changes) |
-| [`domain-events.md`](domain-events.md) | Events the domain emits, and what may consume them | 02 | `REVIEWED` (self + independent, approved with changes) |
+| [`domain-bibliographic.md`](domain-bibliographic.md) | Work, edition, author, subject, language, identity and dedup | 02 | `APPROVED` — amendment pending: FR-4's merge scope unspecified |
+| [`domain-library.md`](domain-library.md) | Library membership, collections, ownership, availability | 02 | `APPROVED` — amendment pending: `:182` contradicts FR-6 |
+| [`domain-source.md`](domain-source.md) | Source identity, capability model, availability, file references | 02 | `APPROVED` — amendment pending: declare FR-6's cascade atomic (ADR 0021) |
+| [`domain-reading.md`](domain-reading.md) | Position, progress, bookmarks, highlights, preferences | 02 | `APPROVED` — **FR-6/FR-7 not implementable until amended** |
+| [`domain-events.md`](domain-events.md) | Events the domain emits, and what may consume them | 02 | `APPROVED` — amendment pending: `Sensitive()` barrier overclaims |
 | [`backend-service-lifecycle.md`](backend-service-lifecycle.md) | Startup, wiring, shutdown, failure to start | 03 | `APPROVED` (amended post-approval three times — DSN redaction `0028`, job-worker-pool shutdown ordering `0036` re-confirmed, container topology `0044`; `0028`/`0044` need re-confirmation) |
 | [`backend-configuration.md`](backend-configuration.md) | Sources, precedence, validation, defaults, secrets | 03 | `APPROVED` (amended post-approval five times — `LOG_LEVEL` case-sensitivity `0025`, DSN redaction `0028`, `OPEN_LIBRARY_USER_AGENT` `0034` re-confirmed, container topology `0042`, `BIND_ADDRESS` classification for ADR 0017 (2026-08-18, maintainer-directed); `0025`/`0028`/`0042` need re-confirmation) |
 | [`backend-errors-and-logging.md`](backend-errors-and-logging.md) | Taxonomy, transport mapping, log contract, redaction | 03 | `APPROVED` |
