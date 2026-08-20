@@ -12,7 +12,7 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 - [ ] E3 — domain services live beside their aggregate, one file per operation-cluster
 - [x] E4 — repository interfaces here are minimal, not phase 03 T24's full CRUD shape (confirmed by maintainer 2026-08-20; flag for T24)
 - [x] E5 — event emission returns the event; caller persists it (confirmed by maintainer 2026-08-20)
-- [ ] E6 — `internal/domain/event.go`, built in Tier 1 before any emitting service
+- [x] E6 — `internal/domain/event.go`, built in Tier 1 before any emitting service
 
 ## Tasks
 
@@ -22,7 +22,7 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 
 **Checkpoint P-A** — P0+P1 green, `go vet ./...` clean, import-boundary lint clean
 
-- [ ] P2 — `internal/domain/event.go`: sealed `Event`/`PublicEvent`/`SensitiveEvent` + full catalog (recount against `domain-events.md`'s Domain model section, don't trust a cached count)
+- [x] P2 — `internal/domain/event.go`: sealed `Event`/`PublicEvent`/`SensitiveEvent` + full catalog (23 types, recounted against the spec directly), negative-compile fixture confirmed to fail under `go vet -tags negativecompile`
 
 **Checkpoint P-B** — event catalog complete and marker-correct before Tier 2
 
