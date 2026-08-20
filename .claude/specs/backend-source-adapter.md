@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15) |
+| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 6 — FR-3 now names maximum path length and UNC-path shape as validation dimensions; needs re-confirmation) |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -158,6 +158,17 @@ UI can trust.
   process-spawning model), not a requirement that spec states
   explicitly itself. This spec does not itself solve cross-user
   filesystem permission scenarios.
+
+  **A shape violation also includes a resolved path exceeding the host
+  OS's maximum path length** — checked at create/update time as
+  `InvalidInput`, not deferred to a health-check failure, since an
+  overlong path can never become valid later the way an unmounted
+  drive might. **On Windows, a UNC path (`\\server\share\...`) MUST be
+  accepted as a valid absolute path shape** by this validation — an
+  absolute-path check that assumes only a drive-letter root would
+  incorrectly reject a real, commonly-configured network-share source
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 6).
 - **FR-4** OPDS `config.baseUrl` MUST be validated as a well-formed
   `http`/`https` URL at create/update time (`InvalidInput` otherwise).
   A configured credential (FR-1) is sent as an HTTP `Authorization:

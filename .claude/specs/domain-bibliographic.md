@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 3 and 9 — FR-4 now states that a merge moves nothing and that resolve-through covers a `Work`'s relations transitively, making undo exactly the identity; FR-8 forbids cycles by reachability rather than self-reference, and FR-8/FR-9 are checked over the merge-resolved graph by a domain service per [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md), which also closes the containment/merge open question) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 3 and 9 — FR-4 now states that a merge moves nothing and that resolve-through covers a `Work`'s relations transitively, making undo exactly the identity; FR-8 forbids cycles by reachability rather than self-reference, and FR-8/FR-9 are checked over the merge-resolved graph by a domain service per [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md), which also closes the containment/merge open question. Amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 5 — FR-6 now rejects an empty or whitespace-only string the same as one exceeding the length bound; needs re-confirmation) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -149,6 +149,17 @@ model can hold without downstream code having to re-check it.
   where "every string arriving from a source is attacker-controlled"
   (phase 02's own security section) actually becomes enforced, not just
   stated.
+
+  **A present field's value MUST also fail this validation when it is
+  empty or contains only whitespace.** A maximum-length bound alone
+  admits an all-whitespace or zero-content string that satisfies it while
+  carrying no actual content, and upstream sources routinely produce
+  exactly this shape (a summary or title field that technically has a
+  value but renders as nothing, or as a lone placeholder character).
+  Rejecting it at construction keeps "the field has content" and "the
+  field is present" the same fact for every caller, rather than leaving a
+  caller to discover the difference downstream ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 5).
 - **FR-7** `Author` MUST support the same identity pattern as `Work`
   (FR-1): internal ID primary, optional external reference (Open Library
   author key). A Work may reference zero authors (anonymous or unknown)

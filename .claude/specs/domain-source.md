@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Two amendments pending: FR-6's cascade must be **declared atomic** for [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)'s transaction contract to engage with it, and FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it |
+| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Two amendments pending: FR-6's cascade must be **declared atomic** for [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)'s transaction contract to engage with it, and FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it. Amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 2 — a new Open question records the multi-file-per-reading-unit gap; not fixed, needs re-confirmation |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -233,6 +233,18 @@ rather than silently assumed fine.
   a source offering EPUB and PDF of the same `Edition` is two rows. Not
   stress-tested against a real source's actual behavior; phase 08 may
   still surface a case this doesn't cleanly cover.
+- **A source item that is one logical reading unit split across
+  multiple files** — not decided here. `FileReference` (FR-4) models
+  one opaque identifier per file, and nothing in this domain represents
+  several `FileReference`s that jointly constitute a single reading
+  unit rather than independent alternatives. Whether that shape is out
+  of scope entirely (each file is its own, independently-imported item
+  — a known-degraded outcome for a book stored that way) or needs a
+  real modelling extension is unresolved; `backend-file-extractors.md`
+  and `backend-import-pipeline.md` (phase 10) each note the same gap
+  from their own side
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 2).
 
 ## References
 

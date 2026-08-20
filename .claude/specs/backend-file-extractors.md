@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) findings 3 and 4 — FR-2 excludes `__MACOSX/`/dotfile entries before classification and page ordering, FR-9/FR-10 name a defined outcome for a zip entry name that fails to decode as UTF-8, FR-8 treats an empty/whitespace-only title as absent; finding 2 recorded as an Open question, not fixed; needs re-confirmation) |
 | **Phase** | `10-import` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -134,7 +134,19 @@ intended directory during that extraction.
   nor `%PDF-` — is `unknown`. Enumerating entries for this
   classification is itself bounded by FR-5's 10,000-entry cap, checked
   first, before any per-entry sniffing — `DetectFormat` and `Extract`
-  share this cap, it is not `Extract`-only. The `FileReference`'s own
+  share this cap, it is not `Extract`-only.
+
+  **Non-content entries are excluded before the image-majority count
+  above, and before FR-10's page ordering.** A `__MACOSX/` directory
+  entry and a dotfile-named entry (`._*` resource-fork stand-ins the
+  same macOS archiving workflow produces, and any other leading-dot
+  entry) are real, common artifacts of ordinary archive-creation
+  tooling, not a hostile shape — counting or, worse, sorting them
+  alongside real page images would corrupt classification or reading
+  order for no benefit ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 4).
+
+  The `FileReference`'s own
   declared format (`domain-source.md` FR-4) is used only as a hint for
   which detector to try first (an optimisation, trying the claimed
   format before falling back to the others), never as the actual
@@ -221,6 +233,16 @@ intended directory during that extraction.
   since `domain-source.md` FR-4's `FileReference` is an opaque,
   `Source`-scoped identifier with no guaranteed human-readable
   filename to fall back to.
+
+  **A title field whose extracted value is empty or whitespace-only
+  MUST be treated identically to an absent title.**
+  `domain-bibliographic.md` FR-6's construction-time rejection of an
+  empty or whitespace-only string applies to this DTO field before
+  `ErrNoTitle` is decided, so a container that technically carries a
+  `<dc:title>`/`/Title`/`<Title>` element with no real content inside it
+  produces `ErrNoTitle`, not a title `ExtractedMetadata` never actually
+  has usable content for ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 5).
 - **FR-9** EPUB extraction reads `META-INF/container.xml`, resolves the
   OPF path from its `<rootfile>` element (validated as a path *inside*
   the zip's own entry namespace — never resolved against a real
@@ -230,6 +252,17 @@ intended directory during that extraction.
   resolves the cover reference (EPUB2 `<meta name="cover">` or EPUB3
   `properties="cover-image"`) to the matching manifest entry's bytes,
   capped per FR-4's 10 MiB cover bound.
+
+  **A zip entry name is not guaranteed to decode as valid UTF-8** — a
+  real, recurring shape from archive-creation tooling that predates or
+  ignores the zip format's UTF-8 flag, most visibly with non-Latin
+  filenames. If the `<rootfile>` target named in `container.xml` does
+  not match any entry because the entry's own name fails to decode as
+  UTF-8, that is `ErrMalformed` — the OPF is structurally required, so
+  a resolution failure at this step fails the whole file, the same as
+  any other unparseable-container case FR-7 already covers
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 3).
 - **FR-10** CBZ extraction looks for a `ComicInfo.xml` entry first; if
   present and parseable, `<Title>`/`<Writer>` map to `title`/`authors`
   (a comma-split on `<Writer>`, since that field is conventionally a
@@ -237,9 +270,20 @@ intended directory during that extraction.
   `dc:creator` is). If `ComicInfo.xml` is absent or unparseable
   (`ErrMalformed` is NOT raised for this specific case — a missing
   sidecar is a normal, common state, not a malformed container),
-  `title` falls back to `nil`, triggering FR-8's `ErrNoTitle`. The
+  `title` falls back to `nil`, triggering FR-8's `ErrNoTitle`. Page
+  ordering and the cover selection below both enumerate entries after
+  FR-2's non-content exclusion (`__MACOSX/*`, dotfile entries). The
   first image entry in filename-sorted order, capped per FR-4's cover
   bound, is used as `coverBytes`.
+
+  **An entry name that fails to decode as valid UTF-8 is excluded from
+  the page list**, the same per-item degradation FR-2's sidecar
+  exclusion above already establishes — CBZ has no single required
+  entry the way EPUB's `<rootfile>` is, so one undecodable page image
+  is dropped from the sequence rather than failing the whole file or
+  sorting unpredictably relative to entries that did decode
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 3).
 - **FR-11** PDF extraction opens the file via the chosen library
   (Architecture decisions below) with FR-3's byte-cap/timeout applied
   to the library's own read, and maps `/Info` dictionary fields
@@ -332,6 +376,9 @@ whatever state tracks an individual file's import progress.
 | Zip/XML/PDF fails to parse | Parser error or recovered panic (FR-7) | `ErrMalformed` | No partial state leaked; every parser call, including `archive/zip`'s own, wrapped in `recover()` |
 | Valid container, no extractable title | Field absent after successful parse (FR-8) | `ErrNoTitle` | `backend-import-pipeline.md` treats this as a permanent failure |
 | Unrecognised format | Content-sniff finds no match (FR-2) | `unknown` `Format`, no extraction attempted | Caller surfaces this as its own distinct case, not a malformed-file error |
+| EPUB `<rootfile>` target entry name fails to decode as UTF-8 | Entry lookup miss after decode (FR-9) | `ErrMalformed` | Whole-file failure — the OPF is structurally required |
+| CBZ page entry name fails to decode as UTF-8 | Per-entry decode check (FR-10) | That entry absent from the page sequence; extraction otherwise succeeds | Per-item degradation, not a whole-file failure |
+| Extracted `title` is present but empty or whitespace-only | `domain-bibliographic.md` FR-6 rejection applied to the DTO field (FR-8) | `ErrNoTitle`, same as a genuinely absent title | Treated identically to no title at all |
 | Extraction exceeds the 30-second timeout | `ctx` deadline | `context.DeadlineExceeded`, mapped by the caller | Extraction goroutine abandoned; no retry inside this spec (a job-level concern, `backend-job-queue.md`'s own retry mechanism) |
 
 ## Security considerations
@@ -420,6 +467,22 @@ test asserting a hostile file that would panic a naive parser
   proxy, not a guarantee of matching a dedicated comic-reader's own
   page-counting conventions for edge cases (a sidecar-only cover image
   not meant to count as a page, for instance).
+- **Non-UTF-8 entry names** — FR-9/FR-10 name a defined outcome, not
+  a fix; there is no reliable way to recover an entry's intended name
+  from raw bytes without knowing which legacy encoding produced them,
+  so an undecodable name is treated as absent content rather than
+  repaired. Not stress-tested against the range of legacy encodings
+  real archive tools have produced.
+- **A source item legitimately spanning multiple files** — nothing in
+  this spec represents one logical reading unit (a comic issue, a
+  book) as more than one file; `Extract`/`DetectFormat` operate
+  per-file only, with no concept of several files jointly constituting
+  a single reading unit rather than independent items. Whether this is
+  out of scope entirely or needs real support is unresolved here;
+  `domain-source.md` and `backend-import-pipeline.md`'s own Open
+  questions note the same gap
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 2).
 
 ## References
 
