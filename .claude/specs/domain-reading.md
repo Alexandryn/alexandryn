@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19) — **FR-6/FR-7 must not be implemented until amended**: the two are mutually unsatisfiable (furthest-wins with an explicit override is not order-independent), and the acceptance criteria at `:251-255` cannot both pass. Amendment pending, Group 2a; reconciliation becomes max over `(epoch, percentage)` per that pass |
+| **Status** | `APPROVED` (maintainer read 2026-08-19) — **FR-6/FR-7 must not be implemented until amended**: the two are mutually unsatisfiable (furthest-wins with an explicit override is not order-independent), and the acceptance criteria at `:251-255` cannot both pass. Amendment pending, Group 2a; reconciliation becomes max over `(epoch, percentage)` per that pass. Separately amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) findings 7 and 8 — Open questions sharpens what phase 11's `PrecisePosition` format must survive and records a phase-14 cross-device identity-agreement gap; neither touches FR-6/FR-7, needs re-confirmation |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -265,10 +265,31 @@ otherwise.
   considerations; genuinely unaddressed pending phase 12.
 - **`PrecisePosition` format** — deliberately opaque here; phase 11
   decides whether it's a CFI, a page number, or something else per
-  format.
+  format. Two properties whatever concrete format phase 11 picks needs
+  to survive, named here so they aren't rediscovered later: the same
+  addressed text or location occurring more than once within one
+  rendered unit MUST resolve to a single, stable target, not whichever
+  occurrence a highlight or bookmark happens to land on; and the format
+  MUST tolerate the renderer's own output for "the same" content
+  shifting between reads (a layout or DOM change that reflects no edit
+  to the book itself) without silently drifting to the wrong location
+  or duplicating an existing mark
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 7).
 - **Reconciliation when both reports have identical `Percentage`** — ADR
   0009 doesn't cover an exact tie; likely "most recent observed-at wins"
   as a tiebreaker, not decided here.
+- **Cross-device identity agreement, ahead of phase 14** —
+  `ReconcileProgress` (FR-6) assumes the system and every reporting
+  device already agree on which `Work`/`Edition` a `ProgressReport` is
+  about; nothing here addresses how that agreement is reached, or what
+  happens when it's asymmetric — one direction of sync agreeing, the
+  other not, for what should be the same file. Recorded here, unresolved,
+  for phase 14 to pick up; not a gap this spec's conflict-resolution math
+  can address, since reconciliation only runs once both sides already
+  agree what they're reconciling
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 8).
 
 ## References
 

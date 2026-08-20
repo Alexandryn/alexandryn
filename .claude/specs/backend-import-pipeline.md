@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 1 — FR-4 names three confusable-input shapes its scoring MUST NOT rate above `"medium"`, with matching test-strategy fixtures; finding 2 recorded as an Open question, not fixed; needs re-confirmation) |
 | **Phase** | `10-import` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -196,6 +196,24 @@ real domain data.
   `matchCandidates` may contain both `existing_edition` and one or
   more `open_library_work` entries, letting the confirmation UI show
   the full picture rather than this spec silently picking one.
+
+  **Known confusable-input shapes this scoring MUST NOT collapse into
+  a higher confidence than the text actually supports.** Three
+  distinct, recurring shapes look unambiguous and are not: (1) two
+  titles differing only by a parenthetical qualifier (e.g. "Series"
+  vs. "Series (Color)") — the case/whitespace normalisation above MUST
+  NOT also strip a parenthetical, since that qualifier is frequently
+  the *only* text distinguishing two genuinely different Editions; (2)
+  two different, unrelated books that share a series name and a
+  first-publication year but are actually different volumes; (3) a
+  standalone, non-series book whose title happens to match an
+  unrelated series' name. None of the three has a stronger signal than
+  title text to disambiguate on with the fields this spec extracts, so
+  a comparison against exactly this text MUST NOT score any of them
+  above `"medium"` — never `"exact"`/`"high"` — leaving FR-5's
+  auto-accept boundary intact and the candidate `pending` for a human
+  to resolve ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 1).
 
   **`MatchCandidate`'s full field shape** (camelCase, FR-3's wire
   convention): `{ type: "existing_edition" | "open_library_work",
@@ -407,7 +425,11 @@ match does; a test asserting a permanently-failed extraction
 asserting confirming an already-`confirmed` candidate returns `409`,
 not a second `SourceOffering`/`LibraryEntry`; a test asserting a
 rejected candidate is never re-surfaced by a later discovery call
-against the same source.
+against the same source; a test asserting each of FR-4's three named
+confusable shapes (a parenthetical-qualifier-only difference, a
+same-name/same-year different-volume collision, and a standalone title
+colliding with an unrelated series name) scores no higher than
+`"medium"` confidence and never auto-imports.
 
 ## Acceptance criteria
 
@@ -458,6 +480,17 @@ against the same source.
   semantics (`domain-source.md` FR-2's own "re-observed... updated,
   not a new row" rule) distinctly from "genuinely new offering." A
   low-likelihood edge case, not solved here.
+- **A source item legitimately spanning multiple files** — FR-1's
+  discovery and FR-3's `import_candidates` model exactly one row per
+  discovered file, and this spec's matching/auto-accept (FR-4/FR-5)
+  has no representation for several files jointly constituting one
+  reading unit rather than independent items. Whether this is out of
+  scope entirely (each file imports as its own, separate candidate — a
+  known-degraded outcome) or needs a real extension is unresolved;
+  `domain-source.md` and `backend-file-extractors.md` note the same
+  gap from their own sides
+  ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
+  finding 2).
 
 ## References
 
