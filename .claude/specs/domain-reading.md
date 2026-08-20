@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self + independent, approved with changes) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19) — **FR-6/FR-7 must not be implemented until amended**: the two are mutually unsatisfiable (furthest-wins with an explicit override is not order-independent), and the acceptance criteria at `:251-255` cannot both pass. Amendment pending, Group 2a; reconciliation becomes max over `(epoch, percentage)` per that pass |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0019`](../reviews/0019-spec-domain-reading.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec — found a Blocking ambiguity in the central mechanism, fixed) — both Approved with changes; maintainer's own read still pending |
+| **Reviewed in** | [`0019`](../reviews/0019-spec-domain-reading.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec — found a Blocking ambiguity in the central mechanism, fixed) — both Approved with changes; maintainer read and approved 2026-08-19; correctness pass [`0048`](../reviews/0048-phase02-correctness-review.md) |
 
 ## Context
 

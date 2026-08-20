@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self + independent, approved with changes) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 3 and 9 — FR-4 now states that a merge moves nothing and that resolve-through covers a `Work`'s relations transitively, making undo exactly the identity; FR-8 forbids cycles by reachability rather than self-reference, and FR-8/FR-9 are checked over the merge-resolved graph by a domain service per [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md), which also closes the containment/merge open question) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
 | **Last updated** | 2026-08-14 |
 | **Supersedes** | — |
-| **Reviewed in** | [`0016`](../reviews/0016-spec-domain-bibliographic.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer's own read still pending |
+| **Reviewed in** | [`0016`](../reviews/0016-spec-domain-bibliographic.md) (self) + [`0021`](../reviews/0021-phase02-cross-spec-review.md) (two independent agents, cross-spec) — both Approved with changes, all findings fixed; maintainer read and approved 2026-08-19; correctness pass [`0048`](../reviews/0048-phase02-correctness-review.md) |
 
 ## Context
 
@@ -105,6 +105,37 @@ model can hold without downstream code having to re-check it.
   automated or semi-automated match (phase 10) can be wrong, and there
   MUST be a way to undo it that doesn't require deleting and recreating
   either Work.
+
+  **What a merge moves: nothing.** Recording a merge writes exactly one
+  field — the `MergedInto` reference on the non-canonical `Work`. No
+  `Edition` is re-parented, no author, subject, external reference or
+  containment reference is copied, moved, or rewritten. Undo clears that
+  one field and is therefore **exactly** the identity: there is no
+  displaced state to restore, so no path exists on which undo can lose
+  information. This is the property that makes FR-4's reversibility
+  requirement true rather than aspirational, and it is why the moving
+  design was rejected — re-parenting `Edition`s would require storing
+  their original parentage somewhere solely so undo could put it back,
+  and nothing in this model does ([`0048`](../reviews/0048-phase02-correctness-review.md),
+  finding 3).
+
+  **What resolve-through therefore has to cover.** Because nothing moves,
+  a merged-away `Work` keeps its own `Edition`s, authors and subjects, and
+  a read of the canonical `Work` that ignored them would silently drop
+  half the record. So "every read of the merged Work MUST resolve through
+  to the canonical one" is not only about identity lookups: **a read of a
+  canonical `Work`'s `Edition`s, authors, subjects, external references or
+  containment references MUST return the union across that `Work` and
+  every `Work` merged into it, transitively.** Anything that walks a
+  `Work`'s relations resolves the merge graph first. The most important
+  consumer of this rule is outside this spec — `domain-library.md` FR-2
+  computes "in library" from whether any of a `Work`'s `Edition`s has a
+  `LibraryEntry`, and without the union it answers *false* for a book the
+  user demonstrably owns as soon as a phase-10 match merges its `Work`.
+
+  Enforcement of the merge-graph rules is the domain service's, per
+  [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md);
+  see FR-8.
 - **FR-5** `Author`, `Subject`, and `Language` MUST be constrained value
   types, not bare strings, each validated at construction: a maximum
   length, a restricted character class appropriate to the field (a
@@ -126,12 +157,28 @@ model can hold without downstream code having to re-check it.
   duplicate author records (a name spelling variant, a pen name recorded
   separately) are a real Open Library data-quality issue, not a
   hypothetical one.
-- **FR-8** Illegal states MUST be unrepresentable by construction, not
-  merely rejected at runtime where avoidable: an `Edition` cannot be
-  constructed without a parent `Work` reference (Go's type system, not a
-  nil-check convention); a `MergedInto` reference (FR-4) cannot point to
-  itself (a Work merged into itself is a cycle, checked at the point the
-  merge is recorded, not discovered later by a caller walking the chain).
+- **FR-8** An `Edition` cannot be constructed without a parent `Work`
+  reference — literally unrepresentable, via Go's type system, not a
+  nil-check convention. This is the one invariant here that construction
+  alone can carry, and it stays there.
+
+  A `MergedInto` reference (FR-4) **MUST NOT create a cycle by
+  reachability**: recording `A → B` is rejected whenever `A` is already
+  reachable from `B` by following merge references, of which `A → A` is
+  only the shortest case. An earlier draft of this FR forbade *pointing at
+  itself* and nothing more, which left `A → B` followed by `B → A` legal
+  and gave FR-4's resolve-through no fixed point — every read of either
+  `Work` would fail to terminate rather than return a wrong answer
+  ([`0048`](../reviews/0048-phase02-correctness-review.md), finding 9).
+
+  This check is **not** a construction-time invariant and MUST NOT be
+  written as one: deciding reachability requires reading other `Work`s,
+  which a value constructor cannot do. It is enforced by the domain
+  service that owns the merge operation, holding the repository interface
+  `internal/domain` declares, per
+  [ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md).
+  The guarantee is the same — no caller can reach the mutating path except
+  through the service — but it lives at the operation, not the type.
 - **FR-9** An omnibus (one `Edition` containing several distinct creative
   works, e.g. a trilogy bound as one volume) is modelled as its own
   `Work`, with an optional set of "contains" references to the
@@ -139,7 +186,18 @@ model can hold without downstream code having to re-check it.
   more than one `Work` (FR-2's one-`Work`-per-`Edition` containment stays
   exactly as strict as written). A "contains" reference MUST NOT create a
   cycle (a Work cannot, transitively, contain itself), checked the same
-  way FR-8 checks merge cycles.
+  way FR-8 checks merge cycles — by the domain service owning the
+  operation, not at construction
+  ([ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md)).
+
+  **The check MUST be performed over the merge-resolved graph, not the
+  raw one.** Because FR-4's resolution is transitive and read-time,
+  "contains itself" means contains a `Work` that *resolves to* itself.
+  Checking raw references would miss the case the Open questions section
+  below records: `A` contains `B`, then `B` is merged into `A`. Resolving
+  first turns that from a cycle nothing catches into a cycle the merge
+  is rejected for — which is the same check FR-8 already performs, run
+  against both graphs together rather than each in isolation.
 - **FR-10** `Edition` MUST have its own `Language` field (FR-5's
   constrained type), independent of `Work.OriginalLanguage`. A translation is a
   same-`Work`, different-`Edition`, different-`Edition.Language` case —
@@ -197,15 +255,25 @@ here.
 ```
 Work created (no editions, no external refs) -> legal, permanent state
 Work created -> Edition(s) added over time -> still the same Work identity
-Work A merged into Work B (FR-4) -> reads of A resolve to B
-Work merged into itself -> rejected at merge-recording time (FR-8)
+Work A merged into Work B (FR-4) -> reads of A resolve to B; A keeps its own
+                                    Editions/authors/subjects, and reads of B
+                                    return the union across B and everything
+                                    merged into it (FR-4)
+Work A merged into Work B, then undone -> exactly the pre-merge state; one
+                                    field cleared, nothing to restore (FR-4)
+Work merged into itself, or into anything that reaches it -> rejected at
+                                    merge-recording time (FR-8)
 ```
 
 Illegal: an `Edition` existing with no parent `Work` reference (prevented
-by FR-2's type-level requirement, not a runtime check); a merge cycle
-(FR-8); a free-form string field bypassing FR-5/FR-6 validation (prevented
-by construction being the only way to produce a valid value — no exported
-way to build one that skips it).
+by FR-2's type-level requirement, not a runtime check); a free-form string
+field bypassing FR-5/FR-6 validation (prevented by construction being the
+only way to produce a valid value — no exported way to build one that skips
+it). Illegal but **not** prevented at construction, because neither is
+decidable from the value alone: a merge cycle by reachability (FR-8) and a
+containment cycle over the resolved graph (FR-9), both rejected by the
+domain service owning the operation, per
+[ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md).
 
 ## Failure modes
 
@@ -281,14 +349,18 @@ way to build one that skips it).
   resolve-through and FR-8 requires no cycles, but performance/complexity
   of a long merge chain isn't addressed. Unlikely at this project's scale
   (phase 01's own "one household" non-goal) but not proven, just assumed.
-- **Interaction between FR-9's containment graph and FR-4/FR-8's merge
-  graph** — each is checked for cycles independently, but nothing
-  addresses what happens if Work A contains Work B (FR-9), and B is
-  later merged into A (FR-4) — after merge resolution, A would contain
-  something that now resolves back to itself, a cycle FR-9's
-  containment-time check couldn't have caught since it happened
-  afterward. Not resolved here; flagged for whoever implements both
-  graphs in phase 03.
+- ~~**Interaction between FR-9's containment graph and FR-4/FR-8's merge
+  graph**~~ — **resolved 2026-08-19** ([`0048`](../reviews/0048-phase02-correctness-review.md)).
+  The case was: Work A contains Work B (FR-9), B is later merged into A
+  (FR-4), and after resolution A contains something that resolves back to
+  itself — a cycle the containment-time check could not have caught,
+  because it happened afterward. It was recorded as a phase 03
+  implementation note; the consequence was worse than that framing
+  suggested, since FR-4's resolve-through has no fixed point on such a
+  graph and the read does not terminate. Resolved by FR-8/FR-9 now
+  checking reachability over the **merge-resolved** graph rather than each
+  graph in isolation: the merge that would close the loop is the operation
+  rejected, in the same check, at the time it is recorded.
 
 ## References
 
