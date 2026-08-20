@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval twice — DSN redaction in migration failure logging ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), container-target Postgres connection ([`0043`](../reviews/0043-spec-backend-persistence-container-topology.md)), both need maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval three times — DSN redaction in migration failure logging ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), container-target Postgres connection ([`0043`](../reviews/0043-spec-backend-persistence-container-topology.md)), and FR-2/FR-4 for the transaction contract and outbox ([ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md), 2026-08-19); all need maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -113,7 +113,12 @@ Non-goal.
   `FileReference`) and the ephemeral, never-persisted `ProgressReport`
   (`domain-reading.md` FR-2) do not get their own repository — they are
   constructed and validated as part of the aggregate that owns them, not
-  queried independently. One file per aggregate (`work_repository.go`,
+  queried independently. **Amended 2026-08-19, [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md):**
+  the transactional outbox that ADR carries is a twelfth persisted table and
+  is deliberately absent from the eleven above — no phase 02 domain aggregate
+  corresponds to it, and it is a delivery mechanism rather than a domain
+  concept, so it gets a store of its own without a domain type.
+  One file per aggregate (`work_repository.go`,
   not one monolithic `repository.go`) — this is a naming/organization
   convention, not a functional requirement with a test, but stated here
   so phase 06 doesn't need to invent it under deadline pressure, matching
@@ -141,7 +146,18 @@ Non-goal.
   domain doesn't know its own persistence mechanism) — a multi-step
   domain operation is exposed as one repository method that internally
   manages its own transaction, not as several methods the caller must
-  sequence correctly.
+  sequence correctly. **Amended 2026-08-19, [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md):**
+  the preceding sentence holds for an operation confined to one aggregate,
+  and is impossible for one that spans two — `domain-source.md` FR-6's
+  cascade writes `Source` and `SourceOffering`, which FR-2 below places in
+  separate repositories. For the spanning case, composition goes through the
+  `Transactor` interface ADR 0021 declares in `internal/domain`, whose handle
+  travels in `context.Context` so no persistence-specific type enters a
+  domain signature and this FR's prohibition above is preserved exactly. The
+  composing caller is a domain service ([ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md))
+  holding the repository interfaces and the `Transactor` — not a transport
+  handler, and not an unsequenced set of calls, which this FR was right to
+  forbid.
 - **FR-5** Which of two paths `cmd/server` takes at this step depends on
   `DATABASE_URL`'s presence, and what that presence *means* is
   target-dependent (amended 2026-08-16, ADR 0015; this FR previously
