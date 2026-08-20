@@ -35,11 +35,13 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 **Checkpoint P-C** — bibliographic value/aggregate types green
 
 **Tier 2 — `domain-bibliographic.md` graph invariants (ADR 0020 services)**
-- [ ] P7 — `WorkRepository`/`AuthorRepository` interfaces (minimal)
-- [ ] P8 — `WorkMergeService` (cycle-by-reachability, undo-is-identity)
-- [ ] P9 — `AuthorMergeService` (symmetric with P8)
-- [ ] P10 — `WorkContainmentService` (cycle check over merge-resolved graph)
-- [ ] P11 — `ResolveWork` (transitive union read)
+- [x] P7 — `WorkRepository`/`AuthorRepository` interfaces (minimal, plus `FindMergedInto` — needed for a genuinely correct FR-9 merge-resolved check, confirmed by maintainer)
+- [x] P8 — `WorkMergeService` (cycle-by-reachability, undo-is-identity, plus a containment-cycle check the plan didn't originally split out — see below)
+- [x] P9 — `AuthorMergeService` (symmetric with P8)
+- [x] P10 — `WorkContainmentService` (cycle check over merge-resolved graph)
+- [x] P11 — `ResolveWork` (transitive union read) — built before P10 in implementation order since P10's cycle check depends on it; task numbering unchanged
+
+Also fixed **beyond the plan's original P8/P10 split**: `WorkMergeService.RecordMerge` now also rejects a merge that would create a *self-containment* cycle once resolved (domain-bibliographic.md's own Open Questions case — A contains B, then B is merged into A) — this needed `containsClosure` (built for P10) called from *inside* P8's service, so the two tasks turned out to share code neither's original description anticipated.
 
 **Checkpoint P-D (highest risk)** — full review of P7–P11 before anything downstream depends on `ResolveWork`
 
