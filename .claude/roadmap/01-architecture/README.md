@@ -137,9 +137,9 @@ uniformly worse than designed logging, and by then nobody has time.
 
 ## Exit criteria
 
-- [ ] All seven specifications reviewed and `APPROVED` — all seven now
-      `REVIEWED` (self, approved with changes), none yet `APPROVED`; needs
-      the maintainer's independent read per spec, not just this checkbox
+- [x] All seven specifications reviewed and `APPROVED` — maintainer
+      confirmed all seven individually 2026-08-20 (see each spec's own
+      status cell for what, if anything, stayed open past approval)
 - [x] Each has a recorded review in `.claude/reviews/`
 - [ ] ADRs written for every decision listed above, with rejected options recorded
 - [ ] One concrete slice traced end to end through the proposed architecture

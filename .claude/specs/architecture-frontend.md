@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes) |
+| **Status** | `APPROVED` (maintainer confirmed 2026-08-20) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |

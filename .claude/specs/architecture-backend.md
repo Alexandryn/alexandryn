@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes; amended post-review 2026-08-16, needs re-confirmation) |
+| **Status** | `APPROVED` (maintainer confirmed 2026-08-20 — the container-topology amendment and FR-7's `golangci-lint` choice both ratified as written) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |

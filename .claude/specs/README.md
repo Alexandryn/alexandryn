@@ -34,13 +34,13 @@ Group by area, not by phase — features outlive the phase that introduced them.
 
 | Spec | Area | Phase | Status |
 |---|---|---|---|
-| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `REVIEWED` (amended post-approval twice, both need re-confirmation — ADR 0007, ADR 0015) |
-| [`architecture-desktop-host.md`](architecture-desktop-host.md) | Electron processes, IPC surface, serving model, lifecycle | 01 | `REVIEWED` (self, approved with changes) |
-| [`architecture-persistence.md`](architecture-persistence.md) | Engine, schema ownership, migrations, corruption and backup | 01 | `REVIEWED` (self, approved with changes) |
-| [`architecture-contracts.md`](architecture-contracts.md) | API and event schemas, versioning, contract testing | 01 | `REVIEWED` (self, approved with changes) |
-| [`architecture-backend.md`](architecture-backend.md) | Go package layout, dependency rules, transport, errors, config | 01 | `REVIEWED` (self, approved with changes; amended post-review — container topology, ADR 0015, needs re-confirmation) |
-| [`architecture-frontend.md`](architecture-frontend.md) | React layering, state ownership, data fetching, routing | 01 | `REVIEWED` (self, approved with changes) |
-| [`architecture-testing.md`](architecture-testing.md) | Layers, tooling, fixtures, determinism, CI shape | 01 | `REVIEWED` (self, approved with changes) |
+| [`architecture-system.md`](architecture-system.md) | Process model, boundaries, data flow, deployment shape | 01 | `APPROVED` (maintainer confirmed 2026-08-20, both amendments ratified — ADR 0007, ADR 0015) |
+| [`architecture-desktop-host.md`](architecture-desktop-host.md) | Electron processes, IPC surface, serving model, lifecycle | 01 | `APPROVED` (maintainer confirmed 2026-08-20) |
+| [`architecture-persistence.md`](architecture-persistence.md) | Engine, schema ownership, migrations, corruption and backup | 01 | `APPROVED` (maintainer confirmed 2026-08-20; backup/restore ownership, encryption-at-rest remain open) |
+| [`architecture-contracts.md`](architecture-contracts.md) | API and event schemas, versioning, contract testing | 01 | `APPROVED` (maintainer confirmed 2026-08-20) |
+| [`architecture-backend.md`](architecture-backend.md) | Go package layout, dependency rules, transport, errors, config | 01 | `APPROVED` (maintainer confirmed 2026-08-20, including container-topology amendment ADR 0015) |
+| [`architecture-frontend.md`](architecture-frontend.md) | React layering, state ownership, data fetching, routing | 01 | `APPROVED` (maintainer confirmed 2026-08-20) |
+| [`architecture-testing.md`](architecture-testing.md) | Layers, tooling, fixtures, determinism, CI shape | 01 | `APPROVED` (maintainer confirmed 2026-08-20, including FR-9/FR-10 amendment) |
 | [`domain-bibliographic.md`](domain-bibliographic.md) | Work, edition, author, subject, language, identity and dedup | 02 | `APPROVED` — amendment pending: FR-4's merge scope unspecified; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) (empty/whitespace-only string rejection, FR-6), needs re-confirmation |
 | [`domain-library.md`](domain-library.md) | Library membership, collections, ownership, availability | 02 | `APPROVED` — amendment pending: `:182` contradicts FR-6 |
 | [`domain-source.md`](domain-source.md) | Source identity, capability model, availability, file references | 02 | `APPROVED` — amendment pending: declare FR-6's cascade atomic (ADR 0021); amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) (multi-file-per-reading-unit gap recorded as an Open question, not fixed), needs re-confirmation |

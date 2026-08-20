@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes; amended post-review 2026-08-18 — FR-9/FR-10 added, maintainer-directed, needs re-confirmation) |
+| **Status** | `APPROVED` (maintainer confirmed 2026-08-20, including the 2026-08-18 FR-9/FR-10 amendment — gitleaks and CodeQL/deferred-to-phase-08 both ratified as written) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |

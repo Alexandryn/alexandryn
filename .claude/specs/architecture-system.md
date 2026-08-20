@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` — amended twice after approval, moved back deliberately both times (see notes) |
+| **Status** | `APPROVED` (maintainer confirmed 2026-08-20, both amendments — ADR 0007's bundled-Postgres process and ADR 0015's container target — ratified as written; the async-messaging ownership gap noted in Open questions remains open, not a blocker on this spec itself) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), reviewed and approved by Luann Moreira; amended 2026-08-14, amended again 2026-08-16 |
 | **Created** | 2026-08-13 |
