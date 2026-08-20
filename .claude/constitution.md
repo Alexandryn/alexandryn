@@ -183,6 +183,25 @@ to re-approve the same content already agreed is not required. If drafting
 surfaces a decision outside what was described and approved, that specific
 divergence gets its own check-in before continuing; the rest doesn't.
 
+This applies to roadmap work on the same terms. Authoring or re-scoping a
+phase stops for approval before it is drafted, exactly as a spec does. The
+gate is about deciding what a piece of work covers — it does not matter
+whether the artifact is a spec, an ADR, or a phase.
+
+**Scope the maintainer already stated is approved scope.** When the
+instruction opening a piece of work already names what it covers and the
+decisions it will make, that *is* the gate. Restating it back for
+confirmation is not a check, it is a delay — proceed. The gate exists to
+stop an automated contributor deciding scope for itself, not to make the
+maintainer approve their own words.
+
+**Ask once.** A question answered stays answered, and a decision already
+made is not re-opened because a later step touches it again. If new
+information genuinely changes the answer, say what changed and ask about
+that — never the original question a second time. Repeated confirmation
+requests are a failure of the same kind as crossing a gate unasked: both
+substitute ceremony for judgement.
+
 Major roadmap phases keep a second gate, later and different in kind: after
 the phase's implementation is audited, before the phase closes. That gate
 checks whether the built thing holds up under adversarial review — it is
