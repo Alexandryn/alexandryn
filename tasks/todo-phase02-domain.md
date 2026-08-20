@@ -27,10 +27,10 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 **Checkpoint P-B** — event catalog complete and marker-correct before Tier 2
 
 **Tier 1 — `domain-bibliographic.md` construction-only types**
-- [ ] P3 — `Language`, `Subject` value types
-- [ ] P4 — `Author` (construction only)
-- [ ] P5 — `Work` (construction only, `MergedInto`/`Contains` nil/empty)
-- [ ] P6 — `Edition` (type-level parent-`Work` requirement, translation-vs-reissue fixture)
+- [x] P3 — `Language`, `Subject` value types
+- [x] P4 — `Author` (construction only)
+- [x] P5 — `Work` (construction only, `MergedInto`/`Contains` nil/empty)
+- [x] P6 — `Edition` (type-level parent-`Work` requirement, translation-vs-reissue fixture)
 
 **Checkpoint P-C** — bibliographic value/aggregate types green
 
