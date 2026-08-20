@@ -44,6 +44,13 @@ damage.
 - [ ] **Observability** — will we know when this breaks in the wild?
 - [ ] **Maintainability** — will this be legible in two years?
 - [ ] **Evolution** — what does this make harder to change later?
+- [ ] **Mechanism properties** — if a finding's fix changed a mechanism rather
+      than its wording, are that mechanism's stated properties restated and
+      shown to still hold? A fix that alters how something works re-opens every
+      property claimed about it. (Review 0021's finding 3 is the worked
+      example: splitting `ProgressReport` from `ReadingProgress` was the right
+      fix, and it silently invalidated FR-6's commutativity claim in the same
+      FR. Nothing caught it for four days.)
 - [ ] **Indexes** — does this change move a spec/ADR/phase's status, or resolve
       an open question? If so, are `roadmap/README.md`, `specs/README.md`,
       `decisions/README.md`, and `skills/README.md` all current with it?
