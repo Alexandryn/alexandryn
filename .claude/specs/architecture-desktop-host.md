@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, needs independent read) |
+| **Status** | `APPROVED` (maintainer confirmed 2026-08-20; DATABASE_URL provisioning, timeout tuning, asset token-drift, `atTablet`, and macOS/Windows hardware verification remain open, owned by phase 05 or a future ADR) |
 | **Phase** | `01-architecture` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-13 |
