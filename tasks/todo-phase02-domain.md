@@ -8,7 +8,7 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 
 - [x] E0 — ID types: distinct named string type per aggregate
 - [x] E1 — `IDGenerator` interface in `internal/domain`, matching `testutil.FakeIDGenerator`
-- [ ] E2 — shared `internal/domain/validate.go` (bounded text, BCP-47, ISBN)
+- [x] E2 — shared `internal/domain/validate.go` (bounded text, BCP-47, ISBN)
 - [ ] E3 — domain services live beside their aggregate, one file per operation-cluster
 - [x] E4 — repository interfaces here are minimal, not phase 03 T24's full CRUD shape (confirmed by maintainer 2026-08-20; flag for T24)
 - [x] E5 — event emission returns the event; caller persists it (confirmed by maintainer 2026-08-20)
@@ -18,7 +18,7 @@ GREEN → Refactor. Stop at every lettered checkpoint.
 
 **Tier 0 — shared foundations**
 - [x] P0 — ID types (E0) + `IDGenerator` interface (E1) — merged, `internal/domain/id.go`
-- [ ] P1 — shared validators (E2): bounded text, BCP-47, ISBN
+- [x] P1 — shared validators (E2): bounded text, BCP-47, ISBN — `internal/domain/validate.go`
 
 **Checkpoint P-A** — P0+P1 green, `go vet ./...` clean, import-boundary lint clean
 
