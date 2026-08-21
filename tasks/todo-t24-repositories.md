@@ -9,14 +9,14 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 - [ ] T24-D3 — schema: 11 tables, TEXT PKs, snake_case, one migration file
 - [ ] T24-D4 — outbox table built now, writer deferred (no real caller exists yet)
 - [ ] T24-D5 — repository shape: one file per aggregate, no query builder
-- [ ] T24-D6 — shared transaction-executor helper, reused by all 11
+- [x] T24-D6 — shared transaction-executor helper, reused by all 11
 
 ## Tasks
 
 **Tier 0 — foundations**
 - [x] R0 — production IDGenerator (`internal/idgen`)
 - [x] R1 — complete/add domain repository interfaces — extended existing fakes and every dependent phase 02 test still compiles and passes (218+ subtests), plus new round-trip tests for every new/extended method
-- [ ] R2 — transaction-executor helper + Transactor implementation
+- [x] R2 — transaction-executor helper + Transactor implementation — found (not fixed, out of scope, already tracked as T26's harness Variant B) a real cross-package composability hazard: `go test ./...` runs packages in parallel by default, so concurrent integration tests across packages can wipe each other's fixture tables against the shared TEST_DATABASE_URL; `-p 1` serializes and fixes it
 
 **Checkpoint R-A** — foundations green
 
