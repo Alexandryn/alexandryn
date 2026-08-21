@@ -56,10 +56,10 @@ Also fixed **beyond the plan's original P8/P10 split**: `WorkMergeService.Record
 — done: 200-operation randomized Add/RemoveEntry sequence against `IsInLibrary`, deterministic seed
 
 **Tier 4 — `domain-source.md`**
-- [ ] P17 — `FileReference`, `Source`, `SourceOffering` construction types
-- [ ] P18 — `SourceRemovalService` (cascade offerings, `LibraryEntry` untouched)
+- [x] P17 — `FileReference`, `Source`, `SourceOffering` construction types (uniqueness proven via `UniquenessKey()`, a repository-level upsert key — not a service, per ADR 0020's single-value carve-out)
+- [x] P18 — `SourceRemovalService` (cascade offerings, `LibraryEntry` untouched — structurally, the service never holds a `LibraryEntryRepository`)
 
-**Checkpoint P-F** — source domain green, cross-checked against P14's independence fixture
+**Checkpoint P-F** — source domain green, cross-checked against P14's independence fixture — done
 
 **Tier 5 — `domain-reading.md` (excluding FR-6/FR-7)**
 - [ ] P19 — `Percentage`, `ReadingProgress`/`ProgressReport`, `Bookmark`, `Highlight`, `ReadingPreferences`, computed status
