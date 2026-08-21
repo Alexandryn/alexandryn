@@ -62,11 +62,11 @@ Also fixed **beyond the plan's original P8/P10 split**: `WorkMergeService.Record
 **Checkpoint P-F** — source domain green, cross-checked against P14's independence fixture — done
 
 **Tier 5 — `domain-reading.md` (excluding FR-6/FR-7)**
-- [ ] P19 — `Percentage`, `ReadingProgress`/`ProgressReport`, `Bookmark`, `Highlight`, `ReadingPreferences`, computed status
-- [ ] P20 — `AttachPrecisePosition` (Edition-belongs-to-Work service check)
-- [ ] P21 — **explicit non-task**: confirm `ReconcileProgress` (FR-6/FR-7) was not implemented, recorded not omitted
+- [x] P19 — `Percentage`, `ReadingProgress`/`ProgressReport`, `Bookmark`, `Highlight`, `ReadingPreferences`, computed status — Highlight's end-before-start check deliberately NOT implemented (opaque position format, a naive string comparison would be actively wrong, not just incomplete; flagged in code, not silently skipped)
+- [x] P20 — `AttachPrecisePosition` (Edition-belongs-to-Work service check)
+- [x] P21 — **explicit non-task**: confirmed `ReconcileProgress` (FR-6/FR-7) was not implemented — `grep -rn ReconcileProgress internal/domain/` finds it only in comments, no function
 
-**Checkpoint P-G** — reading-domain types green (minus FR-6/FR-7); `ReadingProgressUpdated` has no real emitter yet, flagged not hidden
+**Checkpoint P-G** — reading-domain types green (minus FR-6/FR-7); `ReadingProgressUpdated` has no real emitter yet, flagged not hidden — done
 
 **Tier 6 — close the loop**
 - [ ] P22 — full-suite verification (`go build`, `go vet`, import-boundary lint, `go test ./...`, adversarial-construction sweep)
