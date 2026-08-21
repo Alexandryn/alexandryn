@@ -15,6 +15,11 @@ type (
 	ReadingProgressID string
 	BookmarkID        string
 	HighlightID       string
+
+	// DeviceID identifies a reading device (domain-reading.md's own
+	// Non-goals: "this spec assumes a DeviceID exists... without
+	// designing device management" — phase 14 owns the real thing).
+	DeviceID string
 )
 
 // IDGenerator produces a new, unique identifier value at aggregate
