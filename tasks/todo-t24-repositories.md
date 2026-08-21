@@ -6,8 +6,8 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 
 - [x] T24-D1 — production IDGenerator: crypto/rand UUID v4, stdlib only
 - [x] T24-D2 — complete 4 incomplete interfaces + add 4 missing ones (domain layer)
-- [ ] T24-D3 — schema: 11 tables, TEXT PKs, snake_case, one migration file
-- [ ] T24-D4 — outbox table built now, writer deferred (no real caller exists yet)
+- [x] T24-D3 — schema: 11 tables, TEXT PKs, snake_case, one migration file
+- [x] T24-D4 — outbox table built now, writer deferred (no real caller exists yet)
 - [ ] T24-D5 — repository shape: one file per aggregate, no query builder
 - [x] T24-D6 — shared transaction-executor helper, reused by all 11
 
@@ -21,9 +21,9 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 **Checkpoint R-A** — foundations green
 
 **Tier 1 — schema**
-- [ ] R3 — 00002_phase02_schema.sql (11 tables + outbox)
+- [x] R3 — 00002_phase02_schema.sql (11 tables + outbox), 19 physical tables (child/join tables for owned collections), real UNIQUE/FK constraints proven directly against Postgres
 
-**Checkpoint R-B** — schema applies to empty and populated databases
+**Checkpoint R-B** — schema applies to empty and populated databases — done
 
 **Tier 2 — repositories**
 - [ ] R4 — WorkRepository, AuthorRepository (+ SQL-injection proof, built once)
