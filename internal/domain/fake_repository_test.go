@@ -207,3 +207,72 @@ func (r *fakeCollectionRepository) Delete(_ context.Context, id domain.Collectio
 }
 
 var _ domain.CollectionRepository = (*fakeCollectionRepository)(nil)
+
+// fakeSourceRepository is the same pattern, for domain.SourceRepository.
+type fakeSourceRepository struct {
+	mu      sync.Mutex
+	sources map[domain.SourceID]*domain.Source
+}
+
+func newFakeSourceRepository(sources ...*domain.Source) *fakeSourceRepository {
+	r := &fakeSourceRepository{sources: map[domain.SourceID]*domain.Source{}}
+	for _, s := range sources {
+		r.sources[s.ID()] = s
+	}
+	return r
+}
+
+func (r *fakeSourceRepository) FindByID(_ context.Context, id domain.SourceID) (*domain.Source, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.sources[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "source not found"}
+	}
+	return s, nil
+}
+
+func (r *fakeSourceRepository) Delete(_ context.Context, id domain.SourceID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.sources, id)
+	return nil
+}
+
+var _ domain.SourceRepository = (*fakeSourceRepository)(nil)
+
+// fakeSourceOfferingRepository is the same pattern, for
+// domain.SourceOfferingRepository.
+type fakeSourceOfferingRepository struct {
+	mu        sync.Mutex
+	offerings map[domain.SourceOfferingID]*domain.SourceOffering
+}
+
+func newFakeSourceOfferingRepository(offerings ...*domain.SourceOffering) *fakeSourceOfferingRepository {
+	r := &fakeSourceOfferingRepository{offerings: map[domain.SourceOfferingID]*domain.SourceOffering{}}
+	for _, o := range offerings {
+		r.offerings[o.ID()] = o
+	}
+	return r
+}
+
+func (r *fakeSourceOfferingRepository) FindBySource(_ context.Context, sourceID domain.SourceID) ([]*domain.SourceOffering, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var result []*domain.SourceOffering
+	for _, o := range r.offerings {
+		if o.SourceID() == sourceID {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
+
+func (r *fakeSourceOfferingRepository) Delete(_ context.Context, id domain.SourceOfferingID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.offerings, id)
+	return nil
+}
+
+var _ domain.SourceOfferingRepository = (*fakeSourceOfferingRepository)(nil)

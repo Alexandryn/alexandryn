@@ -64,3 +64,15 @@ type CollectionRepository interface {
 	Save(ctx context.Context, c *Collection) error
 	Delete(ctx context.Context, id CollectionID) error
 }
+
+// SourceRepository and SourceOfferingRepository back SourceRemovalService
+// (domain-source.md FR-6).
+type SourceRepository interface {
+	FindByID(ctx context.Context, id SourceID) (*Source, error)
+	Delete(ctx context.Context, id SourceID) error
+}
+
+type SourceOfferingRepository interface {
+	FindBySource(ctx context.Context, sourceID SourceID) ([]*SourceOffering, error)
+	Delete(ctx context.Context, id SourceOfferingID) error
+}
