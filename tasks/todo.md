@@ -10,8 +10,10 @@ Execute in order; each task is RED (existing test-plan case, see
       (`scripts/check-import-boundaries.sh`, plus
       `check-integration-test-parallelism.sh` and
       `check-parameterized-queries.sh`, each with its own test script)
-- [ ] D1 — phase 02 gating: re-checked at Checkpoint G 2026-08-20 — not
-      ready (see below); resolution: build phase 02 domain types for real
+- [x] D1 — phase 02 gating: re-checked at Checkpoint G 2026-08-20 (not
+      ready) and again 2026-08-21 (ready) — resolved by building phase 02's
+      domain types for real, `tasks/plan-phase02-domain.md`, not a
+      provisional scaffold
 - [x] D2 — `web/dist` placeholder embed for FR-8 (T16) —
       `internal/transport/http/webdist/placeholder/index.html`
 - [ ] D3 — CI "contract test" stage as a named no-op (T27, not started)
@@ -83,6 +85,33 @@ refuses a public bind outright until phase 13 wires `ServeTLS`
 still has only `error.go` — the 11 real aggregate types don't exist as Go
 code. Not silently picked: maintainer chose to build phase 02's domain
 types for real now (not a provisional scaffold), starting below.
+
+**Re-checked for real, 2026-08-21.** `tasks/plan-phase02-domain.md`'s
+24 tasks are done — all 11 aggregate types `backend-persistence.md` FR-2
+names (Work, Edition, Author, LibraryEntry, Collection, Source,
+SourceOffering, ReadingProgress, Bookmark, Highlight, ReadingPreferences)
+exist as real Go types in `internal/domain`, compile, and pass 218
+passing subtests project-wide (77 in `internal/domain` alone), including
+a 500-operation randomized fuzz proving the merge/containment cycle
+checks hold under adversarial generation, not just hand-picked fixtures.
+`go build`/`go vet`/`-race`/the import-boundary lint are all green.
+**T24 is unblocked — flagged explicitly, not assumed silently
+compatible:** that plan's own E4 declared `WorkRepository`/
+`AuthorRepository`/`EditionRepository`/`LibraryEntryRepository`/
+`CollectionRepository`/`SourceRepository`/`SourceOfferingRepository`
+as *minimal* interfaces — only what each phase 02 domain service's own
+invariant needed (e.g. `WorkRepository.FindByID` +
+`FindMergedInto` + `Save`, not a full CRUD surface). T24's own 11
+repository implementations will need a broader interface
+(`backend-persistence.md` FR-2's actual shape — List, Delete, pagination,
+etc., none of which phase 02 needed); reconciling the two — extending
+each minimal interface to what T24 actually requires, or defining a
+wider one the minimal ones embed — is T24's own job now, not solved
+here. One further named gap carried over from phase 02, not this
+checkpoint's to fix: `domain-reading.md`'s `ReconcileProgress` (FR-6/FR-7)
+was deliberately not built (separately blocked, unrelated defect), so
+`ReadingProgressRepository`'s eventual shape for T24 has no reconciliation
+method to implement yet either — matches reality, not an oversight.
 
 - [ ] T24 — `backend-persistence.md` FR-2, all 11 repositories
 - [ ] T25 — remaining persistence Integration/E2E (macOS E2E excluded, D4)

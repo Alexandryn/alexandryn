@@ -126,12 +126,22 @@ history from leaking into logs by accident.
 
 ## Exit criteria
 
-- [ ] All five specifications `APPROVED` with recorded reviews
-- [ ] The model compiles as pure Go with no persistence, transport, or vendor
-      dependencies, enforced by lint
-- [ ] Every invariant has a test proving its violation is rejected
-- [ ] The work/edition/file distinction holds throughout, with no shortcut type
-- [ ] Books with no external metadata are a tested normal case
+- [x] All five specifications `APPROVED` with recorded reviews
+- [x] The model compiles as pure Go with no persistence, transport, or vendor
+      dependencies, enforced by lint — `internal/domain` built for real,
+      2026-08-21 (`tasks/plan-phase02-domain.md`), zero imports beyond
+      stdlib, `scripts/check-import-boundaries.sh` clean
+- [ ] Every invariant has a test proving its violation is rejected — true
+      for everything built, with two named exceptions, not silently
+      assumed complete: `domain-reading.md` FR-4's "Highlight end position
+      not preceding start" isn't checked (Position's format is itself
+      undecided, phase 11's job — a naive string comparison would be
+      actively wrong, not just untested); and FR-6/FR-7
+      (`ReconcileProgress`) aren't implemented at all, separately blocked
+      on that spec's own pending amendment
+- [x] The work/edition/file distinction holds throughout, with no shortcut type
+- [x] Books with no external metadata are a tested normal case —
+      `TestNewWork_ZeroEditionsAndZeroExternalReferencesIsLegal`
 - [x] ADRs recorded for progress attachment (0009) and identity strategy
       (0010)
 - [x] Every entity in the design prototype's data bindings maps to something in
