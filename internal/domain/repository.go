@@ -37,14 +37,18 @@ type AuthorRepository interface {
 	Save(ctx context.Context, a *Author) error
 }
 
-// EditionRepository is another minimal, domain-defined interface (E4):
-// FindByID backs LibraryService's Edition-existence check (ADR 0020's own
-// named example); FindByWork is what IsInLibrary needs to walk a merge
-// group's Editions when computing the merge-resolved "in library" answer
-// (domain-library.md FR-2's 2026-08-20 amendment, review 0048 finding 3).
+// EditionRepository. FindByID and FindByWork were phase 02's own minimal
+// slice (E4) — FindByID backs LibraryService's Edition-existence check
+// (ADR 0020's own named example); FindByWork is what IsInLibrary needs
+// to walk a merge group's Editions (domain-library.md FR-2's
+// 2026-08-20 amendment, review 0048 finding 3). Save was added by T24
+// (tasks/plan-t24-repositories.md, T24-D2) — no phase 02 domain service
+// needed it, but real persistence does, and the interface belongs in
+// this package regardless of who's about to implement it.
 type EditionRepository interface {
 	FindByID(ctx context.Context, id EditionID) (*Edition, error)
 	FindByWork(ctx context.Context, workID WorkID) ([]*Edition, error)
+	Save(ctx context.Context, e *Edition) error
 }
 
 // LibraryEntryRepository backs LibraryService's at-most-one-per-Edition
@@ -66,13 +70,56 @@ type CollectionRepository interface {
 }
 
 // SourceRepository and SourceOfferingRepository back SourceRemovalService
-// (domain-source.md FR-6).
+// (domain-source.md FR-6). Save on both was added by T24 (T24-D2) — phase
+// 02 never needed to persist a newly-constructed Source or SourceOffering,
+// only to read and remove them.
 type SourceRepository interface {
 	FindByID(ctx context.Context, id SourceID) (*Source, error)
+	Save(ctx context.Context, s *Source) error
 	Delete(ctx context.Context, id SourceID) error
 }
 
 type SourceOfferingRepository interface {
+	FindByID(ctx context.Context, id SourceOfferingID) (*SourceOffering, error)
 	FindBySource(ctx context.Context, sourceID SourceID) ([]*SourceOffering, error)
+	Save(ctx context.Context, o *SourceOffering) error
 	Delete(ctx context.Context, id SourceOfferingID) error
+}
+
+// ReadingProgressRepository, BookmarkRepository, HighlightRepository, and
+// ReadingPreferencesRepository are new interfaces added by T24 (T24-D2) —
+// domain-reading.md's four persisted aggregates had no repository
+// interface at all before this, since P20 (tasks/plan-phase02-domain.md)
+// only needed EditionRepository, nothing needed to read or write these
+// four directly.
+type ReadingProgressRepository interface {
+	// FindByWork returns a *Error with category NotFound when no
+	// ReadingProgress exists for workID yet — FR-1's singleton-per-Work
+	// invariant means this is the only lookup shape this type needs.
+	FindByWork(ctx context.Context, workID WorkID) (*ReadingProgress, error)
+	Save(ctx context.Context, p *ReadingProgress) error
+}
+
+type BookmarkRepository interface {
+	FindByID(ctx context.Context, id BookmarkID) (*Bookmark, error)
+	FindByEdition(ctx context.Context, editionID EditionID) ([]*Bookmark, error)
+	Save(ctx context.Context, b *Bookmark) error
+	Delete(ctx context.Context, id BookmarkID) error
+}
+
+type HighlightRepository interface {
+	FindByID(ctx context.Context, id HighlightID) (*Highlight, error)
+	FindByEdition(ctx context.Context, editionID EditionID) ([]*Highlight, error)
+	Save(ctx context.Context, h *Highlight) error
+	Delete(ctx context.Context, id HighlightID) error
+}
+
+type ReadingPreferencesRepository interface {
+	// FindByDevice returns a *Error with category NotFound when no
+	// ReadingPreferences exists for deviceID yet — FR-5's "a new
+	// DeviceID's first ReadingPreferences MUST start from system
+	// defaults" is the caller's job (construct via NewReadingPreferences
+	// on a NotFound), not this repository's.
+	FindByDevice(ctx context.Context, deviceID DeviceID) (*ReadingPreferences, error)
+	Save(ctx context.Context, p *ReadingPreferences) error
 }

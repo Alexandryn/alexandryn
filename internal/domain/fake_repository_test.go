@@ -123,6 +123,13 @@ func (r *fakeEditionRepository) FindByWork(_ context.Context, workID domain.Work
 	return result, nil
 }
 
+func (r *fakeEditionRepository) Save(_ context.Context, e *domain.Edition) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.editions[e.ID()] = e
+	return nil
+}
+
 var _ domain.EditionRepository = (*fakeEditionRepository)(nil)
 
 // fakeLibraryEntryRepository is the same pattern, for
@@ -232,6 +239,13 @@ func (r *fakeSourceRepository) FindByID(_ context.Context, id domain.SourceID) (
 	return s, nil
 }
 
+func (r *fakeSourceRepository) Save(_ context.Context, s *domain.Source) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sources[s.ID()] = s
+	return nil
+}
+
 func (r *fakeSourceRepository) Delete(_ context.Context, id domain.SourceID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -256,6 +270,16 @@ func newFakeSourceOfferingRepository(offerings ...*domain.SourceOffering) *fakeS
 	return r
 }
 
+func (r *fakeSourceOfferingRepository) FindByID(_ context.Context, id domain.SourceOfferingID) (*domain.SourceOffering, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	o, ok := r.offerings[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "source offering not found"}
+	}
+	return o, nil
+}
+
 func (r *fakeSourceOfferingRepository) FindBySource(_ context.Context, sourceID domain.SourceID) ([]*domain.SourceOffering, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -268,6 +292,13 @@ func (r *fakeSourceOfferingRepository) FindBySource(_ context.Context, sourceID 
 	return result, nil
 }
 
+func (r *fakeSourceOfferingRepository) Save(_ context.Context, o *domain.SourceOffering) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.offerings[o.ID()] = o
+	return nil
+}
+
 func (r *fakeSourceOfferingRepository) Delete(_ context.Context, id domain.SourceOfferingID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -276,3 +307,176 @@ func (r *fakeSourceOfferingRepository) Delete(_ context.Context, id domain.Sourc
 }
 
 var _ domain.SourceOfferingRepository = (*fakeSourceOfferingRepository)(nil)
+
+// fakeReadingProgressRepository is the same pattern, for
+// domain.ReadingProgressRepository, keyed by WorkID since FR-1's
+// singleton-per-Work invariant makes that the real uniqueness key.
+type fakeReadingProgressRepository struct {
+	mu       sync.Mutex
+	progress map[domain.WorkID]*domain.ReadingProgress
+}
+
+func newFakeReadingProgressRepository(progress ...*domain.ReadingProgress) *fakeReadingProgressRepository {
+	r := &fakeReadingProgressRepository{progress: map[domain.WorkID]*domain.ReadingProgress{}}
+	for _, p := range progress {
+		r.progress[p.WorkID()] = p
+	}
+	return r
+}
+
+func (r *fakeReadingProgressRepository) FindByWork(_ context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.progress[workID]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "reading progress not found"}
+	}
+	return p, nil
+}
+
+func (r *fakeReadingProgressRepository) Save(_ context.Context, p *domain.ReadingProgress) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.progress[p.WorkID()] = p
+	return nil
+}
+
+var _ domain.ReadingProgressRepository = (*fakeReadingProgressRepository)(nil)
+
+// fakeBookmarkRepository is the same pattern, for domain.BookmarkRepository.
+type fakeBookmarkRepository struct {
+	mu        sync.Mutex
+	bookmarks map[domain.BookmarkID]*domain.Bookmark
+}
+
+func newFakeBookmarkRepository(bookmarks ...*domain.Bookmark) *fakeBookmarkRepository {
+	r := &fakeBookmarkRepository{bookmarks: map[domain.BookmarkID]*domain.Bookmark{}}
+	for _, b := range bookmarks {
+		r.bookmarks[b.ID()] = b
+	}
+	return r
+}
+
+func (r *fakeBookmarkRepository) FindByID(_ context.Context, id domain.BookmarkID) (*domain.Bookmark, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	b, ok := r.bookmarks[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "bookmark not found"}
+	}
+	return b, nil
+}
+
+func (r *fakeBookmarkRepository) FindByEdition(_ context.Context, editionID domain.EditionID) ([]*domain.Bookmark, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var result []*domain.Bookmark
+	for _, b := range r.bookmarks {
+		if b.EditionID() == editionID {
+			result = append(result, b)
+		}
+	}
+	return result, nil
+}
+
+func (r *fakeBookmarkRepository) Save(_ context.Context, b *domain.Bookmark) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.bookmarks[b.ID()] = b
+	return nil
+}
+
+func (r *fakeBookmarkRepository) Delete(_ context.Context, id domain.BookmarkID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.bookmarks, id)
+	return nil
+}
+
+var _ domain.BookmarkRepository = (*fakeBookmarkRepository)(nil)
+
+// fakeHighlightRepository is the same pattern, for domain.HighlightRepository.
+type fakeHighlightRepository struct {
+	mu         sync.Mutex
+	highlights map[domain.HighlightID]*domain.Highlight
+}
+
+func newFakeHighlightRepository(highlights ...*domain.Highlight) *fakeHighlightRepository {
+	r := &fakeHighlightRepository{highlights: map[domain.HighlightID]*domain.Highlight{}}
+	for _, h := range highlights {
+		r.highlights[h.ID()] = h
+	}
+	return r
+}
+
+func (r *fakeHighlightRepository) FindByID(_ context.Context, id domain.HighlightID) (*domain.Highlight, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	h, ok := r.highlights[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "highlight not found"}
+	}
+	return h, nil
+}
+
+func (r *fakeHighlightRepository) FindByEdition(_ context.Context, editionID domain.EditionID) ([]*domain.Highlight, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var result []*domain.Highlight
+	for _, h := range r.highlights {
+		if h.EditionID() == editionID {
+			result = append(result, h)
+		}
+	}
+	return result, nil
+}
+
+func (r *fakeHighlightRepository) Save(_ context.Context, h *domain.Highlight) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.highlights[h.ID()] = h
+	return nil
+}
+
+func (r *fakeHighlightRepository) Delete(_ context.Context, id domain.HighlightID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.highlights, id)
+	return nil
+}
+
+var _ domain.HighlightRepository = (*fakeHighlightRepository)(nil)
+
+// fakeReadingPreferencesRepository is the same pattern, for
+// domain.ReadingPreferencesRepository, keyed by DeviceID (FR-5).
+type fakeReadingPreferencesRepository struct {
+	mu    sync.Mutex
+	prefs map[domain.DeviceID]*domain.ReadingPreferences
+}
+
+func newFakeReadingPreferencesRepository(prefs ...*domain.ReadingPreferences) *fakeReadingPreferencesRepository {
+	r := &fakeReadingPreferencesRepository{prefs: map[domain.DeviceID]*domain.ReadingPreferences{}}
+	for _, p := range prefs {
+		r.prefs[p.DeviceID()] = p
+	}
+	return r
+}
+
+func (r *fakeReadingPreferencesRepository) FindByDevice(_ context.Context, deviceID domain.DeviceID) (*domain.ReadingPreferences, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.prefs[deviceID]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "reading preferences not found"}
+	}
+	return p, nil
+}
+
+func (r *fakeReadingPreferencesRepository) Save(_ context.Context, p *domain.ReadingPreferences) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.prefs[p.DeviceID()] = p
+	return nil
+}
+
+var _ domain.ReadingPreferencesRepository = (*fakeReadingPreferencesRepository)(nil)
