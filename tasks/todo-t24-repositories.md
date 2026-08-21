@@ -26,7 +26,7 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 **Checkpoint R-B** — schema applies to empty and populated databases — done
 
 **Tier 2 — repositories**
-- [ ] R4 — WorkRepository, AuthorRepository (+ SQL-injection proof, built once)
+- [x] R4 — WorkRepository, AuthorRepository (+ SQL-injection proof, built once) — RehydrateWork/RehydrateAuthor added to internal/domain for the repository "read from storage" reconstruction path; SQL-injection proof via a real pgx.QueryTracer (internal/persistence/postgres/sql_injection_tracer_integration_test.go), reused as-is by AuthorRepository, meant to be reused by R5-R8 too
 - [ ] R5 — EditionRepository
 - [ ] R6 — LibraryEntryRepository, CollectionRepository (+ concurrent unique-constraint race)
 
