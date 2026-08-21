@@ -36,3 +36,31 @@ type AuthorRepository interface {
 	FindByID(ctx context.Context, id AuthorID) (*Author, error)
 	Save(ctx context.Context, a *Author) error
 }
+
+// EditionRepository is another minimal, domain-defined interface (E4):
+// FindByID backs LibraryService's Edition-existence check (ADR 0020's own
+// named example); FindByWork is what IsInLibrary needs to walk a merge
+// group's Editions when computing the merge-resolved "in library" answer
+// (domain-library.md FR-2's 2026-08-20 amendment, review 0048 finding 3).
+type EditionRepository interface {
+	FindByID(ctx context.Context, id EditionID) (*Edition, error)
+	FindByWork(ctx context.Context, workID WorkID) ([]*Edition, error)
+}
+
+// LibraryEntryRepository backs LibraryService's at-most-one-per-Edition
+// check (FR-7) and IsInLibrary's existence check.
+type LibraryEntryRepository interface {
+	// FindByEdition returns a *Error with category NotFound when no
+	// entry exists for editionID — never a sentinel error value.
+	FindByEdition(ctx context.Context, editionID EditionID) (*LibraryEntry, error)
+	Save(ctx context.Context, e *LibraryEntry) error
+	DeleteByEdition(ctx context.Context, editionID EditionID) error
+}
+
+// CollectionRepository backs CollectionService's Create/Delete and its
+// member-mutation round-trips.
+type CollectionRepository interface {
+	FindByID(ctx context.Context, id CollectionID) (*Collection, error)
+	Save(ctx context.Context, c *Collection) error
+	Delete(ctx context.Context, id CollectionID) error
+}
