@@ -88,10 +88,23 @@ jobs:
       # suite). TEST_DATABASE_URL points at the service by its Docker
       # network alias, port 5432 in-network regardless of the mapped
       # host port above.
+      #
+      # -p 1: default package-level parallelism lets two packages'
+      # integration tests (e.g. internal/testutil and
+      # internal/persistence/postgres, both of which call postgres.Migrate)
+      # run their own DDL against the one shared TEST_DATABASE_URL
+      # concurrently — confirmed for real during T24's R3
+      # (tasks/plan-t24-repositories.md), not just suspected: two
+      # concurrent CREATE TABLE statements collided on Postgres's own
+      # pg_type catalog. -p 1 serializes packages and is a workaround,
+      # not a fix — the real fix (per-package isolation so packages don't
+      # share one physical database) is backend-test-harness.md FR-3's
+      # own tracked Variant B composability gap, T26's task, not solved
+      # here.
       - name: Integration tests
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/alexandryn_test?sslmode=disable
-        run: go test -race -tags=integration ./...
+        run: go test -race -tags=integration -p 1 ./...
 
       # Stage 7 — coverage reporting. No tool or threshold is fixed yet
       # (open question); this only proves the stage exists and its
