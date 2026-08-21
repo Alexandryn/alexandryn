@@ -46,13 +46,14 @@ Also fixed **beyond the plan's original P8/P10 split**: `WorkMergeService.Record
 **Checkpoint P-D (highest risk)** — full review of P7–P11 before anything downstream depends on `ResolveWork`
 
 **Tier 3 — `domain-library.md`**
-- [ ] P12 — `LibraryEntry`, `Collection` construction types
-- [ ] P13 — `EditionRepository`/`LibraryEntryRepository` interfaces (minimal)
-- [ ] P14 — `LibraryService` (add/remove entry, no cascade, uniqueness)
-- [ ] P15 — `IsInLibrary` over the merge-resolved Edition set (review 0048 finding 3's fix, proven directly)
-- [ ] P16 — `CollectionService` (create/delete/add-member/remove-member)
+- [x] P12 — `LibraryEntry`, `Collection` construction types
+- [x] P13 — `EditionRepository`/`LibraryEntryRepository`/`CollectionRepository` interfaces (minimal)
+- [x] P14 — `LibraryService` (add/remove entry, no cascade, uniqueness; no-op returns a nil event, not a false one)
+- [x] P15 — `IsInLibrary` over the merge-resolved Edition set (review 0048 finding 3's fix, proven directly)
+- [x] P16 — `CollectionService` (create/delete/add-member/remove-member; member add/remove needs no existence check per spec, stays a plain Collection method wrapped for persistence)
 
 **Checkpoint P-E** — library/collection service layer green, property-based computed-not-stored proof
+— done: 200-operation randomized Add/RemoveEntry sequence against `IsInLibrary`, deterministic seed
 
 **Tier 4 — `domain-source.md`**
 - [ ] P17 — `FileReference`, `Source`, `SourceOffering` construction types
