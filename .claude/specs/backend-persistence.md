@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval three times — DSN redaction in migration failure logging ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), container-target Postgres connection ([`0043`](../reviews/0043-spec-backend-persistence-container-topology.md)), and FR-2/FR-4 for the transaction contract and outbox ([ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md), 2026-08-19); all need maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval three times — DSN redaction in migration failure logging ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md), still needs maintainer re-confirmation), container-target Postgres connection ([`0043`](../reviews/0043-spec-backend-persistence-container-topology.md), still needs maintainer re-confirmation), and FR-2/FR-4 for the transaction contract and outbox ([ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md), 2026-08-19 — confirmed 2026-08-21, alongside domain-source.md's matching FR-6 amendment)) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Two amendments pending: FR-6's cascade must be **declared atomic** for [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)'s transaction contract to engage with it, and FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it. Amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 2 — a new Open question records the multi-file-per-reading-unit gap; not fixed, needs re-confirmation |
+| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Amended 2026-08-21 and confirmed the same day: FR-6's cascade is now **declared atomic**, composed through ADR 0021's `Transactor`. One amendment still pending: FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it. Amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 2 — a new Open question records the multi-file-per-reading-unit gap; not fixed, needs re-confirmation |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -114,6 +114,21 @@ not a path").
   `LibraryEntry` records — a `LibraryEntry` doesn't reference a `Source`
   at all (only an `Edition`, per that spec's FR-1), so there's nothing
   there to cascade.
+
+  **This cascade MUST apply as a single atomic unit** (amended per
+  [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)):
+  a `Source` removed with only some of its `SourceOffering`s also removed
+  leaves offerings whose required `Source` reference points at nothing,
+  which is worse than not starting the removal at all. Because `Source`
+  and `SourceOffering` are separate repositories, this domain spec's own
+  statement that the operation is atomic is what gives
+  `backend-persistence.md` FR-4's transaction mechanism something to
+  engage with — without it, a non-atomic implementation would violate
+  nothing written down (the gap ADR 0021 itself identifies). The domain
+  service owning this operation ([ADR 0020](../decisions/0020-graph-invariants-in-domain-services.md))
+  composes both repositories through the `Transactor` interface ADR 0021
+  declares, rather than sequencing two independent calls a caller could
+  observe half-applied.
 
 ## Non-functional requirements
 
