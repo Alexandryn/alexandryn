@@ -133,3 +133,12 @@ line that still describes the pre-ADR-0017 loopback-only rule).
   ADR** (the ADR `roadmap/12-authentication/README.md` now names as
   in-scope, per the 2026-08-18 session). Nothing to do until phase 12
   actually opens and that ADR exists.
+- [ ] **Confirmed real, during T24's R2 (`tasks/plan-t24-repositories.md`)**:
+  `go test -tags integration ./...` (default parallelism) can run two
+  packages' integration tests against the same `TEST_DATABASE_URL`
+  concurrently, and one package's schema-wide reset or table drop can
+  wipe another's in-flight fixture — exactly the composability hazard
+  T26's own harness FR-3 Variant B names, previously suspected, now
+  reproduced. `-p 1` serializes packages and avoids it; not a fix, just
+  the workaround T24 used for its own verification. T26 still owns the
+  real fix.
