@@ -113,4 +113,3 @@ func TestCollectionService_Delete(t *testing.T) {
 		t.Fatal("Collection still exists after Delete")
 	}
 }
-
