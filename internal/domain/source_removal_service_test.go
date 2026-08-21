@@ -15,6 +15,11 @@ import (
 // removed, LibraryEntry untouched. Proven structurally here: the
 // LibraryEntryRepository fake is never even passed to
 // SourceRemovalService, so there is nothing for it to touch.
+//
+// FR-6's 2026-08-21 amendment: this cascade MUST apply as a single
+// atomic unit (ADR 0021) — composed through the Transactor, not two
+// unsequenced repository calls. Proven here by asserting InTx was
+// actually invoked, not just that the end state looks right.
 func TestSourceRemovalService_Remove(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
@@ -30,15 +35,19 @@ func TestSourceRemovalService_Remove(t *testing.T) {
 
 	sources := newFakeSourceRepository(source)
 	offerings := newFakeSourceOfferingRepository(offering1, offering2)
+	tx := &fakeTransactor{}
 
 	// An Edition that also has a LibraryEntry — untouched by this
 	// service, which never even holds a reference to this repository.
 	entries := newFakeLibraryEntryRepository(domain.NewLibraryEntry("entry-1", "edition-1", now))
 
-	svc := domain.NewSourceRemovalService(sources, offerings)
+	svc := domain.NewSourceRemovalService(sources, offerings, tx)
 	sourceEvent, offeringEvents, err := svc.Remove(ctx, "source-1", now)
 	if err != nil {
 		t.Fatalf("Remove: %v", err)
+	}
+	if tx.callCount() != 1 {
+		t.Fatalf("Transactor.InTx called %d times, want exactly 1 — the whole cascade must be one atomic unit", tx.callCount())
 	}
 	if sourceEvent.AggregateID() != "source-1" {
 		t.Fatalf("sourceEvent.AggregateID() = %v, want source-1", sourceEvent.AggregateID())
@@ -78,12 +87,38 @@ func TestSourceRemovalService_Remove_NoOfferingsIsFine(t *testing.T) {
 	sources := newFakeSourceRepository(source)
 	offerings := newFakeSourceOfferingRepository()
 
-	svc := domain.NewSourceRemovalService(sources, offerings)
+	svc := domain.NewSourceRemovalService(sources, offerings, &fakeTransactor{})
 	_, offeringEvents, err := svc.Remove(ctx, "source-1", now)
 	if err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
 	if len(offeringEvents) != 0 {
 		t.Fatalf("got %d offering-removed events, want 0", len(offeringEvents))
+	}
+}
+
+// If the transaction itself fails to begin (distinct from the operation's
+// own logic failing), Remove must surface that error and must not have
+// deleted the Source — the whole point of composing through InTx.
+func TestSourceRemovalService_Remove_TransactionBeginFailure(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+
+	caps := domain.SourceCapabilities{CanDownload: true}
+	source, err := domain.NewSource("source-1", "My Source", caps, "")
+	if err != nil {
+		t.Fatalf("NewSource: %v", err)
+	}
+	sources := newFakeSourceRepository(source)
+	offerings := newFakeSourceOfferingRepository()
+
+	svc := domain.NewSourceRemovalService(sources, offerings, failingTransactor{})
+	_, _, err = svc.Remove(ctx, "source-1", now)
+	if err == nil {
+		t.Fatal("Remove with a failing Transactor = nil error, want an error")
+	}
+
+	if _, err := sources.FindByID(ctx, "source-1"); err != nil {
+		t.Fatalf("Source was deleted despite the transaction never beginning: %v", err)
 	}
 }
