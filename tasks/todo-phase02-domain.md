@@ -69,7 +69,7 @@ Also fixed **beyond the plan's original P8/P10 split**: `WorkMergeService.Record
 **Checkpoint P-G** — reading-domain types green (minus FR-6/FR-7); `ReadingProgressUpdated` has no real emitter yet, flagged not hidden — done
 
 **Tier 6 — close the loop**
-- [ ] P22 — full-suite verification (`go build`, `go vet`, import-boundary lint, `go test ./...`, adversarial-construction sweep)
-- [ ] P23 — re-check phase 03's Checkpoint G for real; report back into `tasks/todo.md` whether T24–T26 can proceed
+- [x] P22 — full-suite verification: `go build`/`go vet`/import-boundary lint/`go test ./...`/`go test -race` all green (218 subtests project-wide, 77 in internal/domain); added the one real gap — a 500-operation randomized merge/containment fuzz proving no cycle survives, domain-bibliographic.md's own property-based test-strategy requirement, previously only covered by hand-picked fixtures
+- [x] P23 — re-checked phase 03's Checkpoint G for real: all 11 named aggregate types exist, compile, pass 218 subtests project-wide; `tasks/todo.md`'s D1/Checkpoint G updated, T24 unblocked, E4's minimal-vs-full-CRUD gap flagged explicitly for whoever picks it up
 
-**Checkpoint P-H (final)** — walk `.claude/roadmap/02-domain/README.md`'s exit criteria item by item
+**Checkpoint P-H (final)** — walk `.claude/roadmap/02-domain/README.md`'s exit criteria item by item — done: 5 of 7 now checked honestly; "every invariant tested" and "maintainer approval recorded" left open, both for real reasons named in that file, not oversights
