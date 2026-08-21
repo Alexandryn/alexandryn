@@ -15,6 +15,12 @@ import (
 // than accepting a pool or a transaction directly, so the same method
 // serves both transactional and standalone callers with no signature
 // change (ADR 0021).
+//
+//nolint:unused // consumed by transactor_integration_test.go today and
+// by T24's own repository implementations (R4 onward,
+// tasks/plan-t24-repositories.md) starting the very next task —
+// golangci-lint runs with no build tags in CI, so the integration-tagged
+// test's usage doesn't count toward this check yet.
 type querier interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
@@ -30,6 +36,8 @@ type txContextKey struct{}
 // outside an in-flight transaction). Every repository method in this
 // package MUST read its executor through this function, never through
 // pool directly.
+//
+//nolint:unused // see querier's own nolint comment above — same reason.
 func executorFrom(ctx context.Context, pool *pgxpool.Pool) querier {
 	if tx, ok := ctx.Value(txContextKey{}).(pgx.Tx); ok {
 		return tx
