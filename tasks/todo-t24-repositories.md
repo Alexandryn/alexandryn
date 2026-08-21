@@ -4,8 +4,8 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 
 ## Decisions
 
-- [ ] T24-D1 — production IDGenerator: crypto/rand UUID v4, stdlib only
-- [ ] T24-D2 — complete 4 incomplete interfaces + add 4 missing ones (domain layer)
+- [x] T24-D1 — production IDGenerator: crypto/rand UUID v4, stdlib only
+- [x] T24-D2 — complete 4 incomplete interfaces + add 4 missing ones (domain layer)
 - [ ] T24-D3 — schema: 11 tables, TEXT PKs, snake_case, one migration file
 - [ ] T24-D4 — outbox table built now, writer deferred (no real caller exists yet)
 - [ ] T24-D5 — repository shape: one file per aggregate, no query builder
@@ -14,8 +14,8 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 ## Tasks
 
 **Tier 0 — foundations**
-- [ ] R0 — production IDGenerator
-- [ ] R1 — complete/add domain repository interfaces
+- [x] R0 — production IDGenerator (`internal/idgen`)
+- [x] R1 — complete/add domain repository interfaces — extended existing fakes and every dependent phase 02 test still compiles and passes (218+ subtests), plus new round-trip tests for every new/extended method
 - [ ] R2 — transaction-executor helper + Transactor implementation
 
 **Checkpoint R-A** — foundations green
