@@ -28,7 +28,7 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 **Tier 2 — repositories**
 - [x] R4 — WorkRepository, AuthorRepository (+ SQL-injection proof, built once) — RehydrateWork/RehydrateAuthor added to internal/domain for the repository "read from storage" reconstruction path; SQL-injection proof via a real pgx.QueryTracer (internal/persistence/postgres/sql_injection_tracer_integration_test.go), reused as-is by AuthorRepository, meant to be reused by R5-R8 too
 - [x] R5 — EditionRepository — no Rehydrate needed (unlike Work/Author, every Edition field is already a NewEdition constructor parameter); reused R4's SQL-injection queryTracer as-is
-- [ ] R6 — LibraryEntryRepository, CollectionRepository (+ concurrent unique-constraint race)
+- [x] R6 — LibraryEntryRepository, CollectionRepository (+ concurrent unique-constraint race) — LibraryEntryRepository.Save is insert-only (ON CONFLICT DO NOTHING), not update-in-place like Work/Author/Edition's Save, since FR-7's at-most-one-per-Edition invariant means a second Save for an existing edition_id must lose the race, not overwrite; two real goroutines racing Save for the same EditionID proved exactly one succeeds and the other translates to Conflict, stable across 5 repeated runs
 
 **Checkpoint R-C** — bibliographic + library green
 
