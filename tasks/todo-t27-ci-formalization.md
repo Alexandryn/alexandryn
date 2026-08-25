@@ -27,8 +27,8 @@
 
 **Checkpoint T27-C** — locally proven: the exact stage 9 command (`docker compose --profile bundled-db up --build --wait`) succeeds end to end against real podman with no pre-existing `.env` (the real CI condition), both services Healthy, exit 0. Real `gh pr checks` proof pending the PR (T27's own make-pr step).
 
-- [ ] T27-8 — one-time proofs: external-`DATABASE_URL` compose-up starts only `backend`; host can't reach it; T27-4's check fails a reintroduced `ports:` fixture
-- [ ] T27-9 — D6: inspect `main`'s real branch-protection settings, confirm `Backend` is required; report, fix only on explicit confirmation
+- [x] T27-8 — one-time proofs, all done against real podman: `docker compose up` (no profile) with an external `DATABASE_URL` starts only `backend`, DSN untouched; `curl`/`nc` from the host confirms nothing reachable on either service's port; T27-4's check fails when a `ports:` line is reintroduced into a real copy of the actual `docker-compose.yml` (not just the self-test's synthetic fixture)
+- [x] T27-9 — D6: inspected `main`'s real branch protection — **genuinely unavailable**, not just unconfigured: `gh api repos/.../branches/main/protection` and the newer `.../rules/branches/main` both return 403 "Upgrade to GitHub Pro or make this repository public to enable this feature." This is a private repo on GitHub's free tier, which doesn't include branch protection or rulesets at all. Real consequence: **`main` is not actually gated by CI today** — nothing technical stops a direct push bypassing every check this workflow runs. Not fixable via `gh api`; the only paths are a paid plan or making the repo public, both outside this task's authority — reported to the user, not silently worked around or checked off as passing
 
 - [ ] T27-10 — docs: check off `deployment-container-packaging.md`'s proven Acceptance criteria; `tasks/todo.md` checks off T27/D6
 
