@@ -260,6 +260,7 @@ interface gaps were checked directly instead of assumed away.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Windows Job Object syscalls (E3) are entirely unverified in this environment | High if wrong — silent failure to prevent orphaning on Windows | Written against the well-documented Win32 API shape, cross-compiled and vetted (`GOOS=windows go vet`), but explicitly flagged as unverified (T25-D1) until a real Windows CI run exercises it — not claimed working before then |
+| Windows orphan-prevention (E3) has a real, known residual race — job assignment happens after `cmd.Start()`, so a crash in that exact window still orphans PostgreSQL | Low-medium — narrow window, but the failure mode is the one FR-9 exists to prevent entirely | Job creation/configuration reordered to before `Start()`, narrowing the window to one syscall instead of three (found and fixed during E3 via a post-commit security review); a fully race-free fix needs `CREATE_SUSPENDED`, unreachable through `os/exec`'s public API — deferred to a future pass with real Windows CI feedback available, not attempted blind in an environment that can't verify it |
 | Distinguishing a lock-conflict `postgres` exit from a genuine corruption exit (T25-D3) needs real empirical checking against a real binary, not just documentation | Medium — a wrong classification could either loop forever "recovering" from a real corruption, or treat a real corruption as "already running" and skip straight to a connectivity wait that will time out uninformatively | E1/E5's own RED steps include this distinction as an explicit test case against a real `postgres` binary in this environment (Linux), not assumed from Postgres's docs alone |
 | `//go:build spawn` E7 needs real `postgres`/`initdb` on `PATH` in whatever environment runs it | Medium — a CI runner without those binaries would otherwise fail cryptically | E7's own test skips with a named, clear reason when the binaries aren't found (T25-D4), rather than failing opaquely |
 | Port-selection TOCTOU (T25-D2) | Low — a narrow race window, same category of risk every `embedded-postgres`-style tool already accepts | Named and accepted explicitly, not silently assumed safe |
@@ -270,6 +271,15 @@ interface gaps were checked directly instead of assumed away.
   honesty standard as `architecture-persistence.md` FR-10's own
   macOS-unverified caveat; first real verification happens on Windows CI,
   not here (T25-D1).
+- **Windows orphan-prevention's residual race (`Start()` → job assignment)
+  is only narrowed, not closed** — a real fix needs `CREATE_SUSPENDED` via
+  a hand-rolled `syscall.CreateProcess` call, bypassing `os/exec.Cmd`
+  entirely (its own internals close the new process's thread handle
+  immediately and never expose it, so a suspended start can't be resumed
+  through the public API). Not attempted in this environment — that much
+  new, low-level, untestable-here Windows code is a worse risk trade than
+  the current narrowed window. Revisit once real Windows CI feedback
+  exists to develop and verify it against.
 - **Whether `postmaster.pid`-based idempotency (T25-D3) is sufficient**
   once a real production restart scenario (not just `waitForPostgres`'s
   bounded retry) is considered — e.g. Alexandryn itself being force-quit
