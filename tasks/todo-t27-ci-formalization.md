@@ -19,7 +19,7 @@
 
 **Checkpoint T27-B** — done, proven against real podman (Compose 5.4.0): `--profile bundled-db up --wait` reaches Healthy on both services from a clean checkout (temporarily moved this machine's own pre-existing dev `.env` aside to prove it honestly), migrations ran, `/readyz` returned 200, nothing reachable from the host on either port; plain `up` with an external `DATABASE_URL` started only `backend`, DSN untouched. Real hazard found and documented in `docker-compose.yml`: a pre-existing local `.env` (this project's own `go run ./cmd/server`-against-Supabase convention) shares the `DATABASE_URL` key and silently wins over the bundled DSN if present.
 
-- [ ] T27-4 — `scripts/check-compose-published-port.sh` + self-test (fixture-based)
+- [x] T27-4 — `scripts/check-compose-published-port.sh` + self-test (fixture-based) — 4/4 cases green; Mode A's carve-out not implemented (no "authentication enabled" key exists anywhere yet, noted in the script)
 
 - [ ] T27-5 — `ci.yml` stage 6: named no-op contract-test step
 - [ ] T27-6 — `ci.yml` stage 9: container-target test in the same `backend` job
