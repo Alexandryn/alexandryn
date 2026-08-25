@@ -44,10 +44,10 @@ func DerivePackageDatabaseURL(base, pkgName string) (dbName, derivedURL string, 
 // DerivePackageDatabaseURL(baseDatabaseURL, pkgName) names, if it doesn't
 // already exist, and returns the URL pointing at it. This is the real-I/O
 // half of FR-3 Variant B's isolation mechanism: a TestMain calls it once,
-// before m.Run(), then os.Setenv's TEST_DATABASE_URL to the returned URL
-// so every existing os.Getenv("TEST_DATABASE_URL") call site in the
-// package — Migrate, testDB, resetSchema — transparently targets the
-// isolated database, with no call site changes needed.
+// before m.Run(), then sets the TEST_DATABASE_URL environment variable to
+// the returned URL so every existing call site in the package that reads
+// it — Migrate, testDB, resetSchema — transparently targets the isolated
+// database, with no call site changes needed.
 //
 // Postgres has no CREATE DATABASE IF NOT EXISTS, so a second call with
 // the same pkgName is made idempotent by catching SQLSTATE 42P04
@@ -68,7 +68,7 @@ func EnsurePackageDatabase(ctx context.Context, baseDatabaseURL, pkgName string)
 	if err != nil {
 		return "", errors.New("EnsurePackageDatabase: connecting to TEST_DATABASE_URL failed")
 	}
-	defer admin.Close()
+	defer func() { _ = admin.Close() }()
 
 	ident := pgx.Identifier{dbName}.Sanitize()
 	if _, err := admin.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE %s", ident)); err != nil {
