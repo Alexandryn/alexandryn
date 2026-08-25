@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `REVIEWED` (self, approved with changes; amended for ADR 0017's TLS/bind condition, 2026-08-18, maintainer-directed) |
+| **Status** | `APPROVED` (maintainer, 2026-08-25 — Luann Moreira; self-reviewed with changes, amended for ADR 0017's TLS/bind condition 2026-08-18, maintainer-directed) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-17 |
-| **Last updated** | 2026-08-18 |
+| **Last updated** | 2026-08-25 |
 | **Supersedes** | — |
 | **Reviewed in** | [`.claude/reviews/0046-spec-deployment-container-packaging.md`](../reviews/0046-spec-deployment-container-packaging.md) — Approved with changes, findings fixed; self-reviewed, independent read still pending |
 
@@ -107,10 +107,15 @@ ordinary future change to the compose file.
   (the same hostile-input posture constitution §4 already requires of
   every external input) gains less if the process inside it isn't root.
 - **FR-3** The `Dockerfile` MUST declare a `HEALTHCHECK` instruction
-  invoking the backend's own health endpoint over loopback (`curl` or
-  `wget` against `http://127.0.0.1:<port>/healthz`, whichever is already
-  present in the minimal runtime image or added at negligible size cost)
-  — this executes inside the container's own namespace, the same
+  invoking `http://127.0.0.1:<port>/readyz` (`curl` or `wget`, whichever
+  is already present in the minimal runtime image or added at negligible
+  size cost) — not `/healthz`. Decided 2026-08-25 (maintainer): a
+  `backend` that's alive but can't reach Postgres must not report
+  healthy to Compose's `depends_on: condition: service_healthy`
+  (FR-4), which is exactly `architecture-system.md` FR-7's "process is
+  up" vs. "process can serve storage-backed requests" distinction, and
+  `/readyz` is the endpoint that already makes it (`internal/transport/http/health.go`).
+  This executes inside the container's own namespace, the same
   relationship `docker exec` has to a running container, and is what
   `backend-test-harness.md` FR-10's `docker compose ... --wait` observes.
   It MUST NOT be implemented as, or replaced by, any check that reaches
@@ -121,13 +126,26 @@ ordinary future change to the compose file.
   `profiles: ["bundled-db"]`), plus a named volume for Postgres's data
   directory. `backend`'s `DATABASE_URL` environment entry MUST be
   computed by Compose's own variable interpolation from
-  `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` (each defaulting to a
-  fixed, documented value if unset), pointing at the `postgres` service's
-  Compose-network hostname — matching ADR 0015's design exactly, not a
-  reinterpretation of it. `backend` MUST declare
+  `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`, pointing at the
+  `postgres` service's Compose-network hostname — matching ADR 0015's
+  design exactly, not a reinterpretation of it. `backend` MUST declare
   `depends_on: { postgres: { condition: service_healthy } }` so Compose
   itself, not application-level retry logic, keeps `backend` from
   starting before `postgres` is ready to accept connections.
+
+  Default values, decided 2026-08-25 (maintainer): `POSTGRES_USER=admin`,
+  `POSTGRES_PASSWORD=admin`, `POSTGRES_DB=alexandryn` —
+  `${POSTGRES_USER:-admin}` -style Compose interpolation, so the file
+  still works with no `.env` present. These MUST NOT be hardcoded only
+  in `docker-compose.yml`: a committed `.env.example` at the repository
+  root documents the three variables and these defaults; an operator's
+  own `.env` (gitignored, Compose's own auto-loaded convention — no
+  extra flag needed) is where a self-hoster is expected to set real
+  values before this target is ever exposed beyond loopback. The weak
+  default is an accepted tradeoff specifically because FR-5 keeps this
+  target unreachable by design under the default profile — it is not a
+  production credential, it is what a first `docker compose up` needs to
+  come up loopback-only with zero configuration.
 - **FR-5** `docker-compose.yml`'s default profile MUST NOT publish any
   port for the `backend` service (no `ports:` entry) and MUST NOT set
   `network_mode: host` for it. This is the correct default per ADR 0017's
@@ -285,18 +303,12 @@ binary.
   structurally in Compose and at process startup), phase 12/13 still owns
   actually building the authentication and certificate/proxy
   configuration surface the rule depends on.
-- **`/healthz` versus `/readyz` as the `HEALTHCHECK` target (FR-3)** — the
-  distinction `architecture-system.md` FR-7 draws (alive vs. can-serve-
-  storage-backed-requests) exists at the application layer; whether
-  Compose's `depends_on: condition: service_healthy` should gate on the
-  stricter one is a real question with no forcing example yet. Leaning
-  `/readyz`, since a `backend` that's alive but can't reach Postgres
-  shouldn't be reported healthy to anything depending on it, but not
-  fixed as a requirement.
-- **Default `POSTGRES_USER`/`PASSWORD`/`DB` values (FR-4)** — a specific
-  placeholder string is needed; not proposed here as a requirement, since
-  it's a naming choice with no correctness consequence, left to
-  implementation.
+- ~~`/healthz` versus `/readyz` as the `HEALTHCHECK` target~~ — resolved
+  2026-08-25 (maintainer): `/readyz`, now fixed as a requirement in FR-3
+  above.
+- ~~Default `POSTGRES_USER`/`PASSWORD`/`DB` values~~ — resolved
+  2026-08-25 (maintainer): `admin`/`admin`/`alexandryn`, `.env`-overridable,
+  now fixed as a requirement in FR-4 above.
 - **`docker inspect` as a supplementary CI assertion beyond `--wait`'s
   exit code** — named as open in `backend-test-harness.md`'s own Open
   questions; not re-decided here.
