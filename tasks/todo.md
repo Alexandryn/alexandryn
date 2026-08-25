@@ -120,7 +120,20 @@ method to implement yet either — matches reality, not an oversight.
   (`SourceRemovalService`'s cascade) holds, and `cmd/server`'s `run.go`
   now constructs every repository against the real pool at FR-1 step 6
   (T26's repository-wiring half, pulled forward — see T26 below)
-- [ ] T25 — remaining persistence Integration/E2E (macOS E2E excluded, D4)
+- [x] T25 — remaining persistence Integration/E2E (macOS E2E excluded, D4) —
+  done; full detail in `tasks/plan-t25-persistence-e2e.md`/
+  `tasks/todo-t25-persistence-e2e.md` (Checkpoint E-D, final): a real
+  `internal/persistence/postgres/supervisor` package (binary location,
+  data directory init, port selection, Linux `Pdeathsig` orphan-prevention
+  proven against a real process tree, Windows Job Object orphan-prevention
+  written and cross-compiled but unverified — no macOS/Windows runner in
+  this environment), wired into `cmd/server`'s real spawn path
+  (`spawnPostgres`'s stub replaced), migration observability proven
+  against real Postgres (no production code needed changing — already
+  correct), and the `//go:build spawn` bundled E2E suite written and
+  reviewed for both Linux and Windows but not executed here — no real
+  `postgres`/`initdb` binaries in this sandbox, skips cleanly with a
+  named reason instead of failing or silently passing
 - [ ] T26 — harness FR-3 Variant B (still open — the `-p 1` cross-package
   DDL race, not yet fixed); real repository wiring in `run.go` is now
   done, pulled forward into T24's R10
