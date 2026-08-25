@@ -1,6 +1,9 @@
 package postgres
 
-import "context"
+import (
+	"context"
+	"strconv"
+)
 
 // SelectStartupPath runs spawn if databaseURL is empty — the Electron-
 // hosted target's production path, and the container-hosted target has
@@ -19,9 +22,11 @@ func SelectStartupPath(ctx context.Context, databaseURL string, spawn, connect f
 // postgres binary directly (Linux/Windows), or that cmd/pg-supervisor
 // passes to it on its own behalf (macOS) — the portable subset
 // backend-persistence.md FR-8 says MAY be shared between both spawn
-// paths, since both need to produce the same arguments. Only the data
-// directory is fixed here; port and socket-directory decisions belong to
-// a later, more detailed pass, not invented in this task.
-func PostgresArgs(dataDir string) []string {
-	return []string{"-D", dataDir}
+// paths, since both need to produce the same arguments. port binds the
+// instance to a specific, OS-assigned port (architecture-persistence.md
+// FR-2, T25-D2's own selection mechanism) rather than Postgres's own
+// compiled-in default; socket-directory decisions still belong to a
+// later, more detailed pass, not invented in this task.
+func PostgresArgs(dataDir string, port int) []string {
+	return []string{"-D", dataDir, "-p", strconv.Itoa(port)}
 }

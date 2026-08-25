@@ -57,7 +57,7 @@ func TestSelectStartupPath_PropagatesTheChosenPathsError(t *testing.T) {
 // function, no macOS or real process needed ---
 
 func TestPostgresArgs_IncludesTheDataDirectory(t *testing.T) {
-	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data")
+	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 5432)
 
 	found := false
 	for i, a := range args {
@@ -67,5 +67,22 @@ func TestPostgresArgs_IncludesTheDataDirectory(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("args %v don't include -D <dataDir>", args)
+	}
+}
+
+// architecture-persistence.md FR-2: the bundled instance binds to a
+// specific port (T25-D2's own OS-assigned port, passed in here), not
+// Postgres's own compiled-in default.
+func TestPostgresArgs_IncludesThePort(t *testing.T) {
+	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 54329)
+
+	found := false
+	for i, a := range args {
+		if a == "-p" && i+1 < len(args) && args[i+1] == "54329" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("args %v don't include -p 54329", args)
 	}
 }
