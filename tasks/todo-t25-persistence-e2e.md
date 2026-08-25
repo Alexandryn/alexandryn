@@ -22,9 +22,9 @@ Full plan: [`tasks/plan-t25-persistence-e2e.md`](plan-t25-persistence-e2e.md).
 
 **Tier 1 — wire spawnPostgres for real**
 
-- [ ] E5 — replace `cmd/server/main.go`'s `spawnPostgres` stub with a real implementation, injectable command-runner; production-spawn-failure test (fake command runner, non-zero exit, clean failure, named step, no data-directory modification, invoked exactly once at `postgresMaxAttempts: 1`)
+- [x] E5 — replaced `cmd/server/main.go`'s `spawnPostgres` stub with a real implementation: new `cmd/server/spawn.go` (`//go:build linux || windows`) composes E1-E4 (`LocateBinaries` → `EnsureDataDir` → `SelectPort` → `SpawnWithOrphanPrevention` → `WaitForConnection`) behind an injectable `supervisorDeps` bundle, with `spawnState` closed over by the returned closure so `waitForPostgres`'s own bounded retry within one `run()` invocation reuses the port and skips re-init/re-spawn (T25-D3, refined during implementation from the plan's original postmaster.pid-reading proposal — see plan's Open questions); `cmd/server/spawn_darwin.go` keeps macOS buildable with a scoped-down stub (D4, unchanged behavior from before this task); self-review found and fixed a real bug — `WaitForConnection` was inheriting `run()`'s own undeadlined lifetime context, so a Postgres that started but never became ready would block a single retry attempt forever; fixed with `connectPostgresWithTimeout`'s own established per-attempt-timeout pattern, now injectable via `supervisorDeps.attemptTimeout` and proven with a dedicated bounded-timeout test; production-spawn-failure proven both at `spawnPostgresOnce` directly and through the full `run()` chain (`postgresMaxAttempts: 1`, command runner invoked exactly once, named step in the log)
 
-**Checkpoint E-B** — production spawn failure proven (fakes only)
+**Checkpoint E-B** — production spawn failure proven (fakes only) — done
 
 **Tier 2 — migration observability (small, mostly test-only)**
 
