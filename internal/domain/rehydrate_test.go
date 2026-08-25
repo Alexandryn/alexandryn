@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
@@ -46,5 +47,30 @@ func TestRehydrateAuthor_SetsMergedInto(t *testing.T) {
 	}
 	if a.MergedInto() == nil || *a.MergedInto() != "author-b" {
 		t.Fatalf("MergedInto() = %v, want author-b", a.MergedInto())
+	}
+}
+
+// RehydrateReadingProgress is a repository's own "read from storage"
+// path for ReadingProgress — it accepts precisePosition directly, which
+// NewReadingProgress does not expose (that field is normally set only by
+// ReadingProgressService.AttachPrecisePosition, which requires an
+// EditionRepository to verify the position belongs to the same Work —
+// state a repository reading an already-validated row back doesn't need
+// to re-verify).
+func TestRehydrateReadingProgress_SetsPrecisePosition(t *testing.T) {
+	pct, err := domain.NewPercentage(0.5)
+	if err != nil {
+		t.Fatalf("NewPercentage: %v", err)
+	}
+	observedAt := time.Now().UTC()
+	pos := &domain.PrecisePosition{EditionID: "edition-1", Value: "loc-100"}
+
+	p := domain.RehydrateReadingProgress("progress-1", "work-1", pct, pos, "device-1", observedAt)
+
+	if p.ID() != "progress-1" {
+		t.Fatalf("ID() = %v, want progress-1", p.ID())
+	}
+	if p.PrecisePosition() == nil || *p.PrecisePosition() != *pos {
+		t.Fatalf("PrecisePosition() = %v, want %v", p.PrecisePosition(), pos)
 	}
 }

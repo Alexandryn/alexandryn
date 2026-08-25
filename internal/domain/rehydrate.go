@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // RehydrateWork and RehydrateAuthor reconstruct a Work/Author from
 // previously-persisted data — a repository implementation's own "read
 // from storage" path (T24, tasks/plan-t24-repositories.md), distinct
@@ -55,5 +57,32 @@ func RehydrateAuthor(
 		name:               name,
 		externalReferences: externalReferences,
 		mergedInto:         mergedInto,
+	}
+}
+
+// RehydrateReadingProgress reconstructs a ReadingProgress from a
+// previously-persisted row — a repository's own "read from storage"
+// path, distinct from NewReadingProgress's "construct new" path. Unlike
+// NewReadingProgress, it accepts precisePosition directly: that field is
+// normally set only by ReadingProgressService.AttachPrecisePosition,
+// which verifies the position's Edition belongs to the same Work (a
+// check requiring an EditionRepository) before assigning it — a
+// repository reading an already-validated row back is reconstructing
+// that decision, not making it again.
+func RehydrateReadingProgress(
+	id ReadingProgressID,
+	workID WorkID,
+	percentage Percentage,
+	precisePosition *PrecisePosition,
+	deviceID DeviceID,
+	observedAt time.Time,
+) *ReadingProgress {
+	return &ReadingProgress{
+		id:              id,
+		workID:          workID,
+		percentage:      percentage,
+		precisePosition: precisePosition,
+		deviceID:        deviceID,
+		observedAt:      observedAt,
 	}
 }
