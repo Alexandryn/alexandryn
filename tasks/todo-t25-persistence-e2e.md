@@ -28,9 +28,9 @@ Full plan: [`tasks/plan-t25-persistence-e2e.md`](plan-t25-persistence-e2e.md).
 
 **Tier 2 — migration observability (small, mostly test-only)**
 
-- [ ] E6 — integration test: real Postgres, real migration success (info) and real migration failure (error), captured via `SpyHandler`-backed logger, failure line distinguishable from an earlier connection-refused line by a "migration" field/fragment; if no production code needs to change, say so plainly
+- [x] E6 — two new integration tests in `run_integration_test.go`: `TestIntegration_MigrationSuccessLogsInfoNamingTheStep` and `TestIntegration_MigrationFailureLogsErrorDistinguishableFromPostgresStep`, both against real Postgres, both using a `SpyHandler`-backed logger (`spyLogger`) swapped in for `quietLogger`; both passed on the first run against unmodified production code — confirming the hypothesis from planning that `cmd/server/run.go`'s existing `"step", "migrate"` logging already satisfies FR-6 Observability — **no production code changed for this task**, only the missing test coverage
 
-**Checkpoint E-C** — migration observability proven against real Postgres
+**Checkpoint E-C** — migration observability proven against real Postgres — done
 
 **Tier 3 — the E2E suite**
 
