@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -30,18 +29,10 @@ import (
 // own TEST_DATABASE_URL/TestMain/resetSchema pattern.
 
 // TestMain gives this package its own isolated database
-// (EnsurePackageDatabase, backend-test-harness.md FR-3 Variant B, T26-6)
-// before any test in this file runs.
+// (testutil.WithPackageDatabase, backend-test-harness.md FR-3 Variant B,
+// T26-6) before any test in this file runs.
 func TestMain(m *testing.M) {
-	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, func() int {
-		isolatedURL, err := testutil.EnsurePackageDatabase(context.Background(), os.Getenv("TEST_DATABASE_URL"), "cmdserver")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "harness setup: EnsurePackageDatabase: %v\n", err)
-			return 1
-		}
-		os.Setenv("TEST_DATABASE_URL", isolatedURL)
-		return m.Run()
-	}, os.Stderr))
+	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, testutil.WithPackageDatabase("cmdserver", os.Getenv, os.Setenv, os.Stderr, m.Run), os.Stderr))
 }
 
 func testDB(t *testing.T) *sql.DB {
