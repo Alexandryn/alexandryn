@@ -61,33 +61,39 @@ type jobObjectExtendedLimitInformation struct {
 	PeakJobMemoryUsed     uintptr
 }
 
-// SpawnWithOrphanPrevention starts cmd, then creates a Windows Job
-// Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE and assigns the spawned
-// process to it (architecture-persistence.md FR-9) — the parent-side,
+// SpawnWithOrphanPrevention creates a Windows Job Object with
+// JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, *then* starts cmd and assigns it
+// to that job (architecture-persistence.md FR-9) — the parent-side,
 // spawn-time mechanism architecture-desktop-host.md FR-9 specifies for
 // Electron→Go-server, applied one level down. This requires no changes
 // to PostgreSQL's own source, the same "third-party binary, no
 // cooperation needed" property SpawnWithOrphanPrevention's Linux
-// counterpart has. Unverified in this Linux authoring environment
-// (T25-D1) — first real verification happens on Windows CI, not here.
+// counterpart has.
+//
+// Residual race, not fully closed (found by a post-commit security
+// review of this task and left honestly documented rather than silently
+// narrowed and forgotten): between cmd.Start() returning and
+// AssignProcessToJobObject completing, the process is running but not
+// yet protected — if this process dies in that exact window, PostgreSQL
+// would orphan anyway, precisely what FR-9 exists to prevent. Doing job
+// creation and limit configuration *before* Start() (this function's
+// actual shape) shrinks that window to one syscall instead of three, but
+// doesn't eliminate it. A fully race-free fix needs CREATE_SUSPENDED —
+// start the process suspended, assign it to the job while no code in it
+// can run yet, then resume its main thread — but Go's os/exec closes the
+// new process's thread handle immediately after CreateProcess returns
+// and never exposes it to the caller (syscall/exec_windows.go), so a
+// suspended process started through the public os/exec API can never be
+// resumed. Implementing that properly means bypassing exec.Cmd entirely
+// and hand-rolling syscall.CreateProcess directly — reimplementing
+// argument quoting, environment-block construction, and STARTUPINFO
+// stdio wiring that os/exec normally handles internally. Not attempted
+// here: that much new, low-level Windows-specific code, written with no
+// ability to execute or test any of it in this Linux authoring
+// environment, is a worse risk trade than this smaller, well-understood
+// residual window — revisit once real Windows CI feedback exists to
+// develop and verify it against (T25-D1).
 func SpawnWithOrphanPrevention(cmd *exec.Cmd) error {
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	// From here on, cmd.Process is a real, running process. Any failure
-	// below means orphan-prevention could not be guaranteed for it — kill
-	// it before returning rather than leaving an unprotected, untracked
-	// PostgreSQL process running: the caller's own retry logic (T25-D3)
-	// assumes a failed spawn leaves nothing behind for it to trip over.
-	if err := spawnWithOrphanPrevention(cmd); err != nil {
-		_ = cmd.Process.Kill()
-		return err
-	}
-	return nil
-}
-
-func spawnWithOrphanPrevention(cmd *exec.Cmd) error {
 	jobHandle, _, callErr := procCreateJobObjectW.Call(0, 0)
 	if jobHandle == 0 {
 		return fmt.Errorf("creating job object: %w", callErr)
@@ -114,9 +120,18 @@ func spawnWithOrphanPrevention(cmd *exec.Cmd) error {
 		return fmt.Errorf("setting job object limits: %w", callErr)
 	}
 
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
 	// Process.WithHandle gives a valid handle to the just-spawned process
 	// without a separate OpenProcess call that could race the process
 	// already exiting — the same handle os/exec itself used at creation.
+	// Any failure from here on means orphan-prevention could not be
+	// guaranteed for a process that is now genuinely running — kill it
+	// before returning rather than leaving an unprotected, untracked
+	// PostgreSQL process behind: the caller's own retry logic (T25-D3)
+	// assumes a failed spawn leaves nothing running for it to trip over.
 	var assignErr error
 	if err := cmd.Process.WithHandle(func(processHandle uintptr) {
 		ret, _, callErr := procAssignProcessToJobObject.Call(jobHandle, processHandle)
@@ -124,7 +139,12 @@ func spawnWithOrphanPrevention(cmd *exec.Cmd) error {
 			assignErr = fmt.Errorf("assigning process to job object: %w", callErr)
 		}
 	}); err != nil {
+		_ = cmd.Process.Kill()
 		return fmt.Errorf("obtaining a handle to the spawned process: %w", err)
 	}
-	return assignErr
+	if assignErr != nil {
+		_ = cmd.Process.Kill()
+		return assignErr
+	}
+	return nil
 }
