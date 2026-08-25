@@ -149,7 +149,13 @@ jobs:
       - name: Container-target test
         env:
           OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
-        run: docker compose --profile bundled-db up --build --wait
+        # --wait-timeout and timeout-minutes both bound this: without
+        # them, a genuine healthcheck regression (backend or postgres
+        # never turning healthy) hangs here until GitHub's default
+        # 6-hour job timeout instead of failing fast like every other
+        # step in this job.
+        timeout-minutes: 5
+        run: docker compose --profile bundled-db up --build --wait --wait-timeout 120
 
       - name: Container-target test teardown
         if: always()
