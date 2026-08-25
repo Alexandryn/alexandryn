@@ -101,6 +101,40 @@ volumes:
 EOF
 assert_pass "ports: on a different service (postgres) is not a backend violation" "$d"
 
+d="$(new_fixture)"
+cat >"$d/docker-compose.yml" <<'EOF'
+services:
+  backend:
+    build: .
+    ports:  # exposed for local debugging
+      - "8080:8080"
+  postgres:
+    image: postgres:16-alpine
+EOF
+assert_fail "backend ports: with a trailing comment doesn't evade detection" "$d" "docker-compose.yml"
+
+d="$(new_fixture)"
+cat >"$d/docker-compose.yml" <<'EOF'
+services:
+  backend:
+    build: .
+    network_mode: "host" # for LAN testing
+  postgres:
+    image: postgres:16-alpine
+EOF
+assert_fail "backend network_mode: host with a trailing comment doesn't evade detection" "$d" "docker-compose.yml"
+
+d="$(new_fixture)"
+cat >"$d/docker-compose.yml" <<'EOF'
+services:
+  backend:
+    build: .
+    ports: []
+  postgres:
+    image: postgres:16-alpine
+EOF
+assert_pass "backend ports: [] (genuinely empty) is not a violation" "$d"
+
 if [ "$fail" -ne 0 ]; then
 	echo "check-compose-published-port_test.sh: FAILED"
 	exit 1

@@ -4,18 +4,17 @@
 
 FROM golang:1.26-alpine AS build
 
-# nodejs/npm are only used if web/ exists — cheap to install unconditionally
-# here since this stage is never shipped (deployment-container-packaging.md
-# FR-1). No web/ directory exists yet (phase 04); the conditional build
-# below keeps this Dockerfile correct today and unchanged once it lands,
-# the same "build against what's committed, swap later" pattern D2 used
-# for internal/transport/http/webdist's placeholder embed.
-RUN apk add --no-cache nodejs npm
-
 WORKDIR /src
 COPY . .
 
-RUN if [ -d web ]; then cd web && npm ci && npm run build; fi
+# No web/ directory exists yet (phase 04) — nodejs/npm are installed only
+# inside this conditional, so today's build (and every CI run until
+# phase 04 lands) never pays for them. The moment web/ exists, this same
+# line installs what it needs and builds it — no Dockerfile edit
+# required then, the same "build against what's committed, swap later"
+# pattern D2 used for internal/transport/http/webdist's placeholder
+# embed (deployment-container-packaging.md FR-1).
+RUN if [ -d web ]; then apk add --no-cache nodejs npm && cd web && npm ci && npm run build; fi
 RUN CGO_ENABLED=0 go build -o /out/alexandryn-server ./cmd/server
 
 FROM alpine:3.22 AS runtime
