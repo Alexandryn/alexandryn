@@ -23,8 +23,11 @@ Execute in order; each task is RED (existing test-plan case, see
       stale loopback-only language remains outside the legitimate
       `DATABASE_URL`-in-dev mention
 - [ ] D6 — branch-protection live-gating verification (infra, not code; Checkpoint H)
-- [ ] D7 — `deployment-container-packaging.md` still `REVIEWED`, not
-      `APPROVED` — T27 remains blocked on this
+- [x] D7 — `deployment-container-packaging.md` moved `REVIEWED` →
+      `APPROVED` 2026-08-25 (maintainer); T27 unblocked. Also resolved in
+      the same pass: HEALTHCHECK target is `/readyz` (FR-3), default
+      `POSTGRES_USER`/`PASSWORD`/`DB` are `admin`/`admin`/`alexandryn`,
+      `.env`-overridable (FR-4)
 
 ## Tasks
 
