@@ -32,7 +32,7 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 
 **Checkpoint R-C** — bibliographic + library green
 
-- [ ] R7 — SourceRepository, SourceOfferingRepository (+ real uniqueness-key constraint proof)
+- [x] R7 — SourceRepository, SourceOfferingRepository (+ real uniqueness-key constraint proof) — SourceOfferingRepository.Save upserts on the real UNIQUE constraint on (source_id, edition_id, file_reference_format), not on id, since FR-2/FR-3's real identity is that tuple: re-observing it updates FileReference/ObservedAt in place (proven against 1 row staying 1 row across two Saves with the same tuple), a different Format inserts a second row (proven at 2 rows); SourceRepository.Save is upsert-by-id, matching Work/Edition's own Save shape; reused R4's queryTracer SQL-injection proof for both
 - [ ] R8 — ReadingProgressRepository, BookmarkRepository, HighlightRepository, ReadingPreferencesRepository (+ singleton-per-Work constraint proof)
 
 **Checkpoint R-D** — all 11 repositories green
