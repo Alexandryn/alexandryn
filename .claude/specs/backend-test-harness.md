@@ -116,6 +116,13 @@ test").
   MUST NOT depend on running in a specific order or on data left behind
   by another test — `architecture-testing.md` FR-6's determinism
   requirement, restated as this harness's concrete isolation mechanism.
+  "Does not affect other tests" spans two scopes, closed in two
+  separate tasks: intra-package (the truncate-based teardown above,
+  T22) and cross-package — two integration-tagged packages' own
+  `TestMain`s resetting or migrating the same `TEST_DATABASE_URL`
+  database under Go's default package-level test parallelism, closed by
+  T26 via `testutil.EnsurePackageDatabase`, giving each package its own
+  physical database derived from `TEST_DATABASE_URL`.
 - **FR-4** Fixtures are constructed by Go factory functions in a shared
   `internal/testutil` (or equivalent) package — e.g.
   `testutil.NewWork(t, overrides...)` returning a valid, minimally
