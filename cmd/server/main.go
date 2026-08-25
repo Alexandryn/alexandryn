@@ -70,8 +70,12 @@ func main() {
 		runMigrations: func(ctx context.Context, cfg *config.Config) error {
 			return postgres.Migrate(ctx, cfg.DatabaseURL.Reveal())
 		},
-		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, error) {
-			return postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
+			pool, err := postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+			if err != nil {
+				return nil, nil, err
+			}
+			return pool, newRepositories(pool), nil
 		},
 		stderr: os.Stderr,
 	}))
