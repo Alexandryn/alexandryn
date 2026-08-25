@@ -19,23 +19,23 @@ import (
 // mechanisms, proven by using them — this spec's own Test strategy
 // frames it exactly this way ("testing the test harness means proving
 // its mechanisms work as advertised, using them"). Variant B (the
-// composability hazard against a real self-transacting repository
-// method) is deferred to T26 — it needs phase 02's domain interfaces,
-// which don't compile yet (D1, Checkpoint G).
-//
-// Shares the same cross-package TEST_DATABASE_URL caveat recorded in
-// .claude/audits/0003-cmd-server-startup-shutdown.md (A-03-06): running
-// this alongside other integration-tagged packages against one shared
-// database needs `-p 1` until a real per-package isolation mechanism
-// exists — that's a different, currently-unspecified hazard from the
-// one FR-3 and this file address (intra-package truncate-teardown
-// safety), not something this task closes.
+// cross-package composability hazard, proven in
+// packagedb_integration_test.go and wired in below) is T26's.
 
-// TestMain reaches migration head once, here, before any test function
-// in this file runs — the concrete mechanism behind the schema-at-head
-// proof below: no test in this file calls Migrate itself.
+// TestMain gives this package its own isolated database
+// (EnsurePackageDatabase, FR-3 Variant B, T26-4) before reaching
+// migration head once, here, before any test function in this file
+// runs — the concrete mechanism behind the schema-at-head proof below:
+// no test in this file calls Migrate itself.
 func TestMain(m *testing.M) {
 	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, func() int {
+		isolatedURL, err := testutil.EnsurePackageDatabase(context.Background(), os.Getenv("TEST_DATABASE_URL"), "testutil")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "harness setup: EnsurePackageDatabase: %v\n", err)
+			return 1
+		}
+		os.Setenv("TEST_DATABASE_URL", isolatedURL)
+
 		if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL")); err != nil {
 			fmt.Fprintf(os.Stderr, "harness setup: Migrate: %v\n", err)
 			return 1
