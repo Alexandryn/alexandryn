@@ -84,7 +84,7 @@ already-`APPROVED` spec's text.
 | A-03-03 | Medium | No per-attempt timeout on Postgres connect | Fixed — `5a29f61` |
 | A-03-04 | Low | Migrate-step failure log missing defense-in-depth DSN guard | Fixed — `5a29f61` |
 | A-03-05 | High | `BIND_ADDRESS`/TLS: certificate validated but never enforced at serve time | Fixed (code) — `5726142`; **spec text still open**, see Resolution |
-| A-03-06 | Informational | Cross-package integration-test DB isolation gap | Open — deferred to T22 (`tasks/plan.md` Tier 4, `backend-test-harness.md` FR-3 Variant A) |
+| A-03-06 | Informational | Cross-package integration-test DB isolation gap | Fixed — T26 (`backend-test-harness.md` FR-3 Variant B): each integration-tagged package now creates and migrates its own physical database (`testutil.EnsurePackageDatabase`); `-p 1` removed from `ci.yml` |
 
 ### A-03-01 — Mid-startup shutdown signal absorbed into ordinary FR-3 failure
 
@@ -386,14 +386,22 @@ stable.
 
 **Recommendation** — real per-package DB isolation (a distinct schema or
 database per package, or an advisory lock around schema resets) is
-`backend-test-harness.md` FR-3 Variant A's job — **T22** in
-`tasks/plan.md` (Tier 4), not reached yet at the time of this audit. In
-the meantime, any whole-module integration run needs `-p 1`.
+`backend-test-harness.md` FR-3 Variant B's job — **T26** in
+`tasks/plan.md` (Tier 4), not reached yet at the time of this audit (this
+recommendation originally mislabeled the fix as Variant A's job; Variant
+A, T22, was schema-at-head plus the intra-package truncate-teardown/
+`t.Parallel()` static check — a different, already-closed concern from
+this cross-package one). In the meantime, any whole-module integration
+run needs `-p 1`.
 
-**Resolution** — not fixed; deliberately deferred to T22, per the
-maintainer's own instruction to note this and move on rather than
-improvise a fix outside this task's scope. Flagged loudly in PR #27's
-own description so it isn't rediscovered later as an unexplained flake.
+**Resolution** — fixed in T26: `internal/testutil/packagedb.go` adds
+`EnsurePackageDatabase`, called from each of the three integration-tagged
+packages' `TestMain`s (`internal/testutil`, `internal/persistence/postgres`,
+`cmd/server`), giving each its own physical database derived from
+`TEST_DATABASE_URL` (`<original dbname>_<pkgName>`) before any test in
+that package runs. `ci.yml`'s `-p 1` workaround is removed; verified
+locally with `go test -race -tags=integration -count=5 ./...` at default
+parallelism against a real Postgres, all five re-executions green.
 
 ## What was not examined
 
