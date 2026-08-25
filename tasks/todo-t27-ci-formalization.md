@@ -14,10 +14,10 @@
 
 **Checkpoint T27-A** — done: `docker build .` succeeds; no build toolchain/`/src` in the runtime image; container runs as non-root (uid=100); `/readyz` answers and correctly 503s while waiting for Postgres. Real finding while proving this: the app requires `OPEN_LIBRARY_USER_AGENT` (`backend-configuration.md` FR-3, no default by design — a placeholder would misidentify the client to Open Library's live API) — T27-2 needs to account for this, not silently default it in `docker-compose.yml`
 
-- [ ] T27-2 — `docker-compose.yml`: `backend` + `postgres` services, profile, named volume, `depends_on: service_healthy`, no `ports:`
-- [ ] T27-3 — extend root `.env.example` with `POSTGRES_USER`/`PASSWORD`/`DB` and their defaults
+- [x] T27-2 — `docker-compose.yml`: `backend` + `postgres` services, profile, named volume, `depends_on: service_healthy, required: false`, no `ports:` — the `required: false` was itself a real finding (unconditional `depends_on` on a profiled service breaks no-profile `up` outright, confirmed empirically)
+- [x] T27-3 — extend root `.env.example` with `POSTGRES_USER`/`PASSWORD`/`DB` and their defaults, plus a note on `OPEN_LIBRARY_USER_AGENT`'s no-default requirement
 
-**Checkpoint T27-B** — `docker compose --profile bundled-db up --wait` succeeds from a clean checkout, zero configuration
+**Checkpoint T27-B** — done, proven against real podman (Compose 5.4.0): `--profile bundled-db up --wait` reaches Healthy on both services from a clean checkout (temporarily moved this machine's own pre-existing dev `.env` aside to prove it honestly), migrations ran, `/readyz` returned 200, nothing reachable from the host on either port; plain `up` with an external `DATABASE_URL` started only `backend`, DSN untouched. Real hazard found and documented in `docker-compose.yml`: a pre-existing local `.env` (this project's own `go run ./cmd/server`-against-Supabase convention) shares the `DATABASE_URL` key and silently wins over the bundled DSN if present.
 
 - [ ] T27-4 — `scripts/check-compose-published-port.sh` + self-test (fixture-based)
 
