@@ -81,9 +81,13 @@ type runDeps struct {
 	runMigrations func(ctx context.Context, cfg *config.Config) error
 
 	// newPool constructs the connection pool once PostgreSQL is reachable
-	// and migrated (FR-1 step 6); its result populates the pool reference
-	// step 3 already wired into the router.
-	newPool func(ctx context.Context, cfg *config.Config) (pgPool, error)
+	// and migrated (FR-1 step 6); its first result populates the pool
+	// reference step 3 already wired into the router. Its second result
+	// is every T24 repository implementation, constructed against that
+	// same pool — the spec's own step 6 covers both in one step
+	// ("construct pool... construct repositories"), so both are built by
+	// one call rather than two separate hooks.
+	newPool func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error)
 
 	stderr io.Writer
 }
@@ -242,7 +246,7 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	logger.Info("startup step completed", "step", "migrate")
 
-	pool, err := deps.newPool(ctx, cfg)
+	pool, repos, err := deps.newPool(ctx, cfg)
 	if err != nil {
 		if ctx.Err() != nil {
 			return gracefulShutdown(cfg, deps, srv, nil, logger)
@@ -262,12 +266,11 @@ func run(ctx context.Context, deps runDeps) int {
 	poolRef.Set(pool)
 	logger.Info("startup step completed", "step", "pool")
 
-	// TODO(D1): repository construction is stubbed empty here —
-	// phase 02's domain aggregates and repository interfaces
-	// (backend-persistence.md FR-2) aren't buildable Go yet
-	// (.claude/roadmap/02-domain/README.md). Checkpoint G
-	// (tasks/todo.md) re-checks phase 02's status before T24 wires
-	// real repositories in here.
+	// repos (T24, R10) holds every domain repository implementation,
+	// constructed against the same pool above. Nothing consumes it yet —
+	// phase 03 registers no /api/v1 routes (backend-service-lifecycle.md's
+	// own Non-goals) — a future phase's handlers are where it gets used.
+	_ = repos
 
 	logger.Info("ready")
 

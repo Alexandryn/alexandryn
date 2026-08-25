@@ -158,9 +158,9 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 			*order = append(*order, "migrate")
 			return nil
 		},
-		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 			*order = append(*order, "pool")
-			return &fakePool{order: order}, nil
+			return &fakePool{order: order}, nil, nil
 		},
 		stderr: &bytes.Buffer{},
 	}
@@ -430,9 +430,9 @@ func TestRun_PoolReferencePopulatedAfterStep6(t *testing.T) {
 	}
 
 	pool := &fakePool{}
-	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 		order = append(order, "pool")
-		return pool, nil
+		return pool, nil, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -451,9 +451,9 @@ func TestRun_PoolReferencePopulatedAfterStep6(t *testing.T) {
 func TestRun_PoolConstructionFailureStopsBeforeReady(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
-	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 		order = append(order, "pool")
-		return nil, errors.New("pool: could not acquire connection")
+		return nil, nil, errors.New("pool: could not acquire connection")
 	}
 
 	code := run(context.Background(), deps)
@@ -484,8 +484,8 @@ func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T
 			DatabaseURL:         config.RedactedString(fakeStartupDSNMarker),
 		}, nil
 	}
-	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
-		return nil, errors.New("cannot parse `" + fakeStartupDSNMarker + "`: invalid port")
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
+		return nil, nil, errors.New("cannot parse `" + fakeStartupDSNMarker + "`: invalid port")
 	}
 
 	code := run(context.Background(), deps)
@@ -747,10 +747,10 @@ func TestRun_ShutdownSignalDuringPoolConstruction_CallsShutdownNotOrdinaryFailur
 	deps, spy := recordingDeps(t, &order)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 		order = append(order, "pool")
 		cancel()
-		return nil, errors.New("pool: context canceled")
+		return nil, nil, errors.New("pool: context canceled")
 	}
 
 	code := run(ctx, deps)

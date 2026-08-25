@@ -66,6 +66,11 @@ func integrationConfig(dsn string) *config.Config {
 // exit criterion: migrations run, the pool connects, /readyz reaches 200
 // over real HTTP, driven through the real production obtainPostgres
 // (connect path, since DatabaseURL is set) and the real Migrate/NewPool.
+// Also Checkpoint R-E's own criterion (tasks/plan-t24-repositories.md,
+// R10): by the time the process reaches Ready, real repository
+// implementations — not stubs — have been constructed against the real
+// pool, proven here by capturing what newRepositories actually built and
+// asserting every field is populated.
 func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	resetSchema(t, testDB(t))
@@ -73,6 +78,7 @@ func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 	cfg := integrationConfig(dsn)
 	addrCh := make(chan string, 1)
 
+	var capturedRepos *repositories
 	deps := runDeps{
 		loadConfig:          func() (*config.Config, error) { return cfg, nil },
 		newLogger:           quietLogger,
@@ -87,8 +93,13 @@ func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 		runMigrations: func(ctx context.Context, cfg *config.Config) error {
 			return postgres.Migrate(ctx, cfg.DatabaseURL.Reveal())
 		},
-		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, error) {
-			return postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
+			pool, err := postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+			if err != nil {
+				return nil, nil, err
+			}
+			capturedRepos = newRepositories(pool)
+			return pool, capturedRepos, nil
 		},
 		stderr: io.Discard,
 	}
@@ -109,6 +120,8 @@ func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
+
+	assertRepositoriesConstructed(t, capturedRepos)
 }
 
 // A data directory holding a migration applied partway: run() must exit
@@ -151,9 +164,13 @@ func TestIntegration_PartialMigrationStopsBeforePool(t *testing.T) {
 		postgresBackoff:     200 * time.Millisecond,
 		sleep:               sleepOrDone,
 		runMigrations:       brokenMigrate,
-		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, error) {
+		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 			poolConstructed = true
-			return postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+			pool, err := postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
+			if err != nil {
+				return nil, nil, err
+			}
+			return pool, newRepositories(pool), nil
 		},
 		stderr: io.Discard,
 	}
@@ -165,6 +182,36 @@ func TestIntegration_PartialMigrationStopsBeforePool(t *testing.T) {
 	}
 	if poolConstructed {
 		t.Fatal("newPool was called despite a failed migration — step 6 must never run")
+	}
+}
+
+// assertRepositoriesConstructed proves Checkpoint R-E's own criterion:
+// every field newRepositories sets is populated, not a nil interface
+// left over from a stub — the R10 replacement for the T18-era TODO(D1)
+// comment that used to leave repository construction unimplemented.
+func assertRepositoriesConstructed(t *testing.T, repos *repositories) {
+	t.Helper()
+	if repos == nil {
+		t.Fatal("repositories were never constructed")
+	}
+	fields := map[string]any{
+		"works":              repos.works,
+		"authors":            repos.authors,
+		"editions":           repos.editions,
+		"libraryEntries":     repos.libraryEntries,
+		"collections":        repos.collections,
+		"sources":            repos.sources,
+		"sourceOfferings":    repos.sourceOfferings,
+		"readingProgress":    repos.readingProgress,
+		"bookmarks":          repos.bookmarks,
+		"highlights":         repos.highlights,
+		"readingPreferences": repos.readingPreferences,
+		"transactor":         repos.transactor,
+	}
+	for name, field := range fields {
+		if field == nil {
+			t.Fatalf("repositories.%s is nil, want a real implementation", name)
+		}
 	}
 }
 

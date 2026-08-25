@@ -136,7 +136,7 @@ func TestIntegration_AliveBeforeReadyWindow(t *testing.T) {
 		postgresBackoff:     0,
 		sleep:               sleepOrDone,
 		runMigrations:       func(context.Context, *config.Config) error { return nil },
-		newPool:             func(context.Context, *config.Config) (pgPool, error) { return &fakePool{}, nil },
+		newPool:             func(context.Context, *config.Config) (pgPool, *repositories, error) { return &fakePool{}, nil, nil },
 		stderr:              io.Discard,
 	}
 
@@ -262,12 +262,12 @@ func TestConcurrency_ShutdownUnderLoad(t *testing.T) {
 		postgresBackoff:     0,
 		sleep:               sleepOrDone,
 		runMigrations:       func(context.Context, *config.Config) error { return nil },
-		newPool: func(context.Context, *config.Config) (pgPool, error) {
+		newPool: func(context.Context, *config.Config) (pgPool, *repositories, error) {
 			return &countingClosePool{onClose: func() {
 				closeMu.Lock()
 				closeCalls++
 				closeMu.Unlock()
-			}}, nil
+			}}, nil, nil
 		},
 		stderr: io.Discard,
 	}
