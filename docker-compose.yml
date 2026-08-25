@@ -1,0 +1,55 @@
+# deployment-container-packaging.md FR-4/FR-5. Two services, exactly:
+# backend (always active) and postgres (only under --profile bundled-db).
+#
+# backend's depends_on uses `required: false` deliberately — confirmed
+# empirically (T27) that without it, `docker compose up` with no profile
+# active fails outright ("depends on undefined service postgres"),
+# because postgres's own profile isn't active by default. `required:
+# false` makes the health-gate apply only when postgres is actually
+# part of the run, which is exactly FR-4's "wait for postgres when it's
+# bundled" alongside the Acceptance criteria's "start backend alone
+# against an external DATABASE_URL" case.
+services:
+  backend:
+    build: .
+    environment:
+      - BIND_ADDRESS=127.0.0.1:8080
+      # If your own .env already sets DATABASE_URL for the local
+      # go run ./cmd/server / Supabase dev stack (.env.example's own
+      # first line), that same value wins here too — Compose auto-loads
+      # the one root .env for both. Unset it in your shell, or comment
+      # it out in .env, before using the bundled-db profile, or this
+      # will silently point backend at your host-side dev database
+      # instead of the one this profile just created. Confirmed
+      # empirically (T27): with no DATABASE_URL anywhere, this falls
+      # through correctly to the bundled postgres service below.
+      - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-admin}@postgres:5432/${POSTGRES_DB:-alexandryn}?sslmode=disable}
+      # No default here, deliberately: backend-configuration.md FR-3
+      # requires OPEN_LIBRARY_USER_AGENT with no placeholder, since one
+      # would misidentify this client to Open Library's real API. Set
+      # your own in .env; backend fails fast, naming the key, if it's
+      # missing.
+      - OPEN_LIBRARY_USER_AGENT
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    # FR-5: no ports:, no network_mode: host, on the default profile.
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["bundled-db"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-alexandryn}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-alexandryn}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
