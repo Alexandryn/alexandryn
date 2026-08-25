@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer, 2026-08-25 — Luann Moreira; self-reviewed with changes, amended for ADR 0017's TLS/bind condition 2026-08-18, maintainer-directed) |
+| **Status** | `APPROVED` (maintainer, 2026-08-25 — Luann Moreira; self-reviewed with changes, amended for ADR 0017's TLS/bind condition 2026-08-18, maintainer-directed; amended again same day during T27 implementation — `OPEN_LIBRARY_USER_AGENT` (`backend-configuration.md` FR-3) has no default by design and isn't a `docker-compose.yml`-level concern this spec's FR-4 originally accounted for, see FR-4 and Acceptance criteria below; self-reviewed, needs maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-17 |
@@ -146,6 +146,24 @@ ordinary future change to the compose file.
   target unreachable by design under the default profile — it is not a
   production credential, it is what a first `docker compose up` needs to
   come up loopback-only with zero configuration.
+
+  Amendment, 2026-08-25 (self-reviewed during T27 implementation, needs
+  maintainer re-confirmation): `backend` also requires
+  `OPEN_LIBRARY_USER_AGENT` to start at all (`backend-configuration.md`
+  FR-3, `categoryRequired`, no default — confirmed by running the FR-1
+  image standalone: it fails fast naming the missing key). Unlike
+  `POSTGRES_USER`/`PASSWORD`/`DB`, this key MUST NOT get a
+  `docker-compose.yml`-level default — `backend-configuration.md`'s own
+  stated reasoning is that a placeholder value would misidentify this
+  client to Open Library's real, live API, which is exactly what the
+  `required`/no-default category exists to prevent, and that reasoning
+  applies identically here. `docker-compose.yml` MUST pass it through
+  unset (`environment: [OPEN_LIBRARY_USER_AGENT]`, no `=value` —
+  Compose's own pass-through-if-set syntax), never default it. An
+  operator sets a real value in their own `.env`; `backend-test-harness.md`
+  FR-10's own CI job sets one explicitly for that run (an honest,
+  CI-identifying string, not a placeholder pretending to be a real
+  deployment).
 - **FR-5** `docker-compose.yml`'s default profile MUST NOT publish any
   port for the `backend` service (no `ports:` entry) and MUST NOT set
   `network_mode: host` for it. This is the correct default per ADR 0017's
@@ -283,8 +301,10 @@ binary.
 - [ ] The runtime image runs as a non-root user, proven by inspecting the
       running container's effective UID
 - [ ] `docker compose --profile bundled-db up --wait` succeeds against a
-      clean checkout with zero configuration, proven in CI
-      (`backend-test-harness.md` FR-10)
+      clean checkout with zero *Postgres* configuration, proven in CI
+      (`backend-test-harness.md` FR-10) — `OPEN_LIBRARY_USER_AGENT` is
+      the one variable CI must still supply explicitly (amendment above),
+      not a gap in this criterion
 - [ ] `docker compose up` (no profile), with `DATABASE_URL` set to an
       external Postgres, starts `backend` without starting `postgres`,
       proven by checking which containers are running after `up`
