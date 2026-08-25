@@ -10,9 +10,9 @@
 
 ## Tasks
 
-- [ ] T27-1 — `Dockerfile`: multi-stage, conditional `web/` build, `alpine` runtime, non-root user, `HEALTHCHECK` against `/readyz`
+- [x] T27-1 — `Dockerfile`: multi-stage, conditional `web/` build, `alpine` runtime, non-root user, `HEALTHCHECK` against `/readyz` — built and proven against real podman (`--format docker` needed; the default OCI format silently drops `HEALTHCHECK`, noted for T27-6)
 
-**Checkpoint T27-A** — `docker build .` succeeds; no build toolchain in the runtime image; container runs as non-root; `/readyz` answers inside the container
+**Checkpoint T27-A** — done: `docker build .` succeeds; no build toolchain/`/src` in the runtime image; container runs as non-root (uid=100); `/readyz` answers and correctly 503s while waiting for Postgres. Real finding while proving this: the app requires `OPEN_LIBRARY_USER_AGENT` (`backend-configuration.md` FR-3, no default by design — a placeholder would misidentify the client to Open Library's live API) — T27-2 needs to account for this, not silently default it in `docker-compose.yml`
 
 - [ ] T27-2 — `docker-compose.yml`: `backend` + `postgres` services, profile, named volume, `depends_on: service_healthy`, no `ports:`
 - [ ] T27-3 — extend root `.env.example` with `POSTGRES_USER`/`PASSWORD`/`DB` and their defaults
