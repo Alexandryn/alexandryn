@@ -21,11 +21,11 @@
 
 - [x] T27-4 — `scripts/check-compose-published-port.sh` + self-test (fixture-based) — 4/4 cases green; Mode A's carve-out not implemented (no "authentication enabled" key exists anywhere yet, noted in the script)
 
-- [ ] T27-5 — `ci.yml` stage 6: named no-op contract-test step
-- [ ] T27-6 — `ci.yml` stage 9: container-target test in the same `backend` job
-- [ ] T27-7 — `ci.yml` header comment updated (stage 1 still absent, phase 04; stages 6/9 now real)
+- [x] T27-5 — `ci.yml` stage 6: named no-op contract-test step
+- [x] T27-6 — `ci.yml` stage 9: container-target test in the same `backend` job — also wired T27-4's check into stage 3
+- [x] T27-7 — `ci.yml` header comment updated (stage 1 still absent, phase 04; stages 2-9 now real)
 
-**Checkpoint T27-C** — full `ci.yml` green on a real PR, including both new stages
+**Checkpoint T27-C** — locally proven: the exact stage 9 command (`docker compose --profile bundled-db up --build --wait`) succeeds end to end against real podman with no pre-existing `.env` (the real CI condition), both services Healthy, exit 0. Real `gh pr checks` proof pending the PR (T27's own make-pr step).
 
 - [ ] T27-8 — one-time proofs: external-`DATABASE_URL` compose-up starts only `backend`; host can't reach it; T27-4's check fails a reintroduced `ports:` fixture
 - [ ] T27-9 — D6: inspect `main`'s real branch-protection settings, confirm `Backend` is required; report, fix only on explicit confirmation
