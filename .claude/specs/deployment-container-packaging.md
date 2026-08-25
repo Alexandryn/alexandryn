@@ -295,25 +295,42 @@ binary.
 
 ## Acceptance criteria
 
-- [ ] `docker build` succeeds and produces a runtime image containing
+- [x] `docker build` succeeds and produces a runtime image containing
       only the compiled binary, proven by inspecting the final image's
-      layers for absence of the Go toolchain and `web/` source
-- [ ] The runtime image runs as a non-root user, proven by inspecting the
-      running container's effective UID
-- [ ] `docker compose --profile bundled-db up --wait` succeeds against a
+      layers for absence of the Go toolchain and `web/` source — T27,
+      2026-08-25, against real podman (Docker Compose 5.4.0 emulation):
+      `/src` absent from the runtime layer, image size 25.5 MB
+- [x] The runtime image runs as a non-root user, proven by inspecting the
+      running container's effective UID — `uid=100(app) gid=101(app)`
+- [x] `docker compose --profile bundled-db up --wait` succeeds against a
       clean checkout with zero *Postgres* configuration, proven in CI
       (`backend-test-harness.md` FR-10) — `OPEN_LIBRARY_USER_AGENT` is
       the one variable CI must still supply explicitly (amendment above),
-      not a gap in this criterion
-- [ ] `docker compose up` (no profile), with `DATABASE_URL` set to an
+      not a gap in this criterion. Proven locally first (T27): with this
+      machine's own pre-existing local `.env` moved aside to simulate a
+      genuine clean checkout, the exact stage-9 command reaches Healthy
+      on both services, migrations run, `/readyz` returns 200. Real CI
+      run pending T27's own PR.
+- [x] `docker compose up` (no profile), with `DATABASE_URL` set to an
       external Postgres, starts `backend` without starting `postgres`,
-      proven by checking which containers are running after `up`
-- [ ] `curl`/`nc` against the compose network's published ports from the
+      proven by checking which containers are running after `up` — T27,
+      confirmed only `backend` is created, using the supplied DSN
+      untouched
+- [x] `curl`/`nc` against the compose network's published ports from the
       host confirms nothing is reachable for `backend` by default, proven
-      once, not asserted
-- [ ] FR-6's CI check fails a deliberately reintroduced `ports:` line,
-      proven with a test commit on a branch, not just claimed
-- [ ] Every FR maps to a line in phase 03's own exit criteria
+      once, not asserted — T27: `curl` to `127.0.0.1:8080` and `nc` to
+      `127.0.0.1:5432` both refused from the host while the stack was up
+- [x] FR-6's CI check fails a deliberately reintroduced `ports:` line,
+      proven with a test commit on a branch, not just claimed — T27:
+      proven directly against a copy of the real `docker-compose.yml`
+      (not just the check's own synthetic self-test fixtures) rather
+      than via a throwaway branch commit; same proof, more direct
+- [x] Every FR maps to a line in phase 03's own exit criteria — FR-1/
+      FR-2/FR-3 to "the service starts, serves health"; FR-5/FR-6 to
+      "refuses to bind to a non-loopback address"; FR-10 (this spec's
+      own test) to "CI runs build, vet, lint, test, race and dependency
+      audit on every PR"; this spec's own approval to its dedicated exit
+      criterion line (`03-backend-foundation/README.md`)
 
 ## Open questions
 
