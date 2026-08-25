@@ -144,9 +144,9 @@ readiness.
 - [x] All six original specifications `APPROVED` with recorded reviews —
       self + independent review (`0022`), all findings fixed, approved
       by the maintainer 2026-08-14
-- [ ] `deployment-container-packaging.md` `APPROVED`, added 2026-08-17 for
-      ADR 0015's container target — currently `REVIEWED`, self-reviewed
-      only, needs maintainer approval
+- [x] `deployment-container-packaging.md` `APPROVED` (maintainer, Luann
+      Moreira, 2026-08-25) — added 2026-08-17 for ADR 0015's container
+      target
 - [ ] The service starts, serves health, and shuts down gracefully under load
 - [ ] Migrations apply to an empty database and to a populated one
 - [ ] Tests pass with the race detector enabled
