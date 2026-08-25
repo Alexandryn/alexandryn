@@ -22,10 +22,10 @@
 
 **Checkpoint T26-B** — all three packages isolated; full integration suite green (`-race -tags=integration -p 1`) against real local Postgres, `-p 1` still present as a safety net
 
-- [ ] T26-7 — `ci.yml`: drop `-p 1`, rewrite the explanatory comment
-- [ ] T26-8 — local verification: default-parallelism integration run, repeated, against real Postgres if reachable here; outcome recorded honestly
+- [x] T26-7 — `ci.yml`: drop `-p 1`, rewrite the explanatory comment
+- [x] T26-8 — local verification: a real Postgres *was* reachable in this environment this session (podman/supabase stack, `127.0.0.1:54322`) — `go test -race -tags=integration -count=5 ./...` at default parallelism, all 5 real re-executions green, no collision
 
-**Checkpoint T26-C** — default-parallelism run proven stable (or its environment limit stated plainly); `-p 1` gone from CI
+**Checkpoint T26-C** — default-parallelism run proven stable against a real local Postgres; `-p 1` gone from CI
 
 - [ ] T26-9 — docs: `CONTRIBUTING.md`, audit A-03-06 resolution + mislabeling fix, `backend-test-harness.md` FR-3 note
 - [ ] T26-10 — `tasks/todo.md`: check off T26, close its checkpoint
