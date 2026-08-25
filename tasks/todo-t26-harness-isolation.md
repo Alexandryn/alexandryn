@@ -10,7 +10,7 @@
 
 ## Tasks
 
-- [ ] T26-1 — `internal/testutil/packagedb.go`: pure `DerivePackageDatabaseURL`, unit-tested (RED first)
+- [x] T26-1 — `internal/testutil/packagedb.go`: pure `DerivePackageDatabaseURL`, unit-tested (RED first)
 - [ ] T26-2 — same file: `EnsurePackageDatabase` (real I/O, `CREATE DATABASE` + idempotent `42P04` handling)
 
 **Checkpoint T26-A** — `DerivePackageDatabaseURL` unit-tested and green; `EnsurePackageDatabase` written, not yet wired
