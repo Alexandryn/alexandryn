@@ -113,9 +113,17 @@ was deliberately not built (separately blocked, unrelated defect), so
 `ReadingProgressRepository`'s eventual shape for T24 has no reconciliation
 method to implement yet either — matches reality, not an oversight.
 
-- [ ] T24 — `backend-persistence.md` FR-2, all 11 repositories
+- [x] T24 — `backend-persistence.md` FR-2, all 11 repositories — done;
+  full detail in `tasks/plan-t24-repositories.md`/`tasks/todo-t24-repositories.md`
+  (Checkpoint R-E, final): all 11 repositories green against real
+  Postgres, the cross-repository transaction-atomicity proof
+  (`SourceRemovalService`'s cascade) holds, and `cmd/server`'s `run.go`
+  now constructs every repository against the real pool at FR-1 step 6
+  (T26's repository-wiring half, pulled forward — see T26 below)
 - [ ] T25 — remaining persistence Integration/E2E (macOS E2E excluded, D4)
-- [ ] T26 — harness FR-3 Variant B + real repository wiring in `run.go`
+- [ ] T26 — harness FR-3 Variant B (still open — the `-p 1` cross-package
+  DDL race, not yet fixed); real repository wiring in `run.go` is now
+  done, pulled forward into T24's R10
 - [ ] T27 — CI workflow (D2/D3/D7 formalized)
 
 **Checkpoint H (final)** — D6 verification, D5 cleanup PR, full-suite run,
