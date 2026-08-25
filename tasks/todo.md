@@ -22,7 +22,15 @@ Execute in order; each task is RED (existing test-plan case, see
 - [x] D5 — `backend-configuration.md` stale FR-8 phrasing cleanup — no
       stale loopback-only language remains outside the legitimate
       `DATABASE_URL`-in-dev mention
-- [ ] D6 — branch-protection live-gating verification (infra, not code; Checkpoint H)
+- [x] D6 — branch-protection live-gating verification attempted (T27,
+      2026-08-25): **genuinely blocked, not just unconfigured**. Both
+      `gh api repos/.../branches/main/protection` and the newer
+      `.../rules/branches/main` return 403 — this private repo's current
+      GitHub plan doesn't include branch protection or rulesets at all.
+      Real consequence: `main` is not actually gated by CI today; nothing
+      technical stops a direct push bypassing every check `ci.yml` runs.
+      Not fixable via `gh api` — needs a paid plan or making the repo
+      public, both outside any task's authority here. See Carry-overs.
 - [x] D7 — `deployment-container-packaging.md` moved `REVIEWED` →
       `APPROVED` 2026-08-25 (maintainer); T27 unblocked. Also resolved in
       the same pass: HEALTHCHECK target is `/readyz` (FR-3), default
@@ -148,7 +156,16 @@ method to implement yet either — matches reality, not an oversight.
   -tags=integration -count=5 ./...` at default parallelism against a
   real Postgres, all five re-executions green (real repository wiring in
   `run.go` was already done, pulled forward into T24's R10)
-- [ ] T27 — CI workflow (D2/D3/D7 formalized)
+- [x] T27 — CI workflow (D2/D3/D7 formalized) — done; full detail in
+  `tasks/plan-t27-ci-formalization.md`/`tasks/todo-t27-ci-formalization.md`
+  (Checkpoint T27-D, final): `Dockerfile` (multi-stage, non-root,
+  `HEALTHCHECK` on `/readyz`), `docker-compose.yml` (`backend`+`postgres`,
+  `bundled-db` profile, `depends_on: required: false` — a real
+  Compose-semantics finding, not just FR-4's literal text), FR-6's
+  `check-compose-published-port.sh`, CI stages 6 (named no-op) and 9
+  (container-target test) added — all proven locally against real
+  podman, real `gh pr checks` pending T27's own PR. D6 attempted (see
+  below) and found genuinely blocked, not just unconfigured.
 
 **Checkpoint H (final)** — D6 verification, D5 cleanup PR, full-suite run,
 roadmap exit-criteria walked item by item (including fixing the exit-criteria
@@ -156,6 +173,13 @@ line that still describes the pre-ADR-0017 loopback-only rule).
 
 ## Carry-overs — noted, not acted on this pass
 
+- [ ] **Branch protection is unavailable on this repo's current GitHub
+  plan** (D6, T27, 2026-08-25): a private repo needs GitHub Pro/Team (or
+  going public) for branch protection or rulesets to exist at all — not
+  a configuration gap, a plan-tier gap. `main` is not actually gated by
+  CI right now. This is a real, user-level decision (upgrade the plan,
+  make the repo public, or knowingly accept the gap), not something a
+  future task should try to route around technically.
 - [ ] **FR-8 Mode B**: confirm the authentication condition is asserted
   *independently* of the address classification, not implied by it —
   i.e. a loopback/private bind must not be treated as "therefore
