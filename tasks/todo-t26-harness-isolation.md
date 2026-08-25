@@ -27,7 +27,7 @@
 
 **Checkpoint T26-C** — default-parallelism run proven stable against a real local Postgres; `-p 1` gone from CI
 
-- [ ] T26-9 — docs: `CONTRIBUTING.md`, audit A-03-06 resolution + mislabeling fix, `backend-test-harness.md` FR-3 note
-- [ ] T26-10 — `tasks/todo.md`: check off T26, close its checkpoint
+- [x] T26-9 — docs: `CONTRIBUTING.md`, audit A-03-06 resolution + mislabeling fix, `backend-test-harness.md` FR-3 note
+- [x] T26-10 — `tasks/todo.md`: check off T26
 
-**Checkpoint T26-D (final)** — full suite green (build/vet/unit-race/integration-race-default-parallelism/parallelism-check/import-boundary-check/parameterized-query-check/golangci-lint/govulncheck) — T26 complete; T27 next, not started here
+**Checkpoint T26-D (final)** — full suite green: `go build ./...`, `go vet ./...` (incl. `-tags=integration`), unit `-race`, integration `-race -tags=integration -count=5` at default parallelism (real Postgres, 5/5 green), `scripts/check-integration-test-parallelism.sh`, `scripts/check-import-boundaries.sh .`, `scripts/check-parameterized-queries.sh .`, `golangci-lint run ./...` (0 issues), `govulncheck ./...` (no vulnerabilities) — done. T26 complete; T27 (CI workflow formalization) next, not started here.

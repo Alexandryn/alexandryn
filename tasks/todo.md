@@ -134,9 +134,17 @@ method to implement yet either — matches reality, not an oversight.
   reviewed for both Linux and Windows but not executed here — no real
   `postgres`/`initdb` binaries in this sandbox, skips cleanly with a
   named reason instead of failing or silently passing
-- [ ] T26 — harness FR-3 Variant B (still open — the `-p 1` cross-package
-  DDL race, not yet fixed); real repository wiring in `run.go` is now
-  done, pulled forward into T24's R10
+- [x] T26 — harness FR-3 Variant B — done; full detail in
+  `tasks/plan-t26-harness-isolation.md`/`tasks/todo-t26-harness-isolation.md`
+  (Checkpoint T26-D, final): `internal/testutil/packagedb.go`'s
+  `EnsurePackageDatabase` gives each of the three integration-tagged
+  packages (`internal/testutil`, `internal/persistence/postgres`,
+  `cmd/server`) its own physical database, derived from
+  `TEST_DATABASE_URL`, before any test in that package runs; `ci.yml`'s
+  `-p 1` workaround removed, verified locally with `go test -race
+  -tags=integration -count=5 ./...` at default parallelism against a
+  real Postgres, all five re-executions green (real repository wiring in
+  `run.go` was already done, pulled forward into T24's R10)
 - [ ] T27 — CI workflow (D2/D3/D7 formalized)
 
 **Checkpoint H (final)** — D6 verification, D5 cleanup PR, full-suite run,
@@ -161,5 +169,5 @@ line that still describes the pre-ADR-0017 loopback-only rule).
   wipe another's in-flight fixture — exactly the composability hazard
   T26's own harness FR-3 Variant B names, previously suspected, now
   reproduced. `-p 1` serializes packages and avoids it; not a fix, just
-  the workaround T24 used for its own verification. T26 still owns the
-  real fix.
+  the workaround T24 used for its own verification. Fixed by T26 (see
+  above) — `-p 1` is no longer needed or present in `ci.yml`.
