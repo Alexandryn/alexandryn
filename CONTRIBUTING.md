@@ -38,7 +38,7 @@ maintainable claim.
 | Build frontend | `npm run build` (inside `web/`, produces `web/dist`) | `frontend-tooling.md` FR-1/FR-6, must run **before** the backend build (ADR 0008's `go:embed` ordering) |
 | Build container image | `docker build .` | `deployment-container-packaging.md` FR-1 |
 | Run unit tests | `go test ./...` (no tag; MUST NOT require PostgreSQL, Docker, or any external service) | `backend-test-harness.md` FR-1 |
-| Run integration tests | `go test -tags=integration ./...`, with `TEST_DATABASE_URL` set | `backend-test-harness.md` FR-2 |
+| Run integration tests | `go test -tags=integration ./...`, with `TEST_DATABASE_URL` set (a base connection to an existing database — each integration-tagged package creates and uses its own physical database derived from it, `backend-test-harness.md` FR-3 Variant B) | `backend-test-harness.md` FR-2 |
 | Run the bundled-spawn suite | `go test -tags=spawn ./...` (`spawn` is the spec's own named example — *"`//go:build spawn`, or an equivalent distinct tag"* — not fixed as the literal, final tag name) | `backend-test-harness.md` FR-7 |
 | Run with the race detector | `go test -race ./...` (unit and integration) | `backend-test-harness.md` FR-9 |
 | Bring up the container target | `docker compose --profile bundled-db up --wait` | `deployment-container-packaging.md` FR-4, `backend-test-harness.md` FR-10 |
