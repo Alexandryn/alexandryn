@@ -11,11 +11,11 @@
 ## Tasks
 
 - [x] T26-1 — `internal/testutil/packagedb.go`: pure `DerivePackageDatabaseURL`, unit-tested (RED first)
-- [ ] T26-2 — same file: `EnsurePackageDatabase` (real I/O, `CREATE DATABASE` + idempotent `42P04` handling)
+- [x] T26-2 — same file: `EnsurePackageDatabase` (real I/O, `CREATE DATABASE` + idempotent `42P04` handling)
 
-**Checkpoint T26-A** — `DerivePackageDatabaseURL` unit-tested and green; `EnsurePackageDatabase` written, not yet wired
+**Checkpoint T26-A** — `DerivePackageDatabaseURL` unit-tested and green; `EnsurePackageDatabase` written and proven against a real local Postgres (podman/supabase stack, `127.0.0.1:54322`), not yet wired into any real package `TestMain`
 
-- [ ] T26-3 — Variant B's own proof: two `pkgName`s produce two independent databases; repeat call is idempotent
+- [x] T26-3 — Variant B's own proof: two `pkgName`s produce two independent databases; repeat call is idempotent — `internal/testutil/packagedb_integration_test.go`, green against real Postgres
 - [ ] T26-4 — wire `internal/testutil/isolation_integration_test.go`'s `TestMain` (`pkgName` `testutil`)
 - [ ] T26-5 — wire `internal/persistence/postgres/migrate_integration_test.go`'s `TestMain` (`pkgName` `postgres`)
 - [ ] T26-6 — wire `cmd/server/run_integration_test.go`'s `TestMain` (`pkgName` `cmdserver`)
