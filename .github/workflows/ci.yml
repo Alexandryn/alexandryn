@@ -8,20 +8,16 @@ on:
 # backend-test-harness.md FR-8 fixes nine ordered stages for this
 # workflow. Phase 03 doesn't yet have something real for every stage to
 # check — only what does is here, each one a real gate, not a green tick
-# on nothing (phase 00's own README warns against exactly that). Absent
-# stages are noted in place, with what unblocks each:
+# on nothing (phase 00's own README warns against exactly that).
 #
-#   1. web/ build (ADR 0008)               — phase 04; no web/ exists yet
-#   6. contract test                        — architecture-contracts.md
-#                                              FR-3's tool isn't chosen
-#                                              or built yet
-#   9. container-target test                — deployment-container-
-#                                              packaging.md is REVIEWED,
-#                                              not APPROVED (D7,
-#                                              tasks/plan.md); gated on
-#                                              that approval
+#   1. web/ build (ADR 0008) is still absent — phase 04, no web/
+#      directory exists yet, nothing to build.
 #
-# Stages 2, 3, 4, 5, 7, 8 below are real as of this workflow.
+# Stages 2 through 9 are all real as of this workflow (T27): 6 is a
+# named no-op (architecture-contracts.md FR-3's tool isn't chosen or
+# built yet — a visible placeholder, not a silent gap); 9 is the real
+# container-target test, unblocked once deployment-container-packaging.md
+# moved REVIEWED -> APPROVED (D7).
 
 jobs:
   backend:
@@ -69,6 +65,12 @@ jobs:
       - name: Parameterized-query check
         run: bash scripts/check-parameterized-queries.sh .
 
+      - name: Compose published-port check self-test
+        run: bash scripts/check-compose-published-port_test.sh
+
+      - name: Compose published-port check
+        run: bash scripts/check-compose-published-port.sh .
+
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 
@@ -104,6 +106,16 @@ jobs:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/alexandryn_test?sslmode=disable
         run: go test -race -tags=integration ./...
 
+      # Stage 6 — contract test, named no-op (D3, tasks/plan.md).
+      # architecture-contracts.md FR-3's own tool (schema validation
+      # against real responses, or generated-server-stub conformance)
+      # isn't chosen or built yet — this step exists so the stage is
+      # present and visible, not silently skipped, until it is.
+      - name: Contract test (not yet implemented)
+        run: |
+          echo "Contract test stage is a placeholder: architecture-contracts.md FR-3's tool isn't chosen yet (D3, tasks/plan.md)."
+          echo "This step exists so the stage is visible in CI, not silently absent — see backend-test-harness.md FR-8."
+
       # Stage 7 — coverage reporting. No tool or threshold is fixed yet
       # (open question); this only proves the stage exists and its
       # output is captured.
@@ -120,3 +132,25 @@ jobs:
       # FR-5).
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
+      # Stage 9 — container-target test (deployment-container-packaging.md
+      # FR-10, ADR 0015). Runs in this same job rather than a separate
+      # one, per FR-10's own text ("no platform-specific spawn/orphan-
+      # prevention mechanism to exercise... fast and platform-
+      # independent"). docker-compose.yml's bundled-db profile builds
+      # the Dockerfile image and brings up backend + postgres; --wait
+      # blocks on Compose's own health status (backend's HEALTHCHECK,
+      # FR-3) rather than any test runner reaching over the network.
+      # OPEN_LIBRARY_USER_AGENT has no default by design
+      # (backend-configuration.md FR-3) — this is CI's own honest,
+      # explicit value for this run, not a placeholder pretending to be
+      # a real deployment (deployment-container-packaging.md's own
+      # 2026-08-25 amendment).
+      - name: Container-target test
+        env:
+          OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
+        run: docker compose --profile bundled-db up --build --wait
+
+      - name: Container-target test teardown
+        if: always()
+        run: docker compose --profile bundled-db down -v
