@@ -86,7 +86,7 @@ func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 		listen:              realListenDeps(addrCh),
 		newServer:           realServerDeps(),
 		clock:               realClock{},
-		obtainPostgres:      obtainPostgres, // real production step 5, connect path (DatabaseURL is set)
+		obtainPostgres:      newObtainPostgres(), // real production step 5, connect path (DatabaseURL is set)
 		postgresMaxAttempts: 10,
 		postgresBackoff:     200 * time.Millisecond,
 		sleep:               sleepOrDone,
@@ -159,7 +159,7 @@ func TestIntegration_PartialMigrationStopsBeforePool(t *testing.T) {
 		listen:              realListenDeps(addrCh),
 		newServer:           realServerDeps(),
 		clock:               realClock{},
-		obtainPostgres:      obtainPostgres,
+		obtainPostgres:      newObtainPostgres(),
 		postgresMaxAttempts: 10,
 		postgresBackoff:     200 * time.Millisecond,
 		sleep:               sleepOrDone,

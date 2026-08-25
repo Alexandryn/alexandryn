@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"flag"
 	"log/slog"
 	"net"
@@ -63,7 +62,7 @@ func main() {
 			return transporthttp.NewServer(cfg, handler)
 		},
 		clock:               realClock{},
-		obtainPostgres:      obtainPostgres,
+		obtainPostgres:      newObtainPostgres(),
 		postgresMaxAttempts: postgresReadyMaxAttempts,
 		postgresBackoff:     postgresReadyBackoff,
 		sleep:               sleepOrDone,
@@ -81,29 +80,13 @@ func main() {
 	}))
 }
 
-// obtainPostgres makes one attempt at FR-1 step 5: spawn a bundled
-// instance when no DATABASE_URL is configured (the Electron-hosted
-// target's production path), or connect directly to the one configured
-// (the Electron target's dev/CI/test override, and the container-hosted
-// target's normal production path, ADR 0015) — exactly one of the two,
-// chosen by postgres.SelectStartupPath.
-func obtainPostgres(ctx context.Context, cfg *config.Config) error {
-	return postgres.SelectStartupPath(ctx, cfg.DatabaseURL.Reveal(), spawnPostgres, connectPostgres(cfg))
-}
-
-// spawnPostgres would initialize the data directory and spawn a bundled,
-// platform-appropriate PostgreSQL instance (backend-persistence.md FR-8)
-// for the Electron-hosted production target. That mechanics isn't built
-// yet — internal/persistence/postgres currently only has the portable
-// argument-list builder (PostgresArgs) and branch-selection logic
-// (SelectStartupPath), not a real process spawn — tracked as T25 in
-// tasks/plan.md (production spawn failure, macOS/Linux/Windows E2E).
-// Failing loudly here, rather than silently no-op'ing, is FR-3's own
-// requirement: a startup step that can't do its job fails, it doesn't
-// pretend to succeed.
-func spawnPostgres(ctx context.Context) error {
-	return errors.New("spawning a managed PostgreSQL instance is not implemented yet (backend-persistence.md FR-8, tracked as T25)")
-}
+// newObtainPostgres (spawn.go, spawn_darwin.go) is FR-1 step 5's real,
+// per-platform implementation: spawn a bundled instance when no
+// DATABASE_URL is configured (the Electron-hosted target's production
+// path), or connect directly to the one configured (the Electron
+// target's dev/CI/test override, and the container-hosted target's
+// normal production path, ADR 0015) — exactly one of the two, chosen by
+// postgres.SelectStartupPath.
 
 // connectPostgres returns a connect function for postgres.SelectStartupPath:
 // one attempt at establishing (and immediately closing) a real connection
