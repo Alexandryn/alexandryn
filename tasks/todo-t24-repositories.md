@@ -38,7 +38,7 @@ Full plan: [`tasks/plan-t24-repositories.md`](plan-t24-repositories.md).
 **Checkpoint R-D** — all 11 repositories green
 
 **Tier 3 — full-set proofs**
-- [ ] R9 — cross-repository transaction-atomicity proof (SourceRemovalService's real cascade)
+- [x] R9 — cross-repository transaction-atomicity proof (SourceRemovalService's real cascade) — real SourceRepository/SourceOfferingRepository/Transactor wired through SourceRemovalService.Remove; the mid-operation failure is injected via a thin test-only decorator around SourceOfferingRepository that lets the first Delete call through to the real repository (a genuine row removal, inside the transaction) then fails the second — same "deliberately fail after a real write" idiom transactor_integration_test.go already established, since nothing in this schema naturally rejects a second DELETE at the constraint level; post-failure state verified through a second, independent *pgxpool.Pool connection (not the same tx handle), proving the already-executed first delete rolled back along with everything else, not just the second, failed one; a companion success-path test proves the same cascade actually removes everything when nothing fails
 - [ ] R10 — wire real repositories into cmd/server's run.go (T26's repository half, pulled forward)
 
 **Checkpoint R-E (final)** — full suite green against real Postgres, cmd/server reaches Ready with real repositories, report back into tasks/todo.md
