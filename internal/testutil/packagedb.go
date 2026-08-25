@@ -5,13 +5,25 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver
 )
+
+// packageDatabaseTimeout bounds EnsurePackageDatabase's own connect/CREATE
+// DATABASE work. It matters specifically because WithPackageDatabase runs
+// it before m.Run() — go test's own -timeout watchdog is armed inside
+// testing.M.Run() (internal/testutil/harness.go's IntegrationTestMain just
+// calls the injected run closure), so without an explicit bound here a
+// stalled connection or catalog lock would hang the test binary with no
+// timeout at all, worse than every other DB access in the package, which
+// -timeout already covers.
+const packageDatabaseTimeout = 30 * time.Second
 
 // DerivePackageDatabaseURL rewrites base's database name to
 // "<original>_<pkgName>", leaving every other URL component (user, host,
@@ -79,8 +91,47 @@ func EnsurePackageDatabase(ctx context.Context, baseDatabaseURL, pkgName string)
 			}
 			return "", fmt.Errorf("EnsurePackageDatabase: creating database %q: %w", dbName, err)
 		}
-		return "", errors.New("EnsurePackageDatabase: connecting to TEST_DATABASE_URL failed")
+		// Not a *pgconn.PgError: the admin connection itself failed or
+		// dropped mid-statement (a context deadline, a network reset),
+		// not a genuine server-side SQL/DDL error — same distinction
+		// TranslateError draws. Named separately from the sql.Open
+		// failure above so the two aren't reported as the identical
+		// text; still generic, never the raw error, which can embed
+		// the DSN.
+		return "", fmt.Errorf("EnsurePackageDatabase: creating database %q: the admin connection failed", dbName)
 	}
 
 	return derivedURL, nil
+}
+
+// WithPackageDatabase wraps run so it first gives the calling package its
+// own isolated database (EnsurePackageDatabase, FR-3 Variant B), rewriting
+// TEST_DATABASE_URL via setenv before run executes. This is the one shape
+// all three integration-tagged TestMains need
+// (internal/testutil, internal/persistence/postgres, cmd/server) — factored
+// out here instead of copy-pasted three times, and bounded by
+// packageDatabaseTimeout since it runs before go test's own -timeout
+// watchdog is armed. getenv/setenv are injected (matching
+// IntegrationTestMain's own lookupEnv) so this file never calls os.Getenv/
+// os.Setenv directly — the import-boundary check's own rule
+// (backend-configuration.md FR-1) restricts direct env access to
+// internal/config and _integration_test.go files, neither of which this
+// file is; os.Getenv and os.Setenv satisfy these signatures directly at
+// each call site.
+func WithPackageDatabase(pkgName string, getenv func(string) string, setenv func(string, string) error, out io.Writer, run func() int) func() int {
+	return func() int {
+		ctx, cancel := context.WithTimeout(context.Background(), packageDatabaseTimeout)
+		defer cancel()
+
+		isolatedURL, err := EnsurePackageDatabase(ctx, getenv("TEST_DATABASE_URL"), pkgName)
+		if err != nil {
+			_, _ = fmt.Fprintf(out, "harness setup: EnsurePackageDatabase: %v\n", err)
+			return 1
+		}
+		if err := setenv("TEST_DATABASE_URL", isolatedURL); err != nil {
+			_, _ = fmt.Fprintf(out, "harness setup: setting TEST_DATABASE_URL: %v\n", err)
+			return 1
+		}
+		return run()
+	}
 }

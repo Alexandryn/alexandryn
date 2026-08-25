@@ -1,6 +1,7 @@
 package testutil_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -58,5 +59,33 @@ func TestDerivePackageDatabaseURL_EmptyDatabaseNameInBaseFails(t *testing.T) {
 	_, _, err := testutil.DerivePackageDatabaseURL("postgres://postgres:postgres@127.0.0.1:54322/", "testutil")
 	if err == nil {
 		t.Fatal("DerivePackageDatabaseURL: err = nil, want an error when the base URL names no database")
+	}
+}
+
+// WithPackageDatabase's error path needs no real Postgres: an empty-path
+// base URL fails inside DerivePackageDatabaseURL before EnsurePackageDatabase
+// ever opens a connection, so the whole failure/no-run/no-setenv contract
+// is provable with fakes alone.
+func TestWithPackageDatabase_EnsureFailureSkipsRunAndSetenv(t *testing.T) {
+	getenv := func(string) string { return "postgres://postgres:postgres@127.0.0.1:54322/" }
+	setenvCalled := false
+	setenv := func(string, string) error { setenvCalled = true; return nil }
+	ran := false
+	run := func() int { ran = true; return 0 }
+	var out bytes.Buffer
+
+	code := testutil.WithPackageDatabase("testutil", getenv, setenv, &out, run)()
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if ran {
+		t.Fatal("run() was called even though EnsurePackageDatabase failed")
+	}
+	if setenvCalled {
+		t.Fatal("setenv() was called even though EnsurePackageDatabase failed")
+	}
+	if !strings.Contains(out.String(), "EnsurePackageDatabase") {
+		t.Fatalf("message doesn't name the failing step: %q", out.String())
 	}
 }

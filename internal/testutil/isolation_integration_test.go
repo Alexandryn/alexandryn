@@ -23,25 +23,18 @@ import (
 // packagedb_integration_test.go and wired in below) is T26's.
 
 // TestMain gives this package its own isolated database
-// (EnsurePackageDatabase, FR-3 Variant B, T26-4) before reaching
+// (testutil.WithPackageDatabase, FR-3 Variant B, T26-4) before reaching
 // migration head once, here, before any test function in this file
 // runs — the concrete mechanism behind the schema-at-head proof below:
 // no test in this file calls Migrate itself.
 func TestMain(m *testing.M) {
-	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, func() int {
-		isolatedURL, err := testutil.EnsurePackageDatabase(context.Background(), os.Getenv("TEST_DATABASE_URL"), "testutil")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "harness setup: EnsurePackageDatabase: %v\n", err)
-			return 1
-		}
-		os.Setenv("TEST_DATABASE_URL", isolatedURL)
-
+	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, testutil.WithPackageDatabase("testutil", os.Getenv, os.Setenv, os.Stderr, func() int {
 		if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL")); err != nil {
 			fmt.Fprintf(os.Stderr, "harness setup: Migrate: %v\n", err)
 			return 1
 		}
 		return m.Run()
-	}, os.Stderr))
+	}), os.Stderr))
 }
 
 func isolationDB(t *testing.T) *sql.DB {
