@@ -11,7 +11,7 @@ review is structured, how to write a test plan.
 
 **`purpose/`** — Alexandryn-specific knowledge that a generalist wouldn't have:
 the domain model, the source provider contract, Open Library's quirks, EPUB
-handling, the Electron IPC conventions, RabbitMQ naming.
+handling, the Electron IPC conventions, the PostgreSQL job-queue conventions.
 
 Do not duplicate a general skill inside a purpose skill. A purpose skill
 assumes the general one and adds only what is specific.
@@ -93,4 +93,4 @@ become real (the five above are done, removed from this list):
 | Electron IPC conventions | purpose | Phase 05 |
 | Open Library integration | purpose | Phase 07 |
 | Source provider contract | purpose | Phase 08 |
-| RabbitMQ conventions | purpose | Phase 09 |
+| PostgreSQL job-queue conventions | purpose | Phase 09 |

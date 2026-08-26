@@ -73,7 +73,7 @@ history with it.
 | Desktop host | Electron |
 | Server | Go |
 | Storage | PostgreSQL, self-hosted, local to the host |
-| Background work | RabbitMQ |
+| Background work | PostgreSQL-backed job queue (ADR 0014) |
 | Packaging | Docker, Docker Compose |
 
 These are the intended choices. Each one is being justified in an architecture
