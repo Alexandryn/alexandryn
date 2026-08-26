@@ -55,9 +55,15 @@ serves this shell; there must be something to serve.
 - Wiring to the real phase 03 backend — phase 06 does the first real
   integration
 - Desktop host IPC — phase 05
-- Any screen the design reference doesn't cover: Tablet, Mobile, Remote,
-  States, Design system are undocumented per
-  `.design-reference/ANALYSIS.md` and are not built from guesswork here
+- Any screen the design reference doesn't cover: Design system has no
+  captured canvas at all (`.design-reference/ANALYSIS.md`) and is not built
+  from guesswork here. `atTablet` is captured but its file placement is
+  still an open question (`architecture-frontend.md`'s own Open
+  questions) — treated as deferred, not built assuming a settled surface,
+  until that's resolved. Mobile and `atStates` are fully captured and
+  binding (`architecture-frontend.md`'s Non-goals and FR-6) — this line
+  previously listed them as undocumented, which predated that spec;
+  corrected 2026-08-26
 
 ## Specifications
 
