@@ -48,9 +48,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Typecheck
-        run: npx tsc -b
-
+      # No separate Typecheck step: npm run build (tsc -b && vite build,
+      # above) already runs the identical tsc -b and blocks on it —
+      # a second invocation here was pure redundancy, code review found.
       - name: Unit/component tests
         run: npm test
 
