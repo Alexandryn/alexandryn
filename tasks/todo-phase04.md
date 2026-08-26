@@ -14,7 +14,7 @@ checkpoint.
 
 **Tier 0 — Bootstrap**
 
-- [ ] F1 — `web/` scaffold: Vite+React+TS, pinned `package.json`, `tsconfig.json` (`strict`+`noUncheckedIndexedAccess`)
+- [x] F1 — `web/` scaffold: Vite+React+TS, pinned `package.json`, `tsconfig.json` (`strict`+`noUncheckedIndexedAccess`) — oxlint removed (not spec-decided), build verified (60.63 KiB gzipped)
 - [ ] F2 — ESLint+Prettier+`jsx-a11y`, one shared config
 - [ ] F3 — Vitest+RTL, sentinel test
 - [ ] F4 — Storybook, `build-storybook` scripted
