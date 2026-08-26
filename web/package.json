@@ -12,7 +12,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "check:bundle-size": "node scripts/check-bundle-size.ts dist",
+    "check:dist-secrets": "node scripts/check-dist-secrets.ts dist",
+    "check:dist-msw": "node scripts/check-dist-msw.ts dist"
   },
   "dependencies": {
     "react": "^19.2.8",
