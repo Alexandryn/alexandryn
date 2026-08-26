@@ -17,7 +17,7 @@ checkpoint.
 - [x] F1 — `web/` scaffold: Vite+React+TS, pinned `package.json`, `tsconfig.json` (`strict`+`noUncheckedIndexedAccess`) — oxlint removed (not spec-decided), build verified (60.63 KiB gzipped)
 - [x] F2 — ESLint+Prettier+`jsx-a11y`, one shared config — pinned `eslint@^9` (jsx-a11y's peer range doesn't yet cover ESLint 10)
 - [x] F3 — Vitest+RTL, sentinel test — jsdom + jest-dom matchers, passes
-- [ ] F4 — Storybook, `build-storybook` scripted
+- [x] F4 — Storybook, `build-storybook` scripted — trimmed installer's default addons to just `addon-docs`+`eslint-plugin-storybook`, removed 4 undecided ones (Chromatic, addon-vitest/Playwright+Chromium, addon-a11y, addon-mcp)
 - [ ] F5 — Bundle-size check, secrets-grep, MSW-exclusion-grep
 - [ ] F6 — `ci.yml`: new `frontend` job, `backend` gets `needs: frontend` + artifact hand-off
 
