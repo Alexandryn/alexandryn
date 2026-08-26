@@ -6,23 +6,79 @@ on:
     branches: [main]
 
 # backend-test-harness.md FR-8 fixes nine ordered stages for this
-# workflow. Phase 03 doesn't yet have something real for every stage to
-# check — only what does is here, each one a real gate, not a green tick
-# on nothing (phase 00's own README warns against exactly that).
+# workflow. All nine are real as of this workflow (phase 04): stage 1
+# (web/ build, ADR 0008) runs in its own frontend job below; stage 6 is
+# a named no-op (architecture-contracts.md FR-3's tool isn't chosen or
+# built yet — a visible placeholder, not a silent gap); stage 9 is the
+# real container-target test.
 #
-#   1. web/ build (ADR 0008) is still absent — phase 04, no web/
-#      directory exists yet, nothing to build.
-#
-# Stages 2 through 9 are all real as of this workflow (T27): 6 is a
-# named no-op (architecture-contracts.md FR-3's tool isn't chosen or
-# built yet — a visible placeholder, not a silent gap); 9 is the real
-# container-target test, unblocked once deployment-container-packaging.md
-# moved REVIEWED -> APPROVED (D7).
+# frontend/backend are two separate jobs (D2, tasks/plan-phase04.md),
+# not one job with both toolchains' steps: each uses its own native
+# GitHub Actions setup/cache action without cross-contaminating the
+# other's install/cache surface, and each job's own red/green signal
+# stays legible to a PR touching only one side. `backend` declares
+# `needs: frontend` and downloads its `web/dist` artifact so the
+# web-before-go-build ordering FR-8/ADR 0008 require is a real
+# dependency between two CI jobs, not just steps in file order.
 
 jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Stage 1 — web/ build (ADR 0008, frontend-tooling.md FR-1/FR-6),
+      # producing web/dist, the exact path/contract go:embed depends on.
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Unit/component tests
+        run: npm test
+
+      - name: Storybook build
+        run: npm run build-storybook
+
+      - name: Bundle-size check
+        run: npm run check:bundle-size
+
+      - name: Production-bundle secrets check
+        run: npm run check:dist-secrets
+
+      - name: Production-bundle MSW-exclusion check
+        run: npm run check:dist-msw
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Upload web/dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: web/dist
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    needs: frontend
     services:
       postgres:
         image: postgres:16-alpine
@@ -38,6 +94,12 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
+
+      - name: Download web/dist
+        uses: actions/download-artifact@v7
+        with:
+          name: web-dist
+          path: web/dist
 
       - uses: actions/setup-go@v7
         with:
