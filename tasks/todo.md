@@ -167,9 +167,21 @@ method to implement yet either — matches reality, not an oversight.
   podman, real `gh pr checks` pending T27's own PR. D6 attempted (see
   below) and found genuinely blocked, not just unconfigured.
 
-**Checkpoint H (final)** — D6 verification, D5 cleanup PR, full-suite run,
-roadmap exit-criteria walked item by item (including fixing the exit-criteria
-line that still describes the pre-ADR-0017 loopback-only rule).
+**Checkpoint H (final)** — done, 2026-08-26, except the one box that isn't
+mine to check: D6 verified (attempted, genuinely blocked by plan tier, not
+just unconfigured — see D6/Carry-overs above); D5 was already clean (its
+own `[x]` above), the ADR-0017 exit-criteria line was already amended
+2026-08-18 — Checkpoint H's own note describing both as still-needed was
+itself stale, corrected here rather than repeated; full-suite run clean
+(build/vet, `-race` unit, `-race -tags=integration` at default
+parallelism, `golangci-lint`, `govulncheck`, every check script); roadmap
+exit-criteria walked item by item, each now citing its real evidence, and
+one real gap found and fixed along the way — audit A-03-05's spec-text
+half was still open (`backend-configuration.md` FR-8 described the
+eventual two-mode rule as already true; the code is deliberately
+stricter until phase 13), now closed. Phase 03 is otherwise complete;
+**"Maintainer approval recorded" is the one remaining box**, and it's the
+maintainer's to check, not this session's.
 
 ## Carry-overs — noted, not acted on this pass
 
