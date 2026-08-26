@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { walkScannableFiles } from './walkDist.ts'
 
 // Interim, grep-based — not a full entropy/secret-scanning tool. Catches
 // the well-known shaped patterns; anything more thorough is a separate,
@@ -14,16 +14,14 @@ export interface SecretFinding {
   pattern: string
 }
 
-/** Scans every .js file under distDir/assets for secret-shaped strings. */
+/** Scans every scannable file in distDir (the whole tree, not just assets/) for secret-shaped strings. */
 export function findSecrets(distDir: string): SecretFinding[] {
-  const assetsDir = join(distDir, 'assets')
   const findings: SecretFinding[] = []
-  for (const name of readdirSync(assetsDir)) {
-    if (!name.endsWith('.js')) continue
-    const contents = readFileSync(join(assetsDir, name), 'utf8')
+  for (const file of walkScannableFiles(distDir)) {
+    const contents = readFileSync(file, 'utf8')
     for (const pattern of SECRET_PATTERNS) {
       if (pattern.test(contents)) {
-        findings.push({ file: join(assetsDir, name), pattern: pattern.source })
+        findings.push({ file, pattern: pattern.source })
       }
     }
   }

@@ -1,12 +1,9 @@
-import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { requireDir } from './checks/cli.ts'
 import { BUNDLE_SIZE_BUDGET_BYTES, measureJsGzipBytes } from './checks/bundleSize.ts'
 
 const distDir = process.argv[2] ?? 'dist'
-
-if (!existsSync(distDir)) {
-  console.error(`check-bundle-size: ${distDir} does not exist — run "npm run build" first`)
-  process.exit(1)
-}
+requireDir(join(distDir, 'assets'), 'check-bundle-size')
 
 const bytes = measureJsGzipBytes(distDir)
 const budgetKiB = (BUNDLE_SIZE_BUDGET_BYTES / 1024).toFixed(0)

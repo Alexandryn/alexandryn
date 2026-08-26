@@ -16,23 +16,23 @@ afterEach(() => {
 
 function makeDist(files: Record<string, string>): string {
   dir = mkdtempSync(join(tmpdir(), 'secrets-grep-'))
-  const assets = join(dir, 'assets')
-  mkdirSync(assets)
   for (const [name, content] of Object.entries(files)) {
-    writeFileSync(join(assets, name), content)
+    const full = join(dir, name)
+    mkdirSync(join(full, '..'), { recursive: true })
+    writeFileSync(full, content)
   }
   return dir
 }
 
 describe('findSecrets', () => {
   it('finds nothing in an ordinary bundle', () => {
-    const distDir = makeDist({ 'index-abc.js': 'function App(){return "hello world"}' })
+    const distDir = makeDist({ 'assets/index-abc.js': 'function App(){return "hello world"}' })
 
     expect(findSecrets(distDir)).toEqual([])
   })
 
   it('flags an AWS access key ID', () => {
-    const distDir = makeDist({ 'index-abc.js': 'const x = "AKIAIOSFODNN7EXAMPLE"' })
+    const distDir = makeDist({ 'assets/index-abc.js': 'const x = "AKIAIOSFODNN7EXAMPLE"' })
 
     const found = findSecrets(distDir)
 
@@ -41,13 +41,30 @@ describe('findSecrets', () => {
   })
 
   it('flags a generic apiKey-shaped assignment', () => {
-    const distDir = makeDist({ 'index-abc.js': 'apiKey: "sk_live_abcdefghijklmnopqrstuvwx"' })
+    const distDir = makeDist({
+      'assets/index-abc.js': 'apiKey: "sk_live_abcdefghijklmnopqrstuvwx"',
+    })
 
     expect(findSecrets(distDir)).toHaveLength(1)
   })
 
-  it('ignores non-.js assets', () => {
-    const distDir = makeDist({ 'index-abc.css': 'AKIAIOSFODNN7EXAMPLE {color:red}' })
+  it('flags a secret baked into index.html at the dist root, not just assets/', () => {
+    // Real finding from code review: the previous version only ever
+    // read distDir/assets, missing dist's own root entirely — where
+    // index.html and anything Vite copies from public/ actually land.
+    const distDir = makeDist({
+      'index.html': '<script>window.__KEY__="AKIAIOSFODNN7EXAMPLE"</script>',
+      'assets/index-abc.js': 'function App(){}',
+    })
+
+    const found = findSecrets(distDir)
+
+    expect(found).toHaveLength(1)
+    expect(found[0]?.file).toMatch(/index\.html$/)
+  })
+
+  it('ignores non-scannable (binary/image) assets', () => {
+    const distDir = makeDist({ 'favicon.svg': 'AKIAIOSFODNN7EXAMPLE' })
 
     expect(findSecrets(distDir)).toEqual([])
   })
