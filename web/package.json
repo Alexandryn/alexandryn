@@ -15,11 +15,15 @@
     "build-storybook": "storybook build",
     "check:bundle-size": "node scripts/check-bundle-size.ts dist",
     "check:dist-secrets": "node scripts/check-dist-secrets.ts dist",
-    "check:dist-msw": "node scripts/check-dist-msw.ts dist"
+    "check:dist-msw": "node scripts/check-dist-msw.ts dist",
+    "tokens:generate": "node scripts/generate-tokens.ts",
+    "tokens:check-contrast": "node scripts/check-token-contrast.ts"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
