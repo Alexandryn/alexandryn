@@ -21,15 +21,15 @@ checkpoint.
 - [x] F5 — Bundle-size check, secrets-grep, MSW-exclusion-grep — all three failure paths proven against real fixtures (nonzero exit), not just unit-level logic
 - [x] F6 — `ci.yml`: new `frontend` job, `backend` gets `needs: frontend` + artifact hand-off — all steps verified locally, real GH Actions `needs:`/artifact proof pending this tier's own PR
 
-**Checkpoint P4-A** — F1-F6 done, all commands green locally (build/lint/typecheck/Vitest/Storybook/all 3 F5 checks/npm audit); oversized-bundle, secret-shaped-string, and MSW-reference fixtures all proven to make their respective checks fail (real nonzero exit, not just unit-level logic). Real GitHub Actions proof of the new two-job `needs:`/artifact-hand-off structure is this tier's own PR, not yet observed.
+**Checkpoint P4-A** — done, merged (PR #59). Real GitHub Actions proof of the new two-job `needs:`/artifact-hand-off structure: `Frontend` passed in 31s, `Backend` (waiting on `needs: frontend` + the real artifact download) passed in 5m29s — confirmed working, not just locally plausible.
 
 **Tier 1 — Design tokens**
 
-- [ ] F7 — `frontend-design` skill extraction: Tailwind theme config + `tokens.css`, one pass
-- [ ] F8 — Light palette wired; dark-mode structure stubbed, no values, no toggle
-- [ ] F9 — `check-token-contrast.ts`, WCAG AA per pair, recorded
+- [x] F7 — real extraction pipeline (`web/scripts/tokens/`), Tailwind theme config + `tokens.css`, one pass, `npm run tokens:generate` — proven against the real 4 canvases, 2 real bugs caught by tests before generation ran for real (`--cov` miscategorized as a color, letter-spacing double-prefixing)
+- [x] F8 — light palette wired; dark satisfied by construction (every token is a plain CSS custom property via `var()`, no dark values populated, no toggle) — no separate code needed
+- [x] F9 — `check-token-contrast.ts`, WCAG AA per meaningful text/surface pair — real finding: `text-3` fails AA against every surface (2.90:1 max), recorded as a documented exception pending a maintainer decision, not silently fixed or hidden
 
-**Checkpoint P4-B** — every token traces to the design reference, zero invented values, contrast script passes
+**Checkpoint P4-B** — done. Every token traces to the design reference (verified: `git diff --exit-code` on regenerated output is clean); zero invented values; contrast script passes with one flagged, documented exception (`text-3`). CI wired: staleness check + contrast check, both proven locally.
 
 **Tier 2 — Component primitives**
 
