@@ -147,12 +147,58 @@ readiness.
 - [x] `deployment-container-packaging.md` `APPROVED` (maintainer, Luann
       Moreira, 2026-08-25) — added 2026-08-17 for ADR 0015's container
       target
-- [ ] The service starts, serves health, and shuts down gracefully under load
-- [ ] Migrations apply to an empty database and to a populated one
-- [ ] Tests pass with the race detector enabled
-- [ ] A test proves a known secret never reaches the logs
-- [ ] The service refuses to bind to a non-loopback address
-- [ ] CI runs build, vet, lint, test, race and dependency audit on every PR
-- [ ] Startup fails loudly on invalid configuration, with a test
-- [ ] Security audit recorded, no open Critical or High findings
+- [x] The service starts, serves health, and shuts down gracefully under
+      load — `cmd/server/run_realserver_test.go:209`
+      `TestConcurrency_ShutdownUnderLoad`: a real listener, 5 concurrent
+      in-flight requests under the grace period (must complete) and
+      over it (must be cancelled), asserting the grace period is a real
+      ceiling, not a suggestion
+- [x] Migrations apply to an empty database and to a populated one —
+      `internal/persistence/postgres/migrate_integration_test.go:64`
+      `TestMigrate_AppliesToAnEmptyDatabase`;
+      `internal/persistence/postgres/schema_integration_test.go:131`
+      `TestSchema_ReMigratingLeavesExistingRowsIntact` (inserts a row,
+      re-migrates, confirms the row and the no-pending-migrations case
+      both hold)
+- [x] Tests pass with the race detector enabled — `.github/workflows/ci.yml`
+      runs `go test -race` for both the unit stage and the
+      `-tags=integration` stage
+- [x] A test proves a known secret never reaches the logs —
+      `internal/config/redaction_test.go`'s six `TestRedactedString_*`/
+      `TestConfigRedaction_*` cases, including the whole `Config` struct
+      logged as one attribute;
+      `internal/persistence/postgres/migrate_test.go:74`
+      `TestRunMigrations_ConnectionFailureRedactsTheDSN`
+- [x] The service refuses to bind to a non-loopback address without a
+      valid TLS certificate — ADR 0017's two-mode rule (ADR 0017 amended
+      this line 2026-08-18; ADR 0017 supersedes the loopback-only phrasing
+      this line originally had). `internal/config/bindaddress_test.go`
+      proves loopback/private always accepted, public-with-no-cert
+      rejected, and public-with-an-otherwise-valid-cert *also currently
+      rejected* (`TestLoad_BindAddress_PubliclyRoutableRejectedEvenWithValidCert`)
+      — deliberately stricter than the two-mode rule's eventual endpoint
+      until phase 13 wires `ServeTLS` (audit A-03-05, closed 2026-08-26,
+      `backend-configuration.md` FR-8's interim note)
+- [x] CI runs build, vet, lint, test, race and dependency audit on every
+      PR — `.github/workflows/ci.yml`, triggered on `pull_request`:
+      `go build`, `go vet` + import-boundary/parameterized-query/
+      compose-published-port checks, `golangci-lint`, `go test -race`
+      (unit and integration), `govulncheck`
+- [x] Startup fails loudly on invalid configuration, with a test —
+      `internal/config/config_test.go:127` `TestLoad_RequiredKeyMissingErrors`;
+      `internal/config/config_file_test.go:51`
+      `TestLoad_ExplicitConfigPathErrorsWhenFileMissing`;
+      `internal/config/config_file_test.go:121`
+      `TestLoad_InvalidTOMLSyntaxErrorsNamingTheFileNotTheContent`
+- [x] Security audit recorded, no open Critical or High findings —
+      `.claude/audits/0003-cmd-server-startup-shutdown.md`: all 6
+      findings `Fixed` (A-03-05, the one High finding, closed 2026-08-26
+      — code was already stricter than spec, spec text now says so).
+      `.claude/audits/0001-phase03-backend-specs.md`: fixed same
+      session, no Critical/High open. (`0002-topology-gap.md` is
+      explicitly not a security audit — spec-consistency findings,
+      tracked separately, several already resolved by
+      `deployment-container-packaging.md`'s approval and
+      `backend-configuration.md`'s subsequent amendments, not
+      exhaustively re-verified here)
 - [ ] Maintainer approval recorded
