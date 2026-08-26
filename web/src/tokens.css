@@ -1,0 +1,70 @@
+/* GENERATED FILE — do not hand-edit.
+ * Run `npm run tokens:generate` (web/scripts/generate-tokens.ts) to
+ * regenerate from .design-reference/*.dc.html — frontend-design-tokens.md
+ * FR-2: both this file and its sibling are written from the same single
+ * extraction pass, so they can never drift from each other. */
+
+:root {
+  --background: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #fbfaf9;
+  --surface-3: #f1efeb;
+  --text: #1a1917;
+  --text-2: #6e6b66;
+  --text-3: #9c978f;
+  --border: #e7e4de;
+  --border-2: #f0ede8;
+  --accent: #41608f;
+  --accent-soft: #ecf0f7;
+  --accent-text: #ffffff;
+  --warm: #b07c4f;
+  --success: #4a8a68;
+  --error: #b04a40;
+  --scrim: #0e0e10;
+  --shadow-sm: 0 1px 2px rgba(24, 22, 20, 0.05);
+  --shadow-lg: 0 14px 34px -18px rgba(24, 22, 20, 0.34);
+  --cover-width: 112px;
+  --radius-5xs: 2px;
+  --radius-4xs: 3px;
+  --radius-3xs: 6px;
+  --radius-2xs: 7px;
+  --radius-xs: 8px;
+  --radius-sm: 9px;
+  --radius-md: 10px;
+  --radius-lg: 11px;
+  --radius-xl: 12px;
+  --radius-2xl: 13px;
+  --radius-3xl: 14px;
+  --radius-4xl: 20px;
+  --spacing-4xs: 2px;
+  --spacing-3xs: 6px;
+  --spacing-2xs: 7px;
+  --spacing-xs: 8px;
+  --spacing-sm: 9px;
+  --spacing-md: 10px;
+  --spacing-lg: 12px;
+  --spacing-xl: 14px;
+  --spacing-2xl: 16px;
+  --spacing-3xl: 20px;
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-md: 12px;
+  --text-lg: 13px;
+  --text-xl: 14px;
+  --text-2xl: 15px;
+  --tracking-1: -0.025em;
+  --tracking-2: -0.02em;
+  --tracking-3: -0.015em;
+  --tracking-4: -0.01em;
+  --tracking-5: 0.02em;
+  --tracking-6: 0.06em;
+  --tracking-7: 0.08em;
+  --tracking-8: 0.1em;
+  --tracking-9: 0.12em;
+  --tracking-10: 0.14em;
+  --tracking-11: 0.2em;
+  --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-reading: Newsreader, Georgia, serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
