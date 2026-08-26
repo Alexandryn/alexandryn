@@ -6,7 +6,7 @@
 | **Auditor** | Claude (Sonnet 5) — two independent passes (general code review + security-focused), synthesized, for review by Luann Moreira |
 | **Date** | 2026-08-19 |
 | **Commit** | `27d68b0`–`5a29f61` (T17-T19, PRs #22-#25), `5726142` (BIND_ADDRESS fix, PR #26), `edd973c`-`bc856f4` (T20, PR #27) — all merged to `main` |
-| **Verdict** | Findings open — 5 of 6 findings `Fixed` same session; 1 (`A-03-05`, the FR-8 spec-text amendment) still `Open`, deliberately deferred by the maintainer |
+| **Verdict** | All 6 findings `Fixed` — 5 same session, `A-03-05`'s deferred spec-text half closed 2026-08-26 (Checkpoint H) |
 
 This is Checkpoint F, the plan's own named highest-risk stop point
 ("worth an extra review pass specifically here... before T20's real-
@@ -83,7 +83,7 @@ already-`APPROVED` spec's text.
 | A-03-02 | Medium | Grace-period expiry doesn't force-close active connections | Fixed — `5a29f61` |
 | A-03-03 | Medium | No per-attempt timeout on Postgres connect | Fixed — `5a29f61` |
 | A-03-04 | Low | Migrate-step failure log missing defense-in-depth DSN guard | Fixed — `5a29f61` |
-| A-03-05 | High | `BIND_ADDRESS`/TLS: certificate validated but never enforced at serve time | Fixed (code) — `5726142`; **spec text still open**, see Resolution |
+| A-03-05 | High | `BIND_ADDRESS`/TLS: certificate validated but never enforced at serve time | Fixed — code in `5726142`; spec text amended 2026-08-26 (`backend-configuration.md` FR-8's interim note), see Resolution |
 | A-03-06 | Informational | Cross-package integration-test DB isolation gap | Fixed — T26 (`backend-test-harness.md` FR-3 Variant B): each integration-tagged package now creates and migrates its own physical database (`testutil.EnsurePackageDatabase`); `-p 1` removed from `ci.yml` |
 
 ### A-03-01 — Mid-startup shutdown signal absorbed into ordinary FR-3 failure
@@ -338,18 +338,15 @@ to make a public bind legal. `TestLoad_BindAddress_PubliclyRoutableWithValidCert
 was flipped to `TestLoad_BindAddress_PubliclyRoutableRejectedEvenWithValidCert`,
 RED-confirmed against the pre-fix code, GREEN after.
 
-**Still open** — `backend-configuration.md` FR-8's written text still
-describes Mode A (public + valid cert) as legal; the code is now
-deliberately stricter than the spec it implements. This is safe (never a
-security regression — code is stricter than spec, not looser) but leaves
-spec and code disagreeing until FR-8 gets a formal amendment, the same
-pattern as this spec's four prior post-approval amendments (each
-recorded in its own header, flagged for maintainer re-confirmation). Not
-amended in this pass — the maintainer asked to note it and move on, not
-to draft the amendment now. Revisit either when someone drafts that
-amendment, or when `ServeTLS` is actually wired (phase 13) and
-`validatePublicBindCertificate` can become the deciding check again on
-its own terms.
+**Closed, 2026-08-26 (Checkpoint H)** — `backend-configuration.md` FR-8
+now carries an interim note stating plainly that the code is
+deliberately stricter than the bullet list above it: today, a publicly
+routable `BIND_ADDRESS` is refused unconditionally, valid certificate or
+not, until phase 13 wires `ServeTLS`. Spec and code no longer disagree —
+the spec says what the code actually does, and says why, and names what
+removes the note (`ServeTLS` landing). Self-reviewed, same as this
+spec's five prior post-approval amendments, needs maintainer
+re-confirmation.
 
 ### A-03-06 — Cross-package integration-test DB isolation gap
 

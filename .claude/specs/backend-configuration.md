@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval five times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation; FR-8's `BIND_ADDRESS` classification rewritten for ADR 0017 (2026-08-18), maintainer-directed, self-reviewed) |
+| **Status** | `APPROVED` (amended post-approval six times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation; FR-8's `BIND_ADDRESS` classification rewritten for ADR 0017 (2026-08-18), maintainer-directed, self-reviewed; FR-8's interim note added 2026-08-26 closing out audit A-03-05 (code was already stricter than spec text; spec now says so), self-reviewed, needs maintainer re-confirmation) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-18 |
+| **Last updated** | 2026-08-26 |
 | **Supersedes** | — |
 | **Reviewed in** | [`0022`](../reviews/0022-phase03-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (2 Blocking findings against this spec specifically), fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md) — `LOG_LEVEL` case-sensitivity gap, self-reviewed, needs maintainer re-confirmation. Amended again, [`0028`](../reviews/0028-spec-amendment-dsn-redaction.md) — DSN redaction gap found by security review, self-reviewed, needs maintainer re-confirmation. Amended again, [`0034`](../reviews/0034-phase07-cross-spec-review.md) — `OPEN_LIBRARY_USER_AGENT` key added to FR-4's table for `backend-metadata-adapter.md` FR-6, cross-spec-reviewed, needs maintainer re-confirmation. Amended again, [`0042`](../reviews/0042-spec-backend-configuration-container-topology.md) — `DATABASE_URL`'s meaning made target-dependent for ADR 0015, self-reviewed, needs maintainer re-confirmation. Amended again, ADR 0017 (2026-08-18) — FR-8 replaces the loopback-only rule with the two-mode classification ADR 0017 decided, maintainer-directed in the same session that produced the ADR, self-reviewed |
 
@@ -227,6 +227,23 @@ file format, where it lives, or the actual validation each key needs.
   amendment: what changes is which addresses are legal, not whether the
   check is enforced at startup, unconditionally, before any other
   subsystem initializes.
+
+  **Interim note, amended 2026-08-26 (self-reviewed, needs maintainer
+  re-confirmation — closing out audit finding A-03-05,
+  `.claude/audits/0003-cmd-server-startup-shutdown.md`):** the middle
+  bullet above describes FR-8's eventual, complete behavior. Today,
+  `validateBindAddress` refuses a publicly routable `BIND_ADDRESS`
+  unconditionally — regardless of certificate validity — because no code
+  path calls `ServeTLS` yet; validating a certificate that nothing ever
+  uses to actually encrypt a connection would look enforced without
+  being enforced, which is worse than refusing outright. `internal/config`'s
+  own `validatePublicBindCertificate` is unchanged and still runs first
+  (an invalid/expired/missing certificate still gets its own specific
+  error), it's just not yet sufficient on its own to make a public bind
+  legal. This note is removed, and the middle bullet's own text becomes
+  accurate without qualification, once phase 13 wires `ServeTLS` and
+  `validatePublicBindCertificate` becomes the deciding check again on
+  its own terms.
 
 ## Non-functional requirements
 
