@@ -30,7 +30,20 @@ const EXTRA_PAIRS: [string, string][] = [['accent-text', 'accent']]
 // only (in which case this exception is permanent), or does the design
 // reference need a darker tertiary text value (in which case this
 // exception is removed once that lands)? Not decided here.
-const KNOWN_EXCEPTIONS = new Set(SURFACE_TOKENS.map((s) => `text-3 on ${s}`))
+//
+// Deliberately a fixed literal list of the four exact pairs actually
+// measured — not derived from SURFACE_TOKENS.map(...) (code review
+// caught this: a derived set would silently start covering any new
+// surface token added later, e.g. "text-3 on surface-4", the moment
+// SURFACE_TOKENS changes, without that specific ratio ever having been
+// measured or confirmed to be the same known issue rather than a new,
+// unrelated regression).
+const KNOWN_EXCEPTIONS = new Set([
+  'text-3 on background',
+  'text-3 on surface',
+  'text-3 on surface-2',
+  'text-3 on surface-3',
+])
 
 const canvasHtml: Record<string, string> = {}
 for (const [name, file] of Object.entries(CANVASES)) {

@@ -27,6 +27,16 @@ describe('countPxValues', () => {
   it('returns an empty map when the property never appears', () => {
     expect(countPxValues('a{color:red}', 'border-radius')).toEqual({})
   })
+
+  it('matches decimal px values, not just integers', () => {
+    // Real bug from code review: the design reference's font-size scale
+    // is dominated by half-pixel values (12.5px is its single most-
+    // frequent font-size, ahead of any integer) — an integer-only regex
+    // silently dropped all of them.
+    const html = 'a{font-size:12.5px}b{font-size:12.5px}c{font-size:12px}'
+
+    expect(countPxValues(html, 'font-size')).toEqual({ 12.5: 2, 12: 1 })
+  })
 })
 
 describe('countEmValues', () => {

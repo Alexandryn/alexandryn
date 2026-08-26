@@ -29,9 +29,17 @@ export function parseRootCustomProperties(html: string): Record<string, string> 
  * canvas file — the raw frequency data a spacing/radius/typography
  * scale gets derived from (frontend-design-tokens.md FR-1: extracted
  * from real layout rules, never invented).
+ *
+ * Matches decimal values too (`(\d+(?:\.\d+)?)`), not just integers — a
+ * real bug code review caught: an earlier integer-only version silently
+ * dropped every half-pixel font-size declaration, and `12.5px` turns out
+ * to be the single most-frequent font-size value across all four
+ * canvases (185 occurrences, ahead of any integer value), so the
+ * generated type scale was built on incomplete data with no error or
+ * warning — it just quietly extracted the wrong scale.
  */
 export function countPxValues(html: string, property: string): Record<number, number> {
-  const pattern = new RegExp(`${property}:(\\d+)px`, 'g')
+  const pattern = new RegExp(`${property}:(\\d+(?:\\.\\d+)?)px`, 'g')
   const counts: Record<number, number> = {}
   for (const match of html.matchAll(pattern)) {
     const value = Number(match[1])

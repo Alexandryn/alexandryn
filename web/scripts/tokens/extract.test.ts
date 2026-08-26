@@ -36,4 +36,15 @@ describe('extractTokens', () => {
     expect(highestUsage?.isDefault).toBe(true)
     expect(tokens.letterSpacing.filter((t) => t.isDefault)).toHaveLength(1)
   })
+
+  it('throws loudly on an unrecognized custom property instead of silently dropping it', () => {
+    // Real bug from code review: an unnamed property (not yet added to
+    // COLOR_NAMES/SHADOW_NAMES/SIZE_NAMES) was just omitted from every
+    // output category, with no error — the same silent-drop risk
+    // mergeCanvasProperties already guards against for value
+    // disagreements, previously missing here for unknown property names.
+    expect(() => extractTokens({ electron: canvas('--bg:#F6F5F2;--newthing:#123456') })).toThrow(
+      /--newthing/,
+    )
+  })
 })

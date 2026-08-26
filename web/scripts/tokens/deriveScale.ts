@@ -32,10 +32,16 @@ const LABELS = [
 export function pickCenteredLabels(labels: string[], centerLabel: string, count: number): string[] {
   const centerIndex = labels.indexOf(centerLabel)
   const start = centerIndex - Math.floor(count / 2)
-  return Array.from(
-    { length: count },
-    (_, i) => labels[start + i] ?? `+${start + i - labels.length + 1}`,
-  )
+  return Array.from({ length: count }, (_, i) => {
+    const idx = start + i
+    if (idx >= 0 && idx < labels.length) return labels[idx] as string
+    // Real bug from code review: a single "+N" scheme for both overflow
+    // directions produced malformed doubly-signed names ("+-13") when
+    // idx went negative — below and above the label list now get
+    // distinct, unambiguous names instead of arithmetic that assumed
+    // idx was always non-negative.
+    return idx < 0 ? `below${-idx}` : `above${idx - labels.length + 1}`
+  })
 }
 
 /**
