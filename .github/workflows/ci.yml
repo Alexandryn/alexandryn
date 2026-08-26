@@ -40,6 +40,19 @@ jobs:
       - name: Install
         run: npm ci
 
+      # frontend-design-tokens.md FR-2: regenerate src/theme.css and
+      # src/tokens.css from .design-reference/*.dc.html, then fail if
+      # that produces a diff — the committed files must always match
+      # what the design reference actually says, never hand-edited or
+      # left stale after a canvas update.
+      - name: Design tokens up to date
+        run: |
+          npm run tokens:generate
+          git diff --exit-code -- src/theme.css src/tokens.css
+
+      - name: Design token contrast (WCAG AA)
+        run: npm run tokens:check-contrast
+
       # Stage 1 — web/ build (ADR 0008, frontend-tooling.md FR-1/FR-6),
       # producing web/dist, the exact path/contract go:embed depends on.
       - name: Build
