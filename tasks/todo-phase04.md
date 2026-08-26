@@ -19,9 +19,9 @@ checkpoint.
 - [x] F3 — Vitest+RTL, sentinel test — jsdom + jest-dom matchers, passes
 - [x] F4 — Storybook, `build-storybook` scripted — trimmed installer's default addons to just `addon-docs`+`eslint-plugin-storybook`, removed 4 undecided ones (Chromatic, addon-vitest/Playwright+Chromium, addon-a11y, addon-mcp)
 - [x] F5 — Bundle-size check, secrets-grep, MSW-exclusion-grep — all three failure paths proven against real fixtures (nonzero exit), not just unit-level logic
-- [ ] F6 — `ci.yml`: new `frontend` job, `backend` gets `needs: frontend` + artifact hand-off
+- [x] F6 — `ci.yml`: new `frontend` job, `backend` gets `needs: frontend` + artifact hand-off — all steps verified locally, real GH Actions `needs:`/artifact proof pending this tier's own PR
 
-**Checkpoint P4-A** — build/lint/typecheck/Vitest/Storybook green locally and in CI; oversized-bundle, High-severity-advisory, and MSW-in-production-build each proven to fail CI on a test branch
+**Checkpoint P4-A** — F1-F6 done, all commands green locally (build/lint/typecheck/Vitest/Storybook/all 3 F5 checks/npm audit); oversized-bundle, secret-shaped-string, and MSW-reference fixtures all proven to make their respective checks fail (real nonzero exit, not just unit-level logic). Real GitHub Actions proof of the new two-job `needs:`/artifact-hand-off structure is this tier's own PR, not yet observed.
 
 **Tier 1 — Design tokens**
 
