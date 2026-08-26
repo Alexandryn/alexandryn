@@ -18,7 +18,7 @@ checkpoint.
 - [x] F2 — ESLint+Prettier+`jsx-a11y`, one shared config — pinned `eslint@^9` (jsx-a11y's peer range doesn't yet cover ESLint 10)
 - [x] F3 — Vitest+RTL, sentinel test — jsdom + jest-dom matchers, passes
 - [x] F4 — Storybook, `build-storybook` scripted — trimmed installer's default addons to just `addon-docs`+`eslint-plugin-storybook`, removed 4 undecided ones (Chromatic, addon-vitest/Playwright+Chromium, addon-a11y, addon-mcp)
-- [ ] F5 — Bundle-size check, secrets-grep, MSW-exclusion-grep
+- [x] F5 — Bundle-size check, secrets-grep, MSW-exclusion-grep — all three failure paths proven against real fixtures (nonzero exit), not just unit-level logic
 - [ ] F6 — `ci.yml`: new `frontend` job, `backend` gets `needs: frontend` + artifact hand-off
 
 **Checkpoint P4-A** — build/lint/typecheck/Vitest/Storybook green locally and in CI; oversized-bundle, High-severity-advisory, and MSW-in-production-build each proven to fail CI on a test branch
