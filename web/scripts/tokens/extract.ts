@@ -72,6 +72,25 @@ export function extractTokens(canvasHtmlByName: Record<string, string>): Extract
   }
   const merged = mergeCanvasProperties(parsed)
 
+  // Loud, not silent, if the design reference ever adds a root custom
+  // property this pipeline doesn't know how to name — the same
+  // discipline mergeCanvasProperties already applies to a value
+  // disagreement. Code review caught that nameMerged alone just drops
+  // anything not already in COLOR_NAMES/SHADOW_NAMES/SIZE_NAMES, so a
+  // future canvas update could silently vanish from every output
+  // category with nothing catching it — no thrown error, no CI failure.
+  const known = new Set([
+    ...Object.keys(COLOR_NAMES),
+    ...Object.keys(SHADOW_NAMES),
+    ...Object.keys(SIZE_NAMES),
+  ])
+  const unknown = Object.keys(merged).filter((varName) => !known.has(varName))
+  if (unknown.length > 0) {
+    throw new Error(
+      `extractTokens: unrecognized custom propert${unknown.length === 1 ? 'y' : 'ies'} ${unknown.join(', ')} — add to COLOR_NAMES/SHADOW_NAMES/SIZE_NAMES in colorNames.ts before extracting`,
+    )
+  }
+
   const htmls = Object.values(canvasHtmlByName)
   const radiusCounts = sumCounts(htmls.map((h) => countPxValues(h, 'border-radius')))
   const spacingCounts = sumCounts(htmls.map((h) => countPxValues(h, 'gap')))

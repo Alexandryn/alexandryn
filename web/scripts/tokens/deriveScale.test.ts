@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { deriveScale } from './deriveScale.ts'
+import { deriveScale, pickCenteredLabels } from './deriveScale.ts'
+
+describe('pickCenteredLabels', () => {
+  const labels = ['a', 'b', 'c']
+
+  it('overflows above the list with a clean, unambiguous name', () => {
+    expect(pickCenteredLabels(labels, 'c', 5)).toEqual(['a', 'b', 'c', 'above1', 'above2'])
+  })
+
+  it('overflows below the list with a clean, unambiguous name — not a malformed doubly-signed one', () => {
+    // Real bug from code review: the old single "+N" scheme for both
+    // directions produced "+-1" style names here instead of erroring or
+    // naming cleanly.
+    expect(pickCenteredLabels(labels, 'b', 7)).toEqual([
+      'below2',
+      'below1',
+      'a',
+      'b',
+      'c',
+      'above1',
+      'above2',
+    ])
+  })
+})
 
 describe('deriveScale', () => {
   it('keeps values at or above the occurrence threshold, sorted ascending, named by size', () => {
