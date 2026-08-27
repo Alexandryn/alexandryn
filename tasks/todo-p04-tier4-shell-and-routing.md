@@ -6,12 +6,12 @@ Each task: RED → GREEN → Refactor, one commit. Stop at Checkpoint P4-E
 
 ## Decisions (resolve once)
 
-- [ ] D1 — file layout: `src/app/` (shell/router/providers), `src/screens/<Name>/`, `src/data/`, `src/mocks/`
-- [ ] D2 — tests use `createMemoryRouter`; `createBrowserRouter` in `main.tsx`; shared `renderWithProviders`
-- [ ] D3 — responsive swap via `useMediaQuery` (matchMedia) keyed to the breakpoint token, one `<nav>` mounted at a time
-- [ ] D4 — `useCapability()` → `{ status: 'loading' | 'granted', can(name) }`, backed by a delayed mock `GET /api/bootstrap`
-- [ ] D5 — host-only: `/settings`, `/system`, `/sources`, `/sources/:id`, `/import`; viewer stubs: `/access`, `/connect`, `/reader/:id`
-- [ ] D6 — remove the Vite scaffold (`App.tsx`, `App.css`, `index.css`, demo assets)
+- [x] D1 — file layout: `src/app/` (shell/router/providers), `src/screens/<Name>/`, `src/data/`, `src/mocks/`
+- [x] D2 — tests use `createMemoryRouter`; `createBrowserRouter` in `main.tsx`; shared `renderWithProviders`
+- [x] D3 — responsive swap via `useMediaQuery` (matchMedia) keyed to the breakpoint token, one `<nav>` mounted at a time
+- [x] D4 — `useCapability()` → `{ status: 'loading' | 'granted', can(name) }`, backed by a delayed mock `GET /api/bootstrap`
+- [x] D5 — host-only: `/settings`, `/system`, `/sources`, `/sources/:id`, `/import`; viewer stubs: `/access`, `/connect`, `/reader/:id`
+- [x] D6 — remove the Vite scaffold (`App.tsx`, `App.css`, `index.css`, demo assets)
 
 ## Maintainer decisions (resolved 2026-08-27, plan §Conformance findings)
 
@@ -22,8 +22,8 @@ Each task: RED → GREEN → Refactor, one commit. Stop at Checkpoint P4-E
 
 ## Tasks
 
-- [ ] T1 — dependencies (`react-router-dom@^7`, `@tanstack/react-query@^5`, `msw@^2`, `@axe-core/playwright@^4`) + `queryClient.ts` + `providers.tsx` + `renderWithProviders` (RED: `useQuery` throws outside provider)
-- [ ] T2 — `api/openapi.yaml` (health-only) + MSW `handlers`/`browser`/`node` + `gen-fixtures.ts` + two-tier `fixtures/` + marker-scan test + `setup.ts` wiring + dev `worker.start()` behind `import.meta.env.DEV`
+- [x] T1 — dependencies (`react-router-dom@^7`, `@tanstack/react-query@^5`, `msw@^2`, `@axe-core/playwright@^4`) + `queryClient.ts` + `providers.tsx` + `renderWithProviders` (RED: `useQuery` throws outside provider)
+- [x] T2 — `api/openapi.yaml` (health-only) + MSW `handlers`/`browser`/`node` + `gen-fixtures.ts` + two-tier `fixtures/` + marker-scan test + `setup.ts` wiring + dev `worker.start()` behind `import.meta.env.DEV`
 - [ ] T3 — `useCapability()` + `CapabilityProvider` + `<RequireCapability>` (RED: host-only child absent from DOM at every tick through loading→granted, then present)
 - [ ] T4 — `breakpoint` token in the extraction pipeline (gated on F1); regenerate `theme.css`/`tokens.css`; back-fill `frontend-design-tokens.md` FR-1 status
 - [ ] T5 — `AppShell` + `Sidebar` + `Titlebar` + `ContentPane`, semantic landmarks, token-only styling (RED: 3 landmarks; shell no-remount across route change; active-route mark)
