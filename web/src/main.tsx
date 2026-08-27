@@ -15,10 +15,18 @@ async function enableMocking(): Promise<void> {
   await worker.start({ onUnhandledRequest: 'bypass' })
 }
 
-void enableMocking().then(() => {
+function render(): void {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AppRoot />
     </StrictMode>,
   )
-})
+}
+
+// A mock-layer failure (dev only) must not leave a blank page — render the
+// app regardless, having logged the problem.
+enableMocking()
+  .catch((error: unknown) => {
+    console.error('MSW dev worker failed to start; continuing without mocks', error)
+  })
+  .finally(render)
