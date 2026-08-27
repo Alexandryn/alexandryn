@@ -1,12 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-// theme.css (generated, frontend-design-tokens.md) loads first so its
-// Tailwind @theme tokens are available to every utility class; index.css
-// is the pre-Tier-4 scaffold's own demo styling, replaced wholesale once
-// Tier 4 builds the real shell.
+// theme.css (generated, frontend-design-tokens.md) carries the @theme
+// tokens every utility class resolves against.
 import './theme.css'
-import './index.css'
-import App from './App.tsx'
+import { AppRoot } from './app/AppRoot'
 
 // MSW (frontend-shell-and-routing.md FR-6) runs only in development. The
 // dynamic import behind a statically-false `import.meta.env.DEV` is
@@ -21,7 +18,7 @@ async function enableMocking(): Promise<void> {
 void enableMocking().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <AppRoot />
     </StrictMode>,
   )
 })

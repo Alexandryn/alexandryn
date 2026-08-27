@@ -1,0 +1,31 @@
+import { useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '../../components/Button/Button'
+
+/**
+ * The catch-all for an unregistered URL (frontend-shell-and-routing.md
+ * FR-5) — a real "this page doesn't exist" state composed from
+ * primitives, never a blank page or the router's undecorated default.
+ */
+export function NotFound() {
+  const navigate = useNavigate()
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [])
+
+  return (
+    <div className="mx-auto max-w-[40rem] p-3xl text-center">
+      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-medium tracking-1 outline-none">
+        This page doesn't exist
+      </h1>
+      <p className="mt-xs text-lg text-text-2">
+        The address may be mistyped, or the page may have moved.
+      </p>
+      <Button variant="secondary" className="mt-lg" onClick={() => navigate('/library')}>
+        Go to your library
+      </Button>
+    </div>
+  )
+}
