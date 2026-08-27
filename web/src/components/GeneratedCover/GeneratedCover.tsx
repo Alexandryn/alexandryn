@@ -25,7 +25,11 @@ export function GeneratedCover({ identifier, title, author, className, ...rest }
   const seed = deriveSeed(identifier)
 
   return (
-    <div className={cx('relative size-full aspect-[2/3] overflow-hidden rounded-xs', className)} {...rest}>
+    <div
+      aria-hidden="true"
+      className={cx('relative size-full aspect-[2/3] overflow-hidden rounded-xs', className)}
+      {...rest}
+    >
       <TextureLayer seed={seed} className="absolute inset-0" />
       <SpineLayer seed={seed} />
       {title ? (
