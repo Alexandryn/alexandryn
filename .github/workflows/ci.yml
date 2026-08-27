@@ -70,15 +70,6 @@ jobs:
       - name: Storybook build
         run: npm run build-storybook
 
-      # frontend-generated-covers.md FR-4's own measurement mechanism — a
-      # real CI dependency (D3, tasks/plan-p04-tier3-generated-covers.md),
-      # not the Playwright MCP (which is interactive-only, not CI-capable).
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Generated-cover performance benchmark
-        run: npx playwright test
-
       # frontend-component-primitives.md FR-4/Acceptance criteria: no
       # primitive's source contains a raw hex/px value outside the token
       # set — interim grep-based check until a lint rule exists.
@@ -96,6 +87,20 @@ jobs:
 
       - name: Dependency audit
         run: npm audit --audit-level=high
+
+      # frontend-generated-covers.md FR-4's own measurement mechanism — a
+      # real CI dependency (D3, tasks/plan-p04-tier3-generated-covers.md),
+      # not the Playwright MCP (which is interactive-only, not CI-capable).
+      # Placed after the checks above, not before: GitHub Actions stops a
+      # job on first step failure, and this benchmark asserts tight
+      # timing/frame-rate budgets on a shared runner — letting it run
+      # first risked an intermittent, unrelated-looking slowdown here
+      # silently skipping the secrets/MSW/audit checks for that run.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Generated-cover performance benchmark
+        run: npx playwright test
 
       - name: Upload web/dist
         uses: actions/upload-artifact@v7
