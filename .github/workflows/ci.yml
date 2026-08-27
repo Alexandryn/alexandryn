@@ -84,6 +84,11 @@ jobs:
       - name: Token-only styling check
         run: npm run check:token-styling
 
+      # frontend-accessibility.md FR-2 — no positive tabindex reorders
+      # focus out of DOM order.
+      - name: Accessibility — no positive tabindex
+        run: npm run check:a11y-tabindex
+
       - name: Bundle-size check
         run: npm run check:bundle-size
 
