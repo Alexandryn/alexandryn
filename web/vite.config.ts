@@ -9,5 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    // Scoped to src/scripts only — e2e/ is Playwright's own testDir
+    // (playwright.config.ts, D3), and the two runners' test() APIs collide
+    // if Vitest's default include glob also picks up e2e/*.spec.ts.
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.{ts,tsx}'],
   },
 })
