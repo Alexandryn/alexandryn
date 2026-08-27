@@ -3,6 +3,7 @@ import type { Capability } from '../data/bootstrap'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { RequireCapability } from './capability'
+import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
 
 // Route views are placeholders this phase — phase 06 onward fills them in
@@ -23,6 +24,7 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <Navigate to="/library" replace /> },
 
