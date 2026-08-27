@@ -64,7 +64,16 @@ install it.
   from Vitest's `src/**/*.test.tsx` glob, so the two runners never
   collide over the same files) — just enough to run FR-4's benchmark
   test in CI. Tier 4/5's own E2E smoke test and `@axe-core/playwright`
-  stage extend this same config later; not duplicated here.
+  stage extend this same config later; not duplicated here. If
+  `@playwright/test` were abandoned upstream: it's Microsoft-maintained
+  and already load-bearing for three other approved specs in this same
+  phase (`frontend-generated-covers.md` FR-4, `frontend-shell-and-
+  routing.md`'s E2E smoke test, `frontend-accessibility.md`'s
+  `@axe-core/playwright` stage), so the realistic exposure is losing
+  CI's own benchmark/E2E/accessibility gates, not a runtime dependency
+  of the shipped app — `web/dist` never imports it, only CI does.
+  Migrating off it would mean re-choosing a browser-automation test
+  runner for all three stages at once, not a per-tier decision.
 
 Recorded in the PR per constitution §9 for D3 (`@playwright/test`).
 D1/D2 are implementation choices within the approved spec, not new
