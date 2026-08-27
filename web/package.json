@@ -17,7 +17,8 @@
     "check:dist-secrets": "node scripts/check-dist-secrets.ts dist",
     "check:dist-msw": "node scripts/check-dist-msw.ts dist",
     "tokens:generate": "node scripts/generate-tokens.ts",
-    "tokens:check-contrast": "node scripts/check-token-contrast.ts"
+    "tokens:check-contrast": "node scripts/check-token-contrast.ts",
+    "check:token-styling": "node scripts/check-token-styling.ts src/components"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",

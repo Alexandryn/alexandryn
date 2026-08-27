@@ -70,6 +70,12 @@ jobs:
       - name: Storybook build
         run: npm run build-storybook
 
+      # frontend-component-primitives.md FR-4/Acceptance criteria: no
+      # primitive's source contains a raw hex/px value outside the token
+      # set — interim grep-based check until a lint rule exists.
+      - name: Token-only styling check
+        run: npm run check:token-styling
+
       - name: Bundle-size check
         run: npm run check:bundle-size
 
