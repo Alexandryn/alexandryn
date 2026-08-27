@@ -1,0 +1,22 @@
+/* Accessibility adaptations layered on the generated design tokens.
+ *
+ * These are NOT design tokens (frontend-design-tokens.md's categories) —
+ * they are behavioural adaptations to a user preference — so they are
+ * hand-authored here rather than emitted by `npm run tokens:generate`.
+ * Loaded from main.tsx after theme.css.
+ *
+ * frontend-component-primitives.md FR-5 / frontend-accessibility.md FR-5:
+ * a subtle-contrast decorative element swaps to a higher-contrast variant
+ * under `prefers-contrast: more`. The one high-value, unambiguous move is
+ * `text-3` — every secondary label and every correlation ID — dropping to
+ * the `text-2` value, which is WCAG AA on every surface (2.5–2.9:1 →
+ * 4.6–5.3:1). That also mitigates `text-3`'s standing AA exception for a
+ * high-contrast user; it does not change the default palette. The
+ * decorative rings/tracks/shimmer on Spinner / ProgressBar / Skeleton add
+ * a `contrast-more:` border in their own source, keyed off this same
+ * (now darker) token. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-3: var(--color-text-2);
+  }
+}

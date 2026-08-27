@@ -27,6 +27,9 @@ export function ProgressBar({ label, value, max = 100, className, ...rest }: Pro
         max={max}
         className={cx(
           'w-full h-2xs rounded-4xl overflow-hidden bg-surface-3 appearance-none',
+          // Outline the track under prefers-contrast so the unfilled
+          // portion reads against the page (frontend-accessibility.md FR-5).
+          'contrast-more:border contrast-more:border-text-3',
           '[&::-webkit-progress-bar]:bg-surface-3 [&::-webkit-progress-bar]:rounded-4xl',
           '[&::-webkit-progress-value]:bg-accent [&::-webkit-progress-value]:rounded-4xl',
           '[&::-moz-progress-bar]:bg-accent [&::-moz-progress-bar]:rounded-4xl',

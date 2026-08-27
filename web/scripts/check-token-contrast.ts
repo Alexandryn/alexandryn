@@ -82,6 +82,41 @@ for (const [fg, bg] of pairs) {
   }
 }
 
+// The prefers-contrast: more fallback (frontend-accessibility.md FR-5):
+// src/a11y.css must redefine --color-text-3 to a value that passes AA on
+// every surface, so the KNOWN_EXCEPTIONS above are mitigated for a
+// high-contrast user rather than left flat.
+const a11yCss = readFileSync(join(import.meta.dirname, '..', 'src', 'a11y.css'), 'utf8')
+const overrideMatch =
+  /@media\s*\(prefers-contrast:\s*more\)\s*\{[\s\S]*?--color-text-3:\s*var\(--color-([a-z0-9-]+)\)/i.exec(
+    a11yCss,
+  )
+if (!overrideMatch) {
+  console.error(
+    'check-token-contrast: src/a11y.css is missing the prefers-contrast: more override for --color-text-3 (frontend-accessibility.md FR-5)',
+  )
+  process.exit(1)
+}
+const fallbackValue = colorByName.get(overrideMatch[1] as string)
+if (!fallbackValue) {
+  console.error(
+    `check-token-contrast: a11y.css text-3 fallback references unknown token --color-${overrideMatch[1]}`,
+  )
+  process.exit(1)
+}
+for (const surface of SURFACE_TOKENS) {
+  const bgValue = colorByName.get(surface) as string
+  const ratio = contrastRatio(fallbackValue, bgValue)
+  if (meetsWcagAA(fallbackValue, bgValue)) {
+    console.log(`  PASS  text-3 (prefers-contrast) on ${surface.padEnd(11)} ${ratio.toFixed(2)}:1`)
+  } else {
+    console.error(
+      `  FAIL  text-3 (prefers-contrast) on ${surface} ${ratio.toFixed(2)}:1 — the FR-5 fallback must pass AA`,
+    )
+    failed = true
+  }
+}
+
 if (failed) {
   console.error(
     'check-token-contrast: one or more pairs fail WCAG AA (4.5:1) with no recorded exception',
