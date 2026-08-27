@@ -1,0 +1,118 @@
+openapi: 3.1.0
+
+# The system contract (architecture-contracts.md). Hand-authored,
+# spec-first (FR-1), versioned with the code (FR-2). It currently
+# describes only the health endpoints — the one thing that already
+# exists (architecture-contracts.md Acceptance criteria: "exists ... even
+# if it initially contains only the health endpoint"). Phase 06 adds the
+# first /api/v1 resources.
+#
+# Seeded during phase 04 Tier 4 (frontend shell): the frontend's MSW
+# mock layer (frontend-shell-and-routing.md FR-6) generates its
+# contract-covered fixtures from this file, so it had to exist for that
+# tier-(a) mechanism to be real rather than a documented intention.
+
+info:
+  title: Alexandryn system API
+  version: 0.0.0
+  description: >-
+    The contract between the Go server and every client (the Electron
+    renderer and any LAN browser). Errors share one shape across every
+    endpoint (FR-5). Authentication is reserved but unused until phase 12
+    (FR-6).
+
+servers:
+  - url: /
+    description: The Go server's own origin (loopback by default, constitution §6).
+
+# Path-based versioning (FR-4). No /api/v1 resources exist yet; health
+# lives at the root, outside the versioned surface, because it predates
+# and is independent of it.
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness — is the process accepting HTTP connections
+      description: >-
+        200 the instant the process can serve HTTP, independent of
+        PostgreSQL state. Never blocks on the database.
+      security: []
+      responses:
+        '200':
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empty'
+              example: {}
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      summary: Readiness — can the process actually serve data
+      description: >-
+        200 once PostgreSQL is connected and a liveness check succeeds;
+        503 with an error body ("not yet started" before the pool is set,
+        "lost the connection" if the ping fails) otherwise.
+      security: []
+      responses:
+        '200':
+          description: The process is ready to serve data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empty'
+              example: {}
+        '503':
+          description: The process is not ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: not yet started
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+components:
+  securitySchemes:
+    # Reserved from the start (FR-6); no endpoint requires it until
+    # phase 12.
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Empty:
+      type: object
+      additionalProperties: false
+      description: An empty JSON object — the health endpoints' success body.
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message, correlationId]
+      description: >-
+        The one error shape every endpoint uses (FR-5). `correlationId`
+        matches the id in the server's structured logs for the same
+        request.
+      properties:
+        code:
+          type: string
+          description: Machine-readable category (domain.Category).
+          example: not_found
+        message:
+          type: string
+          description: >-
+            Human-readable, specific, no apology, says what to do next
+            (constitution §11).
+          example: no such endpoint
+        correlationId:
+          type: string
+          description: Ties this response to one server log line.
+          example: 00000000-0000-0000-0000-000000000000
+
+# Applied globally so the reserved scheme is visible in the contract;
+# every current operation opts out with `security: []` until phase 12.
+security:
+  - bearerAuth: []

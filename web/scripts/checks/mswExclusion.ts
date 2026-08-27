@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
 import { walkScannableFiles } from './walkDist.ts'
 
 // frontend-shell-and-routing.md FR-6 requires MSW for development/
@@ -15,11 +16,15 @@ import { walkScannableFiles } from './walkDist.ts'
 // (as a string, to register/fetch it) wherever it's wired up — the one
 // marker that actually has a chance of surviving bundling.
 //
-// Not yet proven against a real MSW-containing production build (MSW
-// isn't installed until Tier 4, frontend-shell-and-routing.md FR-6) —
-// Tier 4 must re-verify this check actually catches a real leak once
-// MSW exists in this repo, not just the synthetic fixture below.
+// Verified against a real MSW 2.15 build in Tier 4: MSW's own generated
+// worker script does NOT contain the string "mockServiceWorker" in its
+// body, so a content grep alone would miss the file itself if it were
+// ever copied into dist. The check therefore has two arms — a content
+// pattern (catches `worker.start()`-style references that survive
+// bundling) and a filename match (catches the worker script by name,
+// regardless of contents).
 const MSW_PATTERN = /mockServiceWorker/
+const MSW_WORKER_FILENAME = 'mockServiceWorker.js'
 
 export interface MswFinding {
   file: string
@@ -30,6 +35,10 @@ export interface MswFinding {
 export function findMswReferences(distDir: string): MswFinding[] {
   const findings: MswFinding[] = []
   for (const file of walkScannableFiles(distDir)) {
+    if (basename(file) === MSW_WORKER_FILENAME) {
+      findings.push({ file, pattern: `filename: ${MSW_WORKER_FILENAME}` })
+      continue
+    }
     const contents = readFileSync(file, 'utf8')
     if (MSW_PATTERN.test(contents)) {
       findings.push({ file, pattern: MSW_PATTERN.source })
