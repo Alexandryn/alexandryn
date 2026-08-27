@@ -1,10 +1,10 @@
 import type { HTMLAttributes } from 'react'
 import { cx } from '../../lib/cx'
-import { deriveSeed } from '../../lib/fnv1a'
 import { TextureLayer } from './TextureLayer'
 import { SpineLayer } from './SpineLayer'
 import { TitleLayer } from './TitleLayer'
 import { AuthorLayer } from './AuthorLayer'
+import { getCachedSeed } from './seedCache'
 
 export interface GeneratedCoverProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   /** Work.ID or Edition.ID — the only prop always available (FR-2's seed source). */
@@ -22,7 +22,7 @@ export interface GeneratedCoverProps extends Omit<HTMLAttributes<HTMLDivElement>
  * wiring (T6) for the accessible-name contract.
  */
 export function GeneratedCover({ identifier, title, author, className, ...rest }: GeneratedCoverProps) {
-  const seed = deriveSeed(identifier)
+  const seed = getCachedSeed(identifier)
 
   return (
     <div
