@@ -60,6 +60,38 @@ describe('findRawStyleValues', () => {
     expect(findRawStyleValues(componentsDir)).toHaveLength(1)
   })
 
+  it('flags a CSS4 alpha-hex color (4 or 8 digits)', () => {
+    const componentsDir = makeComponents({
+      'Button/Button.tsx': `export function Button() { return <button style={{ color: '#1a1917ff' }} /> }`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toHaveLength(1)
+  })
+
+  it('flags a bare-number pixel value in an inline style (React appends "px" itself)', () => {
+    const componentsDir = makeComponents({
+      'Button/Button.tsx': `export function Button() { return <button style={{ width: 16 }} /> }`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toHaveLength(1)
+  })
+
+  it('does not flag prose that happens to read like a style property (no object-literal shape)', () => {
+    const componentsDir = makeComponents({
+      'VisuallyHidden/VisuallyHidden.test.tsx': `it('is clipped, never display:none or width:0 alone', () => {})`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toEqual([])
+  })
+
+  it('does not flag a unitless numeric style value', () => {
+    const componentsDir = makeComponents({
+      'Button/Button.tsx': `export function Button() { return <button style={{ lineHeight: 1.5, opacity: 0.5 }} /> }`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toEqual([])
+  })
+
   it('ignores test and story files that only reference token classes', () => {
     const componentsDir = makeComponents({
       'Button/Button.stories.tsx': `export const Default = { args: { className: 'text-4xl' } }`,
