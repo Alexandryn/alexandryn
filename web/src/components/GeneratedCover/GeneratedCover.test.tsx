@@ -30,11 +30,7 @@ describe('GeneratedCover — degradation ladder (FR-3)', () => {
   })
 
   it('every step renders the texture and spine layers (never a blank box)', () => {
-    const cases = [
-      { title: 'Dune', author: 'Frank Herbert' },
-      { title: 'Dune' },
-      {},
-    ]
+    const cases = [{ title: 'Dune', author: 'Frank Herbert' }, { title: 'Dune' }, {}]
     for (const props of cases) {
       const { container, unmount } = render(<GeneratedCover identifier="work-1" {...props} />)
       const layers = container.querySelectorAll('[aria-hidden="true"]')

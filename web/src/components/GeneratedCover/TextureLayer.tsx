@@ -27,10 +27,17 @@ export function TextureLayer({ seed, className, style, ...rest }: TextureLayerPr
     backgroundColor: `hsl(${seed.hue} 38% 88%)`,
     backgroundImage,
     backgroundSize:
-      seed.pattern === 'dot-grid' ? 'calc(var(--spacing-sm) * 2) calc(var(--spacing-sm) * 2)' : undefined,
+      seed.pattern === 'dot-grid'
+        ? 'calc(var(--spacing-sm) * 2) calc(var(--spacing-sm) * 2)'
+        : undefined,
     ...style,
   }
   return (
-    <div aria-hidden="true" className={cx('size-full', className)} style={computedStyle} {...rest} />
+    <div
+      aria-hidden="true"
+      className={cx('size-full', className)}
+      style={computedStyle}
+      {...rest}
+    />
   )
 }

@@ -21,7 +21,13 @@ export interface GeneratedCoverProps extends Omit<HTMLAttributes<HTMLDivElement>
  * blank box. Purely decorative — see GeneratedCoverImage's own a11y
  * wiring (T6) for the accessible-name contract.
  */
-export function GeneratedCover({ identifier, title, author, className, ...rest }: GeneratedCoverProps) {
+export function GeneratedCover({
+  identifier,
+  title,
+  author,
+  className,
+  ...rest
+}: GeneratedCoverProps) {
   const seed = getCachedSeed(identifier)
 
   return (
