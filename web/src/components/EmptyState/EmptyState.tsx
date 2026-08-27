@@ -10,7 +10,14 @@ export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
 }
 
 /** Composed from an icon slot, a StatusPill-adjacent message, and an optional Button — no interaction logic of its own. */
-export function EmptyState({ title, description, icon, action, className, ...rest }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  icon,
+  action,
+  className,
+  ...rest
+}: EmptyStateProps) {
   return (
     <div className={cx('flex flex-col items-center text-center gap-xs p-3xl', className)} {...rest}>
       {icon && (

@@ -17,7 +17,13 @@ describe('Slider', () => {
     const onValueChange = vi.fn()
     const user = userEvent.setup()
     render(
-      <Slider label="Font size" defaultValue={[40]} min={0} max={100} onValueChange={onValueChange} />,
+      <Slider
+        label="Font size"
+        defaultValue={[40]}
+        min={0}
+        max={100}
+        onValueChange={onValueChange}
+      />,
     )
     await user.tab()
     expect(screen.getByRole('slider')).toHaveFocus()

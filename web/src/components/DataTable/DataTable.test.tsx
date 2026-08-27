@@ -22,9 +22,7 @@ const columns: DataTableColumn<Book>[] = [
 
 describe('DataTable — render', () => {
   it('renders real <table>/<th scope="col"> semantics, not a div-grid', () => {
-    render(
-      <DataTable caption="Books" columns={columns} rows={books} rowKey={(b) => b.id} />,
-    )
+    render(<DataTable caption="Books" columns={columns} rows={books} rowKey={(b) => b.id} />)
     const table = screen.getByRole('table', { name: 'Books' })
     expect(table.tagName).toBe('TABLE')
     const titleHeader = screen.getByRole('columnheader', { name: /Title/ })
