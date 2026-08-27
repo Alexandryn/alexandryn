@@ -110,14 +110,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      # Two steps, not one: the cover benchmark asserts a tight
-      # initial-paint budget and must not share the runner with the app
-      # suite's browsers while it measures.
-      - name: Playwright — generated-cover benchmark
-        run: npx playwright test --project=benchmark
-
-      - name: Playwright — app E2E and accessibility
-        run: npx playwright test --project=app
+      # One invocation, one worker (playwright.config.ts): the benchmark
+      # and app projects never run concurrently, so the benchmark's tight
+      # initial-paint budget isn't starved by another browser. CI retries
+      # cover a transient slow cold-start frame without weakening the
+      # budget.
+      - name: Playwright — E2E, accessibility and cover benchmark
+        run: npx playwright test
 
       - name: Upload web/dist
         uses: actions/upload-artifact@v7

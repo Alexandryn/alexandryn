@@ -10,13 +10,15 @@ import { defineConfig } from '@playwright/test'
 // automatically (src/main.tsx).
 export default defineConfig({
   timeout: 30_000,
-  // Not fully parallel: the benchmark project asserts a tight
-  // initial-paint budget and is starved by other workers sharing the
-  // machine. CI runs the two projects as separate steps
-  // (.github/workflows/ci.yml); locally, `npx playwright test` still
-  // works, just serially.
+  // One worker, never parallel: the benchmark project asserts a tight
+  // initial-paint budget (frontend-generated-covers.md FR-4) and is
+  // starved when it shares the machine with other browsers. Retries
+  // cover a transient cold-start slow frame on a shared CI runner
+  // without weakening the budget itself — a real regression fails every
+  // attempt.
   fullyParallel: false,
   workers: 1,
+  retries: process.env.CI ? 2 : 0,
   projects: [
     {
       name: 'benchmark',
