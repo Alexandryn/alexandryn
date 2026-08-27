@@ -89,6 +89,12 @@ jobs:
       - name: Accessibility — no positive tabindex
         run: npm run check:a11y-tabindex
 
+      # frontend-accessibility.md FR-3 — screen-reader-only text uses
+      # <VisuallyHidden> / sr-only, never display:none or a hand-rolled
+      # clip-rect.
+      - name: Accessibility — no hand-rolled hidden text
+        run: npm run check:a11y-hidden-text
+
       - name: Bundle-size check
         run: npm run check:bundle-size
 
