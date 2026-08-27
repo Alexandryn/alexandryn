@@ -18,7 +18,7 @@
     "check:dist-msw": "node scripts/check-dist-msw.ts dist",
     "tokens:generate": "node scripts/generate-tokens.ts",
     "tokens:check-contrast": "node scripts/check-token-contrast.ts",
-    "check:token-styling": "node scripts/check-token-styling.ts src/components src/app",
+    "check:token-styling": "node scripts/check-token-styling.ts src/components src/app src/screens",
     "mocks:gen-fixtures": "node scripts/gen-fixtures.ts"
   },
   "dependencies": {
