@@ -1,0 +1,12 @@
+/* Structural dimensions of the application shell, taken from
+ * .design-reference/Alexandryn-Electron.dc.html's shell markup. These are
+ * one-off layout measurements of the frame itself, not reusable design
+ * tokens (frontend-design-tokens.md's categories), so they live here
+ * rather than in the generated token files — but they are still named,
+ * not scattered as magic numbers through the shell components.
+ *
+ * --shell-sidebar-width: the left nav rail (`width:246px` on the sidebar
+ *   container in the Electron canvas). */
+:root {
+  --shell-sidebar-width: 246px;
+}
