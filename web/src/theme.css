@@ -71,6 +71,7 @@
   --tracking-9: 0.12em;
   --tracking-10: 0.14em;
   --tracking-11: 0.2em;
+  --breakpoint-reflow: 768px;
   --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
   --font-reading: Newsreader, Georgia, serif;
   --font-mono: 'IBM Plex Mono', monospace;

@@ -86,6 +86,14 @@ resolved without inventing a color that was never approved.
   to invent unilaterally). Each category's values are extracted
   exclusively from `.design-reference/*.dc.html`'s CSS custom
   properties and layout rules, never invented.
+  *(Implementation note, phase 04 Tier 4: Tier 1's extraction shipped
+  every category except `breakpoint`. The canvases carry no `@media`
+  rules — they are fixed-width artboards — so the one FR-3 reflow value
+  is read from the `atTablet` screen's own layout-rule prose
+  ("768–1023px. The sidebar becomes a 60px icon rail …"), via
+  `web/scripts/tokens/extractBreakpoint.ts`, which throws if that prose
+  ever disappears. Emitted as `--breakpoint-reflow: 768px`. Maintainer
+  decision F1, `tasks/todo-p04-tier4-shell-and-routing.md`.)*
 - **FR-2** Extraction is a documented, repeatable process, not a one-time
   hand-copy: the `frontend-design` skill (`architecture-frontend.md`
   FR-4) reads each `.dc.html` file's `:root` custom-property
