@@ -1,16 +1,20 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface ChipProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'children'> {
   children: ReactNode
   onRemove?: () => void
-  /** Accessible name for the remove control; required when children isn't plain text. */
+  /** Accessible name for the remove control. Recommended when children isn't plain text — falls back to a generic "Remove" so the control is never silently unlabelled. */
   removeLabel?: string
   disabled?: boolean
 }
 
 export function Chip({ children, onRemove, removeLabel, disabled, className, ...rest }: ChipProps) {
-  const fallbackLabel = typeof children === 'string' ? `Remove ${children}` : undefined
+  // Falls back to a generic label rather than undefined when children isn't a
+  // plain string — an icon-only remove button must never ship with no
+  // accessible name at all (FR-3), even if the caller forgets removeLabel.
+  const fallbackLabel = typeof children === 'string' ? `Remove ${children}` : 'Remove'
   const label = removeLabel ?? fallbackLabel
 
   return (
@@ -31,7 +35,7 @@ export function Chip({ children, onRemove, removeLabel, disabled, className, ...
           aria-label={label}
           className={cx(
             'rounded-4xl hover:bg-surface',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+            FOCUS_RING,
             'disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >

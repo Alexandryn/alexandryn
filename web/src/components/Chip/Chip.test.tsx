@@ -35,6 +35,16 @@ describe('Chip', () => {
     expect(screen.getByRole('button', { name: 'Remove Fiction' })).toBeDisabled()
   })
 
+  it('falls back to a generic accessible name when children is not plain text and removeLabel is omitted', () => {
+    render(
+      <Chip onRemove={vi.fn()}>
+        <span aria-hidden="true">🔖</span> Fiction
+      </Chip>,
+    )
+    // Never an empty/undefined aria-label, even without an explicit removeLabel.
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+  })
+
   it('has zero axe violations, with and without a remove control', async () => {
     const { container, rerender } = render(<Chip>Fiction</Chip>)
     expectNoAxeViolations(await runAxe(container))
