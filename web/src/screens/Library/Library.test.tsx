@@ -8,7 +8,7 @@ import { Library } from './Library'
 describe('Library (FR-8)', () => {
   it('renders <EmptyState>, not a blank pane, for an empty successful response', async () => {
     server.use(http.get('*/api/v1/library', () => HttpResponse.json([])))
-    renderWithProviders(<Library />)
+    renderWithProviders(<Library />, { routerEntries: ['/library'] })
 
     expect(await screen.findByText('Your library is waiting.')).toBeInTheDocument()
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
@@ -22,7 +22,7 @@ describe('Library (FR-8)', () => {
         HttpResponse.json([{ id: 'x', title: 'A Book', author: 'An Author' }]),
       ),
     )
-    renderWithProviders(<Library />)
+    renderWithProviders(<Library />, { routerEntries: ['/library'] })
 
     expect(await screen.findByText('A Book')).toBeInTheDocument()
     expect(screen.getByRole('list')).toBeInTheDocument()
@@ -38,7 +38,7 @@ describe('Library (FR-8)', () => {
         ),
       ),
     )
-    renderWithProviders(<Library />)
+    renderWithProviders(<Library />, { routerEntries: ['/library'] })
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-lib-1')

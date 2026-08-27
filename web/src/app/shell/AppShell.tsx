@@ -5,6 +5,7 @@ import { ContentPane } from './ContentPane'
 import { MobileTabBar } from './MobileTabBar'
 import { Sidebar } from './Sidebar'
 import { Titlebar } from './Titlebar'
+import { useContentFocusOnRouteChange } from './useContentFocusOnRouteChange'
 import { useShellLayout } from './useShellLayout'
 import './shell.css'
 
@@ -19,6 +20,7 @@ import './shell.css'
  */
 export function AppShell() {
   const layout = useShellLayout()
+  useContentFocusOnRouteChange()
 
   return (
     <div className="flex h-screen flex-col bg-background text-text font-ui">

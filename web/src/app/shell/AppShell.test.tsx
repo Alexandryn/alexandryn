@@ -65,6 +65,17 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main')
   })
 
+  it('moves focus to the content region on navigation, but not on initial load', async () => {
+    const router = routerAt('/library')
+    render(<RouterProvider router={router} />)
+    await screen.findByRole('heading', { name: 'Library' })
+    expect(screen.getByRole('main')).not.toHaveFocus()
+
+    await router.navigate('/discover')
+    await screen.findByRole('heading', { name: 'Discover' })
+    expect(screen.getByRole('main')).toHaveFocus()
+  })
+
   it('has no axe violations', async () => {
     const { container } = render(<RouterProvider router={routerAt('/library')} />)
     expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
