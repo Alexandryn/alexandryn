@@ -27,6 +27,20 @@ describe('GeneratedCover — accessibility contract', () => {
     expect(link).toHaveAccessibleName('Dune')
   })
 
+  it('stays hidden from the accessibility tree even if a caller passes a conflicting rest prop', () => {
+    // aria-hidden is excluded from GeneratedCoverProps at the type level;
+    // this proves the runtime guard (aria-hidden applied after {...rest})
+    // holds even if that type exclusion is ever bypassed (e.g. `as any`).
+    const { container } = render(
+      <GeneratedCover
+        identifier="work-1"
+        title="Dune"
+        {...({ 'aria-hidden': 'false' } as Record<string, string>)}
+      />,
+    )
+    expect(container.firstChild).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('has zero axe violations when composed with a real accessible name alongside it', async () => {
     const { container } = render(
       <a href="/books/1">

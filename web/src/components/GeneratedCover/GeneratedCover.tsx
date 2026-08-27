@@ -6,7 +6,10 @@ import { TitleLayer } from './TitleLayer'
 import { AuthorLayer } from './AuthorLayer'
 import { getCachedSeed } from './seedCache'
 
-export interface GeneratedCoverProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+export interface GeneratedCoverProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'title' | 'aria-hidden'
+> {
   /** Work.ID or Edition.ID — the only prop always available (FR-2's seed source). */
   identifier: string
   title?: string
@@ -32,9 +35,9 @@ export function GeneratedCover({
 
   return (
     <div
-      aria-hidden="true"
       className={cx('relative size-full aspect-[2/3] overflow-hidden rounded-xs', className)}
       {...rest}
+      aria-hidden="true"
     >
       <TextureLayer seed={seed} className="absolute inset-0" />
       <SpineLayer seed={seed} />
