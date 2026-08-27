@@ -1,6 +1,7 @@
 import { forwardRef, useId, type ComponentPropsWithoutRef, type ElementRef } from 'react'
 import * as RadixSwitch from '@radix-ui/react-switch'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface ToggleProps extends ComponentPropsWithoutRef<typeof RadixSwitch.Root> {
   label: string
@@ -21,7 +22,7 @@ export const Toggle = forwardRef<ElementRef<typeof RadixSwitch.Root>, ToggleProp
         id={switchId}
         className={cx(
           'relative h-lg w-3xl rounded-4xl bg-surface-3 data-[state=checked]:bg-accent',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          FOCUS_RING,
           'disabled:opacity-50 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none',
           className,
         )}

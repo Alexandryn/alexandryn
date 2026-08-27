@@ -1,6 +1,7 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react'
 import * as RadixSlider from '@radix-ui/react-slider'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface SliderProps extends ComponentPropsWithoutRef<typeof RadixSlider.Root> {
   label: string
@@ -24,7 +25,7 @@ export const Slider = forwardRef<ElementRef<typeof RadixSlider.Root>, SliderProp
         aria-label={label}
         className={cx(
           'block size-md rounded-4xl bg-surface border border-border shadow-sm',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          FOCUS_RING,
           'data-[disabled]:opacity-50',
         )}
       />

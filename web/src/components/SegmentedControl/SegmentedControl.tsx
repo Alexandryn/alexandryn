@@ -1,6 +1,7 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react'
 import * as RadixRadioGroup from '@radix-ui/react-radio-group'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface SegmentedControlOption {
   value: string
@@ -33,7 +34,7 @@ export const SegmentedControl = forwardRef<
           className={cx(
             'rounded-sm px-md py-4xs text-xs font-ui text-text-2',
             'data-[state=checked]:bg-surface data-[state=checked]:text-text data-[state=checked]:shadow-sm',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+            FOCUS_RING,
             'disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >
