@@ -122,4 +122,30 @@ describe('DataTable — select', () => {
     )
     expectNoAxeViolations(await runAxe(container))
   })
+
+  it('does not fire row selection when a nested interactive control inside a cell is activated', async () => {
+    const onRowSelect = vi.fn()
+    const onDelete = vi.fn()
+    const user = userEvent.setup()
+    const columnsWithAction: DataTableColumn<Book>[] = [
+      ...columns,
+      { key: 'action', header: 'Action', render: () => <button onClick={onDelete}>Delete</button> },
+    ]
+    render(
+      <DataTable
+        caption="Books"
+        columns={columnsWithAction}
+        rows={books}
+        rowKey={(b) => b.id}
+        onRowSelect={onRowSelect}
+      />,
+    )
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
+    expect(onDelete).toHaveBeenCalledTimes(1)
+    expect(onRowSelect).not.toHaveBeenCalled()
+
+    // Clicking the row itself (not a nested control) still selects it.
+    await user.click(screen.getByText('Herbert'))
+    expect(onRowSelect).toHaveBeenCalledWith('1')
+  })
 })

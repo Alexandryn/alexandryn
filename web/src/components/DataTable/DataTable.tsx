@@ -1,5 +1,15 @@
-import type { KeyboardEvent, ReactNode, TableHTMLAttributes } from 'react'
+import type { KeyboardEvent, MouseEvent, ReactNode, TableHTMLAttributes } from 'react'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
+
+const INTERACTIVE_SELECTOR = 'button, a, input, select, textarea, [role="button"], [role="link"]'
+
+/** True when the event originated on an interactive descendant of the row, not the row itself. */
+function isFromNestedInteractiveElement(target: EventTarget | null, row: HTMLElement): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const closest = target.closest(INTERACTIVE_SELECTOR)
+  return closest !== null && closest !== row
+}
 
 export interface DataTableColumn<T> {
   key: string
@@ -41,8 +51,15 @@ export function DataTable<T>({
   className,
   ...rest
 }: DataTableProps<T>) {
+  function handleRowClick(event: MouseEvent<HTMLTableRowElement>, key: string) {
+    if (!onRowSelect) return
+    if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
+    onRowSelect(key)
+  }
+
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, key: string) {
     if (!onRowSelect) return
+    if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onRowSelect(key)
@@ -74,10 +91,7 @@ export function DataTable<T>({
                   <button
                     type="button"
                     onClick={() => onSortChange?.(column.key)}
-                    className={cx(
-                      'inline-flex items-center gap-4xs',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                    )}
+                    className={cx('inline-flex items-center gap-4xs', FOCUS_RING)}
                   >
                     {column.header}
                     <span aria-hidden="true">
@@ -101,15 +115,11 @@ export function DataTable<T>({
               key={key}
               aria-selected={onRowSelect ? selected : undefined}
               tabIndex={onRowSelect ? 0 : undefined}
-              onClick={onRowSelect ? () => onRowSelect(key) : undefined}
+              onClick={onRowSelect ? (event) => handleRowClick(event, key) : undefined}
               onKeyDown={onRowSelect ? (event) => handleRowKeyDown(event, key) : undefined}
               className={cx(
                 'border-b border-border-2',
-                onRowSelect &&
-                  cx(
-                    'cursor-pointer',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                  ),
+                onRowSelect && cx('cursor-pointer', FOCUS_RING),
                 selected && 'bg-accent-soft',
               )}
             >
