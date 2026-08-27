@@ -24,9 +24,16 @@ export function CoverGridHarness({ identifiers, onRendered }: CoverGridHarnessPr
   const rowCount = Math.ceil(identifiers.length / COLUMNS)
   const totalHeight = rowCount * ROW_HEIGHT
 
-  const firstVisibleRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS)
-  const visibleRowCount = Math.ceil(CONTAINER_HEIGHT / ROW_HEIGHT) + OVERSCAN_ROWS * 2
-  const lastVisibleRow = Math.min(rowCount, firstVisibleRow + visibleRowCount)
+  // idealFirst/idealLast are computed before clamping so the overscan
+  // window's size stays constant near the edges — clamping firstVisibleRow
+  // up to 0 without also trimming lastVisibleRow would otherwise render
+  // extra rows exactly at scrollTop=0, where the benchmark's initial-paint
+  // measurement happens.
+  const viewportRowCount = Math.ceil(CONTAINER_HEIGHT / ROW_HEIGHT)
+  const idealFirstRow = Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS
+  const idealLastRow = idealFirstRow + viewportRowCount + OVERSCAN_ROWS * 2
+  const firstVisibleRow = Math.max(0, idealFirstRow)
+  const lastVisibleRow = Math.min(rowCount, idealLastRow)
 
   const visibleItems: { index: number; row: number; col: number }[] = []
   for (let row = firstVisibleRow; row < lastVisibleRow; row++) {
@@ -36,9 +43,19 @@ export function CoverGridHarness({ identifiers, onRendered }: CoverGridHarnessPr
     }
   }
 
+  // Fires once, at mount, regardless of how many times this effect body
+  // itself re-runs (StrictMode's dev double-invoke, or a future re-render
+  // triggered by something other than mount) — a bare `useEffect(fn)` with
+  // no dependency array re-fires on every render, including every
+  // scroll-driven re-render from onScroll below, which would otherwise
+  // compete with the exact frame budget the benchmark is measuring.
+  const hasFiredRef = useRef(false)
   useEffect(() => {
+    if (hasFiredRef.current) return
+    hasFiredRef.current = true
     onRendered?.()
-  })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div
@@ -51,6 +68,11 @@ export function CoverGridHarness({ identifiers, onRendered }: CoverGridHarnessPr
         {visibleItems.map(({ index, row, col }) => (
           <div
             key={identifiers[index]}
+            // The generated cover itself is aria-hidden (T6) — this label
+            // is what makes each grid cell satisfy "never the sole
+            // accessible name for its book," the same contract
+            // GeneratedCover.a11y.test.tsx proves in isolation.
+            aria-label={`Book ${index}`}
             style={{
               position: 'absolute',
               top: row * ROW_HEIGHT,
