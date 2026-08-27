@@ -9,8 +9,9 @@ export type VisuallyHiddenProps = ComponentPropsWithoutRef<typeof RadixVisuallyH
  * style is Radix's internal clip-rect technique, not a token-styling
  * exception, and callers never author styles on this component themselves.
  */
-export const VisuallyHidden = forwardRef<ElementRef<typeof RadixVisuallyHidden.Root>, VisuallyHiddenProps>(
-  function VisuallyHidden(props, ref) {
-    return <RadixVisuallyHidden.Root ref={ref} {...props} />
-  },
-)
+export const VisuallyHidden = forwardRef<
+  ElementRef<typeof RadixVisuallyHidden.Root>,
+  VisuallyHiddenProps
+>(function VisuallyHidden(props, ref) {
+  return <RadixVisuallyHidden.Root ref={ref} {...props} />
+})

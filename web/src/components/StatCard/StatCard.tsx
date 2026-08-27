@@ -11,7 +11,10 @@ export interface StatCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'chi
 export function StatCard({ label, value, hint, className, ...rest }: StatCardProps) {
   return (
     <div
-      className={cx('rounded-lg border border-border bg-surface p-lg flex flex-col gap-4xs', className)}
+      className={cx(
+        'rounded-lg border border-border bg-surface p-lg flex flex-col gap-4xs',
+        className,
+      )}
       {...rest}
     >
       <span className="text-xs text-text-2 font-ui">{label}</span>

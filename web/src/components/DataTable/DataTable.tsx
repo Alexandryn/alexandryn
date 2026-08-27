@@ -51,12 +51,18 @@ export function DataTable<T>({
 
   return (
     <table className={cx('w-full border-collapse text-sm', className)} {...rest}>
-      {caption && <caption className="text-left text-xs text-text-2 font-ui pb-xs">{caption}</caption>}
+      {caption && (
+        <caption className="text-left text-xs text-text-2 font-ui pb-xs">{caption}</caption>
+      )}
       <thead>
         <tr>
           {columns.map((column) => {
             const isSorted = sort?.columnKey === column.key
-            const ariaSort = isSorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined
+            const ariaSort = isSorted
+              ? sort.direction === 'asc'
+                ? 'ascending'
+                : 'descending'
+              : undefined
             return (
               <th
                 key={column.key}
@@ -74,7 +80,9 @@ export function DataTable<T>({
                     )}
                   >
                     {column.header}
-                    <span aria-hidden="true">{isSorted ? (sort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                    <span aria-hidden="true">
+                      {isSorted ? (sort.direction === 'asc' ? '▲' : '▼') : ''}
+                    </span>
                   </button>
                 ) : (
                   column.header
