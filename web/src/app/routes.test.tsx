@@ -6,6 +6,7 @@ import { ApiError } from '../data/http'
 import { mockMatchMedia } from '../test/matchMedia'
 import { CapabilityProvider } from './capability'
 import { RouteError } from './RouteError'
+import { AppShell } from './shell/AppShell'
 import { routes } from './routes'
 
 let media: ReturnType<typeof mockMatchMedia> | undefined
@@ -89,20 +90,37 @@ describe('RouteError (errorElement, FR-5/FR-7)', () => {
     })
   }
 
-  it('renders an ApiError with its correlation ID instead of a blank page', async () => {
-    const media = mockMatchMedia(true)
+  it('renders an ApiError with its correlation ID, inside the shell, with a way out', async () => {
+    media = mockMatchMedia(true)
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    // The real shape: errorElement on a pathless child of the AppShell route.
     const router = createMemoryRouter(
-      [{ path: '/', element: <Boom />, errorElement: <RouteError /> }],
-      { initialEntries: ['/'] },
+      [
+        {
+          path: '/',
+          element: <AppShell />,
+          children: [
+            { errorElement: <RouteError />, children: [{ path: 'boom', element: <Boom /> }] },
+          ],
+        },
+      ],
+      { initialEntries: ['/boom'] },
     )
     render(
       <QueryClientProvider client={client}>
-        <RouterProvider router={router} />
+        <CapabilityProvider>
+          <RouterProvider router={router} />
+        </CapabilityProvider>
       </QueryClientProvider>,
     )
+
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-route-999')
-    media.restore()
+    // The shell frame survived: nav still reachable, plus an explicit way back.
+    expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Go to your library' })).toHaveAttribute(
+      'href',
+      '/library',
+    )
   })
 })
