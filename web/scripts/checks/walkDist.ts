@@ -1,5 +1,4 @@
-import { readdirSync, statSync } from 'node:fs'
-import { extname, join } from 'node:path'
+import { walkFilesByExtension } from './walkFiles.ts'
 
 // Text-shaped file types worth grepping for secrets/MSW references.
 // Deliberately excludes images/fonts/etc — nothing to match there, and
@@ -15,17 +14,5 @@ const SCANNABLE_EXTENSIONS = new Set(['.js', '.mjs', '.html', '.css', '.json', '
  * to catch.
  */
 export function walkScannableFiles(distDir: string): string[] {
-  const results: string[] = []
-  const walk = (dir: string): void => {
-    for (const name of readdirSync(dir)) {
-      const full = join(dir, name)
-      if (statSync(full).isDirectory()) {
-        walk(full)
-      } else if (SCANNABLE_EXTENSIONS.has(extname(name))) {
-        results.push(full)
-      }
-    }
-  }
-  walk(distDir)
-  return results
+  return walkFilesByExtension(distDir, SCANNABLE_EXTENSIONS)
 }
