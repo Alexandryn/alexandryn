@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import * as RadixDialog from '@radix-ui/react-dialog'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface ModalProps {
   open?: boolean
@@ -44,10 +45,7 @@ export function Modal({ open, onOpenChange, trigger, title, description, childre
           {children}
           <RadixDialog.Close
             aria-label="Close"
-            className={cx(
-              'absolute top-md right-md text-text-2',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-            )}
+            className={cx('absolute top-md right-md text-text-2', FOCUS_RING)}
           >
             <span aria-hidden="true">×</span>
           </RadixDialog.Close>

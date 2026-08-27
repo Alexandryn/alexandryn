@@ -1,5 +1,6 @@
 import { forwardRef, useId, type InputHTMLAttributes } from 'react'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
@@ -30,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         className={cx(
           'rounded-sm border px-sm py-2xs text-sm bg-surface text-text',
           'hover:border-text-3',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          FOCUS_RING,
           'disabled:opacity-50 disabled:cursor-not-allowed',
           error ? 'border-error' : 'border-border',
           className,

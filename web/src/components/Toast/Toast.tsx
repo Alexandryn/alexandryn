@@ -1,6 +1,7 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react'
 import * as RadixToast from '@radix-ui/react-toast'
 import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export const ToastViewport = forwardRef<
   ElementRef<typeof RadixToast.Viewport>,
@@ -53,22 +54,13 @@ export const Toast = forwardRef<ElementRef<typeof RadixToast.Root>, ToastProps>(
             <button
               type="button"
               onClick={onAction}
-              className={cx(
-                'text-xs text-accent underline',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-              )}
+              className={cx('text-xs text-accent underline', FOCUS_RING)}
             >
               {actionLabel}
             </button>
           </RadixToast.Action>
         )}
-        <RadixToast.Close
-          aria-label="Dismiss"
-          className={cx(
-            'text-xs text-text-2',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-          )}
-        >
+        <RadixToast.Close aria-label="Dismiss" className={cx('text-xs text-text-2', FOCUS_RING)}>
           <span aria-hidden="true">×</span>
         </RadixToast.Close>
       </div>
