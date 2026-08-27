@@ -11,9 +11,9 @@ import { QueryResult } from './QueryResult'
 function Probe() {
   const query = useQuery({
     queryKey: ['probe'],
-    queryFn: () => getJson<{ ok: true }>('/api/v1/probe'),
+    queryFn: () => getJson<{ label: string }>('/api/v1/probe'),
   })
-  return <QueryResult query={query}>{() => <p>loaded</p>}</QueryResult>
+  return <QueryResult query={query}>{(data) => <p>{data.label}</p>}</QueryResult>
 }
 
 describe('QueryResult', () => {
@@ -32,7 +32,7 @@ describe('QueryResult', () => {
             { status: 503 },
           )
         }
-        return HttpResponse.json({ ok: true })
+        return HttpResponse.json({ label: 'loaded' })
       }),
     )
 
@@ -45,6 +45,34 @@ describe('QueryResult', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     await waitFor(() => expect(screen.getByText('loaded')).toBeInTheDocument())
+    expect(attempt).toBe(2)
+  })
+
+  it('keeps already-loaded data visible when a later refetch fails (stale-while-revalidate)', async () => {
+    let attempt = 0
+    server.use(
+      http.get('*/api/v1/probe', () => {
+        attempt += 1
+        if (attempt === 1) return HttpResponse.json({ label: 'first load' })
+        return HttpResponse.json(
+          { code: 'unavailable', message: 'gone', correlationId: 'corr-stale-1' },
+          { status: 503 },
+        )
+      }),
+    )
+
+    const { queryClient } = renderWithProviders(<Probe />)
+    expect(await screen.findByText('first load')).toBeInTheDocument()
+
+    void queryClient.refetchQueries({ queryKey: ['probe'] })
+
+    // A non-blocking notice appears once the refetch fails...
+    const notice = await screen.findByRole('status')
+    expect(notice).toHaveTextContent(/couldn't refresh/i)
+    expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-stale-1')
+    // ...and the already-loaded data is never blanked.
+    expect(screen.getByText('first load')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(attempt).toBe(2)
   })
 })
