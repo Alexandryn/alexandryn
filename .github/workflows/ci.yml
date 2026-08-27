@@ -70,6 +70,15 @@ jobs:
       - name: Storybook build
         run: npm run build-storybook
 
+      # frontend-generated-covers.md FR-4's own measurement mechanism — a
+      # real CI dependency (D3, tasks/plan-p04-tier3-generated-covers.md),
+      # not the Playwright MCP (which is interactive-only, not CI-capable).
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Generated-cover performance benchmark
+        run: npx playwright test
+
       # frontend-component-primitives.md FR-4/Acceptance criteria: no
       # primitive's source contains a raw hex/px value outside the token
       # set — interim grep-based check until a lint rule exists.
