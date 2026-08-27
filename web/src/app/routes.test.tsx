@@ -2,8 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
+import { ApiError } from '../data/http'
 import { mockMatchMedia } from '../test/matchMedia'
 import { CapabilityProvider } from './capability'
+import { RouteError } from './RouteError'
 import { routes } from './routes'
 
 let media: ReturnType<typeof mockMatchMedia> | undefined
@@ -75,5 +77,32 @@ describe('route table (FR-1)', () => {
   it('a :id route exposes its param to the view', async () => {
     renderRoute('/book/abc-123')
     expect(await screen.findByText(/abc-123/)).toBeInTheDocument()
+  })
+})
+
+describe('RouteError (errorElement, FR-5/FR-7)', () => {
+  function Boom(): never {
+    throw new ApiError(503, {
+      code: 'unavailable',
+      message: 'The server is restarting.',
+      correlationId: 'corr-route-999',
+    })
+  }
+
+  it('renders an ApiError with its correlation ID instead of a blank page', async () => {
+    const media = mockMatchMedia(true)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createMemoryRouter(
+      [{ path: '/', element: <Boom />, errorElement: <RouteError /> }],
+      { initialEntries: ['/'] },
+    )
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-route-999')
+    media.restore()
   })
 })
