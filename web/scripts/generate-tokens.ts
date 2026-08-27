@@ -14,8 +14,8 @@ const CANVASES: Record<string, string> = {
 const GENERATED_HEADER = `/* GENERATED FILE — do not hand-edit.
  * Run \`npm run tokens:generate\` (web/scripts/generate-tokens.ts) to
  * regenerate from .design-reference/*.dc.html — frontend-design-tokens.md
- * FR-2: both this file and its sibling are written from the same single
- * extraction pass, so they can never drift from each other. */
+ * FR-2: theme.css, tokens.css and breakpoints.ts are all written from the
+ * same single extraction pass, so they can never drift from each other. */
 `
 
 function buildThemeCss(tokens: ExtractedTokens): string {
@@ -39,6 +39,18 @@ function buildThemeCss(tokens: ExtractedTokens): string {
   )
   lines.push('}', '')
   return lines.join('\n')
+}
+
+// A third generated artifact (same single pass, FR-2): the breakpoint as
+// a plain number for the one consumer that can't read CSS — the
+// useShellLayout hook's matchMedia query. Keeps the shell's reflow point
+// tracing to the design reference with no magic number in JS.
+function buildBreakpointsTs(tokens: ExtractedTokens): string {
+  return `${GENERATED_HEADER}
+export const BREAKPOINTS = {
+  ${tokens.breakpoint.name}: ${tokens.breakpoint.px},
+} as const
+`
 }
 
 function buildTokensCss(tokens: ExtractedTokens): string {
@@ -69,6 +81,7 @@ const tokens = extractTokens(canvasHtml)
 
 const themePath = join(import.meta.dirname, '..', 'src', 'theme.css')
 const tokensPath = join(import.meta.dirname, '..', 'src', 'tokens.css')
+const breakpointsPath = join(import.meta.dirname, '..', 'src', 'breakpoints.ts')
 const prettierConfig = (await prettier.resolveConfig(themePath)) ?? {}
 
 writeFileSync(
@@ -79,11 +92,18 @@ writeFileSync(
   tokensPath,
   await prettier.format(buildTokensCss(tokens), { ...prettierConfig, filepath: tokensPath }),
 )
+writeFileSync(
+  breakpointsPath,
+  await prettier.format(buildBreakpointsTs(tokens), {
+    ...prettierConfig,
+    filepath: breakpointsPath,
+  }),
+)
 
 console.log(
   `tokens:generate — ${tokens.colors.length} colors, ${tokens.shadows.length} shadows, ` +
     `${tokens.sizes.length} sizes, ${tokens.radius.length} radius, ${tokens.spacing.length} spacing, ` +
     `${tokens.fontSize.length} font sizes, ${tokens.letterSpacing.length} letter-spacing values, ` +
     `breakpoint ${tokens.breakpoint.name}=${tokens.breakpoint.px}px ` +
-    `→ src/theme.css, src/tokens.css`,
+    `→ src/theme.css, src/tokens.css, src/breakpoints.ts`,
 )

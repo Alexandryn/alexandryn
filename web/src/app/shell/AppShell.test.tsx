@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react'
+import { act } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { expectNoAxeViolations, runAxe } from '../../test/axe'
+import { mockMatchMedia } from '../../test/matchMedia'
 import { AppShell } from './AppShell'
+
+let media: ReturnType<typeof mockMatchMedia>
+
+// Default: at/above the reflow breakpoint (the sidebar layout).
+beforeEach(() => {
+  media = mockMatchMedia(true)
+})
+afterEach(() => media.restore())
 
 function routerAt(path: string) {
   return createMemoryRouter(
@@ -23,15 +33,14 @@ function routerAt(path: string) {
 describe('AppShell', () => {
   it('exposes the three shell landmarks as semantic elements', () => {
     render(<RouterProvider router={routerAt('/library')} />)
-    expect(screen.getByRole('banner')).toBeInTheDocument() // <header>
+    expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
   it('marks the active route in the sidebar', () => {
     render(<RouterProvider router={routerAt('/discover')} />)
-    const active = screen.getByRole('link', { name: 'Discover' })
-    expect(active).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Discover' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Library' })).not.toHaveAttribute('aria-current')
   })
 
@@ -40,15 +49,14 @@ describe('AppShell', () => {
     const { container } = render(<RouterProvider router={router} />)
 
     const headerBefore = container.querySelector('header')
-    const navBefore = container.querySelector('nav')
+    const mainBefore = container.querySelector('main')
     expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
 
     await router.navigate('/discover')
     expect(await screen.findByRole('heading', { name: 'Discover' })).toBeInTheDocument()
 
-    // Same DOM nodes: the frame was never torn down and rebuilt.
     expect(container.querySelector('header')).toBe(headerBefore)
-    expect(container.querySelector('nav')).toBe(navBefore)
+    expect(container.querySelector('main')).toBe(mainBefore)
   })
 
   it('offers a skip link that targets the content region', () => {
@@ -61,5 +69,45 @@ describe('AppShell', () => {
     const { container } = render(<RouterProvider router={routerAt('/library')} />)
     expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
     expectNoAxeViolations(await runAxe(container))
+  })
+
+  describe('responsive reflow (FR-3)', () => {
+    it('renders the sidebar, not the tab bar, at/above the breakpoint', () => {
+      media = mockMatchMedia(true)
+      render(<RouterProvider router={routerAt('/library')} />)
+      expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument() // sidebar-only item
+      expect(screen.queryByRole('link', { name: 'More' })).not.toBeInTheDocument() // tab-bar-only item
+    })
+
+    it('renders the tab bar, not the sidebar, below the breakpoint', () => {
+      media = mockMatchMedia(false)
+      render(<RouterProvider router={routerAt('/library')} />)
+      expect(screen.getByRole('link', { name: 'More' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
+    })
+
+    it('swaps sidebar↔tab bar when the viewport crosses the breakpoint', () => {
+      media = mockMatchMedia(true)
+      render(<RouterProvider router={routerAt('/library')} />)
+      expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+
+      act(() => media.set(false)) // viewport shrinks past the breakpoint
+      expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'More' })).toBeInTheDocument()
+
+      act(() => media.set(true)) // and back
+      expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'More' })).not.toBeInTheDocument()
+    })
+
+    it('keeps exactly one Primary nav landmark mounted in each layout', () => {
+      media = mockMatchMedia(true)
+      const { rerender } = render(<RouterProvider router={routerAt('/library')} />)
+      expect(screen.getAllByRole('navigation', { name: 'Primary' })).toHaveLength(1)
+
+      act(() => media.set(false))
+      rerender(<RouterProvider router={routerAt('/library')} />)
+      expect(screen.getAllByRole('navigation', { name: 'Primary' })).toHaveLength(1)
+    })
   })
 })
