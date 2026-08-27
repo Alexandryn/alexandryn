@@ -1,4 +1,11 @@
-import type { KeyboardEvent, MouseEvent, ReactNode, TableHTMLAttributes } from 'react'
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type TableHTMLAttributes,
+} from 'react'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
@@ -51,18 +58,53 @@ export function DataTable<T>({
   className,
   ...rest
 }: DataTableProps<T>) {
+  // Row-level roving tabindex (frontend-accessibility.md FR-1): when the
+  // table is selectable, exactly one row is a tab stop and Arrow keys
+  // move between rows. Row-level, not cell-level — phase 04's cells hold
+  // no interactive content.
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
+  const [activeRow, setActiveRow] = useState(0)
+  // Clamp against the current row count so a shrinking `rows` prop can't
+  // leave the table with no tab stop.
+  const rovingRow = Math.max(0, Math.min(activeRow, rows.length - 1))
+
+  function focusRow(index: number) {
+    const clamped = Math.max(0, Math.min(index, rows.length - 1))
+    setActiveRow(clamped)
+    rowRefs.current[clamped]?.focus()
+  }
+
   function handleRowClick(event: MouseEvent<HTMLTableRowElement>, key: string) {
     if (!onRowSelect) return
     if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
     onRowSelect(key)
   }
 
-  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, key: string) {
+  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, key: string, index: number) {
     if (!onRowSelect) return
     if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      onRowSelect(key)
+    switch (event.key) {
+      case 'Enter':
+      case ' ':
+        event.preventDefault()
+        onRowSelect(key)
+        break
+      case 'ArrowDown':
+        event.preventDefault()
+        focusRow(index + 1)
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        focusRow(index - 1)
+        break
+      case 'Home':
+        event.preventDefault()
+        focusRow(0)
+        break
+      case 'End':
+        event.preventDefault()
+        focusRow(rows.length - 1)
+        break
     }
   }
 
@@ -107,16 +149,20 @@ export function DataTable<T>({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const key = rowKey(row)
           const selected = selectedRowKeys?.has(key) ?? false
           return (
             <tr
               key={key}
+              ref={(node) => {
+                rowRefs.current[index] = node
+              }}
               aria-selected={onRowSelect ? selected : undefined}
-              tabIndex={onRowSelect ? 0 : undefined}
+              tabIndex={onRowSelect ? (index === rovingRow ? 0 : -1) : undefined}
               onClick={onRowSelect ? (event) => handleRowClick(event, key) : undefined}
-              onKeyDown={onRowSelect ? (event) => handleRowKeyDown(event, key) : undefined}
+              onKeyDown={onRowSelect ? (event) => handleRowKeyDown(event, key, index) : undefined}
+              onFocus={onRowSelect ? () => setActiveRow(index) : undefined}
               className={cx(
                 'border-b border-border-2',
                 onRowSelect && cx('cursor-pointer', FOCUS_RING),

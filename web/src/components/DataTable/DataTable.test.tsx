@@ -109,6 +109,54 @@ describe('DataTable — select', () => {
     expect(onRowSelect).toHaveBeenCalledWith('1')
   })
 
+  it('rows are a roving tab stop: Arrow keys move between them, one Tab leaves the table (FR-1)', async () => {
+    const onRowSelect = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <>
+        <DataTable
+          caption="Books"
+          columns={columns}
+          rows={books}
+          rowKey={(b) => b.id}
+          onRowSelect={onRowSelect}
+        />
+        <button type="button">after</button>
+      </>,
+    )
+    const dataRows = screen.getAllByRole('row').slice(1)
+
+    // Only the first data row is a tab stop; the rest are removed from the sequence.
+    expect(dataRows[0]).toHaveAttribute('tabindex', '0')
+    expect(dataRows[1]).toHaveAttribute('tabindex', '-1')
+
+    await user.tab() // header sort button
+    await user.tab() // first data row
+    expect(dataRows[0]).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(dataRows[1]).toHaveFocus()
+    expect(dataRows[1]).toHaveAttribute('tabindex', '0')
+    expect(dataRows[0]).toHaveAttribute('tabindex', '-1')
+
+    await user.keyboard('{ArrowUp}')
+    expect(dataRows[0]).toHaveFocus()
+
+    await user.keyboard('{End}')
+    expect(dataRows[1]).toHaveFocus()
+
+    await user.keyboard('{Home}')
+    expect(dataRows[0]).toHaveFocus()
+
+    // Selection still works on the focused row.
+    await user.keyboard('{Enter}')
+    expect(onRowSelect).toHaveBeenCalledWith('1')
+
+    // A further Tab leaves the table entirely.
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'after' })).toHaveFocus()
+  })
+
   it('has zero axe violations with selection enabled', async () => {
     const { container } = render(
       <DataTable
