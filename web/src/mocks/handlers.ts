@@ -2,6 +2,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { generatedFixtures } from './fixtures/generated'
 import { bootstrapFixture } from './fixtures/handwritten/bootstrap'
 import { notFoundError } from './fixtures/handwritten/errors'
+import { libraryItemsFixture } from './fixtures/handwritten/library'
 
 // The mock backend (frontend-shell-and-routing.md FR-6). Health handlers
 // serve the contract-generated fixtures (tier a); /api/bootstrap and the
@@ -17,6 +18,8 @@ export const handlers = [
     await delay(50)
     return HttpResponse.json(bootstrapFixture)
   }),
+
+  http.get('*/api/v1/library', () => HttpResponse.json(libraryItemsFixture)),
 
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]

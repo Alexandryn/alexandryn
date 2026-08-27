@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import type { Capability } from '../data/bootstrap'
+import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { RequireCapability } from './capability'
@@ -29,7 +30,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/library" replace /> },
 
       // Shared — render for the host window and a LAN browser alike.
-      { path: 'library', element: <ScreenPlaceholder title="Library" /> },
+      { path: 'library', element: <Library /> },
       { path: 'book/:id', element: <ParamPlaceholder title="Book" param="id" /> },
       { path: 'collections', element: <ScreenPlaceholder title="Collections" /> },
       { path: 'collections/:id', element: <ParamPlaceholder title="Collection" param="id" /> },
