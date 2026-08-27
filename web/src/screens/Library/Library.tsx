@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { QueryResult } from '../../components/ErrorState'
+import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 import { useLibraryItems } from '../../data/library'
 
 /**
@@ -11,17 +13,10 @@ import { useLibraryItems } from '../../data/library'
  */
 export function Library() {
   const query = useLibraryItems()
-  const headingRef = useRef<HTMLHeadingElement>(null)
-
-  useEffect(() => {
-    headingRef.current?.focus()
-  }, [])
 
   return (
     <div className="p-3xl">
-      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-medium tracking-1 outline-none">
-        Library
-      </h1>
+      <h1 className="text-3xl font-medium tracking-1">Library</h1>
 
       <div className="mt-lg">
         <QueryResult query={query} loadingLabel="Loading your library">
@@ -34,9 +29,14 @@ export function Library() {
             ) : (
               <ul className="flex flex-col gap-xs">
                 {items.map((item) => (
-                  <li key={item.id} className="text-lg text-text">
-                    <span className="font-medium">{item.title}</span>
-                    <span className="text-text-2"> · {item.author}</span>
+                  <li key={item.id}>
+                    <Link
+                      to={`/book/${item.id}`}
+                      className={cx('inline-block rounded-2xs text-lg text-text', FOCUS_RING)}
+                    >
+                      <span className="font-medium">{item.title}</span>
+                      <span className="text-text-2"> · {item.author}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>

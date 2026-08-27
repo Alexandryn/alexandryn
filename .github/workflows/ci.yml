@@ -96,19 +96,28 @@ jobs:
       - name: Dependency audit
         run: npm audit --audit-level=high
 
-      # frontend-generated-covers.md FR-4's own measurement mechanism — a
-      # real CI dependency (D3, tasks/plan-p04-tier3-generated-covers.md),
-      # not the Playwright MCP (which is interactive-only, not CI-capable).
+      # @playwright/test suites — a real CI dependency (D3,
+      # tasks/plan-p04-tier3/-tier4), not the Playwright MCP (which is
+      # interactive-only, not CI-capable). Two projects: `benchmark`
+      # (frontend-generated-covers.md FR-4's cover timing) and `app`
+      # (frontend-shell-and-routing.md's E2E walkthrough + reflow, plus
+      # frontend-accessibility.md FR-4's real-browser @axe-core/playwright).
       # Placed after the checks above, not before: GitHub Actions stops a
-      # job on first step failure, and this benchmark asserts tight
+      # job on first step failure, and the benchmark asserts tight
       # timing/frame-rate budgets on a shared runner — letting it run
       # first risked an intermittent, unrelated-looking slowdown here
       # silently skipping the secrets/MSW/audit checks for that run.
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Generated-cover performance benchmark
-        run: npx playwright test
+      # Two steps, not one: the cover benchmark asserts a tight
+      # initial-paint budget and must not share the runner with the app
+      # suite's browsers while it measures.
+      - name: Playwright — generated-cover benchmark
+        run: npx playwright test --project=benchmark
+
+      - name: Playwright — app E2E and accessibility
+        run: npx playwright test --project=app
 
       - name: Upload web/dist
         uses: actions/upload-artifact@v7
