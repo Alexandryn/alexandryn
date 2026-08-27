@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { extractTokens } from './extract.ts'
 
+// Every real canvas carries the atTablet responsive-band prose that
+// extractBreakpoint reads; include it here so extractTokens (which now
+// also extracts the breakpoint) has it, without each case restating it.
+const TABLET_BAND = '<p>768–1023px. The sidebar becomes a 60px icon rail.</p>'
+
 function canvas(rootStyle: string, rest = ''): string {
-  return `<div ref="{{ rootRef }}" style="${rootStyle}">${rest}</div>`
+  return `<div ref="{{ rootRef }}" style="${rootStyle}">${rest}${TABLET_BAND}</div>`
 }
 
 describe('extractTokens', () => {
@@ -46,5 +51,10 @@ describe('extractTokens', () => {
     expect(() => extractTokens({ electron: canvas('--bg:#F6F5F2;--newthing:#123456') })).toThrow(
       /--newthing/,
     )
+  })
+
+  it('extracts the FR-3 reflow breakpoint from the atTablet band prose', () => {
+    const tokens = extractTokens({ electron: canvas('--bg:#F6F5F2') })
+    expect(tokens.breakpoint).toEqual({ name: 'reflow', px: 768 })
   })
 })

@@ -1,5 +1,6 @@
 import { COLOR_NAMES, SHADOW_NAMES, SIZE_NAMES } from './colorNames.ts'
 import { deriveScale, type ScaleToken } from './deriveScale.ts'
+import { type BreakpointToken, extractBreakpoint } from './extractBreakpoint.ts'
 import { mergeCanvasProperties, type MergedProperty } from './mergeCanvasProperties.ts'
 import { countEmValues, countPxValues, parseRootCustomProperties } from './parseCanvas.ts'
 
@@ -39,6 +40,7 @@ export interface ExtractedTokens {
   spacing: ScaleToken[]
   fontSize: ScaleToken[]
   letterSpacing: LetterSpacingToken[]
+  breakpoint: BreakpointToken
 }
 
 function nameMerged(
@@ -127,5 +129,6 @@ export function extractTokens(canvasHtmlByName: Record<string, string>): Extract
     spacing: deriveScale(spacingCounts, PX_THRESHOLD),
     fontSize: deriveScale(fontSizeCounts, PX_THRESHOLD),
     letterSpacing,
+    breakpoint: extractBreakpoint(canvasHtmlByName),
   }
 }

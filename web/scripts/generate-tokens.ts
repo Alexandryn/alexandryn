@@ -28,6 +28,10 @@ function buildThemeCss(tokens: ExtractedTokens): string {
   for (const t of tokens.spacing) lines.push(`  --spacing-${t.name}: ${t.px}px;`)
   for (const t of tokens.fontSize) lines.push(`  --text-${t.name}: ${t.px}px;`)
   for (const t of tokens.letterSpacing) lines.push(`  --tracking-${t.name}: ${t.em}em;`)
+  // The single sidebar↔tab-bar reflow breakpoint (frontend-shell-and-
+  // routing.md FR-3), read from the atTablet band prose (extractBreakpoint).
+  // Tailwind v4 turns --breakpoint-reflow into the `reflow:` variant.
+  lines.push(`  --breakpoint-${tokens.breakpoint.name}: ${tokens.breakpoint.px}px;`)
   lines.push(
     "  --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;",
     '  --font-reading: Newsreader, Georgia, serif;',
@@ -46,6 +50,7 @@ function buildTokensCss(tokens: ExtractedTokens): string {
   for (const t of tokens.spacing) lines.push(`  --spacing-${t.name}: ${t.px}px;`)
   for (const t of tokens.fontSize) lines.push(`  --text-${t.name}: ${t.px}px;`)
   for (const t of tokens.letterSpacing) lines.push(`  --tracking-${t.name}: ${t.em}em;`)
+  lines.push(`  --breakpoint-${tokens.breakpoint.name}: ${tokens.breakpoint.px}px;`)
   lines.push(
     "  --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;",
     '  --font-reading: Newsreader, Georgia, serif;',
@@ -78,6 +83,7 @@ writeFileSync(
 console.log(
   `tokens:generate — ${tokens.colors.length} colors, ${tokens.shadows.length} shadows, ` +
     `${tokens.sizes.length} sizes, ${tokens.radius.length} radius, ${tokens.spacing.length} spacing, ` +
-    `${tokens.fontSize.length} font sizes, ${tokens.letterSpacing.length} letter-spacing values ` +
+    `${tokens.fontSize.length} font sizes, ${tokens.letterSpacing.length} letter-spacing values, ` +
+    `breakpoint ${tokens.breakpoint.name}=${tokens.breakpoint.px}px ` +
     `→ src/theme.css, src/tokens.css`,
 )
