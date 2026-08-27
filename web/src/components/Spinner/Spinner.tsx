@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from 'react'
 import { VisuallyHidden } from '../VisuallyHidden/VisuallyHidden'
 import { cx } from '../../lib/cx'
+import { useAnnouncedText } from '../../lib/useAnnouncedText'
 
 export interface SpinnerProps extends HTMLAttributes<HTMLDivElement> {
   label?: string
@@ -8,6 +9,7 @@ export interface SpinnerProps extends HTMLAttributes<HTMLDivElement> {
 
 /** role="status" announces the loading state itself — the thing a sighted user sees appear. */
 export function Spinner({ label = 'Loading', className, ...rest }: SpinnerProps) {
+  const announcedRef = useAnnouncedText<HTMLSpanElement>(label)
   return (
     <div role="status" className={cx('inline-flex items-center', className)} {...rest}>
       <span
@@ -17,7 +19,7 @@ export function Spinner({ label = 'Loading', className, ...rest }: SpinnerProps)
           'animate-spin motion-reduce:animate-none',
         )}
       />
-      <VisuallyHidden>{label}</VisuallyHidden>
+      <VisuallyHidden ref={announcedRef} />
     </div>
   )
 }
