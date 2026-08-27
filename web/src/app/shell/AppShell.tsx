@@ -23,7 +23,7 @@ export function AppShell() {
   useContentFocusOnRouteChange()
 
   return (
-    <div className="flex h-screen flex-col bg-background text-text font-ui">
+    <div className="flex h-dvh flex-col bg-background text-text font-ui">
       <a
         href="#main"
         className={cx(

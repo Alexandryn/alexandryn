@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -24,19 +23,19 @@ export function Sidebar() {
     >
       <ul className="flex flex-col gap-4xs">
         {NAV_ITEMS.map((item) => (
-          <Fragment key={item.to}>
-            {item.dividerBefore && <li aria-hidden="true" className="my-md h-px bg-border" />}
-            <li>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  cx(LINK_BASE, isActive && 'bg-surface-3 text-text font-medium')
-                }
-              >
-                {item.label}
-              </NavLink>
-            </li>
-          </Fragment>
+          <li
+            key={item.to}
+            className={cx(item.dividerBefore && 'mt-md border-t border-border pt-md')}
+          >
+            <NavLink
+              to={item.to}
+              className={({ isActive }) =>
+                cx(LINK_BASE, isActive && 'bg-surface-3 text-text font-medium')
+              }
+            >
+              {item.label}
+            </NavLink>
+          </li>
         ))}
       </ul>
     </nav>

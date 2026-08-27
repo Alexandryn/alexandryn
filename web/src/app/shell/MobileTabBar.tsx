@@ -10,22 +10,25 @@ import { TAB_ITEMS } from './navItems'
  */
 export function MobileTabBar() {
   return (
-    <nav aria-label="Primary" className="flex shrink-0 border-t border-border bg-surface">
-      {TAB_ITEMS.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          className={({ isActive }) =>
-            cx(
-              'flex flex-1 flex-col items-center gap-4xs py-sm text-3xs font-ui',
-              isActive ? 'text-accent font-medium' : 'text-text-3',
-              FOCUS_RING,
-            )
-          }
-        >
-          {item.label}
-        </NavLink>
-      ))}
+    <nav aria-label="Primary" className="shrink-0 border-t border-border bg-surface">
+      <ul className="flex">
+        {TAB_ITEMS.map((item) => (
+          <li key={item.to} className="flex-1">
+            <NavLink
+              to={item.to}
+              className={({ isActive }) =>
+                cx(
+                  'flex flex-col items-center gap-4xs py-sm text-3xs font-ui',
+                  isActive ? 'text-accent font-medium' : 'text-text-3',
+                  FOCUS_RING,
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
     </nav>
   )
 }
