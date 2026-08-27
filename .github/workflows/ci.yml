@@ -53,6 +53,14 @@ jobs:
       - name: Design token contrast (WCAG AA)
         run: npm run tokens:check-contrast
 
+      # frontend-shell-and-routing.md FR-6 tier (a): mock fixtures for
+      # contract-covered endpoints are generated from api/openapi.yaml,
+      # never hand-written — fail if the checked-in output is stale.
+      - name: Mock fixtures up to date
+        run: |
+          npm run mocks:gen-fixtures
+          git diff --exit-code -- src/mocks/fixtures/generated
+
       # Stage 1 — web/ build (ADR 0008, frontend-tooling.md FR-1/FR-6),
       # producing web/dist, the exact path/contract go:embed depends on.
       - name: Build

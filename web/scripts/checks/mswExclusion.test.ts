@@ -43,13 +43,14 @@ describe('findMswReferences', () => {
     expect(found[0]?.file).toMatch(/index-abc\.js$/)
   })
 
-  it('flags the generated worker file itself, copied to the dist root from public/', () => {
-    // Real finding from code review: Vite copies web/public/* straight
-    // to dist's own root, not dist/assets/ — and MSW's own setup
-    // (`npx msw init public/`) puts mockServiceWorker.js there. A check
-    // scoped to assets/ alone would never see this file at all.
+  it('flags the generated worker file by name, even with a body that never self-references', () => {
+    // Vite copies web/public/* straight to dist's own root, and
+    // `npx msw init public/` puts mockServiceWorker.js there. Verified in
+    // Tier 4: the real MSW 2.15 worker script contains no "mockServiceWorker"
+    // string in its body, so this must be caught by filename, not content.
     const distDir = makeDist({
-      'mockServiceWorker.js': '// Mock Service Worker (mockServiceWorker.js)',
+      'mockServiceWorker.js':
+        '/*! Mock Service Worker. Do not register this file. */\nself.addEventListener("install", () => {})',
       'assets/index-abc.js': 'function App(){}',
     })
 
@@ -57,6 +58,7 @@ describe('findMswReferences', () => {
 
     expect(found).toHaveLength(1)
     expect(found[0]?.file).toMatch(/mockServiceWorker\.js$/)
+    expect(found[0]?.pattern).toContain('filename')
   })
 
   it('does not false-positive on unrelated substrings', () => {

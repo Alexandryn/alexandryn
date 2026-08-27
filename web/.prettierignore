@@ -3,3 +3,6 @@ storybook-static
 package-lock.json
 test-results
 playwright-report
+
+# MSW generated worker script (npx msw init) — vendored verbatim
+public/mockServiceWorker.js
