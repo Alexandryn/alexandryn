@@ -2,8 +2,6 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'reac
 import * as RadixToast from '@radix-ui/react-toast'
 import { cx } from '../../lib/cx'
 
-export const ToastProvider = RadixToast.Provider
-
 export const ToastViewport = forwardRef<
   ElementRef<typeof RadixToast.Viewport>,
   ComponentPropsWithoutRef<typeof RadixToast.Viewport>
@@ -45,7 +43,9 @@ export const Toast = forwardRef<ElementRef<typeof RadixToast.Root>, ToastProps>(
     >
       <RadixToast.Title className="text-sm font-ui text-text">{title}</RadixToast.Title>
       {description && (
-        <RadixToast.Description className="text-xs text-text-2">{description}</RadixToast.Description>
+        <RadixToast.Description className="text-xs text-text-2">
+          {description}
+        </RadixToast.Description>
       )}
       <div className="flex items-center gap-sm">
         {actionLabel && onAction && (

@@ -2,7 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { expectNoAxeViolations, runAxe } from '../../test/axe'
-import { Toast, ToastProvider, ToastViewport } from './Toast'
+import { Provider as ToastProvider } from '@radix-ui/react-toast'
+import { Toast, ToastViewport } from './Toast'
 
 function renderToast(props: Partial<React.ComponentProps<typeof Toast>> = {}) {
   return render(
@@ -51,7 +52,11 @@ describe('Toast', () => {
   })
 
   it('has zero axe violations', async () => {
-    const { container } = renderToast({ description: '12 books added', actionLabel: 'Undo', onAction: vi.fn() })
+    const { container } = renderToast({
+      description: '12 books added',
+      actionLabel: 'Undo',
+      onAction: vi.fn(),
+    })
     expectNoAxeViolations(await runAxe(container))
   })
 })

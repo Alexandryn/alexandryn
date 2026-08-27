@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Toast, ToastProvider, ToastViewport } from './Toast'
+import { Provider as ToastProvider } from '@radix-ui/react-toast'
+import { Toast, ToastViewport } from './Toast'
 
 const meta: Meta<typeof Toast> = {
   title: 'Primitives/Toast',
