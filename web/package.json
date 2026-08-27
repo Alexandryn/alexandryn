@@ -20,6 +20,7 @@
     "tokens:check-contrast": "node scripts/check-token-contrast.ts",
     "check:token-styling": "node scripts/check-token-styling.ts src/components src/app src/screens",
     "check:a11y-tabindex": "node scripts/check-a11y-tabindex.ts",
+    "check:a11y-hidden-text": "node scripts/check-a11y-hidden-text.ts",
     "mocks:gen-fixtures": "node scripts/gen-fixtures.ts"
   },
   "dependencies": {
