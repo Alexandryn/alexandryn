@@ -33,4 +33,27 @@ describe('TextureLayer', () => {
       (b.container.firstChild as HTMLElement).getAttribute('style'),
     )
   })
+
+  it('never lets a caller-supplied style override the seed-derived background (FR-2 determinism)', () => {
+    const seed = { hue: 10, pattern: 'flat' } as const
+    const baseline = render(<TextureLayer seed={seed} />)
+    const overridden = render(
+      <TextureLayer seed={seed} style={{ backgroundColor: 'red', backgroundImage: 'none' }} />,
+    )
+    const overriddenNode = overridden.container.firstChild as HTMLElement
+    expect(overriddenNode.style.backgroundColor).not.toBe('red')
+    expect(overriddenNode.style.backgroundColor).toBe(
+      (baseline.container.firstChild as HTMLElement).style.backgroundColor,
+    )
+  })
+
+  it('stays hidden from the accessibility tree even if a caller passes a conflicting rest prop', () => {
+    const { container } = render(
+      <TextureLayer
+        seed={deriveSeed('work-1')}
+        {...({ 'aria-hidden': 'false' } as Record<string, string>)}
+      />,
+    )
+    expect(container.firstChild).toHaveAttribute('aria-hidden', 'true')
+  })
 })
