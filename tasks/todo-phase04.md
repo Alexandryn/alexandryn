@@ -33,20 +33,20 @@ checkpoint.
 
 **Tier 2 — Component primitives**
 
-- [ ] F10 — Radix-wrapped: `Modal`, `Toggle`, `SegmentedControl`, `Slider`, `Toast`, `VisuallyHidden`
-- [ ] F11 — Hand-built: `Button`, `Input`, `ProgressBar`, `StatusPill`, `FormatBadge`, `Chip`, `Spinner`, `Skeleton`, `StatCard`, `EmptyState`
-- [ ] F12 — `DataTable` (forced hand-built, no Radix table primitive)
-- [ ] F13 — State-matrix + a11y-contract + token-only-styling coverage for all 17 primitives, Storybook stories
+- [x] F10 — Radix-wrapped: `Modal`, `Toggle`, `SegmentedControl`, `Slider`, `Toast`, `VisuallyHidden`
+- [x] F11 — Hand-built: `Button`, `Input`, `ProgressBar`, `StatusPill`, `FormatBadge`, `Chip`, `Spinner`, `Skeleton`, `StatCard`, `EmptyState`
+- [x] F12 — `DataTable` (forced hand-built, no Radix table primitive)
+- [x] F13 — State-matrix + a11y-contract + token-only-styling coverage for all 17 primitives, Storybook stories
 
-**Checkpoint P4-C** — 17/17 primitives classified per FR-1, zero `axe-core` violations, fully keyboard-operable, zero raw hex/px outside tokens
+**Checkpoint P4-C** — done, merged (PR #61). 17/17 primitives classified per FR-1, zero `axe-core` violations, fully keyboard-operable, zero raw hex/px outside tokens (`check:token-styling`, new). Detail: `tasks/todo-p04-tier2-component-primitives.md`.
 
 **Tier 3 — Generated cover system**
 
-- [ ] F14 — 4-layer composition, FNV-1a seeding
-- [ ] F15 — 3-step degradation ladder
-- [ ] F16 — Memoization + Playwright benchmark (500 covers/100ms/60fps), CI gate
+- [x] F14 — 4-layer composition, FNV-1a seeding
+- [x] F15 — 3-step degradation ladder
+- [x] F16 — Memoization + Playwright benchmark (500 covers/100ms/60fps), CI gate
 
-**Checkpoint P4-D** — pixel-identical determinism, all 3 degradation steps render, benchmark meets budget, never the sole accessible name
+**Checkpoint P4-D** — done. Pixel-identical determinism, all 3 degradation steps render, benchmark meets budget (Playwright, CI-wired), never the sole accessible name. Detail: `tasks/todo-p04-tier3-generated-covers.md`.
 
 **Tier 4 — Shell and routing**
 
