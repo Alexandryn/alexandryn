@@ -121,11 +121,17 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      # One invocation, one worker (playwright.config.ts): the benchmark
-      # and app projects never run concurrently, so the benchmark's tight
-      # initial-paint budget isn't starved by another browser. CI retries
-      # cover a transient slow cold-start frame without weakening the
-      # budget.
+      # One invocation, one worker (playwright.config.ts): the benchmark,
+      # app and gallery projects never run concurrently, so the
+      # benchmark's tight initial-paint budget isn't starved by another
+      # browser. CI retries cover a transient slow cold-start frame
+      # without weakening the budget.
+      #
+      # The `gallery` project is frontend-accessibility.md FR-4's
+      # real-browser @axe-core/playwright scan of every primitive —
+      # distinct from the lint step above (eslint-plugin-jsx-a11y,
+      # write-time/structural) and from the per-primitive jsdom axe tests
+      # in `npm test` (no layout engine). All three are required.
       - name: Playwright — E2E, accessibility and cover benchmark
         run: npx playwright test
 

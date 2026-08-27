@@ -1,12 +1,15 @@
 import { defineConfig } from '@playwright/test'
 
-// Two suites, each with its own dev server (D3, tasks/plan-p04-tier3 and
-// -tier4). `benchmark` measures GeneratedCover on a bare harness
-// (frontend-generated-covers.md FR-4); `app` drives the real application
-// — routing, the shell reflow, a keyboard-only walkthrough, and
-// @axe-core/playwright — against MSW-mocked data
-// (frontend-shell-and-routing.md Test strategy, frontend-accessibility.md
-// FR-4). The app server is `vite` itself, so MSW's dev worker starts
+// Three suites, each with its own dev server (D3, tasks/plan-p04-tier3/-tier4/
+// -tier5):
+//  - `benchmark` (`*.benchmark.spec.ts`) measures GeneratedCover on a bare
+//    harness (frontend-generated-covers.md FR-4)
+//  - `app` (`*.app.spec.ts`) drives the real application — routing, the
+//    shell reflow, the keyboard walkthrough, @axe-core/playwright on the
+//    shell — against MSW-mocked data
+//  - `gallery` (`*.gallery.spec.ts`) scans every primitive on one harness
+//    page with @axe-core/playwright (frontend-accessibility.md FR-4)
+// The `app` server is `vite` itself, so MSW's dev worker starts
 // automatically (src/main.tsx).
 export default defineConfig({
   timeout: 30_000,
@@ -18,7 +21,9 @@ export default defineConfig({
   // attempt.
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 2 : 0,
+  // A retry also covers the rare cold-server dynamic-import race on a
+  // fresh dev server, not only CI-runner timing — so keep one locally.
+  retries: process.env.CI ? 2 : 1,
   projects: [
     {
       name: 'benchmark',
@@ -31,6 +36,12 @@ export default defineConfig({
       testDir: './e2e',
       testMatch: /\.app\.spec\.ts$/,
       use: { baseURL: 'http://localhost:5175' },
+    },
+    {
+      name: 'gallery',
+      testDir: './e2e',
+      testMatch: /\.gallery\.spec\.ts$/,
+      use: { baseURL: 'http://localhost:5176' },
     },
   ],
   webServer: [
@@ -45,6 +56,12 @@ export default defineConfig({
       url: 'http://localhost:5175',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
+    },
+    {
+      command: 'npx vite --config e2e/a11y-gallery/vite.config.ts --port 5176 --strictPort',
+      url: 'http://localhost:5176',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
     },
   ],
 })
