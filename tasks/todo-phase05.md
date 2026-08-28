@@ -20,9 +20,9 @@ and after the security audit (E29 → E30).
 
 **Tier 0 — Electron bootstrap**
 
-- [ ] E1 — root `package.json` workspaces; `web/` → member; consolidate lockfile; prove `web/`'s full check suite green under the root; update `ci.yml` `frontend` paths
-- [ ] E2 — `electron/` package: pinned `electron` + `electron-vite` + `typescript`, `electron.vite.config.ts` (main / preload / boot-renderer targets), `electron/tsconfig.json` (strict + `noUncheckedIndexedAccess`), `src/{main,preload,shared,renderer/boot}/`, minimal `main/index.ts` opening one window, `npm run -w electron build` → `electron/out/`
-- [ ] E3 — shared root ESLint + Prettier for both packages; `electron/` gets `no-restricted-imports` guarding wildcard IPC
+- [x] E1 — root `package.json` workspaces; `web/` → member; consolidate lockfile; prove `web/`'s full check suite green under the root; update `ci.yml` `frontend` paths
+- [x] E2 — `electron/` package: pinned `electron` + `electron-vite` + `typescript`, `electron.vite.config.ts` (main / preload / boot-renderer targets), `electron/tsconfig.json` (strict + `noUncheckedIndexedAccess`), `src/{main,preload,shared,renderer/boot}/`, minimal `main/index.ts` opening one window, `npm run -w electron build` → `electron/out/`
+- [x] E3 — shared root ESLint + Prettier for both packages; `electron/` gets `no-restricted-imports` guarding wildcard IPC
 - [ ] E4 — `@playwright/test` `_electron` harness + `electron` project; smoke test: window opens, `contextIsolation`/`sandbox`/`nodeIntegration` asserted correct (RED against a mis-set flag first)
 - [ ] E5 — CI `desktop` job (D5): `backend` job uploads the server binary; `desktop` `needs:[frontend,backend]`, builds `electron/`, `xvfb-run -a npx playwright test --project=electron`, + `tsc --noEmit`, ESLint, Vitest
 
