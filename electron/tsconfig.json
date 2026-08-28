@@ -20,5 +20,11 @@
 
     "skipLibCheck": true
   },
-  "include": ["src", "e2e", "electron.vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "e2e",
+    "electron.vite.config.ts",
+    "playwright.config.ts",
+    "vitest.config.ts"
+  ]
 }
