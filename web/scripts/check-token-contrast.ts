@@ -26,10 +26,16 @@ const EXTRA_PAIRS: [string, string][] = [['accent-text', 'accent']]
 // best, below even the large-text 3:1 bar. Recorded here rather than
 // either (a) silently passing the check or (b) blocking Tier 1's
 // otherwise-correct extraction pipeline on an open design question.
-// Needs a maintainer decision: is text-3 decorative/non-text-conveying
-// only (in which case this exception is permanent), or does the design
-// reference need a darker tertiary text value (in which case this
-// exception is removed once that lands)? Not decided here.
+//
+// Maintainer decision D2 (2026-08-28, phase 04 Tier 6 / F27,
+// tasks/todo-p04-tier6-closure.md; frontend-design-tokens.md
+// Accessibility NFR): accepted PERMANENTLY. text-3 is a
+// decorative / non-essential tertiary-label colour only — muted
+// captions and the correlation-ID line, never body or load-bearing
+// text. The default palette is not darkened (that would break FR-4).
+// src/a11y.css still lifts text-3 to the text-2 value under
+// prefers-contrast: more, so a high-contrast user gets AA. This check
+// keeps failing the build if any OTHER pair regresses.
 //
 // Deliberately a fixed literal list of the four exact pairs actually
 // measured — not derived from SURFACE_TOKENS.map(...) (code review

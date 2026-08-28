@@ -2,13 +2,24 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
-| **Date** | 2026-08-17 |
+| **Status** | Accepted (2026-08-28, phase 04 Tier 6 / F27 — maintainer decision D3) |
+| **Date** | 2026-08-17 (proposed); 2026-08-28 (accepted) |
 | **Deciders** | Luann Moreira |
 | **Supersedes** | — |
 | **Superseded by** | — |
 
 <!-- Status: Proposed | Accepted | Rejected | Superseded | Deprecated -->
+
+> **Accepted 2026-08-28** (phase 04 Tier 6 closure). Phases 04's six
+> specs did carry their test strategy before each tier's RED step — in
+> the per-tier `tasks/plan-p04-<tier>.md` docs, not in separate
+> `.claude/test-plans/*.md` files. That is ratified here as a valid form
+> of "a test plan written before the implementation" for a phase whose
+> work is sliced into tiers: the plan doc's Test-strategy section is the
+> test plan. `test-plans/README.md` is amended to say so, and Option A's
+> named enforcement gap is closed by adding a test-plan line to each
+> phase's Exit criteria (done for phase 04 in its Tier 6 closure; later
+> phases add theirs when they open).
 
 ## Context
 
