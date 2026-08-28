@@ -196,4 +196,37 @@ describe('DataTable — select', () => {
     await user.click(screen.getByText('Herbert'))
     expect(onRowSelect).toHaveBeenCalledWith('1')
   })
+
+  it('focusing a control inside a cell does not move the roving tab stop', async () => {
+    const user = userEvent.setup()
+    const columnsWithAction: DataTableColumn<Book>[] = [
+      ...columns,
+      { key: 'action', header: 'Action', render: () => <button type="button">Open</button> },
+    ]
+    render(
+      <DataTable
+        caption="Books"
+        columns={columnsWithAction}
+        rows={books}
+        rowKey={(b) => b.id}
+        onRowSelect={vi.fn()}
+      />,
+    )
+    const dataRows = screen.getAllByRole('row').slice(1)
+    expect(dataRows[0]).toHaveAttribute('tabindex', '0')
+
+    // Tab to the Open button in the second row. Row 1's <tr> has
+    // tabIndex=-1 (not the roving stop), so Tab skips it: header → row 0 →
+    // button 0 → button 1.
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    expect(screen.getAllByRole('button', { name: 'Open' })[1]).toHaveFocus()
+
+    // The roving tab stop is still the first row — the bubbled focusin
+    // from the nested button did not move it.
+    expect(dataRows[0]).toHaveAttribute('tabindex', '0')
+    expect(dataRows[1]).toHaveAttribute('tabindex', '-1')
+  })
 })
