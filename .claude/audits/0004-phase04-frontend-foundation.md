@@ -5,7 +5,7 @@
 | **Scope** | `web/` — the phase 04 frontend foundation as merged to `main` (PRs #59–#64): build tooling, design tokens, 18 component primitives, the generated-cover system, the shell + router + capability hook, the MSW mock layer, the accessibility baseline, and the CI pipeline. Tiers 0–5. |
 | **Auditor** | Claude (Sonnet 5) — reconciled from three passes: `/security-review` (branch), the `agent-skills:security-auditor` subagent (full four-attacker threat model), and the `agent-skills:security-and-hardening` checklist; plus the manual verification tasks T2–T6 (`tasks/todo-p04-tier6-closure.md`). |
 | **Date** | 2026-08-27 |
-| **Commit** | Branch `feat/phase04-tier6-closure`, audit reconciled at the T7/T8 commits (see git log); `web/` as of the 20-commit stack over `main` (Tiers 5 + 6). |
+| **Commit** | Branch `feat/phase04-tier6-closure` (rebased onto `origin/main` `352175f`, which contains Tier 5 / PR #64); audit reconciled at the T7/T8 commits — see git log. |
 | **Verdict** | **Clear** — no open Critical or High finding. Eight items: one fixed this tier (A-0004-07), one accepted phase-gated design decision (A-0004-03), the rest carried-forward hooks for phases 05/06/12 or an accepted judgment call. |
 
 ## Scope and method
@@ -313,9 +313,13 @@ results. Not a concurrency-sensitive surface.
 
 ## `/security-review` pass (branch)
 
-Run against the actual branch diff — **20 commits vs `main`** (Tiers 5
-*and* 6; `feat/phase04-tier5-accessibility` is not yet merged — see "What
-was not examined"). Not the thin pass originally predicted. Result: **no
+Run while the branch still carried its pre-rebase 20-commit form (Tier 5's
+local copies + Tier 6), so the pass covered the full Tier 5 + Tier 6
+surface, not just Tier 6's diff. The branch was then rebased onto the
+current `origin/main` (which already contains Tier 5 via the rebase-merge
+of PR #64), leaving Tier 6's 10 commits — the `/security-review` coverage
+is unaffected, it simply saw Tier 5's content once more than the final
+history does. Result: **no
 HIGH or MEDIUM security findings.** The diff adds accessibility grep
 checks (Node build-time scripts, fixed path args, no untrusted input),
 `src/a11y.css` (a `@media (prefers-contrast)` token override, no
@@ -684,14 +688,12 @@ in both directions).
 - **The "malicious source" and "hostile book file" attackers** — no
   source integration (phase 08) or file parsing (phase 10) exists to
   exercise. Scoped out with reasoning above, per audit `0001`.
-- **Branch topology note (not a security gap):** this audit's
-  `/security-review` pass and the whole Tier 6 branch stack on
-  `feat/phase04-tier5-accessibility`, which is **not yet merged to
-  `main`** (20 commits ahead: 14 Tier 5 + 6 Tier 6). The phase-04 close
-  and the Tier 6 PR both depend on Tier 5 (PR #64) merging first, or on
-  Tier 6 being a stacked PR. Flagged to the maintainer at Gate 1 —
-  recorded here because it changes what "the phase 04 surface" means for
-  a later re-reader of this audit.
+- **Branch topology (resolved, not a security gap):** an earlier draft of
+  this audit stated Tier 5 (PR #64) was unmerged — that was wrong,
+  caused by comparing against a stale local `main` without fetching. PR
+  #64 was rebase-merged; after `git fetch` and rebasing this branch onto
+  the current `origin/main`, the Tier 6 branch is Tier 5-clean and
+  carries only its own 10 commits. No stacked-PR concern.
 - **Real-browser runtime behaviour** — no Playwright / browser run was
   performed as part of this audit; findings are from static reading and
   build inspection. (The phase's own `axe-core` / Playwright suites run
