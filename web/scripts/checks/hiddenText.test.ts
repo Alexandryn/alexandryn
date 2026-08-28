@@ -33,18 +33,34 @@ describe('findHandRolledHiddenText', () => {
     expect(found).toHaveLength(1)
   })
 
-  it('flags a hand-rolled clip-rect', () => {
-    const found = findHandRolledHiddenText(
+  it('flags the hand-rolled sr-only cluster regardless of class order', () => {
+    const a = findHandRolledHiddenText(
       tree({ 'b.tsx': '<span className="absolute w-px h-px overflow-hidden">x</span>' }),
     )
-    expect(found).toHaveLength(1)
+    const b = findHandRolledHiddenText(
+      tree({ 'b.tsx': '<span className="overflow-hidden h-px absolute w-px">x</span>' }),
+    )
+    expect(a).toHaveLength(1)
+    expect(b).toHaveLength(1)
   })
 
-  it('allows Tailwind sr-only', () => {
+  it('does not flag a 1px hairline that is not also clipped', () => {
+    const found = findHandRolledHiddenText(tree({ 'c.tsx': '<div className="h-px bg-border" />' }))
+    expect(found).toEqual([])
+  })
+
+  it('allows Tailwind sr-only (matches none of the patterns)', () => {
     const found = findHandRolledHiddenText(
-      tree({ 'c.tsx': '<a className="sr-only focus:not-sr-only">Skip to content</a>' }),
+      tree({ 'd.tsx': '<a className="sr-only focus:not-sr-only">Skip to content</a>' }),
     )
     expect(found).toEqual([])
+  })
+
+  it('flags display:none even when sr-only is also on the line', () => {
+    const found = findHandRolledHiddenText(
+      tree({ 'e.tsx': "<span className=\"sr-only\" style={{ display: 'none' }}>Loading</span>" }),
+    )
+    expect(found).toHaveLength(1)
   })
 
   it('allows a line with an explicit escape-hatch comment', () => {
