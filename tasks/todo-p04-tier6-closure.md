@@ -35,7 +35,7 @@ automated contributor's own judgement.
 - [x] T11 — Move all six `frontend-*.md` spec statuses `APPROVED → IMPLEMENTED → VERIFIED`. Per spec: re-read its Acceptance criteria, cite evidence each is met, then update the spec's status line **and** `.claude/specs/README.md`'s status column. Gated on T10. Commit (doc).
 - [x] T12 — Documentation sweep: `web/README.md`, root pointer files (only if they carry a phase-status line), `tasks/todo-phase04.md` (Tier 6 + P4-G done), `.claude/roadmap/README.md` index, CLAUDE.md "Where the task list lives" (verify not stale). Commit (doc).
 - [x] T13 — DONE (2026-08-28): build / lint / 257 Vitest / Storybook / prettier / 7 check scripts / staleness / npm audit 0 / 12 Playwright across 3 projects — all green. Full regression (plan §"Full regression"). Kill stray vite on 5174–5176 first. All green.
-- [ ] T14 — `/code-review high` as a fork. Fix every real finding, regression test per fix, commit each separately.
+- [x] T14 — /code-review high fork done: 3 doc-accuracy findings (benchmark number, test-plan wording, phase-03 row), all fixed in 6f9807f. No code findings (docs-only PR). `/code-review high` as a fork. Fix every real finding, regression test per fix, commit each separately.
 
 ### ═══ STOP GATE 2 — Checkpoint P4-G (final) ═══
 
