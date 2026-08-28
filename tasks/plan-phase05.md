@@ -90,19 +90,23 @@ triggered by the design reference.
   requirement and means two `npm install`s / two dependency trees for
   two TypeScript packages that will share tooling (ESLint, Prettier,
   Playwright, Zod).
-- **D2 — Electron main/preload build: `electron/` uses `tsc` directly (no
-  bundler).** `web/` needs Vite for HMR and browser bundling; `electron/`
-  main and preload are Node/Electron CommonJS-or-ESM targets with a small
-  file count and no browser bundle. `tsc -p electron/tsconfig.json`
-  emitting to `electron/dist/` is the whole build. The boot asset (static
-  HTML/CSS, Tier 3) is copied to `electron/dist/` by a plain script step,
-  not bundled. Rejected: electron-vite / electron-forge's bundler — a
-  bundler buys nothing at this surface size and adds a config to own.
-  Electron itself is pinned (constitution §9: what it does — the desktop
-  runtime; why not stdlib — there is no stdlib desktop runtime; exit
+- **D2 — Electron main/preload/boot build: `electron-vite`** (maintainer
+  decision, 2026-08-28 — overriding the plan's initial `tsc`-only
+  recommendation). Aligns `electron/`'s toolchain with `web/`'s Vite,
+  gives main-process HMR during dev, and produces the three build
+  targets (main, preload, the disk-loaded boot renderer) from one
+  config. `electron-vite` is pinned (constitution §9: what it does —
+  the standard Vite integration for Electron's three-target build; why
+  not stdlib / hand-rolled — it wraps Vite's own main/preload/renderer
+  presets which would otherwise be three hand-maintained configs; exit
+  cost — it is a thin config layer over Vite, so a move back to plain
+  `tsc` or to another integration rewrites `electron.vite.config.ts`
+  only, not the main/preload source). The boot asset (static HTML/CSS,
+  Tier 3) is `electron-vite`'s renderer target, `loadFile`-loaded from
+  `electron/out/` (never `loadURL`). Electron itself is pinned too
+  (§9: the desktop runtime; there is no stdlib desktop runtime; exit
   cost — the main/preload code is ~10 files against a well-documented
-  API, a migration to Tauri or similar would rewrite those but not the
-  Go server or `web/`).
+  API).
 - **D3 — the IPC `operations.ts` runtime-iteration mechanism is shared
   code, imported by both `preload/` and `main/`.** The spec fixes
   "iterate the same array" on both sides. `operations.ts` lives at
@@ -127,7 +131,7 @@ triggered by the design reference.
 - **D5 — Electron E2E in CI: a new `desktop` job, `xvfb-run` wrapping the
   Playwright command directly** (not a marketplace action). `needs:
   [frontend, backend]` — it needs `web/dist` embedded in a built Go
-  binary to load the real UI, and its own `electron/dist`. The job:
+  binary to load the real UI, and its own `electron/out`. The job:
   download the `backend`'s built binary artifact (add an upload step to
   the `backend` job), build `electron/`, `xvfb-run -a npx playwright test
   --project=electron`. `architecture-testing.md` FR-2 fixes the tool and
@@ -180,12 +184,12 @@ ADR 0008, D1–D5)
   entire check suite (build, lint, test, storybook, all `check:*`,
   playwright) still passes under the workspace root. Update
   `.github/workflows/ci.yml`'s `frontend` job paths.
-- **E2.** `electron/` package: `electron` pinned, `typescript`,
-  `electron/tsconfig.json` (main → CJS or ESM per Electron's current
-  norm, `strict`, `noUncheckedIndexedAccess`), `electron/src/main/`,
+- **E2.** `electron/` package: `electron` + `electron-vite` pinned, `typescript`,
+  `electron.vite.config.ts` (main / preload / boot-renderer targets),
+  `electron/tsconfig.json` (`strict`, `noUncheckedIndexedAccess`), `electron/src/main/`,
   `electron/src/preload/`, `electron/src/shared/`, a minimal
   `main/index.ts` that creates one `BrowserWindow` and loads a static
-  placeholder. `npm run -w electron build` → `electron/dist/`.
+  placeholder. `npm run -w electron build` (electron-vite) → `electron/out/`.
 - **E3.** Shared ESLint + Prettier config at the workspace root, covering
   both `web/` and `electron/` (electron gets `no-restricted-imports` for
   the wildcard-IPC rule, a lint-enforced constitution §5 guard).

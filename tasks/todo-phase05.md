@@ -5,22 +5,23 @@ Execute in order; each task is RED → GREEN → Refactor, one commit. Stop
 at every checkpoint. Two constitution stop-and-ask gates: this plan (now),
 and after the security audit (E29 → E30).
 
-## Decisions (resolve once, don't re-derive mid-task)
+## Decisions (all resolved by maintainer 2026-08-28)
 
-- [ ] D1 — npm workspace root (`package.json` + `["web","electron"]`), `web/` becomes a member; prove phase-04 suite still green
-- [ ] D2 — `electron/` builds with `tsc` directly, no bundler; boot asset copied not bundled
-- [ ] D3 — `operations.ts` at `electron/src/shared/`, iterated by both `preload/` and `main/`
-- [ ] D4 — `tokens.css` copied into `electron/` build from `web/src/tokens.css`, build-time existence assert
-- [ ] D5 — CI `desktop` job, `xvfb-run -a`, `needs: [frontend, backend]`, downloads the server binary artifact
-- [ ] D6 — Linux+macOS parent-watch in `cmd/server` (new `internal/deskhost/parentwatch`); Windows Job Object in `electron/` main
-- [ ] D7 — macOS/Windows paths implemented+unit-tested to spec, integration-UNVERIFIED (Linux-only CI); stated in closure + audit, not hidden
+- [x] D1 — **create the npm workspace root now** (`package.json` + `["web","electron"]`), `web/` becomes a member; Tier 0 proves phase-04 suite still green
+- [x] D2 — **`electron-vite`** for `electron/`'s main/preload/boot build (maintainer override of the plan's `tsc` recommendation); boot asset is the renderer target, `loadFile` from `electron/out/`
+- [x] D3 — `operations.ts` at `electron/src/shared/`, runtime-iterated by both `preload/` and `main/` (spec-aligned)
+- [x] D4 — `tokens.css` copied into `electron/` build from `web/src/tokens.css`, build-time existence assert (spec-aligned; no symlink, no third copy)
+- [x] D5 — CI `desktop` job, **`xvfb-run -a`** wrapping the command, `needs: [frontend, backend]`, downloads the server binary artifact
+- [x] D6 — Linux+macOS parent-watch in `cmd/server` (new `internal/deskhost/parentwatch`); Windows Job Object in `electron/` main (per FR-6)
+- [x] D7 — **land macOS/Windows to spec, unit-test seams, flag integration-UNVERIFIED** (Linux-only CI); stated in closure + audit, carried Open question for a future mac/win pass
+- [x] Plan approved — run Tiers 0–7 autonomously through E29 (security audit), stop at the post-audit gate
 
 ## Tasks
 
 **Tier 0 — Electron bootstrap**
 
 - [ ] E1 — root `package.json` workspaces; `web/` → member; consolidate lockfile; prove `web/`'s full check suite green under the root; update `ci.yml` `frontend` paths
-- [ ] E2 — `electron/` package: pinned `electron` + `typescript`, `electron/tsconfig.json` (strict + `noUncheckedIndexedAccess`), `src/{main,preload,shared}/`, minimal `main/index.ts` opening one window, `npm run -w electron build` → `electron/dist/`
+- [ ] E2 — `electron/` package: pinned `electron` + `electron-vite` + `typescript`, `electron.vite.config.ts` (main / preload / boot-renderer targets), `electron/tsconfig.json` (strict + `noUncheckedIndexedAccess`), `src/{main,preload,shared,renderer/boot}/`, minimal `main/index.ts` opening one window, `npm run -w electron build` → `electron/out/`
 - [ ] E3 — shared root ESLint + Prettier for both packages; `electron/` gets `no-restricted-imports` guarding wildcard IPC
 - [ ] E4 — `@playwright/test` `_electron` harness + `electron` project; smoke test: window opens, `contextIsolation`/`sandbox`/`nodeIntegration` asserted correct (RED against a mis-set flag first)
 - [ ] E5 — CI `desktop` job (D5): `backend` job uploads the server binary; `desktop` `needs:[frontend,backend]`, builds `electron/`, `xvfb-run -a npx playwright test --project=electron`, + `tsc --noEmit`, ESLint, Vitest
