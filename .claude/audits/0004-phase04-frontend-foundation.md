@@ -68,8 +68,38 @@ architecture* the shell is built around can be subverted: does any code
 infer privilege from a client-side signal that a user with devtools can
 change?
 
-- **Evidence:** _(T5)_
-- **Result:** _(T5)_
+- **Evidence (T5):**
+  - Whole-tree grep for client-side privilege inference —
+    `navigator.*`, `userAgent`, `window.electron`, `process.type`,
+    `.hostname`, `.protocol`, `isElectron`, `isHost` — returns **zero**.
+    The only `import.meta.env` use is `main.tsx`'s MSW dev-mode gate,
+    which is not a capability decision.
+  - The capability value has exactly one source:
+    `CapabilityProvider` → `useQuery(['bootstrap'], fetchBootstrap)` →
+    `getJson('/api/bootstrap')`. Nothing else can populate it.
+  - Fail-closed: `data === undefined` (initial load **or** a rejected
+    request) → `{ status: 'loading' }`. `granted` is reached only when
+    `data` is present, and `can()` is a strict
+    `data.capabilities[capability] === true`. No error branch degrades
+    to an optimistic `granted`.
+  - `RequireCapability` renders the loading state — never `children` —
+    while `status === 'loading'`, per `architecture-frontend.md`'s
+    illegal-transition rule.
+  - `routes.tsx`'s `hostOnly()` wrapper is the single place host-only
+    routing is declared; no route infers its own privilege.
+  - Tests: `capability.test.tsx` covers loading→granted, the
+    no-host-only-flash acceptance criterion (5-microtask loop), and — added
+    here — **stays loading when the bootstrap fetch fails, never
+    optimistic granted**. Observed failing (3 tests) against a planted
+    optimistic fallback in `CapabilityProvider`, green after revert.
+- **Result:** The gate is server-told and fails closed. That every
+  capability currently renders (the mock grants all) is **by design** —
+  `architecture-frontend.md` FR-3: every connection is loopback-only and
+  trusted at the same level as Electron's renderer until phase 12/13.
+  Recorded as an **Accepted, phase-gated risk** (A-0004-03), exactly as
+  audit `0001` recorded the deliberately unauthenticated
+  `/healthz`/`/readyz`. The load-bearing property — a single server-told
+  enforcement seam for phase 12/13 to attach real auth to — holds.
 
 ### 2. A malicious **source** or metadata provider
 
@@ -204,7 +234,16 @@ does the shell expose host-only *content* to a viewer-capability client?
   - `storybook-static/` is git-ignored and untracked, and no Go code
     `go:embed`s `web/dist` yet (phase 05/06) — the Storybook build is
     never a shipped artifact.
-- **Evidence (host-only content exposure):** _(T5)_
+- **Evidence (host-only content exposure, T5)** — see attacker 1: the
+  shell currently renders every capability because the mock grants all,
+  which `architecture-frontend.md` FR-3 makes correct for the
+  loopback-only phase-04/pre-12 state. Accepted, phase-gated
+  (A-0004-03). The gate is server-told and fails closed, so phase 12/13
+  attaches real enforcement without restructuring.
+- **Result (attacker 3):** No leak. The bundle carries no secret and no
+  mock layer; the "host-only content renders for everyone" behaviour is
+  an accepted, documented, phase-gated design decision, not a
+  vulnerability.
 
 ### 4. Hostile **content** — a book file that is fine to possess but not to parse
 

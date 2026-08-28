@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
+import { server } from '../../mocks/node'
 import { useCapability } from './CapabilityContext'
 import { CapabilityProvider } from './CapabilityProvider'
 import { RequireCapability } from './RequireCapability'
@@ -29,6 +31,26 @@ describe('useCapability', () => {
 
   it('throws outside a CapabilityProvider', () => {
     expect(() => render(<StatusProbe />)).toThrow(/CapabilityProvider/)
+  })
+
+  // Fail-closed: a failed bootstrap fetch must never degrade to an
+  // optimistic `granted` (audit 0004, F26 / T5 — the load-bearing
+  // security property of architecture-frontend.md FR-3). `data ===
+  // undefined` covers both the initial load and a rejected request.
+  it('stays loading when the bootstrap fetch fails — never optimistic granted', async () => {
+    server.use(http.get('*/api/bootstrap', () => HttpResponse.error()))
+
+    wrap(
+      <RequireCapability capability="settings">
+        <h1>Settings</h1>
+      </RequireCapability>,
+    )
+
+    for (let i = 0; i < 8; i++) {
+      await Promise.resolve()
+    }
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+    expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument()
   })
 })
 
