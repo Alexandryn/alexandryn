@@ -3,9 +3,19 @@
 A test plan accompanies each specification and is written *before* the
 implementation — concretely, before that specification's own phase
 reaches its RED step, not immediately upon the spec's own approval; see
-[ADR 0016](../decisions/0016-test-plan-cadence.md) for why phases 04
-onward having no test plan yet is the intended cadence, not a gap. Start
-from [`../templates/test-plan.md`](../templates/test-plan.md).
+[ADR 0016](../decisions/0016-test-plan-cadence.md) (**Accepted**) for the
+cadence. Start from [`../templates/test-plan.md`](../templates/test-plan.md).
+
+**Form, for a phase sliced into tiers.** When a phase's implementation is
+broken into tiers with their own `tasks/plan-<phase>-<tier>.md` docs
+(phase 04's Tiers 0–6 are the precedent), that plan doc's **Test
+strategy** section — layers, fixtures, adversarial cases, acceptance
+criteria, written before the tier's RED step — *is* the test plan for the
+specs that tier implements. A separate `.claude/test-plans/<spec>.md`
+file is not also required. A phase implemented in one pass (phase 03)
+gets the standalone files below. Either way, a phase does not close until
+its Exit criteria confirm a test plan exists in one of these two forms
+(ADR 0016, Option A's enforcement line).
 
 The plan's job is not to enumerate every test. It is to decide where confidence
 needs to come from, so that effort lands on the parts most likely to be wrong
@@ -52,3 +62,4 @@ get a case. Constitution §10.
 | [`backend-http-transport.md`](backend-http-transport.md) | [`backend-http-transport.md`](../specs/backend-http-transport.md) | `REVIEWED` (independent, findings fixed — [`0027`](../reviews/0027-test-plan-backend-http-transport.md)) |
 | [`backend-persistence.md`](backend-persistence.md) | [`backend-persistence.md`](../specs/backend-persistence.md) | `REVIEWED` (independent, findings fixed — [`0029`](../reviews/0029-test-plan-backend-persistence.md)) |
 | [`backend-test-harness.md`](backend-test-harness.md) | [`backend-test-harness.md`](../specs/backend-test-harness.md) | `REVIEWED` (independent, findings fixed — [`0030`](../reviews/0030-test-plan-backend-test-harness.md)) |
+| Phase 04 — `frontend-tooling`, `frontend-design-tokens`, `frontend-component-primitives`, `frontend-generated-covers`, `frontend-shell-and-routing`, `frontend-accessibility` | same | Test plan carried per-tier in [`tasks/plan-phase04.md`](../../tasks/plan-phase04.md) and `tasks/plan-p04-<tier>.md` Test-strategy sections (ADR 0016 form; phase 04 Exit criteria confirm this) |

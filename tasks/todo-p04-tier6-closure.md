@@ -9,8 +9,9 @@ automated contributor's own judgement.
 ## Decisions (resolve once)
 
 - [x] D1 — audit file: `.claude/audits/0004-phase04-frontend-foundation.md`, findings `A-0004-NN`
-- [ ] D2 — carried item 1 (`text-3` AA): maintainer call — accept permanently / darken / escalate
-- [ ] D3 — carried item 2 (test plans): maintainer call — author 6 now / ratify per-tier convention (ADR 0016 → Accepted)
+- [x] D2 — carried item 1 (`text-3` AA): **accept permanently** (maintainer, 2026-08-28) — text-3 is secondary/decorative labelling only
+- [x] D3 — carried item 2 (test plans): **ratify the per-tier convention** (maintainer, 2026-08-28) — ADR 0016 → Accepted, amend `test-plans/README.md`, add an exit-criteria line
+- [x] D4 — Gate 1 audit **APPROVED** (maintainer, 2026-08-28); F27 into PR #65 retitled; carried items 3/4/5 record-only, confirmed
 
 ## F26 — Security audit
 
@@ -25,7 +26,7 @@ automated contributor's own judgement.
 
 ### ═══ STOP GATE 1 ═══
 
-- [ ] Present the audit and every finding (severity, status, accepted judgment calls). Wait for maintainer sign-off. **Do not start F27 before sign-off.**
+- [x] Present the audit and every finding. **Maintainer sign-off received 2026-08-28** (PR #65 CI green; verdict Clear; carried-item decisions D2/D3/D4 recorded above).
 
 ## F27 — Closure (after audit sign-off)
 

@@ -153,6 +153,17 @@ resolved without inventing a color that was never approved.
   design-tool canvas isn't itself contrast-audited. This is
   `frontend-accessibility.md`'s requirement, satisfied at the token
   layer here rather than retrofitted per component.
+  *(Amended 2026-08-28, phase 04 Tier 6 / F27, maintainer decision D2:
+  one accepted permanent exception — `text-3` (`#9C978F`, from every
+  canvas's `--tx3`) does not meet AA against any surface (2.90:1 at
+  best). It is accepted as a decorative / non-essential tertiary label
+  colour only — muted captions, the correlation-ID line — never body or
+  load-bearing text. `web/scripts/check-token-contrast.ts` records it in
+  `KNOWN_EXCEPTIONS` and continues to fail the build if any **other**
+  pair regresses. Tier 5 additionally lifts `text-3` to the `text-2`
+  value under `@media (prefers-contrast: more)` (`web/src/a11y.css`), so
+  a high-contrast user gets an AA-passing value. The default palette is
+  not changed — darkening `--tx3` unilaterally would violate FR-4.)*
 - **Reliability** — FR-2's repeatable-process requirement is what keeps
   tokens from drifting out of sync with the design reference silently.
 - **Observability** — not applicable; build-time only.

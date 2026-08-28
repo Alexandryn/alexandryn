@@ -249,7 +249,12 @@ which is every other phase 04 spec's job.
 
 - **FR-4's 250 KiB number** — reasoned placeholder, not measured against
   a real component library; confirm or replace once phase 06 adds real
-  screens.
+  screens. *(Phase 04 Tier 6 / F27 baseline, 2026-08-28: the built
+  initial JS payload is **~103.9 KiB gzipped** — 18 primitives + the
+  generated-cover system + shell + router + TanStack Query + MSW-free
+  production build. That is the number phase 06 confirms or replaces
+  against; the 250 KiB budget held with ~58% headroom through all of
+  phase 04. `check:bundle-size` gates it in CI.)*
 - **Route-level code-splitting** — FR-4's budget covers the initial
   payload; whether/how per-route chunks are split is an implementation
   detail this spec doesn't fix, since no routes exist yet
