@@ -1,12 +1,12 @@
 # Phase 04 — Frontend foundation
 
-|                |                                                                                                                        |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Status**     | Implementation complete; in closure — Tier 6 F26 (audit) signed off, Checkpoint P4-G pending final maintainer approval |
-| **Depends on** | Phase 01                                                                                                               |
-| **Blocks**     | 05, 06                                                                                                                 |
-| **Opened**     | 2026-08-26 (Tier 0, PR #59)                                                                                            |
-| **Closed**     | — (Checkpoint P4-G)                                                                                                    |
+|                |                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------ |
+| **Status**     | **Complete** — all exit criteria met, Checkpoint P4-G maintainer approval 2026-08-28 |
+| **Depends on** | Phase 01                                                                             |
+| **Blocks**     | 05, 06                                                                               |
+| **Opened**     | 2026-08-26 (Tier 0, PR #59)                                                          |
+| **Closed**     | 2026-08-28 (Tier 6, PR #66)                                                          |
 
 ## Objective
 
@@ -196,8 +196,12 @@ over time, checked in CI.
       `tasks/todo-p04-tier{2..6}.md` (Tiers 0–1 are F1–F9 directly in
       `plan-phase04.md`, no separate tier doc). This is the ratified form
       for a tiered phase (`test-plans/README.md`).
-- [ ] **Maintainer approval recorded** — Checkpoint P4-G (below); the
-      final Tier 6 gate, not yet crossed.
+- [x] **Maintainer approval recorded** — Checkpoint P4-G, 2026-08-28.
+      Full suite green (build / lint / `tsc` / 257 Vitest / Storybook /
+      12 `@playwright/test` / bundle-size / `npm audit` / the a11y grep
+      checks / token-styling / token-contrast / staleness), CI green on
+      PRs #65 and #66, audit `0004` Clear, all six specs `VERIFIED`,
+      this walk complete.
 
 ## Closure
 
@@ -295,10 +299,12 @@ closure. Per spec, the acceptance criteria and the evidence each is met:
 
 ## Checkpoint P4-G
 
-Pending. Presented to the maintainer when: the full suite is green
-(build / lint / typecheck / Vitest / Storybook / `axe-core` / all three
-Playwright projects / bundle-size / `npm audit` / the two a11y grep
-checks / `token-styling` / `token-contrast` / staleness); the security
-audit is recorded with no open Critical/High; all six specs are
-`VERIFIED`; this exit-criteria walk is complete with evidence. On the
-maintainer's approval, **Closed** is set and phase 04 is complete.
+**Passed 2026-08-28.** The full suite was green (build / lint / typecheck
+/ Vitest / Storybook / `axe-core` / all three Playwright projects /
+bundle-size / `npm audit` / the two a11y grep checks / `token-styling` /
+`token-contrast` / staleness), CI green on PRs #65 and #66, the security
+audit recorded with no open Critical/High (`0004`, Clear), all six specs
+`VERIFIED`, and this exit-criteria walk complete with evidence. Maintainer
+approval given. Phase 04 is complete; the frontend foundation is ready
+for phase 05 (desktop host) and phase 06 (first real backend
+integration) to build on.
