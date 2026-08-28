@@ -17,20 +17,20 @@ Each task: RED → GREEN → Refactor, one commit. Stop at Checkpoint P4-F.
 
 ## Tasks
 
-- [ ] T1 — no-positive-`tabindex` grep check + CI (RED: `tabIndex={2}` fixture flagged; real tree clean)
-- [ ] T2 — `<VisuallyHidden>` convention grep check (`display:none` / clip-rect on text) + CI + fix any real hit
-- [ ] T3 — `web/docs/keyboard-map.md` + `keyboardMap.test.tsx` per category (Tab/Shift+Tab, Enter/Space, Arrows-roving, Escape) — keyboard-only assertions, fix any deviating primitive
-- [ ] T4 — real-browser `@axe-core/playwright` over an `e2e/a11y-gallery/` page (every primitive, representative states); fold in the shell scan; CI note distinct from `jsx-a11y`
-- [ ] T5 — `prefers-contrast` (gated on G1): `src/a11y.css` `@media (prefers-contrast: more)` — `--color-text-3 → text-2`, Spinner/Skeleton/ProgressBar decoration; imported from `main.tsx`
-- [ ] T6 — composed E2E: `emulateMedia({ reducedMotion })` → no animations on a shell view with Spinner+Skeleton; CSS-parse test for the `@media (prefers-contrast: more)` block (+ `forcedColors` if G2)
+- [x] T1 — no-positive-`tabindex` grep check + CI (RED: `tabIndex={2}` fixture flagged; real tree clean)
+- [x] T2 — `<VisuallyHidden>` convention grep check (`display:none` / clip-rect on text) + CI + fix any real hit
+- [x] T3 — `web/docs/keyboard-map.md` + `keyboardMap.test.tsx` per category (Tab/Shift+Tab, Enter/Space, Arrows-roving, Escape) — keyboard-only assertions, fix any deviating primitive
+- [x] T4 — real-browser `@axe-core/playwright` over an `e2e/a11y-gallery/` page (every primitive, representative states); fold in the shell scan; CI note distinct from `jsx-a11y`
+- [x] T5 — `prefers-contrast` (gated on G1): `src/a11y.css` `@media (prefers-contrast: more)` — `--color-text-3 → text-2`, Spinner/Skeleton/ProgressBar decoration; imported from `main.tsx`
+- [x] T6 — composed E2E: `emulateMedia({ reducedMotion })` → no animations on a shell view with Spinner+Skeleton; CSS-parse test for the `@media (prefers-contrast: more)` block (+ `forcedColors` if G2)
 
 ## Checkpoint P4-F
 
-- [ ] Zero `axe-core` violations across every primitive and shell layout
-- [ ] Keyboard map documented and matches actual behaviour, proven per category
-- [ ] No positive `tabindex` anywhere, grep-checked
-- [ ] Every visually-hidden label uses `<VisuallyHidden>` / `sr-only`, grep-checked
-- [ ] Reduced-motion / high-contrast composed check passes
+- [x] Zero `axe-core` violations across every primitive and shell layout
+- [x] Keyboard map documented and matches actual behaviour, proven per category
+- [x] No positive `tabindex` anywhere, grep-checked
+- [x] Every visually-hidden label uses `<VisuallyHidden>` / `sr-only`, grep-checked
+- [x] Reduced-motion / high-contrast composed check passes
 
 Then: full regression → `/code-review high` fork → PR (`/make-pr` conventions) → `gh pr checks --watch`.
 
