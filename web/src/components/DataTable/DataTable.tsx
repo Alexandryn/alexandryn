@@ -82,6 +82,10 @@ export function DataTable<T>({
 
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, key: string, index: number) {
     if (!onRowSelect) return
+    // A key pressed on a control inside a cell is that control's to handle;
+    // row selection and arrow navigation stay off until focus is on the
+    // row. Phase 04's cells hold no interactive content, so this is inert
+    // today — revisit the pattern if that changes.
     if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
     switch (event.key) {
       case 'Enter':
@@ -162,7 +166,15 @@ export function DataTable<T>({
               tabIndex={onRowSelect ? (index === rovingRow ? 0 : -1) : undefined}
               onClick={onRowSelect ? (event) => handleRowClick(event, key) : undefined}
               onKeyDown={onRowSelect ? (event) => handleRowKeyDown(event, key, index) : undefined}
-              onFocus={onRowSelect ? () => setActiveRow(index) : undefined}
+              // Only when the row itself takes focus — not a focusin bubbling
+              // up from a future interactive control inside a cell.
+              onFocus={
+                onRowSelect
+                  ? (event) => {
+                      if (event.target === event.currentTarget) setActiveRow(index)
+                    }
+                  : undefined
+              }
               className={cx(
                 'border-b border-border-2',
                 onRowSelect && cx('cursor-pointer', FOCUS_RING),
