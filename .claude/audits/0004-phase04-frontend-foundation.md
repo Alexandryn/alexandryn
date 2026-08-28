@@ -162,6 +162,32 @@ the MSW fixtures.
     shape or navigate by param when the id comes from the real backend.
 - **Result:** No XSS or injection finding at Critical/High/Medium.
   Two Informational notes (A-0004-01 carried from T2, A-0004-02 here).
+- **Evidence (domain boundary, constitution §3, T6):**
+  - `src/data/http.ts` — `ApiErrorBody` / `ApiError` is exactly
+    `architecture-contracts.md` FR-5's `Error` schema
+    (`code`/`message`/`correlationId`), verified against
+    `api/openapi.yaml`. A normalised system-contract shape.
+  - `src/data/library.ts` — `LibraryItem` is `{ id, title, author }`,
+    `author` a single reduced string, **not** Open Library's
+    `authors: [{key,name}]` array or a work/edition record. A minimal
+    normalised display shape (comment: "phase 06 replaces this with the
+    real library resource").
+  - `src/data/bootstrap.ts` — `Bootstrap` / `Capability` is an
+    Alexandryn capability shape (`architecture-frontend.md` FR-3's named
+    set), not a provider or source-protocol shape.
+  - No source protocol (OPDS, local-folder) exists anywhere in phase 04
+    (sources are phase 08). No metadata adapter exists (phase 07). The
+    `src/data/` layer is the seam those phases will normalise at; phase
+    04 populates it only with already-normalised shapes, so no adapter
+    is bypassed.
+  - `GeneratedCover` takes `author?: string` — a pre-reduced display
+    string, never a raw `Author[]` — decoupled from the domain array
+    shape per `frontend-generated-covers.md` FR-1.
+  - The MSW fixtures model normalised `LibraryItem[]`, the capability
+    shape, and the contract `Error` shape — none models an Open Library
+    JSON response or an OPDS feed.
+  - **Result:** No domain-boundary violation. No metadata-provider
+    response shape and no source protocol reaches the UI.
 
 ### 3. A device on the **local network** without a credential
 
@@ -264,20 +290,29 @@ for `console.*` / logging calls, checked for anything that would print a
 credential, a token, a home-directory path, or the content of what
 someone is reading (constitution §8).
 
-- **Evidence:** _(T4)_
-- **Result:** _(T4)_
+- **Evidence (T3/T4):** the only `console.*` call in production source is
+  `main.tsx`'s dev-only `console.error('MSW dev worker failed to start;
+  continuing without mocks', error)` — no credential, token,
+  home-directory path, or reading content, and unreachable in a
+  production build.
+- **Result:** Nothing logged that shouldn't be.
 
 ### What happens when input is malformed, empty, enormous, duplicated, slow, or never arrives?
 
 _(T3, T5)_
 
 The capability value never arriving is a designed state (`RequireCapability`
-holds `loading`, `architecture-frontend.md`'s illegal-transition rule).
-A malformed/empty API response, an over-long title, and a slow fetch are
-each covered by existing component and integration tests; this audit
-checks they degrade safely rather than re-deriving that coverage.
+holds `loading`, `architecture-frontend.md`'s illegal-transition rule;
+T5's fail-closed test). A malformed/empty API response degrades to
+`ErrorState` with the response's `correlationId` (`QueryResult`, covered
+by `QueryResult.test.tsx` / `routes.test.tsx`); an over-long title is
+clamped by `TitleLayer`'s `line-clamp-3 break-words`
+(`TitleLayer.test.tsx`); an empty successful response renders
+`EmptyState`, not a blank pane (`Library.test.tsx`). This audit confirms
+these degrade safely rather than re-deriving the coverage.
 
-- **Evidence:** _(T3, T5)_
+- **Evidence:** T3 (rendering), T5 (capability fail-closed); existing
+  component/integration suites for the rest.
 
 ### What happens if two of these run at once?
 
