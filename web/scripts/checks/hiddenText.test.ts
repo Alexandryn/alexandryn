@@ -58,7 +58,7 @@ describe('findHandRolledHiddenText', () => {
 
   it('flags display:none even when sr-only is also on the line', () => {
     const found = findHandRolledHiddenText(
-      tree({ 'e.tsx': "<span className=\"sr-only\" style={{ display: 'none' }}>Loading</span>" }),
+      tree({ 'e.tsx': '<span className="sr-only" style={{ display: \'none\' }}>Loading</span>' }),
     )
     expect(found).toHaveLength(1)
   })

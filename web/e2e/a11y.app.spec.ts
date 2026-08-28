@@ -42,28 +42,12 @@ test('the not-found view has no axe violations', async ({ page }) => {
   expect(results.violations).toEqual([])
 })
 
-// frontend-accessibility.md FR-5: the per-primitive motion-reduce rules
-// (Tier 2) actually compose at the app level. Hold the capability value
-// so the host-only route's RequireCapability keeps rendering its Spinner,
-// then check the spinning element under each media state.
-async function spinnerAnimationCount(page: import('@playwright/test').Page): Promise<number> {
-  await page.route('**/api/bootstrap', () => {
-    /* never resolve — keep the loading state on screen */
-  })
-  await page.goto('/settings')
-  const spinner = page.getByRole('status').locator('span[aria-hidden="true"]')
-  await expect(spinner).toBeVisible()
-  return spinner.evaluate((el) => el.getAnimations().length)
-}
-
-test('shell animations run by default but stop under prefers-reduced-motion', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
-  expect(await spinnerAnimationCount(page)).toBeGreaterThan(0)
-
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.unroute('**/api/bootstrap')
-  expect(await spinnerAnimationCount(page)).toBe(0)
-})
+// The reduced-motion composed check (FR-5) lives in the a11y gallery
+// project (e2e/a11y-gallery.gallery.spec.ts) — that harness renders
+// Spinner / Skeleton / ProgressBar permanently and has no service worker,
+// so emulateMedia and getAnimations() are deterministic there. Holding
+// the app's loading state instead would race MSW's ~50ms mock (and
+// page.route can't intercept a service-worker-answered request).
 
 test('the prefers-contrast adaptation is present in the served stylesheet', async ({ page }) => {
   // Playwright can't emulate prefers-contrast (maintainer decision G2), so
