@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { extractTokens } from './tokens/extract.ts'
 import { contrastRatio, meetsWcagAA } from './tokens/contrast.ts'
@@ -86,14 +86,23 @@ for (const [fg, bg] of pairs) {
 // src/a11y.css must redefine --color-text-3 to a value that passes AA on
 // every surface, so the KNOWN_EXCEPTIONS above are mitigated for a
 // high-contrast user rather than left flat.
-const a11yCss = readFileSync(join(import.meta.dirname, '..', 'src', 'a11y.css'), 'utf8')
+const a11yCssPath = join(import.meta.dirname, '..', 'src', 'a11y.css')
+if (!existsSync(a11yCssPath)) {
+  console.error(
+    'check-token-contrast: src/a11y.css does not exist — it carries the prefers-contrast: more override for --color-text-3 (frontend-accessibility.md FR-5)',
+  )
+  process.exit(1)
+}
+const a11yCss = readFileSync(a11yCssPath, 'utf8')
+// The override must reference a token (var(--color-*)) so this check can
+// resolve and re-verify its ratio; a raw hex would pass CSS but not this.
 const overrideMatch =
   /@media\s*\(prefers-contrast:\s*more\)\s*\{[\s\S]*?--color-text-3:\s*var\(--color-([a-z0-9-]+)\)/i.exec(
     a11yCss,
   )
 if (!overrideMatch) {
   console.error(
-    'check-token-contrast: src/a11y.css is missing the prefers-contrast: more override for --color-text-3 (frontend-accessibility.md FR-5)',
+    'check-token-contrast: src/a11y.css is missing a `--color-text-3: var(--color-*)` override inside a `@media (prefers-contrast: more)` block (frontend-accessibility.md FR-5)',
   )
   process.exit(1)
 }
