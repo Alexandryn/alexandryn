@@ -1,0 +1,8 @@
+# Root-level ignore. web/ keeps its own web/.prettierignore (prettier uses
+# the nearest ignore file, but walks up for .prettierrc — so the shared
+# style lives at the root .prettierrc.json and web/ still ignores its own
+# build output).
+package-lock.json
+electron/out
+test-results
+playwright-report
