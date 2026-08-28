@@ -41,3 +41,47 @@ test('the not-found view has no axe violations', async ({ page }) => {
   const results = await axe(page).analyze()
   expect(results.violations).toEqual([])
 })
+
+// frontend-accessibility.md FR-5: the per-primitive motion-reduce rules
+// (Tier 2) actually compose at the app level. Hold the capability value
+// so the host-only route's RequireCapability keeps rendering its Spinner,
+// then check the spinning element under each media state.
+async function spinnerAnimationCount(page: import('@playwright/test').Page): Promise<number> {
+  await page.route('**/api/bootstrap', () => {
+    /* never resolve — keep the loading state on screen */
+  })
+  await page.goto('/settings')
+  const spinner = page.getByRole('status').locator('span[aria-hidden="true"]')
+  await expect(spinner).toBeVisible()
+  return spinner.evaluate((el) => el.getAnimations().length)
+}
+
+test('shell animations run by default but stop under prefers-reduced-motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  expect(await spinnerAnimationCount(page)).toBeGreaterThan(0)
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.unroute('**/api/bootstrap')
+  expect(await spinnerAnimationCount(page)).toBe(0)
+})
+
+test('the prefers-contrast adaptation is present in the served stylesheet', async ({ page }) => {
+  // Playwright can't emulate prefers-contrast (maintainer decision G2), so
+  // assert the mechanism ships: the served CSS carries the FR-5 override.
+  await page.goto('/library')
+  const hasContrastRule = await page.evaluate(() =>
+    [...document.styleSheets].some((sheet) => {
+      try {
+        return [...sheet.cssRules].some(
+          (rule) =>
+            rule instanceof CSSMediaRule &&
+            rule.conditionText.includes('prefers-contrast') &&
+            rule.cssText.includes('--color-text-3'),
+        )
+      } catch {
+        return false
+      }
+    }),
+  )
+  expect(hasContrastRule).toBe(true)
+})
