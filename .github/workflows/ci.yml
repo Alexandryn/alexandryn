@@ -350,7 +350,7 @@ jobs:
         run: npm run -w @alexandryn/desktop lint
 
       - name: Unit tests
-        run: npm run -w @alexandryn/desktop test -- --passWithNoTests
+        run: npm run -w @alexandryn/desktop test
 
       # Electron is a GUI app and needs a display to launch at all on
       # Linux, window shown or not (architecture-testing.md FR-2).
