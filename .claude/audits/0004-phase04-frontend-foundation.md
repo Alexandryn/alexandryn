@@ -321,19 +321,214 @@ cache (`seedCache.ts`) is keyed by a deterministic hash of an identifier,
 so concurrent reads for the same identifier cannot produce divergent
 results. Not a concurrency-sensitive surface.
 
+## `/security-review` pass (branch)
+
+Run against the actual branch diff — **20 commits vs `main`** (Tiers 5
+*and* 6; `feat/phase04-tier5-accessibility` is not yet merged — see "What
+was not examined"). Not the thin pass originally predicted. Result: **no
+HIGH or MEDIUM security findings.** The diff adds accessibility grep
+checks (Node build-time scripts, fixed path args, no untrusted input),
+`src/a11y.css` (a `@media (prefers-contrast)` token override, no
+content-exposing selectors), the a11y-gallery Playwright harness
+(test-only, not in the app graph), DataTable roving-tabindex/keyboard
+nav (no new sink), and the Tier 6 audit doc + two regression tests. No
+`dangerouslySetInnerHTML` / `innerHTML` / `eval`; no secret; the CI
+workflow adds only `npm run` check steps (no `pull_request_target`, no
+untrusted-input eval). Two sub-threshold items carried below (A-0004-01,
+A-0004-02).
+
+## `agent-skills:security-and-hardening` checklist walk
+
+| Checklist area | Result for phase 04 |
+|---|---|
+| Threat model / trust boundaries | Done — four boundaries, four attackers (above) |
+| Validate external input at the boundary | `getJson<T>` casts the API response (`… as T`) with no runtime shape check — **A-0004-05** below. Mock-only in phase 04; phase 06 must normalise here (§3/§4). |
+| Parameterised DB queries | N/A — no database in the frontend |
+| Output encoding / XSS | React auto-escaping, no bypass (T3) — clean |
+| HTTPS / transport | N/A phase 04 — transport is phase 13; loopback in dev |
+| Password hashing, session cookies, auth rate-limiting | N/A — no authentication surface (phase 12) |
+| Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options) | None set — no `index.html` CSP meta, and no serving layer yet (phase 05/06) — **A-0004-04** below |
+| Secrets in code / git history | None (T4) |
+| Logging sensitive data | Only a dev-only, build-unreachable MSW log string (T3/T4) — clean |
+| Client-side validation as a security boundary | The capability gate is explicitly *not* the boundary — server-told, phase 12 enforces (A-0004-03) |
+| `eval` / `innerHTML` with user data | None (T3) |
+| Auth tokens in client storage | No `localStorage` / `sessionStorage` anywhere; `seedCache` is a deliberately in-memory `Map` |
+| Stack traces exposed to users | `RouteError` renders a fixed generic string for a non-`ApiError` (T3) |
+| SSRF (server-side URL fetch) | N/A — every `fetch` path in `getJson` is a hardcoded literal resolved against `window.location.origin`; client-side, not server-side |
+| Dependency audit / one lockfile / frozen install | `web/package-lock.json`, `npm ci` in CI, `npm audit --audit-level=high` as a CI gate — verified at T13 |
+| Dependency install scripts blocked | Not blocked (npm default). Recorded as a hardening observation, not a finding — no untrusted install surface in this repo's flow |
+| PII / data privacy | N/A — phase 04 collects no user data, has no accounts |
+| AI / LLM output handling | N/A — no LLM features |
+
 ## Findings
 
-_(Filled at T7 from the reconciled passes; Critical/High fixed at T8
-before Gate 1.)_
+_(Merged at T7 from all three passes + T2–T6; Critical/High fixed at T8
+before Gate 1. Awaiting the `agent-skills:security-auditor` subagent's
+independent pass before this table is finalised.)_
 
 | ID | Severity | Title | Status |
 |---|---|---|---|
-| _(T7)_ | | | |
+| A-0004-01 | Informational | Dev-only MSW error-log string retained in the production bundle | Open (accepted) |
+| A-0004-02 | Informational | `Library` interpolates an unvalidated `item.id` into a `<Link>` path | Open (phase-06 note) |
+| A-0004-03 | Accepted | Every capability renders (mock grants all) — loopback-only until phase 12/13 | Accepted (phase-gated) |
+| A-0004-04 | Low | No Content-Security-Policy on the shipped shell | Open (phase 05/06 owns the serving layer) |
+| A-0004-05 | Informational | `getJson` casts API responses with no runtime shape validation | Open (phase-06 normalisation) |
+
+### A-0004-01 — Dev-only MSW error-log string retained in the production bundle
+
+**Severity:** Informational
+
+**Component:** `web/src/main.tsx`
+
+**Description** — `enableMocking()`'s body (the `await import('./mocks/browser')`)
+is dead-code-eliminated behind the statically-false `import.meta.env.DEV`,
+but the surrounding `enableMocking().catch(...).finally(render)` promise
+chain is retained, so the string literal `"MSW dev worker failed to
+start; continuing without mocks"` appears in `dist/assets/index-*.js`.
+
+**Impact** — None. No `msw` / `mockServiceWorker` / `setupWorker`
+reference, no behaviour, no data. A reader disassembling the bundle sees
+one English phrase referencing a dev concept.
+
+**Preconditions** — None.
+
+**Recommendation** — Optional tidiness: hoist the whole `enableMocking`
+call behind `if (import.meta.env.DEV)` in `main.tsx` so the production
+bundle carries no MSW-adjacent strings at all. Not required for the
+spec's exclusion guarantee, which is met.
+
+**Resolution** — _(T8 decision)_
+
+### A-0004-02 — `Library` interpolates an unvalidated `item.id` into a `<Link>` path
+
+**Severity:** Informational
+
+**Component:** `web/src/screens/Library/Library.tsx`
+
+**Description** — `<Link to={\`/book/${item.id}\`}>` builds a route path
+from `item.id`, which in phase 06 will come from the backend / a metadata
+provider. React Router resolves `to` as a path, not a URL (no
+`javascript:` execution), but an `id` containing `/` or `..` segments
+could resolve the link to a different route than intended (e.g.
+`item.id = "x/../settings"` → `/settings`).
+
+**Impact** — None in phase 04: the fixture ids are `ol-1`…`ol-3`. In
+phase 06 the worst case is a crafted metadata id navigating the user to
+an unexpected in-app route — still gated by the (phase 12) server-side
+capability check for any host-only destination.
+
+**Preconditions** — Phase 06 wiring a real backend; an attacker
+controlling a work/edition id.
+
+**Recommendation** — Phase 06: validate the id shape at the `src/data/`
+boundary (it is an opaque token, `domain-bibliographic.md`), or navigate
+by route param object rather than string interpolation.
+
+**Resolution** — Carried to phase 06 (`frontend-library-screens.md`).
+
+### A-0004-03 — Every capability renders (mock grants all)
+
+**Severity:** Accepted (phase-gated) — not an open finding
+
+**Component:** `web/src/app/capability/*`, `web/src/data/bootstrap.ts`
+
+**Description** — The mock `/api/bootstrap` grants every capability, so
+every host-only route renders for any client, including a future LAN
+viewer.
+
+**Impact** — None in phase 04: constitution §6 keeps the host bound to
+loopback until phase 12/13, and `architecture-frontend.md` FR-3 states
+every connection is therefore trusted at the same level as Electron's
+renderer until then. There is no LAN client yet.
+
+**Preconditions** — Phases 12/13 (authentication, network access) — at
+which point the real bootstrap endpoint supplies a per-client capability
+set and this stops being "grant all".
+
+**Recommendation** — None. The load-bearing property — the gate is
+server-told and fails closed (verified T5), giving phase 12/13 a single
+enforcement seam — is correct. Recorded as an accepted, documented,
+phase-gated design decision, exactly as audit `0001` recorded the
+deliberately unauthenticated `/healthz`/`/readyz`.
+
+**Resolution** — Accepted; whoever implements phase 12 owns the real gate.
+
+### A-0004-04 — No Content-Security-Policy on the shipped shell
+
+**Severity:** Low (missing defence-in-depth)
+
+**Component:** `web/index.html`; the serving layer (phase 05/06)
+
+**Description** — The built `index.html` carries no CSP `<meta>`, and
+phase 04 has no server to set a `Content-Security-Policy` header. Once
+phase 06 renders source- and metadata-derived text, a CSP restricting
+`script-src` / `object-src` / `base-uri` would be a meaningful second
+line of defence behind React's escaping.
+
+**Impact** — None today (no untrusted text is rendered yet, no server
+exists). The value is entirely forward-looking: it shrinks the blast
+radius of any future escaping mistake.
+
+**Preconditions** — A future DOM-XSS bug in a phase-06+ screen.
+
+**Recommendation** — `desktop-host-window-and-serving.md` (phase 05,
+Electron `BrowserWindow`) and `backend-http-transport.md` (phase 06, the
+LAN-served response headers) should each set a CSP. Recorded here so it
+is not lost between phases; not phase 04's to implement (no serving
+layer).
+
+**Resolution** — Carried to phase 05/06.
+
+### A-0004-05 — `getJson` casts API responses with no runtime shape validation
+
+**Severity:** Informational
+
+**Component:** `web/src/data/http.ts`
+
+**Description** — `getJson<T>` returns `(await res.json()) as T` — a
+compile-time assertion, not a runtime shape check. Constitution §4
+requires every network response be validated with a shape check; §3
+requires normalisation at the boundary.
+
+**Impact** — None in phase 04: every response is an MSW fixture with a
+shape the frontend controls. The gap is real for phase 06, when the
+`src/data/` layer consumes the real backend and, later, adapter output
+derived from Open Library.
+
+**Preconditions** — Phase 06 wiring the real backend.
+
+**Recommendation** — Phase 06: add schema validation (the contract is
+`api/openapi.yaml`; a generated validator or a hand-written `zod`-style
+guard) at each `src/data/` fetch function before the data reaches a
+component. This is already the specs' stated design ("phase 06
+normalises"); recorded as an audit-tracked item so it is verified then,
+not assumed.
+
+**Resolution** — Carried to phase 06 (`frontend-library-screens.md`,
+`architecture-contracts.md`).
 
 ## Candidates investigated and rejected
 
-_(T7 — false positives and design decisions that are not findings, each
-with a confidence rating, per audit `0001`'s format.)_
+- **XSS via `TitleLayer` / `AuthorLayer` / `ErrorState` rendering
+  provider text** — every value is a React-escaped JSX text child; no
+  `dangerouslySetInnerHTML`. Guard test added (`xssEscaping.test.tsx`).
+  Confidence it is a real issue: 1/10.
+- **CSS injection via the generated-cover `hsl(...)` template literals**
+  — the interpolated `seed.hue` is `fnv1a(id) % 360`, a bounded integer;
+  `seed.pattern` is one of three literals. No caller-controlled string
+  reaches `style`. Guard test added. Confidence: 1/10.
+- **Capability gate spoofable client-side** — no code infers privilege
+  from port / origin / `isElectron` / user-agent / env (grep, T5). The
+  gate reads one server-told value and fails closed. Confidence: 1/10.
+- **MSW / fixtures shipped to production** — dead-code-eliminated;
+  `check:dist-msw` (both arms) + the strip plugin verified against a real
+  build (T2). Confidence: 1/10.
+- **Secret / token / DSN in the bundle** — `check:dist-secrets` verified;
+  manual scan clean; the one `localhost` literal is a bundled-dependency
+  runtime fallback (T4). Confidence: 1/10.
+- **`RouteError` leaking a stack trace to a LAN viewer** — renders a
+  fixed generic string for any non-`ApiError`; an `ApiError` shows only
+  its own `message`/`code`/`correlationId`. Confidence: 1/10.
 
 ## Severity guide
 
@@ -344,4 +539,24 @@ in both directions).
 
 ## What was not examined
 
-_(Filled at T7 — honest gaps in coverage.)_
+- **Runtime behaviour of a real server.** Phase 04 has no Go server
+  process; memory, timing, concurrency, and the actual response-header
+  set are phase 05/06 and were not exercisable here.
+- **Dependency CVEs beyond `npm audit --audit-level=high`.** That gate
+  runs in CI and is re-verified at T13; a deeper SCA (provenance,
+  transitive-graph review) is out of scope for this audit.
+- **The "malicious source" and "hostile book file" attackers** — no
+  source integration (phase 08) or file parsing (phase 10) exists to
+  exercise. Scoped out with reasoning above, per audit `0001`.
+- **Branch topology note (not a security gap):** this audit's
+  `/security-review` pass and the whole Tier 6 branch stack on
+  `feat/phase04-tier5-accessibility`, which is **not yet merged to
+  `main`** (20 commits ahead: 14 Tier 5 + 6 Tier 6). The phase-04 close
+  and the Tier 6 PR both depend on Tier 5 (PR #64) merging first, or on
+  Tier 6 being a stacked PR. Flagged to the maintainer at Gate 1 —
+  recorded here because it changes what "the phase 04 surface" means for
+  a later re-reader of this audit.
+- **The `agent-skills:security-auditor` subagent's independent
+  four-attacker pass** is pending at the time this section was drafted;
+  its findings are merged into the table above before Gate 1 and the
+  verdict is set at T8.
