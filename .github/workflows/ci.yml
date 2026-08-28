@@ -12,14 +12,17 @@ on:
 # built yet — a visible placeholder, not a silent gap); stage 9 is the
 # real container-target test.
 #
-# frontend/backend are two separate jobs (D2, tasks/plan-phase04.md),
-# not one job with both toolchains' steps: each uses its own native
-# GitHub Actions setup/cache action without cross-contaminating the
-# other's install/cache surface, and each job's own red/green signal
-# stays legible to a PR touching only one side. `backend` declares
-# `needs: frontend` and downloads its `web/dist` artifact so the
-# web-before-go-build ordering FR-8/ADR 0008 require is a real
-# dependency between two CI jobs, not just steps in file order.
+# frontend/backend/desktop are separate jobs (D2, tasks/plan-phase04.md;
+# D5, tasks/plan-phase05.md), not one job with every toolchain's steps:
+# each uses its own native GitHub Actions setup/cache action without
+# cross-contaminating the others' install/cache surface, and each job's
+# own red/green signal stays legible to a PR touching only one side.
+# `backend` declares `needs: frontend` and downloads its `web/dist`
+# artifact so the web-before-go-build ordering FR-8/ADR 0008 require is a
+# real dependency between two CI jobs. `desktop` (phase 05) declares
+# `needs: [frontend, backend]` — the workspace `npm ci` and a real
+# server binary for the _electron lifecycle tests — and runs its
+# Electron E2E behind xvfb (architecture-testing.md FR-2).
 
 jobs:
   frontend:
@@ -180,6 +183,20 @@ jobs:
       - name: Build
         run: go build ./...
 
+      # The `desktop` job (phase 05) needs a real server binary at a
+      # fixed path to spawn under @playwright/test's _electron harness
+      # (desktop-host-process-model.md FR-1's dev path resolves
+      # <root>/bin/alexandryn-server). Built here so the Electron E2E
+      # runs against a genuine binary, not a stub.
+      - name: Build server binary for the desktop job
+        run: CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
+
+      - name: Upload server binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-binary
+          path: bin/alexandryn-server
+
       # Stage 3 — go vet and lint, including the import-boundary check
       # (architecture-backend.md FR-3, FR-7; ADR 0018).
       - name: Vet
@@ -292,3 +309,53 @@ jobs:
       - name: Container-target test teardown
         if: always()
         run: docker compose --profile bundled-db down -v
+
+  # Phase 05 — the Electron desktop host. architecture-testing.md FR-2:
+  # @playwright/test's own `_electron` support, on a Linux runner behind a
+  # virtual display server (xvfb, D5). Needs `frontend` for the workspace
+  # `npm ci` and `backend` for a real server binary the lifecycle tests
+  # spawn (Tier 1+).
+  desktop:
+    name: Desktop
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Download server binary
+        uses: actions/download-artifact@v7
+        with:
+          name: server-binary
+          path: bin
+
+      - name: Mark server binary executable
+        run: chmod +x bin/alexandryn-server
+
+      - name: Build
+        run: npm run -w @alexandryn/desktop build
+
+      - name: Typecheck
+        run: npm run -w @alexandryn/desktop typecheck
+
+      - name: Lint
+        run: npm run -w @alexandryn/desktop lint
+
+      - name: Unit tests
+        run: npm run -w @alexandryn/desktop test -- --passWithNoTests
+
+      # Electron is a GUI app and needs a display to launch at all on
+      # Linux, window shown or not (architecture-testing.md FR-2).
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Playwright — _electron lifecycle
+        run: xvfb-run -a npm run -w @alexandryn/desktop test:e2e
