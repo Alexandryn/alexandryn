@@ -1,0 +1,23 @@
+/* Phase 05 scaffold (E2). E16 replaces this with @import of web/'s
+   generated tokens.css (copied into the build, FR-3) and the real
+   atStates visual treatment. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #f6f5f2;
+  color: #1a1917;
+  font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+}
+
+.boot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.boot__message {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
