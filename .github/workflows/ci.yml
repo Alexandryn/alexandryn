@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
+        # web/ is an npm workspace member (ADR 0008, package.json at repo
+        # root). Every `npm run` script below still resolves web/package.json
+        # from here; only `npm ci` (below) must run at the workspace root.
         working-directory: web
     steps:
       - uses: actions/checkout@v7
@@ -35,9 +38,10 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install
+        working-directory: ${{ github.workspace }}
         run: npm ci
 
       # frontend-design-tokens.md FR-2: regenerate src/theme.css,
