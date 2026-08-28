@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Status** | `VERIFIED` (2026-08-28, phase 04 Tier 6 / F27 — implemented Tier 3 (PR #62), audited [`0004`](../audits/0004-phase04-frontend-foundation.md), acceptance criteria walked in [`roadmap/04`](../roadmap/04-frontend-foundation/README.md#spec-verification); FR-4 numeric budgets carry a phase-04 baseline, confirm-or-replace deferred to phase 06) — was `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
 | **Phase** | `04-frontend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |

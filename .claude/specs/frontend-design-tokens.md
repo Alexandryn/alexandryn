@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — second extraction output `tokens.css`, cross-phase review finding, self-reviewed, re-confirmed by maintainer 2026-08-14, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
+| **Status** | `VERIFIED` (2026-08-28, phase 04 Tier 6 / F27 — implemented Tier 1 (PR #60), audited [`0004`](../audits/0004-phase04-frontend-foundation.md), acceptance criteria walked in [`roadmap/04`](../roadmap/04-frontend-foundation/README.md#spec-verification); one maintainer-accepted `text-3` AA exception, D2) — was `APPROVED` (amended post-approval — second extraction output `tokens.css`, cross-phase review finding, self-reviewed, re-confirmed by maintainer 2026-08-14, see [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md)) |
 | **Phase** | `04-frontend-foundation` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
