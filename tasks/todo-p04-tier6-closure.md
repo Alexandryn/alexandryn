@@ -37,9 +37,9 @@ automated contributor's own judgement.
 - [x] T13 — DONE (2026-08-28): build / lint / 257 Vitest / Storybook / prettier / 7 check scripts / staleness / npm audit 0 / 12 Playwright across 3 projects — all green. Full regression (plan §"Full regression"). Kill stray vite on 5174–5176 first. All green.
 - [x] T14 — /code-review high fork done: 3 doc-accuracy findings (benchmark number, test-plan wording, phase-03 row), all fixed in 6f9807f. No code findings (docs-only PR). `/code-review high` as a fork. Fix every real finding, regression test per fix, commit each separately.
 
-### ═══ STOP GATE 2 — Checkpoint P4-G (final) ═══
+### ═══ STOP GATE 2 — Checkpoint P4-G ═══ — PASSED 2026-08-28
 
-- [ ] Present: full suite green (build / lint / typecheck / Vitest / Storybook / axe-core / all three Playwright projects / bundle-size / npm audit / the two a11y grep checks / token-styling / token-contrast / staleness), security audit recorded with no open Critical/High, all six specs `VERIFIED`, roadmap exit criteria walked with evidence. Wait for maintainer approval to declare phase 04 complete.
+- [x] Checkpoint P4-G PASSED 2026-08-28 — full suite green, audit Clear, 6 specs VERIFIED, exit criteria walked, maintainer approval given. Roadmap Closed set.
 
 ## After approval (not this planning scope — recorded for continuity)
 
