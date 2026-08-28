@@ -52,7 +52,10 @@ export function findHandRolledHiddenText(dir: string): HiddenTextFinding[] {
         if (re.test(line)) findings.push({ file, pattern: patternName })
       }
       if (CLUSTER.every((re) => re.test(line))) {
-        findings.push({ file, pattern: 'hand-rolled sr-only cluster (w-px + h-px + overflow-hidden)' })
+        findings.push({
+          file,
+          pattern: 'hand-rolled sr-only cluster (w-px + h-px + overflow-hidden)',
+        })
       }
     })
   }
