@@ -1,0 +1,7 @@
+@import '../../src/theme.css';
+@import '../../src/a11y.css';
+
+/* This harness's Vite root is e2e/a11y-gallery/, so Tailwind's automatic
+ * content detection would only scan this directory and miss the utility
+ * classes the primitives declare in src/. Point it there explicitly. */
+@source '../../src';

@@ -64,8 +64,8 @@ describe('findPositiveTabindex', () => {
         tree({ 'g.tsx': '<tr tabIndex={onSelect ? (i === active ? 0 : -1) : undefined} />' }),
       ),
     ).toEqual([])
-    expect(findPositiveTabindex(tree({ 'h.tsx': '<div tabIndex={count === 2 ? 0 : -1} />' }))).toEqual(
-      [],
-    )
+    expect(
+      findPositiveTabindex(tree({ 'h.tsx': '<div tabIndex={count === 2 ? 0 : -1} />' })),
+    ).toEqual([])
   })
 })

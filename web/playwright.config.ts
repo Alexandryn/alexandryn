@@ -55,13 +55,16 @@ export default defineConfig({
       command: 'npx vite --port 5175 --strictPort',
       url: 'http://localhost:5175',
       reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
+      timeout: 120_000,
     },
     {
       command: 'npx vite --config e2e/a11y-gallery/vite.config.ts --port 5176 --strictPort',
       url: 'http://localhost:5176',
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      // Radix + axe + every primitive is a heavy first-run dep pre-bundle
+      // into a cold cacheDir, and all three servers boot at once — give it
+      // the same headroom the app server gets.
+      timeout: 120_000,
     },
   ],
 })
