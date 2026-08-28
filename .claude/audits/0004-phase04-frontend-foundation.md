@@ -182,7 +182,28 @@ does the shell expose host-only *content* to a viewer-capability client?
     without mocks"` survives into the bundle. It carries no `msw` /
     `mockServiceWorker` / `setupWorker` reference and has zero impact —
     recorded only for tidiness.
-- **Evidence (secrets in bundle):** _(T4)_
+- **Evidence (secrets in bundle, T4)** — against a real `npm run build`:
+  - `check:dist-secrets` on the clean build → exit 0. A planted
+    `AKIA…`-shaped key in `dist/assets/index-*.js` → exit 1,
+    `matched AKIA[0-9A-Z]{16}`; restored → exit 0.
+    `scripts/checks/secretsGrep.test.ts` covers the AWS-key pattern, the
+    generic `apiKey:`/`secret:`/`token:` assignment pattern, and a secret
+    in `index.html` at the dist root (not just `assets/`).
+  - Manual scan of `dist/` for `127.0.0.1` / `localhost` / `0.0.0.0` /
+    dev ports: **one** hit — `http://localhost` inside a bundled
+    dependency (React Router's internal history-base fallback, `function
+    F(){let r=\`http://localhost\`; e&&(r=e.location.origin…)}`),
+    immediately overwritten by `window.location.origin` at runtime. Not
+    our code, not a secret, no impact.
+  - No `/home/…` or `/Users/…` absolute path in `dist/`.
+  - No `.map` / source-map files emitted (`build.sourcemap` is Vite's
+    default `false`); no `process.env`, `DATABASE_URL`, or `.env`-shaped
+    content.
+  - The only production `console.*` call is `main.tsx`'s dev-only,
+    build-unreachable MSW-failure log (see T3).
+  - `storybook-static/` is git-ignored and untracked, and no Go code
+    `go:embed`s `web/dist` yet (phase 05/06) — the Storybook build is
+    never a shipped artifact.
 - **Evidence (host-only content exposure):** _(T5)_
 
 ### 4. Hostile **content** — a book file that is fine to possess but not to parse
