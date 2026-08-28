@@ -7,7 +7,11 @@ body {
   height: 100%;
   background: #f6f5f2;
   color: #1a1917;
-  font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Helvetica Neue',
+    sans-serif;
 }
 
 .boot {
