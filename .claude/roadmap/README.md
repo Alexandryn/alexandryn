@@ -25,27 +25,27 @@ for what's currently true.
 
 ## The phases
 
-| # | Phase | Delivers | Status |
-|---|---|---|---|
-| [00](00-foundation/) | Foundation | Repository, engineering memory, CI skeleton | **In progress** |
-| [01](01-architecture/) | Architecture | System, frontend, backend, host, persistence and messaging design | In progress |
-| [02](02-domain/) | Domain | The model: works, editions, files, sources, progress | In progress |
-| [03](03-backend-foundation/) | Backend foundation | Go service skeleton, config, logging, errors, migrations, health | Specs approved (+1 pending), implementation not started |
-| [04](04-frontend-foundation/) | Frontend foundation | React shell, design tokens, component library, routing, data layer | Specs approved, implementation not started |
-| [05](05-desktop-host/) | Desktop host | Electron shell, IPC boundary, lifecycle, loopback serving | Specs approved, implementation not started |
-| [06](06-library/) | Library | Browse, collections, search, filter, sort — the first real slice | Specs approved, implementation not started |
-| [07](07-metadata/) | Metadata | Open Library adapter, normalisation, caching, Discover | Specs approved, implementation not started |
-| [08](08-sources/) | Sources | Source abstraction, capabilities, first provider | Specs approved, implementation not started |
-| [09](09-async-jobs/) | Async jobs | Background work where it is actually justified | Specs approved, implementation not started |
-| [10](10-import/) | Import | Discovery → extraction → matching → confirmation → persistence | Specs approved, implementation not started |
-| [11](11-reader/) | Reader | Reading, position, preferences | Specs approved, implementation not started |
-| [12](12-authentication/) | Authentication | Accounts, sessions, authorisation | Not started |
-| [13](13-network-access/) | Network access | LAN exposure, binding, pairing, transport security | Not started |
-| [14](14-devices-and-sync/) | Devices and sync | Device management, progress across devices | Not started |
-| [15](15-observability/) | Observability | Metrics, queue visibility, diagnostics, Activity | Not started |
-| [16](16-security-hardening/) | Security hardening | Threat model consolidation, external-review readiness | Not started |
-| [17](17-accessibility-and-qa/) | Accessibility and QA | Conformance, the full test matrix, regression suite | Not started |
-| [99](99-release/) | Release | Packaging, versioning, release process, `docs`/`website` repos stood up | Not started |
+| #                              | Phase                | Delivers                                                                | Status                                                                                    |
+| ------------------------------ | -------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [00](00-foundation/)           | Foundation           | Repository, engineering memory, CI skeleton                             | **In progress**                                                                           |
+| [01](01-architecture/)         | Architecture         | System, frontend, backend, host, persistence and messaging design       | In progress                                                                               |
+| [02](02-domain/)               | Domain               | The model: works, editions, files, sources, progress                    | In progress                                                                               |
+| [03](03-backend-foundation/)   | Backend foundation   | Go service skeleton, config, logging, errors, migrations, health        | Specs approved (+1 pending), implementation not started                                   |
+| [04](04-frontend-foundation/)  | Frontend foundation  | React shell, design tokens, component library, routing, data layer      | Implementation complete; in closure — Checkpoint P4-G (final maintainer approval) pending |
+| [05](05-desktop-host/)         | Desktop host         | Electron shell, IPC boundary, lifecycle, loopback serving               | Specs approved, implementation not started                                                |
+| [06](06-library/)              | Library              | Browse, collections, search, filter, sort — the first real slice        | Specs approved, implementation not started                                                |
+| [07](07-metadata/)             | Metadata             | Open Library adapter, normalisation, caching, Discover                  | Specs approved, implementation not started                                                |
+| [08](08-sources/)              | Sources              | Source abstraction, capabilities, first provider                        | Specs approved, implementation not started                                                |
+| [09](09-async-jobs/)           | Async jobs           | Background work where it is actually justified                          | Specs approved, implementation not started                                                |
+| [10](10-import/)               | Import               | Discovery → extraction → matching → confirmation → persistence          | Specs approved, implementation not started                                                |
+| [11](11-reader/)               | Reader               | Reading, position, preferences                                          | Specs approved, implementation not started                                                |
+| [12](12-authentication/)       | Authentication       | Accounts, sessions, authorisation                                       | Not started                                                                               |
+| [13](13-network-access/)       | Network access       | LAN exposure, binding, pairing, transport security                      | Not started                                                                               |
+| [14](14-devices-and-sync/)     | Devices and sync     | Device management, progress across devices                              | Not started                                                                               |
+| [15](15-observability/)        | Observability        | Metrics, queue visibility, diagnostics, Activity                        | Not started                                                                               |
+| [16](16-security-hardening/)   | Security hardening   | Threat model consolidation, external-review readiness                   | Not started                                                                               |
+| [17](17-accessibility-and-qa/) | Accessibility and QA | Conformance, the full test matrix, regression suite                     | Not started                                                                               |
+| [99](99-release/)              | Release              | Packaging, versioning, release process, `docs`/`website` repos stood up | Not started                                                                               |
 
 ## Dependency graph
 
@@ -113,14 +113,14 @@ dangerous — it deserves a real corpus of files to defend against.
 The master brief proposed a phase list. This one differs in six places, each
 deliberately:
 
-| Change | Reason |
-|---|---|
-| Authentication moved *before* network exposure | The original order would have produced a build serving an unauthenticated library to the LAN. Not acceptable even transiently. |
+| Change                                                              | Reason                                                                                                                                         |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication moved _before_ network exposure                      | The original order would have produced a build serving an unauthenticated library to the LAN. Not acceptable even transiently.                 |
 | Observability split: baseline into phase 03, maturity into phase 15 | Structured logging and health checks are part of writing a server, not a later project. Phase 15 covers metrics, queue depth, and diagnostics. |
-| Security is a gate on every phase, not one phase | Phase 16 is consolidation and external-review readiness. A single security phase invites deferral. |
-| Async jobs became its own phase, placed at first need | Avoids assuming RabbitMQ is warranted before anything needs it. |
-| "Open Library" renamed to "Metadata" | A phase named after a vendor becomes a phase coupled to that vendor. |
-| Accessibility and QA consolidation added as phase 17 | Per-phase accessibility work still leaves conformance testing and the cross-device matrix as real, separate work. |
+| Security is a gate on every phase, not one phase                    | Phase 16 is consolidation and external-review readiness. A single security phase invites deferral.                                             |
+| Async jobs became its own phase, placed at first need               | Avoids assuming RabbitMQ is warranted before anything needs it.                                                                                |
+| "Open Library" renamed to "Metadata"                                | A phase named after a vendor becomes a phase coupled to that vendor.                                                                           |
+| Accessibility and QA consolidation added as phase 17                | Per-phase accessibility work still leaves conformance testing and the cross-device matrix as real, separate work.                              |
 
 ## Working a phase
 
@@ -142,12 +142,12 @@ not cross either gate on its own judgement.
 
 ## Status vocabulary
 
-| Status | Means |
-|---|---|
-| Not started | No work has begun. |
-| In progress | Specs or implementation underway. |
-| Blocked | Waiting on a dependency or a decision. The phase file says which. |
-| Closed | Exit criteria met, audit clear, maintainer signed off. |
+| Status      | Means                                                             |
+| ----------- | ----------------------------------------------------------------- |
+| Not started | No work has begun.                                                |
+| In progress | Specs or implementation underway.                                 |
+| Blocked     | Waiting on a dependency or a decision. The phase file says which. |
+| Closed      | Exit criteria met, audit clear, maintainer signed off.            |
 
 "Maintainer approval recorded" (an exit criterion on every phase) means the
 maintainer fills in the phase file's own **Closed** date, in the header table

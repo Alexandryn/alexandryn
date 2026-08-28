@@ -8,11 +8,14 @@
 
 ---
 
-> **Status: pre-alpha. Nothing is implemented yet.**
+> **Status: pre-alpha, under construction phase by phase.**
 >
-> This repository currently contains the engineering foundation — the
-> constitution, the roadmap, and the specifications being written against it.
-> There is no application to run. When there is, this notice will say so.
+> The engineering foundation — the constitution, the roadmap, the
+> specifications — is in place, and the lower phases are built against it:
+> the Go backend foundation (phase 03) and the React frontend foundation
+> (phase 04, fully mocked) are implemented and tested. They are not yet
+> wired together into a product you can run — that is phase 06. When there
+> is an application to launch, this notice will say so.
 
 ---
 
@@ -67,14 +70,14 @@ history with it.
                          Storage
 ```
 
-| Layer | Technology |
-|---|---|
-| Interface | React, TypeScript, Tailwind CSS |
-| Desktop host | Electron |
-| Server | Go |
-| Storage | PostgreSQL, self-hosted, local to the host |
-| Background work | PostgreSQL-backed job queue (ADR 0014) |
-| Packaging | Docker, Docker Compose |
+| Layer           | Technology                                 |
+| --------------- | ------------------------------------------ |
+| Interface       | React, TypeScript, Tailwind CSS            |
+| Desktop host    | Electron                                   |
+| Server          | Go                                         |
+| Storage         | PostgreSQL, self-hosted, local to the host |
+| Background work | PostgreSQL-backed job queue (ADR 0014)     |
+| Packaging       | Docker, Docker Compose                     |
 
 These are the intended choices. Each one is being justified in an architecture
 decision record rather than assumed — see `.claude/decisions/`.
