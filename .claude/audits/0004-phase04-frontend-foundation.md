@@ -95,8 +95,48 @@ client is served once phase 05/06 wire the Go server's file serving. Two
 angles: does the bundle leak anything a LAN client should not see, and
 does the shell expose host-only *content* to a viewer-capability client?
 
-- **Evidence:** _(T2, T4, T5)_
-- **Result:** _(T2, T4, T5)_
+- **Evidence (MSW / mock-boundary leak, T2)** — against a real
+  `npm run build` (`dist/assets/index-*.js`, 103.9 KiB gzipped):
+  - A whole-bundle grep for `mockServiceWorker`, `setupWorker`,
+    `msw/browser`, `mocks/browser`, `from "msw"`, `onUnhandledRequest`,
+    and the fixture identifiers (`bootstrapFixture`, `libraryItemsFixture`,
+    `notFoundError`, `generatedFixtures`) returns **nothing**. The
+    `import.meta.env.DEV`-gated `await import('./mocks/browser')` in
+    `src/main.tsx` is the only path to the mock layer from production
+    source, and it is dead-code-eliminated — no MSW package code, worker
+    registration, handler, or fixture reaches `dist`.
+  - `web/vite.config.ts`'s `strip-msw-worker-from-build` plugin: with a
+    `public/mockServiceWorker.js` present (it is — committed, `797b03a`,
+    the real 361-line MSW 2.x worker), `npm run build` produces a `dist/`
+    with **no** `mockServiceWorker.js` — the plugin removes it on
+    `writeBundle` after Vite's `public/` copy. Verified by build +
+    `test -f dist/mockServiceWorker.js` → absent.
+  - `check:dist-msw` fires on both arms: a planted `dist/mockServiceWorker.js`
+    (any content) → exit 1, `matched filename`; a planted `mockServiceWorker`
+    string inside `dist/assets/index-*.js` → exit 1, `matched
+    mockServiceWorker`. Clean build → exit 0. `scripts/checks/mswExclusion.test.ts`
+    already covers both arms plus false-positive resistance (`msword`,
+    `worker` in isolation).
+  - The strip plugin is additionally covered end-to-end in CI: the
+    committed `public/mockServiceWorker.js` would land in `dist` if the
+    plugin regressed, and CI's `check:dist-msw` step runs against the
+    real `npm run build` output.
+  - Dev-only paths walked (`e2e/vite.config.ts`,
+    `e2e/a11y-gallery/vite.config.ts`, `e2e/benchmark/vite.config.ts`,
+    `src/mocks/**`, `src/test/setup.ts`, `scripts/gen-fixtures.ts`): none
+    is reachable from the `index.html → src/main.tsx` production import
+    graph. `src/test/setup.ts` (imports `mocks/node`) is Vitest-only; the
+    three `e2e/*` Vite configs are invoked only by Playwright's
+    `webServer` and none produces `web/dist`.
+  - **One Informational note (A-0004-01):** `src/main.tsx`'s
+    `enableMocking()` body is eliminated, but the surrounding
+    `.catch(...).finally(render)` promise chain is retained, so the
+    English log string `"MSW dev worker failed to start; continuing
+    without mocks"` survives into the bundle. It carries no `msw` /
+    `mockServiceWorker` / `setupWorker` reference and has zero impact —
+    recorded only for tidiness.
+- **Evidence (secrets in bundle):** _(T4)_
+- **Evidence (host-only content exposure):** _(T5)_
 
 ### 4. Hostile **content** — a book file that is fine to possess but not to parse
 
