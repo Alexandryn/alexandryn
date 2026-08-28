@@ -83,8 +83,55 @@ render an API error's `code` / `message` / `correlationId`),
 `ScreenPlaceholder` / `ParamPlaceholder` (which echo route params), and
 the MSW fixtures.
 
-- **Evidence:** _(T3, T6)_
-- **Result:** _(T3, T6)_
+- **Evidence (T3):**
+  - Whole-`web/` grep for HTML-injection sinks — `dangerouslySetInnerHTML`,
+    `.innerHTML =` / `.outerHTML =`, `insertAdjacentHTML`,
+    `document.write`, `eval(`, `new Function(` — returns **zero** in
+    production source, tests, `e2e/`, and `scripts/`. The only `innerHTML`
+    occurrences are read-only RTL assertions in
+    `GeneratedCover.determinism.test.tsx` (comparing rendered output for
+    determinism), not sinks.
+  - Every provider-derived string is rendered as a JSX text child, which
+    React escapes: `TitleLayer` (`{title}`), `AuthorLayer` (`{author}`),
+    `ErrorState` (`{title}`, `{description}`, `{code}`, `{correlationId}`),
+    `ScreenPlaceholder` / `ParamPlaceholder` (`{note}`, built from
+    `params[param]`), `Library` (`{item.title}`, `{item.author}`).
+  - `RouteError` — for a non-`ApiError` render error it renders a **fixed
+    generic string**, never `error.message` or a stack trace, so a
+    render error in a screen cannot leak internal detail to a LAN viewer.
+    An `ApiError` shows only its `message` / `code` / `correlationId`,
+    all as text children.
+  - `SpineLayer` / `TextureLayer` build `hsl(...)` by template literal,
+    but the interpolated `seed.hue` is `fnv1a(identifier) % 360` — a
+    0–359 integer — and `seed.pattern` is one of three string literals.
+    A caller cannot inject a CSS string. Guard test included.
+  - URL / redirect sinks: no interpolated `href` / `src`, no
+    `window.open`, no `location.assign|replace|href =`, no non-literal
+    `redirect()`. Every `<Navigate to>` / `<Link to>` / `navigate()`
+    target is a static literal **except** `Library.tsx`'s
+    `to={\`/book/${item.id}\`}` — see the Informational note below.
+  - The MSW fixtures (`src/mocks/fixtures/**`) are static object literals;
+    no user input reaches them.
+  - Client-side logging: the only `console.*` call in production source
+    is `main.tsx`'s dev-only MSW-failure `console.error(msg, error)` — no
+    credential, token, home-directory path, or reading content
+    (constitution §8). Unreachable in a production build anyway.
+  - **Regression guard added:** `web/src/test/xssEscaping.test.tsx` —
+    renders `ErrorState`, `TitleLayer`, `AuthorLayer`, and `GeneratedCover`
+    with a `<script>` + `<img onerror>` payload in every text prop and
+    asserts no `<script>` / `onerror` element is created and the payload
+    survives only as visible text; plus a case proving the spine hue
+    stays a bounded number. Observed failing against a planted
+    `dangerouslySetInnerHTML` in `ErrorState`, passing after revert.
+  - **One Informational note (A-0004-02):** `Library.tsx` interpolates an
+    unvalidated `item.id` into a React Router `<Link to={\`/book/${id}\`}>`.
+    React Router resolves `to` as a path, not a URL (no `javascript:`
+    execution), but an `id` containing `/` or `..` segments could
+    redirect the link to a different route. Not exploitable in phase 04
+    (the fixture ids are `ol-1`…`ol-3`); phase 06 should validate the id
+    shape or navigate by param when the id comes from the real backend.
+- **Result:** No XSS or injection finding at Critical/High/Medium.
+  Two Informational notes (A-0004-01 carried from T2, A-0004-02 here).
 
 ### 3. A device on the **local network** without a credential
 
