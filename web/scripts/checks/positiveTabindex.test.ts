@@ -48,4 +48,24 @@ describe('findPositiveTabindex', () => {
     )
     expect(found).toEqual([])
   })
+
+  it('flags a positive integer in a conditional tabIndex expression', () => {
+    expect(
+      findPositiveTabindex(tree({ 'e.tsx': '<div tabIndex={active ? 3 : -1} />' })),
+    ).toHaveLength(1)
+    expect(
+      findPositiveTabindex(tree({ 'f.tsx': '<div tabIndex={active ? -1 : 2} />' })),
+    ).toHaveLength(1)
+  })
+
+  it('does not flag a conditional that only yields 0 / -1, or a comparison to a number', () => {
+    expect(
+      findPositiveTabindex(
+        tree({ 'g.tsx': '<tr tabIndex={onSelect ? (i === active ? 0 : -1) : undefined} />' }),
+      ),
+    ).toEqual([])
+    expect(findPositiveTabindex(tree({ 'h.tsx': '<div tabIndex={count === 2 ? 0 : -1} />' }))).toEqual(
+      [],
+    )
+  })
 })

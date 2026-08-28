@@ -1,10 +1,11 @@
 import { reportFindingsAndExit, requireDir } from './checks/cli.ts'
 import { findHandRolledHiddenText } from './checks/hiddenText.ts'
 
-// One or more source roots (default: src/components, src/app, src/screens).
+// One or more source roots (default: all of src — FR-3's convention is
+// "anywhere", and a helper in src/lib or src/data can render nodes too).
 // frontend-accessibility.md FR-3 / Acceptance criterion 4.
 const dirs = process.argv.slice(2)
-if (dirs.length === 0) dirs.push('src/components', 'src/app', 'src/screens')
+if (dirs.length === 0) dirs.push('src')
 
 const findings = dirs.flatMap((dir) => {
   requireDir(dir, 'check-a11y-hidden-text')

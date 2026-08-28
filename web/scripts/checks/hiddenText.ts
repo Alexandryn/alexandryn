@@ -10,16 +10,24 @@ import { walkSourceFiles } from './walkSrc.ts'
 // is that it's *also* gone from the a11y tree — so a grep is the check
 // (Failure modes table).
 //
-// A genuinely non-text use of `display:none` (collapsing a layout region
-// with nothing to announce) opts out with a line comment:
-//   // a11y-hidden-text-ok: <reason>
-const PATTERNS: { name: string; re: RegExp }[] = [
+// Scans .ts/.tsx source only: Tailwind classes / CSS-in-JS live there.
+// This project has no per-component .css files — only the generated token
+// files and the hand-authored a11y.css, neither of which hides text.
+//
+// A genuinely non-text use (collapsing a layout region with nothing to
+// announce) opts out with `// a11y-hidden-text-ok: <reason>` on that line
+// or the one above it.
+const DIRECT_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'display:none', re: /display\s*:\s*['"]?none/i },
   { name: 'clip:rect', re: /clip\s*:\s*rect\(/i },
   { name: 'clip-path:inset(50%)', re: /clip-?path\s*:\s*['"]?inset\(\s*50%/i },
-  // The classic hand-rolled sr-only: a 1px box, positioned, clipped.
-  { name: 'hand-rolled sr-only cluster', re: /\bw-px\b[^"'`]*\bh-px\b[^"'`]*\boverflow-hidden\b/ },
 ]
+
+// The classic hand-rolled sr-only: a 1px box that is also clipped. Each
+// part alone is a legitimate hairline / clipped container — flagged only
+// when they appear together on one line (order-independent, since Tailwind
+// class order is arbitrary).
+const CLUSTER = [/\bw-px\b/, /\bh-px\b/, /\boverflow-hidden\b/]
 
 const ESCAPE_HATCH = /a11y-hidden-text-ok:/
 
@@ -38,11 +46,13 @@ export function findHandRolledHiddenText(dir: string): HiddenTextFinding[] {
 
     const lines = readFileSync(file, 'utf8').split('\n')
     lines.forEach((line, i) => {
-      if (line.includes('sr-only') || ESCAPE_HATCH.test(line)) return
-      // Allow the escape hatch on the immediately preceding line too.
-      if (i > 0 && ESCAPE_HATCH.test(lines[i - 1] ?? '')) return
-      for (const { name: patternName, re } of PATTERNS) {
+      if (ESCAPE_HATCH.test(line) || (i > 0 && ESCAPE_HATCH.test(lines[i - 1] ?? ''))) return
+
+      for (const { name: patternName, re } of DIRECT_PATTERNS) {
         if (re.test(line)) findings.push({ file, pattern: patternName })
+      }
+      if (CLUSTER.every((re) => re.test(line))) {
+        findings.push({ file, pattern: 'hand-rolled sr-only cluster (w-px + h-px + overflow-hidden)' })
       }
     })
   }
