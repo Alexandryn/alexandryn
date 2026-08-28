@@ -1,12 +1,12 @@
 # Phase 04 — Frontend foundation
 
-| | |
-|---|---|
-| **Status** | Implementation complete; in closure — Tier 6 F26 (audit) signed off, Checkpoint P4-G pending final maintainer approval |
-| **Depends on** | Phase 01 |
-| **Blocks** | 05, 06 |
-| **Opened** | 2026-08-26 (Tier 0, PR #59) |
-| **Closed** | — (Checkpoint P4-G) |
+|                |                                                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Status**     | Implementation complete; in closure — Tier 6 F26 (audit) signed off, Checkpoint P4-G pending final maintainer approval |
+| **Depends on** | Phase 01                                                                                                               |
+| **Blocks**     | 05, 06                                                                                                                 |
+| **Opened**     | 2026-08-26 (Tier 0, PR #59)                                                                                            |
+| **Closed**     | — (Checkpoint P4-G)                                                                                                    |
 
 ## Objective
 
@@ -67,14 +67,14 @@ serves this shell; there must be something to serve.
 
 ## Specifications
 
-| Spec | Covers |
-|---|---|
-| `frontend-tooling.md` | Bundler, lint/format/typecheck config, bundle budget, CI hooks |
-| `frontend-design-tokens.md` | Palette (light, structure for dark), type scale, spacing, radii, shadows |
-| `frontend-component-primitives.md` | Every primitive listed above: props, states, a11y contract |
-| `frontend-generated-covers.md` | Layer composition, seeding, degradation ladder, performance budget |
-| `frontend-shell-and-routing.md` | Sidebar/titlebar/content/tab-bar shell, routing, data-fetching layer shape |
-| `frontend-accessibility.md` | Keyboard map, focus order, screen-reader text conventions, motion/contrast rules |
+| Spec                               | Covers                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `frontend-tooling.md`              | Bundler, lint/format/typecheck config, bundle budget, CI hooks                   |
+| `frontend-design-tokens.md`        | Palette (light, structure for dark), type scale, spacing, radii, shadows         |
+| `frontend-component-primitives.md` | Every primitive listed above: props, states, a11y contract                       |
+| `frontend-generated-covers.md`     | Layer composition, seeding, degradation ladder, performance budget               |
+| `frontend-shell-and-routing.md`    | Sidebar/titlebar/content/tab-bar shell, routing, data-fetching layer shape       |
+| `frontend-accessibility.md`        | Keyboard map, focus order, screen-reader text conventions, motion/contrast rules |
 
 ## Architecture decisions expected
 
@@ -89,21 +89,21 @@ serves this shell; there must be something to serve.
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Building Tablet, Mobile, Remote, States, or Design system screens from guesswork because they're referenced in nav strings | Medium | High — invents UI the design owner never approved | `.design-reference/ANALYSIS.md` names these explicitly as unbuilt; the shell renders only what's captured |
-| Component primitives styled ad hoc per screen instead of tokenised | High | Medium — drift makes the design system fiction | Every primitive's spec is reviewed against the token set before merge |
-| Accessibility treated as a pass at the end | Medium | High — retrofitting focus order and screen-reader text is expensive | Constitution §7: each primitive's spec includes its a11y contract before implementation |
-| Generated-cover system becomes a performance sink at library-scale grids | Medium | Medium | Budget stated in `frontend-generated-covers.md`, tested against a large mock library |
+| Risk                                                                                                                       | Likelihood | Impact                                                              | Mitigation                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Building Tablet, Mobile, Remote, States, or Design system screens from guesswork because they're referenced in nav strings | Medium     | High — invents UI the design owner never approved                   | `.design-reference/ANALYSIS.md` names these explicitly as unbuilt; the shell renders only what's captured |
+| Component primitives styled ad hoc per screen instead of tokenised                                                         | High       | Medium — drift makes the design system fiction                      | Every primitive's spec is reviewed against the token set before merge                                     |
+| Accessibility treated as a pass at the end                                                                                 | Medium     | High — retrofitting focus order and screen-reader text is expensive | Constitution §7: each primitive's spec includes its a11y contract before implementation                   |
+| Generated-cover system becomes a performance sink at library-scale grids                                                   | Medium     | Medium                                                              | Budget stated in `frontend-generated-covers.md`, tested against a large mock library                      |
 
 ## Test strategy
 
-| Layer | Carries |
-|---|---|
-| Unit | Token resolution, generated-cover seeding and degradation logic |
-| Component | Every primitive's states (default, hover, focus, disabled, error) |
-| Accessibility | Automated axe checks on every shell layout and primitive |
-| E2E | One smoke path through the shell with mock data, proving routing and shell composition work end to end |
+| Layer         | Carries                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Unit          | Token resolution, generated-cover seeding and degradation logic                                        |
+| Component     | Every primitive's states (default, hover, focus, disabled, error)                                      |
+| Accessibility | Automated axe checks on every shell layout and primitive                                               |
+| E2E           | One smoke path through the shell with mock data, proving routing and shell composition work end to end |
 
 The hardest thing to test here is the generated-cover degradation ladder —
 it has to look intentional at every step, not just avoid crashing, and that
@@ -199,15 +199,15 @@ over time, checked in CI.
 Phase 04 was implemented in seven tiers (0–6), each its own PR, each
 gated at a checkpoint:
 
-| Tier | Scope | PR | Checkpoint |
-|---|---|---|---|
-| 0 | Build tooling (Vite, ESLint/Prettier, Vitest, Storybook, bundle/secrets/MSW checks, the two-job CI) | #59 | P4-A |
-| 1 | Design-token extraction pipeline → Tailwind theme + `tokens.css` + `breakpoints.ts`; contrast script | #60 | P4-B |
-| 2 | 17 component primitives (6 Radix-wrapped, 11 hand-built, `DataTable`), state matrix, a11y contract, token-only styling | #61 | P4-C |
-| 3 | Generated cover system — 4-layer composition, FNV-1a seeding, 3-step degradation ladder, Playwright benchmark | #62 | P4-D |
-| 4 | Shell + React Router v7 + TanStack Query v5, `useCapability()`, `<NotFound>`, MSW two-tier fixtures, correlation-ID error states | #63 | P4-E |
-| 5 | Accessibility — keyboard map, no-positive-tabindex + hidden-text grep checks, real-browser axe gallery, `prefers-contrast` / reduced-motion | #64 | P4-F |
-| 6 | Closure — security audit (F26), spec verification + this walk (F27) | #65 | **P4-G** |
+| Tier | Scope                                                                                                                                       | PR  | Checkpoint |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
+| 0    | Build tooling (Vite, ESLint/Prettier, Vitest, Storybook, bundle/secrets/MSW checks, the two-job CI)                                         | #59 | P4-A       |
+| 1    | Design-token extraction pipeline → Tailwind theme + `tokens.css` + `breakpoints.ts`; contrast script                                        | #60 | P4-B       |
+| 2    | 17 component primitives (6 Radix-wrapped, 11 hand-built, `DataTable`), state matrix, a11y contract, token-only styling                      | #61 | P4-C       |
+| 3    | Generated cover system — 4-layer composition, FNV-1a seeding, 3-step degradation ladder, Playwright benchmark                               | #62 | P4-D       |
+| 4    | Shell + React Router v7 + TanStack Query v5, `useCapability()`, `<NotFound>`, MSW two-tier fixtures, correlation-ID error states            | #63 | P4-E       |
+| 5    | Accessibility — keyboard map, no-positive-tabindex + hidden-text grep checks, real-browser axe gallery, `prefers-contrast` / reduced-motion | #64 | P4-F       |
+| 6    | Closure — security audit (F26), spec verification + this walk (F27)                                                                         | #65 | **P4-G**   |
 
 **Carried past phase 04** (recorded, not resolved here):
 

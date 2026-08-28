@@ -50,26 +50,26 @@ checkpoint.
 
 **Tier 4 — Shell and routing**
 
-- [ ] F17 — React Router v7 + TanStack Query v5, full URL list, no direct `fetch`
-- [ ] F18 — Shell composition + `MobileTabBar` reflow
-- [ ] F19 — `useCapability()` hook, never-instant mock, no optimistic host-only render
-- [ ] F20 — `<NotFound>` + MSW two-tier fixture strategy + `TODO(phase-06)` marker test
-- [ ] F21 — Correlation-ID error states + `<EmptyState>` wiring
+- [x] F17 — React Router v7 + TanStack Query v5, full URL list, no direct `fetch`
+- [x] F18 — Shell composition + `MobileTabBar` reflow
+- [x] F19 — `useCapability()` hook, never-instant mock, no optimistic host-only render
+- [x] F20 — `<NotFound>` + MSW two-tier fixture strategy + `TODO(phase-06)` marker test
+- [x] F21 — Correlation-ID error states + `<EmptyState>` wiring
 
-**Checkpoint P4-E** — every named URL resolves; capability-gating never flashes; `MobileTabBar` reflow proven; keyboard-only "open a book" completes; MSW absent from production build
+**Checkpoint P4-E** — done, merged (PR #63). Detail: `tasks/todo-p04-tier4-shell-and-routing.md`.
 
 **Tier 5 — Accessibility**
 
-- [ ] F22 — Keyboard map documented+tested; focus-order rule, no positive `tabindex` (grep-checked)
-- [ ] F23 — `<VisuallyHidden>` convention enforced (grep-checked)
-- [ ] F24 — `axe-core`+`@playwright/test` CI stage
-- [ ] F25 — Reduced-motion/high-contrast composed check on the E2E smoke test
+- [x] F22 — Keyboard map documented+tested; focus-order rule, no positive `tabindex` (grep-checked)
+- [x] F23 — `<VisuallyHidden>` convention enforced (grep-checked)
+- [x] F24 — `axe-core`+`@playwright/test` CI stage
+- [x] F25 — Reduced-motion/high-contrast composed check on the E2E smoke test
 
-**Checkpoint P4-F** — zero `axe-core` violations app-wide; keyboard map matches behavior; no positive `tabindex`; every hidden label uses `VisuallyHidden`; reduced-motion/high-contrast passes
+**Checkpoint P4-F** — done, merged (PR #64). Detail: `tasks/todo-p04-tier5-accessibility.md`.
 
-**Tier 6 — Closure**
+**Tier 6 — Closure** — detail: `tasks/todo-p04-tier6-closure.md`
 
-- [ ] F26 — Security audit (four-attacker pass), recorded in `.claude/audits/`
-- [ ] F27 — All specs → `VERIFIED`; roadmap exit criteria walked with evidence; docs updated
+- [x] F26 — Security audit (four-attacker pass) — `.claude/audits/0004-phase04-frontend-foundation.md`, verdict Clear, 0 Critical/High; three reconciled passes + manual T2–T6; maintainer sign-off 2026-08-28 (Gate 1). PR #65.
+- [x] F27 — six specs → `VERIFIED`; `roadmap/04-frontend-foundation/README.md` exit criteria walked with evidence; carried-item decisions recorded (D2 text-3, D3 ADR 0016, items 3–5); docs swept.
 
-**Checkpoint P4-G (final)** — full suite green, security audit clean (no open Critical/High), all specs `VERIFIED`, exit criteria cited, maintainer approval — phase 04 complete
+**Checkpoint P4-G (final)** — full suite green, security audit clean (no open Critical/High), all six specs `VERIFIED`, roadmap exit criteria cited with evidence — **pending final maintainer approval** (Gate 2). On approval: roadmap `Closed` is set, phase 04 complete.
