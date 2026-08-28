@@ -1,14 +1,14 @@
 # Spec: Frontend generated cover system
 
-| | |
-|---|---|
-| **Status** | `VERIFIED` (2026-08-28, phase 04 Tier 6 / F27 — implemented Tier 3 (PR #62), audited [`0004`](../audits/0004-phase04-frontend-foundation.md), acceptance criteria walked in [`roadmap/04`](../roadmap/04-frontend-foundation/README.md#spec-verification); FR-4 numeric budgets carry a phase-04 baseline, confirm-or-replace deferred to phase 06) — was `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
-| **Phase** | `04-frontend-foundation` |
-| **Author** | Claude (Sonnet 5), for review by Luann Moreira |
-| **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
-| **Supersedes** | — |
-| **Reviewed in** | [`0031`](../reviews/0031-phase04-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
+|                  |                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Status**       | `VERIFIED` (2026-08-28, phase 04 Tier 6 / F27 — implemented Tier 3 (PR #62), audited [`0004`](../audits/0004-phase04-frontend-foundation.md), acceptance criteria walked in [`roadmap/04`](../roadmap/04-frontend-foundation/README.md#spec-verification); FR-4 numeric budgets carry a phase-04 baseline, confirm-or-replace deferred to phase 06) — was `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Phase**        | `04-frontend-foundation`                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Author**       | Claude (Sonnet 5), for review by Luann Moreira                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Created**      | 2026-08-14                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Last updated** | 2026-08-14                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Supersedes**   | —                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Reviewed in**  | [`0031`](../reviews/0031-phase04-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14                                                                                                                                                                                                                                                            |
 
 ## Context
 
@@ -46,7 +46,7 @@ library-grid scale (hundreds of covers rendered at once).
 - Real cover images or fetching them — phase 07 (metadata)
 - The library-grid layout that arranges many covers — phase 06
 - Any specific book's actual generated appearance — this spec fixes the
-  *system*, not example output
+  _system_, not example output
 
 ## User stories
 
@@ -105,10 +105,10 @@ library-grid scale (hundreds of covers rendered at once).
      against that gap, not an expected real case) → texture + spine
      only, no text layer, visually still a "cover shape," never a blank
      box
-  Each step MUST look like a deliberate design choice, not a broken
-  degradation — this is `roadmap/04-frontend-foundation/README.md`'s own
-  named hardest-to-test property, addressed here by fixing exactly what
-  renders at each step rather than leaving "graceful" undefined.
+     Each step MUST look like a deliberate design choice, not a broken
+     degradation — this is `roadmap/04-frontend-foundation/README.md`'s own
+     named hardest-to-test property, addressed here by fixing exactly what
+     renders at each step rather than leaving "graceful" undefined.
 - **FR-4** Performance: a grid of 500 generated covers renders its
   initial viewport within **100ms** of layout data being available, and
   scrolling stays at 60fps — met via memoization (a cover's layers are
@@ -178,11 +178,11 @@ Not applicable — a generated cover is a pure render of its inputs
 
 ## Failure modes
 
-| Failure | Detected how | User sees | System does |
-|---|---|---|---|
-| Title too long for the layout | FR-1's title layer's own wrap/truncate logic | Truncated title, never overflow or a broken layout | Truncation is part of FR-1's requirement, not a bug to fix later |
-| A book identifier changes (unlikely, but `domain-bibliographic.md`'s merge operation could reassign one) | FR-2's seed is identifier-derived | The generated cover changes appearance | Accepted consequence of FR-2's determinism — a real identifier change means the previously "same" book is now keyed differently; not treated as a defect |
-| Large grid renders slowly | FR-4's performance test | Janky scrolling, slow initial paint | Caught in phase 04's own test suite before merge, not discovered at library-scale in production |
+| Failure                                                                                                  | Detected how                                 | User sees                                          | System does                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title too long for the layout                                                                            | FR-1's title layer's own wrap/truncate logic | Truncated title, never overflow or a broken layout | Truncation is part of FR-1's requirement, not a bug to fix later                                                                                         |
+| A book identifier changes (unlikely, but `domain-bibliographic.md`'s merge operation could reassign one) | FR-2's seed is identifier-derived            | The generated cover changes appearance             | Accepted consequence of FR-2's determinism — a real identifier change means the previously "same" book is now keyed differently; not treated as a defect |
+| Large grid renders slowly                                                                                | FR-4's performance test                      | Janky scrolling, slow initial paint                | Caught in phase 04's own test suite before merge, not discovered at library-scale in production                                                          |
 
 ## Security considerations
 
@@ -196,11 +196,11 @@ Not applicable — a generated cover is a pure render of its inputs
 
 ## Test strategy
 
-| Layer | What it covers |
-|---|---|
-| Unit | Seeding determinism (FR-2) — same identifier always produces the same layer values; degradation ladder (FR-3) — each of the three steps renders the expected layer set given the corresponding input |
+| Layer         | What it covers                                                                                                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit          | Seeding determinism (FR-2) — same identifier always produces the same layer values; degradation ladder (FR-3) — each of the three steps renders the expected layer set given the corresponding input                        |
 | Visual/manual | Each degradation step "looks intentional" — phase 04's own named hardest-to-test property; a design review pass, not a unit test, checking the actual rendered output against `frontend-design-tokens.md`'s visual language |
-| Performance | FR-4's self-contained benchmark harness (own virtualized container, not phase 06's real grid), measured via `@playwright/test` and the Performance API as described in FR-4, checked in CI as a regression gate |
+| Performance   | FR-4's self-contained benchmark harness (own virtualized container, not phase 06's real grid), measured via `@playwright/test` and the Performance API as described in FR-4, checked in CI as a regression gate             |
 
 ## Acceptance criteria
 
@@ -219,12 +219,16 @@ Not applicable — a generated cover is a pure render of its inputs
 - **FR-4's exact numbers (100ms, 500 covers, 60fps)** — reasoned
   placeholders, not measured against real hardware or a real library
   size; confirm or replace once phase 06 provides a real grid to
-  benchmark against. *(Phase 04 Tier 6 / F27 baseline, 2026-08-28: the
-  Playwright `benchmark` project renders the initial viewport of 500
-  covers in **~184 ms** and the scroll test stays "close to 60fps" — it
-  passes the 100 ms budget with margin only because of the next item,
-  and the 60fps assertion is a soft one. Phase 06 confirms or replaces
-  both against a real virtualized grid.)*
+  benchmark against. _(Phase 04 Tier 6 / F27 baseline, 2026-08-28:
+  the Playwright `benchmark` project's asserted metrics —
+  `performance.measure('cover-grid:initial-viewport')` and the
+  RAF-sampled frame-interval median — measure **~50 ms** initial
+  viewport (budget 100 ms) and a **~16.7 ms** median frame interval
+  (budget 20 ms; 60fps is 16.7 ms). Both pass with real margin. Caveat:
+  the harness renders covers with fewer styles than the real app — see
+  the next item — so the true cost under full styling is somewhat higher,
+  still expected under budget. Phase 06 confirms or replaces both against
+  a real virtualized grid.)_
 - **Benchmark-harness Tailwind scope (phase-06 follow-up, tied to the
   item above).** `e2e/benchmark/` has its own Vite root, so Tailwind's
   content detection never scans `src/` and the utility classes
@@ -236,7 +240,7 @@ Not applicable — a generated cover is a pure render of its inputs
   and phase 06 is already re-baselining FR-4 against a real grid. Phase
   06 fixes the `@source` scope and re-measures in one motion.
 - **Texture/spine visual design specifics** — this spec fixes the layer
-  *system*, not the actual pattern/color-generation algorithm's visual
+  _system_, not the actual pattern/color-generation algorithm's visual
   output, which is implementation work informed by
   `frontend-design-tokens.md`'s palette once extracted.
 

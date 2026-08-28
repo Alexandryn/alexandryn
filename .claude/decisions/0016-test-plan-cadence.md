@@ -10,16 +10,19 @@
 
 <!-- Status: Proposed | Accepted | Rejected | Superseded | Deprecated -->
 
-> **Accepted 2026-08-28** (phase 04 Tier 6 closure). Phases 04's six
-> specs did carry their test strategy before each tier's RED step — in
-> the per-tier `tasks/plan-p04-<tier>.md` docs, not in separate
-> `.claude/test-plans/*.md` files. That is ratified here as a valid form
-> of "a test plan written before the implementation" for a phase whose
-> work is sliced into tiers: the plan doc's Test-strategy section is the
-> test plan. `test-plans/README.md` is amended to say so, and Option A's
-> named enforcement gap is closed by adding a test-plan line to each
-> phase's Exit criteria (done for phase 04 in its Tier 6 closure; later
-> phases add theirs when they open).
+> **Accepted 2026-08-28** (phase 04 Tier 6 closure). Phase 04's six specs
+> carried their test planning before implementation in two places, not in
+> separate `.claude/test-plans/*.md` files: (a) each spec's own **Test
+> strategy** and **Acceptance criteria** sections, written at approval
+> (2026-08-14); (b) the per-tier RED-step breakdown — `tasks/plan-phase04.md`'s
+> Task list (per-task acceptance criteria) and each tier's **Checkpoint
+> P4-\*** pass conditions, elaborated in the `tasks/plan-p04-tier{2..6}.md`
+> / `tasks/todo-p04-tier{2..6}.md` docs. That is ratified here as a valid
+> form of "a test plan written before the implementation" for a phase
+> sliced into tiers. `test-plans/README.md` is amended to say so, and
+> Option A's named enforcement gap is closed by adding a test-plan line
+> to each phase's Exit criteria (done for phase 04 in its Tier 6 closure;
+> later phases add theirs when they open).
 
 ## Context
 
@@ -135,8 +138,10 @@ add the same exit-criteria line when they open.)_
 **Neutral** — this ADR is the authoritative reading of what "before the
 implementation" in `test-plans/README.md` has always meant. _(On
 acceptance that README was amended to name the two valid forms — the
-standalone `.claude/test-plans/*.md` file for a single-pass phase, the
-per-tier plan doc's Test-strategy section for a tiered one.)_
+standalone `.claude/test-plans/*.md` file for a single-pass phase; for a
+tiered phase, the specs' own Test strategy / Acceptance criteria sections
+plus the per-tier plan/todo docs' checkpoint definitions and per-task
+acceptance criteria.)_
 
 ## Reversal cost
 

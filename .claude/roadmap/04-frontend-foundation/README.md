@@ -187,10 +187,15 @@ over time, checked in CI.
       `frontend-generated-covers.md` / `check-token-contrast.ts` (D2,
       items 3–5); `web/README.md`; `tasks/todo-phase04.md`.
 - [x] **A test plan exists for every spec** (ADR 0016, Accepted 2026-08-28)
-      — carried per-tier in `tasks/plan-phase04.md` and
-      `tasks/plan-p04-<tier>.md`'s Test-strategy sections, written before
-      each tier's RED step. This is the ratified form for a tiered phase
-      (`test-plans/README.md`).
+      — for a tiered phase the test plan is (a) each of the six specs'
+      own **Test strategy** and **Acceptance criteria** sections, written
+      at spec approval (2026-08-14) before any implementation, and (b) the
+      per-tier RED-step breakdown in `tasks/plan-phase04.md`'s Task list
+      (per-task acceptance criteria) and each tier's **Checkpoint P4-\***
+      pass conditions, elaborated in `tasks/plan-p04-tier{2..6}.md` /
+      `tasks/todo-p04-tier{2..6}.md` (Tiers 0–1 are F1–F9 directly in
+      `plan-phase04.md`, no separate tier doc). This is the ratified form
+      for a tiered phase (`test-plans/README.md`).
 - [ ] **Maintainer approval recorded** — Checkpoint P4-G (below); the
       final Tier 6 gate, not yet crossed.
 
@@ -220,8 +225,10 @@ gated at a checkpoint:
   TBD". Phase 05/13 must re-read this rather than assume it settled.
 - **FR-4 numeric budgets** — the 250 KiB bundle budget and the
   100 ms / 500-cover / 60 fps cover-render budget are reasoned
-  placeholders. Phase-04 measured baseline: bundle ~103.9 KiB gzipped,
-  benchmark ~184 ms. Confirm-or-replace deferred to phase 06 against
+  placeholders. Phase-04 measured baseline: bundle ~103.9 KiB gzipped;
+  the `benchmark` project's asserted metrics — ~50 ms initial viewport
+  (budget 100), ~16.7 ms median frame interval (budget 20) — both pass
+  with margin. Confirm-or-replace deferred to phase 06 against
   real screens / a real grid (both specs' Open questions).
 - **Benchmark-harness Tailwind scope** — `e2e/benchmark/` doesn't scan
   `src/` for Tailwind classes, so the cover renders there with fewer
@@ -262,8 +269,10 @@ closure. Per spec, the acceptance criteria and the evidence each is met:
 - **`frontend-generated-covers.md`** — same identifier → pixel-identical
   cover (`GeneratedCover.determinism.test.tsx`); all three degradation
   steps render without a blank box (`GeneratedCover.test.tsx`); the
-  500-cover benchmark meets budget in CI (`benchmark.spec.ts`, ~184 ms);
-  the cover is never the sole accessible name (`GeneratedCover.a11y.test.tsx`).
+  500-cover benchmark meets budget in CI (`benchmark.spec.ts` — ~50 ms
+  initial viewport against a 100 ms budget, ~16.7 ms median frame
+  interval against 20 ms); the cover is never the sole accessible name
+  (`GeneratedCover.a11y.test.tsx`).
 - **`frontend-shell-and-routing.md`** — every URL in
   `architecture-frontend.md` FR-1's list resolves to a real component or
   `<NotFound>` (`routes.test.tsx`); capability gating proven with a
