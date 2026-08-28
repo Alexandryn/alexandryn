@@ -30,8 +30,8 @@ and after the security audit (E29 → E30).
 
 **Tier 1 — Process model**
 
-- [ ] E6 — `resolveServerBinaryPath()` (FR-1), dev vs packaged, `.exe` on Windows, both branches unit-tested (mocked `app.isPackaged`); document the `go build -o bin/alexandryn-server ./cmd/server` pre-`npm run dev` step
-- [ ] E7 — FR-5 config file: `0600`, atomic temp-file API (no predictable shared-temp path), path-only arg, delete on ready / on timeout, retain grace-period in memory; unit-tested (perms, atomicity, both deletion paths)
+- [x] E6 — `resolveServerBinaryPath()` (FR-1), dev vs packaged, `.exe` on Windows, both branches unit-tested (mocked `app.isPackaged`); document the `go build -o bin/alexandryn-server ./cmd/server` pre-`npm run dev` step
+- [x] E7 — FR-5 config file: `0600`, atomic temp-file API (no predictable shared-temp path), path-only arg, delete on ready / on timeout, retain grace-period in memory; unit-tested (perms, atomicity, both deletion paths)
 - [ ] E8 — single-instance lock (FR-7) BEFORE window + BEFORE spawn; `second-instance` focuses existing; non-primary `app.quit()`s, spawns nothing; integration test with a real second process
 - [ ] E9 — spawn (FR-2): `child_process.spawn`, `['--config', path]`, piped+prefixed stdio, `PORT=<n>` captured; structural security test — never `exec`/`shell:true`/concatenated string
 - [ ] E10 — readiness poll (FR-3): `GET /healthz` @250ms until 200 or 15s; timeout → `Failed`; integration test vs a real short-startup test binary
