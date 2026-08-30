@@ -1,8 +1,17 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import { OPERATIONS, type AlexandrynDesktopBridge } from '../shared/operations'
 
-// Phase 05 scaffold (E2). Tier 4 (E20) replaces this stub with the
-// enumerated surface built by iterating electron/src/shared/operations.ts
-// — one namespaced object, one channel per operation, every argument
-// validated by Zod in the main process (desktop-host-ipc-surface.md
-// FR-1/FR-2). For now the namespace exists but is empty.
-contextBridge.exposeInMainWorld('alexandryn', {})
+// desktop-host-ipc-surface.md FR-1, FR-2.
+// Iterate OPERATIONS array directly to construct the namespaced bridge object.
+// One channel per operation, never a wildcard channel.
+
+const bridge: Record<string, Record<string, (args?: unknown) => Promise<unknown>>> = {}
+
+for (const op of OPERATIONS) {
+  if (!bridge[op.namespace]) {
+    bridge[op.namespace] = {}
+  }
+  bridge[op.namespace]![op.method] = (args?: unknown) => ipcRenderer.invoke(op.name, args)
+}
+
+contextBridge.exposeInMainWorld('alexandryn', bridge as unknown as AlexandrynDesktopBridge)
