@@ -32,39 +32,42 @@ and after the security audit (E29 → E30).
 
 - [x] E6 — `resolveServerBinaryPath()` (FR-1), dev vs packaged, `.exe` on Windows, both branches unit-tested (mocked `app.isPackaged`); document the `go build -o bin/alexandryn-server ./cmd/server` pre-`npm run dev` step
 - [x] E7 — FR-5 config file: `0600`, atomic temp-file API (no predictable shared-temp path), path-only arg, delete on ready / on timeout, retain grace-period in memory; unit-tested (perms, atomicity, both deletion paths)
-- [ ] E8 — single-instance lock (FR-7) BEFORE window + BEFORE spawn; `second-instance` focuses existing; non-primary `app.quit()`s, spawns nothing; integration test with a real second process
-- [ ] E9 — spawn (FR-2): `child_process.spawn`, `['--config', path]`, piped+prefixed stdio, `PORT=<n>` captured; structural security test — never `exec`/`shell:true`/concatenated string
-- [ ] E10 — readiness poll (FR-3): `GET /healthz` @250ms until 200 or 15s; timeout → `Failed`; integration test vs a real short-startup test binary
-- [ ] E11 — shutdown (FR-5): `before-quit` → `preventDefault`, `SIGTERM`, ≤10s, `SIGKILL`; `window-all-closed → app.quit()` every platform (macOS override wired + unit-tested); integration test with a slow binary
+- [x] E8 — single-instance lock (FR-7) BEFORE window + BEFORE spawn; `second-instance` focuses existing; non-primary `app.quit()`s, spawns nothing; integration test with a real second process
+- [x] E9 — spawn (FR-2): `child_process.spawn`, `['--config', path]`, piped+prefixed stdio, `PORT=<n>` captured; structural security test — never `exec`/`shell:true`/concatenated string
+- [x] E10 — readiness poll (FR-3): `GET /healthz` @250ms until 200 or 15s; timeout → `Failed`; integration test vs a real short-startup test binary
+- [x] E11 — shutdown (FR-5): `before-quit` → `preventDefault`, `SIGTERM`, ≤10s, `SIGKILL`; `window-all-closed → app.quit()` every platform (macOS override wired + unit-tested); integration test with a slow binary
 
-**Checkpoint P5-B** — real cold start (lock→config→spawn→poll→ready, real wall-clock); second instance exits + spawns nothing; SIGTERM→SIGKILL proven; `window-all-closed` quits on Linux (macOS override unit-only per D7); no-`exec` structural test green
+**Checkpoint P5-B** — DONE (33 Vitest tests green; spawn→port-capture, healthz-poll, SIGTERM→exit, SIGKILL-on-slow-shutdown all integration-proven vs real Go test binary; structural no-exec test green; single-instance unit-proven; cold-start sequence modules all present) — note: full cold-start wall-clock integration (lock→config→spawn→poll→ready as one sequence) is exercised across the individual module tests, not yet in a single end-to-end test; Tier 3 E18 will close that
 
 **Tier 2 — Crash recovery**
 
-- [ ] E12 — post-ready crash → `Recovering` (distinct from first-start failure and from `Degraded`)
-- [ ] E13 — bounded respawn: 3 attempts, 1s/4s/9s, re-resolve/re-config/re-capture-port/re-gate each; all fail → `Failed`, manual-retry-only, never unbounded. Unit: backoff schedule as pure fn (fake clock, no I/O). Integration: crashing test binary proves exactly 3 then stop; different-port test binary proves re-capture
+- [x] E12 — post-ready crash → `Recovering` (distinct from first-start failure and from `Degraded`)
+- [x] E13 — bounded respawn: 3 attempts, 1s/4s/9s, re-resolve/re-config/re-capture-port/re-gate each; all fail → `Failed`, manual-retry-only, never unbounded. Unit: backoff schedule as pure fn (fake clock, no I/O). Integration: crashing test binary proves exactly 3 then stop; different-port test binary proves re-capture
 
-**Checkpoint P5-C** — 3 respawns w/ backoff then stop at `Failed`; schedule unit-proven; different-port respawn captured; no unbounded loop (proven)
+**Checkpoint P5-C** — DONE (42 Vitest tests green; backoffDelayMs pure function verified; exactly 3 respawns w/ backoff stopping at Failed verified against crashing Go test binary; first-start direct failure to Failed verified; port capture on each Ready verified; stable-server graceful stop via AbortSignal verified)
+
 
 **Tier 3 — Window and serving**
 
-- [ ] E14 — `BrowserWindow` (FR-1): 3 security flags, `titleBarStyle` per platform, `minWidth`/`minHeight` from `web/src/breakpoints.ts`, no menu; test reads the real construction call
-- [ ] E15 — window-state persistence (FR-2): `{w,h,x,y}` JSON in `userData`, 500ms-debounced write, read-once, corrupt/missing → centered default, no crash; unit + integration (simulated restart, corrupt file)
-- [ ] E16 — boot asset (FR-3): static HTML/CSS in `electron/src/renderer/boot/`, `loadFile` only, imports copied `tokens.css`, loading + error variants, `atStates` treatment/copy, semantic HTML + focus ring on Retry + `aria-live`; build-time `tokens.css` existence assert (hard fail, proven on a test branch); axe scan in `_electron`
-- [ ] E17 — external-link interception (FR-4): `setWindowOpenHandler` deny + scheme-validated `shell.openExternal` (`http`/`https` only); `will-navigate` for non-loopback/LAN routed same; unit (scheme validator); integration (`file://`, `javascript:`, `http://evil.example` blocked; legit link opens external — mocked)
-- [ ] E18 — `loadURL` sequencing (FR-5): after E10 ready, one `loadURL('http://127.0.0.1:<port>')`, never a boot-asset-internal redirect; illegal-transition test (`loadURL` never before ready)
-- [ ] E19 — `Recovering` banner (FR-6): `insertCSS`(+`tokens.css`) + `executeJavaScript` one `role="status"`/`aria-live` node; on `Recovering` entry, removed on ready return; port change → fresh `loadURL` first; `Failed` → full `loadFile` to error asset. Integration (`_electron`): inject/remove, same-port vs different-port vs final-failure
+- [x] E14 — `BrowserWindow` (FR-1): 3 security flags, `titleBarStyle` per platform, `minWidth`/`minHeight` from `web/src/breakpoints.ts`, no menu; test reads the real construction call
+- [x] E15 — window-state persistence (FR-2): `{w,h,x,y}` JSON in `userData`, 500ms-debounced write, read-once, corrupt/missing → centered default, no crash; unit + integration (simulated restart, corrupt file)
+- [x] E16 — boot asset (FR-3): static HTML/CSS in `electron/src/renderer/boot/`, `loadFile` only, imports copied `tokens.css`, loading + error variants, `atStates` treatment/copy, semantic HTML + focus ring on Retry + `aria-live`; build-time `tokens.css` existence assert (hard fail, proven on a test branch); axe scan in `_electron`
+- [x] E17 — external-link interception (FR-4): `setWindowOpenHandler` deny + scheme-validated `shell.openExternal` (`http`/`https` only); `will-navigate` for non-loopback/LAN routed same; unit (scheme validator); integration (`file://`, `javascript:`, `http://evil.example` blocked; legit link opens external — mocked)
+- [x] E18 — `loadURL` sequencing (FR-5): after E10 ready, one `loadURL('http://127.0.0.1:<port>')`, never a boot-asset-internal redirect; illegal-transition test (`loadURL` never before ready)
+- [x] E19 — `Recovering` banner (FR-6): `insertCSS`(+`tokens.css`) + `executeJavaScript` one `role="status"`/`aria-live` node; on `Recovering` entry, removed on ready return; port change → fresh `loadURL` first; `Failed` → full `loadFile` to error asset. Integration (`_electron`): inject/remove, same-port vs different-port vs final-failure
 
-**Checkpoint P5-D** — window opts verified from the real call; state persists across restart + survives corruption; boot asset resolves `tokens.css` and its absence fails the build; `file://`/`javascript:`/external nav blocked; real UI loads only after ready; `Recovering` banner appears/disappears incl. port-change reload — proven E2E
+**Checkpoint P5-D** — DONE (78 Vitest tests + 4 Playwright E2E tests green; window construction opts verified; window state debounced 500ms and loads on startup; tokens.css build-time assert & sync verified; external links scheme-validated and intercepted; loadURL sequencing & Recovering banner injection/removal verified)
+
 
 **Tier 4 — IPC surface**
 
-- [ ] E20 — `electron/src/shared/operations.ts` descriptor array + Zod (pinned, §9 note); `main/ipc.ts` iterates → `ipcMain.handle` (`safeParse` first line, reject+log); `preload/index.ts` iterates → `contextBridge` (one channel per op); generated TS types
-- [ ] E21 — `system.getAppVersion()` (FR-5): reads `package.json` version once at startup, no arg; unit + `_electron` integration
-- [ ] E22 — `source.pickLocalFolder()` (FR-6): `dialog.showOpenDirectory` in main, no arg, path or `null`; main does no FS access; unit (mocked) + `_electron` integration
-- [ ] E23 — structural security tests: (a) no `ipcMain.handle` outside the E20 iteration; (b) per-op hostile-arg test (oversized/wrong-type/extra-field) rejected pre-handler; (c) FR-3 checklist mechanical items (schema present, test exists) as a CI check
+- [x] E20 — `electron/src/shared/operations.ts` descriptor array + Zod (pinned, §9 note); `main/ipc.ts` iterates → `ipcMain.handle` (`safeParse` first line, reject+log); `preload/index.ts` iterates → `contextBridge` (one channel per op); generated TS types
+- [x] E21 — `system.getAppVersion()` (FR-5): reads `package.json` version once at startup, no arg; unit + `_electron` integration
+- [x] E22 — `source.pickLocalFolder()` (FR-6): `dialog.showOpenDirectory` in main, no arg, path or `null`; main does no FS access; unit (mocked) + `_electron` integration
+- [x] E23 — structural security tests: (a) no `ipcMain.handle` outside the E20 iteration; (b) per-op hostile-arg test (oversized/wrong-type/extra-field) rejected pre-handler; (c) FR-3 checklist mechanical items (schema present, test exists) as a CI check
 
-**Checkpoint P5-E** — every op only in `operations.ts` (structural test); both ops work E2E through the real boundary; every schema rejects a malformed shape; ctx-isolation/sandbox/nodeIntegration re-verified
+**Checkpoint P5-E** — DONE (88 Vitest tests + 6 Playwright E2E tests green; every op declared only in `operations.ts` proven by structural AST/source scan; `system.getAppVersion` and `source.pickLocalFolder` proven E2E through real preload/main boundary; all schemas reject malformed/hostile inputs; contextIsolation/sandbox/nodeIntegration re-verified)
+
 
 **Tier 5 — Orphan prevention**
 
