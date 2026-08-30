@@ -1,5 +1,27 @@
+import { copyFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+
+const webTokensPath = resolve(import.meta.dirname, '../web/src/tokens.css')
+const bootTokensPath = resolve(import.meta.dirname, 'src/renderer/boot/tokens.css')
+
+/**
+ * Asserts web/src/tokens.css exists at build time (hard failure if missing)
+ * and copies it into electron/src/renderer/boot/ for disk-loaded asset bundling (D4 / FR-3).
+ */
+export function syncTokensPlugin() {
+  return {
+    name: 'assert-and-sync-tokens',
+    buildStart() {
+      if (!existsSync(webTokensPath)) {
+        throw new Error(
+          `Build failed: required tokens file not found at ${webTokensPath}. Run token generation in web/ first.`,
+        )
+      }
+      copyFileSync(webTokensPath, bootTokensPath)
+    },
+  }
+}
 
 // Three build targets (D2, tasks/plan-phase05.md). electron-vite auto-
 // detects src/main/index.ts and src/preload/index.ts and sets each
@@ -25,6 +47,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer/boot',
+    plugins: [syncTokensPlugin()],
     build: {
       target: 'chrome140',
       rollupOptions: {
