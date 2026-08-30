@@ -89,8 +89,12 @@ type runDeps struct {
 	// one call rather than two separate hooks.
 	newPool func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error)
 
+	// watchParent watches the Electron host parent process PID for termination (E25).
+	watchParent func(pid int) error
+
 	stderr io.Writer
 }
+
 
 // waitForPostgres calls obtain up to maxAttempts times, sleeping backoff
 // between failed attempts (never after the last one), and returns nil on
@@ -188,7 +192,16 @@ func run(ctx context.Context, deps runDeps) int {
 	logger.Info("startup step completed", "step", "config")
 	logger.Info("startup step completed", "step", "logger")
 
+	if cfg.DesktopParentPID > 0 && deps.watchParent != nil {
+		if err := deps.watchParent(cfg.DesktopParentPID); err != nil {
+			logger.Error("startup failed", "step", "parentwatch", "error", err.Error())
+			return 1
+		}
+		logger.Info("startup step completed", "step", "parentwatch", "parentPID", cfg.DesktopParentPID)
+	}
+
 	poolRef := &transporthttp.PoolRef{}
+
 	router := deps.newRouter(cfg, logger, poolRef)
 	logger.Info("startup step completed", "step", "router")
 

@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Alexandryn/alexandryn/internal/config"
+	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
@@ -76,9 +77,11 @@ func main() {
 			}
 			return pool, newRepositories(pool), nil
 		},
-		stderr: os.Stderr,
+		watchParent: parentwatch.Watch,
+		stderr:      os.Stderr,
 	}))
 }
+
 
 // newObtainPostgres (spawn.go, spawn_darwin.go) is FR-1 step 5's real,
 // per-platform implementation: spawn a bundled instance when no
