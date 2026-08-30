@@ -71,11 +71,12 @@ and after the security audit (E29 → E30).
 
 **Tier 5 — Orphan prevention**
 
-- [ ] E24 — Electron passes its own PID to the Go child (via the FR-5 config file)
-- [ ] E25 — `internal/deskhost/parentwatch` (Go): `PR_SET_PDEATHSIG` (Linux), `kqueue`/`EVFILT_PROC`/`NOTE_EXIT` (macOS), no-op else; wired into `cmd/server` startup. Linux: re-exec-the-test-binary proof (like `spawn_linux_test.go`). macOS: unit seam + explicit unverified note
-- [ ] E26 — Windows Job Object (`electron/src/main/`): native addon, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` at spawn; package = Open question; unverified (D7), landed w/ code + seam + note
+- [x] E24 — Electron passes its own PID to the Go child (via the FR-5 config file)
+- [x] E25 — `internal/deskhost/parentwatch` (Go): `PR_SET_PDEATHSIG` (Linux), `kqueue`/`EVFILT_PROC`/`NOTE_EXIT` (macOS), no-op else; wired into `cmd/server` startup. Linux: re-exec-the-test-binary proof (like `spawn_linux_test.go`). macOS: unit seam + explicit unverified note
+- [x] E26 — Windows Job Object (`electron/src/main/`): native addon, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` at spawn; package = Open question; unverified (D7), landed w/ code + seam + note
 
-**Checkpoint P5-F** — Linux: killing Electron parent kills the Go server (real re-exec test); macOS + Windows code landed, unit-tested at seams, integration-unverified + flagged (D7)
+**Checkpoint P5-F** — DONE (Linux: killing Electron parent kills the Go server proven by empirical re-exec test `parentwatch_linux_test.go`; macOS kqueue + Windows Job Object code landed, unit-tested at seams, integration-unverified + flagged per D7; 95 Vitest tests + 6 Playwright E2E tests passing)
+
 
 **Tier 6 — E2E lifecycle walkthrough**
 
