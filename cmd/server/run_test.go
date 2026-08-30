@@ -806,3 +806,66 @@ func TestRun_MigrationFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
 		t.Fatal("migration failure log doesn't use a fixed generic message")
 	}
 }
+
+func TestRun_ParentWatch_InvokedWhenDesktopParentPIDSet(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 10 * time.Second,
+			DesktopParentPID:    9999,
+		}, nil
+	}
+	var watchedPID int
+	deps.watchParent = func(pid int) error {
+		watchedPID = pid
+		order = append(order, "parentwatch")
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	code := run(ctx, deps)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if watchedPID != 9999 {
+		t.Fatalf("watchedPID = %d, want 9999", watchedPID)
+	}
+	if !spy.Contains("parentwatch") {
+		t.Fatal("expected parentwatch step to be logged")
+	}
+}
+
+
+func TestRun_ParentWatch_FailureHaltsStartup(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 10 * time.Second,
+			DesktopParentPID:    9999,
+		}, nil
+	}
+	deps.watchParent = func(pid int) error {
+		return errors.New("cannot watch parent")
+	}
+
+	code := run(context.Background(), deps)
+	if code == 0 {
+		t.Fatal("exit code = 0, want non-zero when watchParent fails")
+	}
+	if !spy.Contains("cannot watch parent") {
+		t.Fatal("expected watchParent error to be logged")
+	}
+}
+
