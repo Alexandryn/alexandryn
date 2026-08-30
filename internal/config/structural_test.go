@@ -22,6 +22,7 @@ func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
 		"BIND_ADDRESS":            categoryOptionalDefault,
 		"TLS_CERT_FILE":           categoryOptionalNoDefault,
 		"TLS_KEY_FILE":            categoryOptionalNoDefault,
+		"DESKTOP_PARENT_PID":      categoryOptionalNoDefault,
 	}
 
 	got := map[string]category{}

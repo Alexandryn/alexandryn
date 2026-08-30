@@ -1,6 +1,7 @@
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
+
   backoffDelayMs,
   MAX_RESPAWN_ATTEMPTS,
   runServerLifecycle,
@@ -155,10 +156,28 @@ describe('runServerLifecycle — stable server', () => {
   }, 10_000)
 })
 
-// afterEach cleanup omitted: runServerLifecycle already cleans up children
-// internally (kills on poll failure, exits on crash). The integration tests
-// above run to completion before the suite moves on.
+describe('runServerLifecycle — config authoring (E24)', () => {
+  it('passes DESKTOP_PARENT_PID set to process.pid in authored config', async () => {
+    const controller = new AbortController()
+    let resolveEarly!: () => void
+    const earlyDone = new Promise<void>((r) => (resolveEarly = r))
 
-afterEach(() => {
-  // Nothing to clean up here — lifecycle manages its own children.
+    const lifecycle = runServerLifecycle({
+      binaryPathResolver: () => TEST_SERVER,
+      configValues: { CUSTOM_KEY: 'test-val' },
+      signal: controller.signal,
+      backoffDelaysMs: FAST_BACKOFF,
+      pollOptions: FAST_POLL,
+      onEvent: (e) => {
+        if (e.state === 'Ready') {
+          resolveEarly()
+        }
+      },
+    })
+
+    await earlyDone
+    controller.abort()
+    await lifecycle
+  })
 })
+

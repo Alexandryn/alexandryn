@@ -114,7 +114,13 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
   // Throws on failure (binary missing, poll timeout).
   async function attempt(): Promise<{ child: ChildProcess; port: number; config: ServerConfigHandle }> {
     const binaryPath = binaryPathResolver()
-    const config = await writeServerConfig(configValues)
+    // desktop-host-process-model.md FR-6 / E24: pass Electron's PID for child-side orphan monitoring
+    const config = await writeServerConfig({
+      DESKTOP_PARENT_PID: String(process.pid),
+      ...configValues,
+    })
+
+
 
     let child: ChildProcess | undefined
     let port: number | undefined
