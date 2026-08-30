@@ -1,27 +1,131 @@
-/* Phase 05 scaffold (E2). E16 replaces this with @import of web/'s
-   generated tokens.css (copied into the build, FR-3) and the real
-   atStates visual treatment. */
+@import './tokens.css';
+
+/* desktop-host-window-and-serving.md FR-3 — boot asset styling
+   Conforms to .design-reference/Alexandryn-Electron-Admin.dc.html (atStates)
+   using extracted tokens from tokens.css. */
+
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
+  padding: 0;
   height: 100%;
-  background: #f6f5f2;
-  color: #1a1917;
+  background-color: var(--background, #f6f5f2);
+  color: var(--text, #1a1917);
   font-family:
     system-ui,
     -apple-system,
-    'Helvetica Neue',
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
     sans-serif;
-}
-
-.boot {
+  -webkit-font-smoothing: antialiased;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  user-select: none;
 }
 
-.boot__message {
-  font-size: 15px;
-  letter-spacing: 0.01em;
+.boot-card {
+  width: 100%;
+  max-width: 440px;
+  margin: 20px;
+  padding: var(--spacing-3xl, 20px);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e7e4de);
+  border-radius: var(--radius-2xl, 13px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(24, 22, 20, 0.05));
+}
+
+.state-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 9px);
+}
+
+.state-title {
+  margin: 0;
+  font-size: var(--text-3xl, 14px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text, #1a1917);
+}
+
+.state-description {
+  margin: var(--spacing-sm, 9px) 0 0;
+  font-size: var(--text-xl, 13px);
+  color: var(--text-2, #6e6b66);
+  line-height: 1.55;
+}
+
+/* Spinner (from atStates loading item) */
+.status-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--border, #e7e4de);
+  border-top-color: var(--accent, #41608f);
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Error dot (from atStates error item) */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot--error {
+  background-color: var(--error, #b04a40);
+}
+
+.state-actions {
+  display: flex;
+  gap: var(--spacing-xs, 8px);
+  margin-top: var(--spacing-2xl, 16px);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: var(--radius-xs, 8px);
+  font-size: var(--text-lg, 12.5px);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border, #e7e4de);
+  background: var(--surface, #ffffff);
+  color: var(--text, #1a1917);
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.btn--primary {
+  background-color: var(--accent, #41608f);
+  color: var(--accent-text, #ffffff);
+  border: none;
+}
+
+.btn--primary:hover {
+  opacity: 0.9;
+}
+
+/* Accessible visible focus ring (Constitution §7, FR-3) */
+.btn:focus-visible {
+  outline: 2px solid var(--accent, #41608f);
+  outline-offset: 2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

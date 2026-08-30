@@ -2,17 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
     <title>Alexandryn</title>
+    <link rel="stylesheet" href="./tokens.css" />
     <link rel="stylesheet" href="./boot.css" />
   </head>
   <body>
-    <!-- Phase 05 scaffold (E2). E16 replaces this with the real atStates
-         loading/error treatment, styled from web/'s tokens.css (FR-3),
-         with a Retry action, visible focus ring, and an aria-live region
-         announcing the loading -> error transition. -->
-    <main class="boot" role="status" aria-live="polite">
-      <p class="boot__message">Starting Alexandryn</p>
+    <main class="boot-card" role="status" aria-live="polite">
+      <!-- Loading State (default) -->
+      <div id="loading-state" class="state-view">
+        <div class="state-header">
+          <div class="status-spinner" aria-hidden="true"></div>
+          <h1 class="state-title boot__message">Starting Alexandryn</h1>
+        </div>
+        <p class="state-description">Connecting to library...</p>
+      </div>
+
+      <!-- Error State (when startup fails or all retries exhausted) -->
+      <div id="error-state" class="state-view" style="display: none">
+        <div class="state-header">
+          <div class="status-dot status-dot--error" aria-hidden="true"></div>
+          <h1 class="state-title">Unable to start Alexandryn</h1>
+        </div>
+        <p class="state-description">The server process could not be started or did not become ready in time.</p>
+        <div class="state-actions">
+          <button id="retry-btn" class="btn btn--primary" type="button">Retry</button>
+        </div>
+      </div>
     </main>
+    <script type="module" src="./boot.ts"></script>
   </body>
 </html>
