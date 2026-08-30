@@ -281,3 +281,33 @@ func TestLoad_DatabaseURLGarbageTextIsPassedThroughUnexamined(t *testing.T) {
 		t.Fatalf("DatabaseURL = %q, want the raw value passed through unexamined", cfg.DatabaseURL)
 	}
 }
+
+func TestLoad_DesktopParentPID(t *testing.T) {
+	validEnv(t)
+
+	// Unset -> defaults to 0 (optional with no default)
+	cfg, err := config.Load("", noFile, fakeUserConfigDir)
+	if err != nil {
+		t.Fatalf("Load() error = %v, want nil", err)
+	}
+	if cfg.DesktopParentPID != 0 {
+		t.Fatalf("DesktopParentPID = %d, want 0 when unset", cfg.DesktopParentPID)
+	}
+
+	// Set valid integer
+	t.Setenv("DESKTOP_PARENT_PID", "12345")
+	cfg, err = config.Load("", noFile, fakeUserConfigDir)
+	if err != nil {
+		t.Fatalf("Load() error = %v, want nil", err)
+	}
+	if cfg.DesktopParentPID != 12345 {
+		t.Fatalf("DesktopParentPID = %d, want 12345", cfg.DesktopParentPID)
+	}
+
+	// Set invalid integer -> fails
+	t.Setenv("DESKTOP_PARENT_PID", "not-a-pid")
+	if _, err := config.Load("", noFile, fakeUserConfigDir); err == nil {
+		t.Fatal("Load() error = nil, want error for non-integer DESKTOP_PARENT_PID")
+	}
+}
+

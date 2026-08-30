@@ -66,7 +66,13 @@ type Config struct {
 	// (backend-configuration.md FR-4).
 	TLSCertFile string
 	TLSKeyFile  string
+
+	// DesktopParentPID is optional: when set by the Electron desktop host
+	// (architecture-desktop-host.md FR-8, desktop-host-process-model.md FR-6),
+	// the server watches this PID for termination and self-exits if the parent dies.
+	DesktopParentPID int
 }
+
 
 type category int
 
@@ -166,7 +172,14 @@ var fields = []fieldSpec{
 		parse:    parseString,
 		apply:    func(cfg *Config, v any) { cfg.TLSKeyFile = v.(string) },
 	},
+	{
+		key:      "DESKTOP_PARENT_PID",
+		category: categoryOptionalNoDefault,
+		parse:    parseInt,
+		apply:    func(cfg *Config, v any) { cfg.DesktopParentPID = v.(int) },
+	},
 }
+
 
 // defaults holds each categoryOptionalDefault key's compiled default,
 // applied when no source provides a value. DB_POOL_MAX_CONNS and the
