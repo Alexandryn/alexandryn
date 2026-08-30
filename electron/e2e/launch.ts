@@ -1,3 +1,5 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron, type ElectronApplication } from '@playwright/test'
 
@@ -14,8 +16,12 @@ const MAIN = join(__dirname, '../out/main/index.js')
  * namespaces (handled by the CI job, not here).
  */
 export function launchHost(extraArgs: string[] = []): Promise<ElectronApplication> {
+  const userDataDir = mkdtempSync(join(tmpdir(), 'alexandryn-e2e-user-data-'))
   return _electron.launch({
-    args: [MAIN, ...extraArgs],
+    args: [`--user-data-dir=${userDataDir}`, MAIN, ...extraArgs],
     env: { ...process.env, NODE_ENV: 'test' },
   })
 }
+
+
+

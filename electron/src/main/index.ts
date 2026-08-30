@@ -1,43 +1,100 @@
 import { join } from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import type { ChildProcess } from 'node:child_process'
+import { app, BrowserWindow, Menu } from 'electron'
+import { acquireSingleInstanceLock } from './singleInstance'
+import { shutdownServer } from './shutdown'
+import { getBrowserWindowOptions } from './windowOptions'
 
-// Phase 05 scaffold (E2). The real lifecycle — spawn the Go server, poll
-// /healthz, load the real UI only once ready, crash recovery — is
-// Tiers 1–3. For now this opens one window on the disk-loaded boot asset
-// so the _electron harness (E4) has a target and can assert the security
-// flags.
+import { getWindowStatePath, loadWindowState, trackWindowState } from './windowState'
+import { setupWindowNavigation } from './navigation'
+
+import { WindowServingController } from './windowServing'
+import { runServerLifecycle } from './serverLifecycle'
+import { registerIpcHandlers } from './ipc'
+
+// Phase 05: Full lifecycle orchestration (Tiers 1–4).
+// Spawns the Go server, polls /healthz, displays boot asset before ready,
+// loads real UI on ready, handles crash recovery with Recovering banner,
+// exposes type-safe Zod-validated IPC surface, and shuts down cleanly on quit.
+
+// E8 — FR-7: single-instance lock BEFORE window creation and BEFORE any
+// spawn call, so a second process can never start a second Go server.
+if (!acquireSingleInstanceLock()) {
+  app.quit()
+}
+
+// E20 — Register declared IPC handlers
+registerIpcHandlers()
 
 const BOOT_HTML = join(import.meta.dirname, '../renderer/index.html')
 
-function createWindow(): BrowserWindow {
-  const window = new BrowserWindow({
-    show: false,
-    width: 1024,
-    height: 720,
-    webPreferences: {
-      // architecture-desktop-host.md FR-2 — the privilege boundary, set
-      // as literal constructor options a test verifies (E4, E14). No
-      // per-window exception, ever.
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      preload: join(import.meta.dirname, '../preload/index.js'),
+// The spawned Go server child process. Set by the spawn call (E9/Tier 1–3).
+// Accessed by the before-quit shutdown handler (E11).
+let serverChild: ChildProcess | undefined
+
+async function createWindow(): Promise<{ window: BrowserWindow; serving: WindowServingController }> {
+  // desktop-host-window-and-serving.md FR-1: no application menu bar on any platform for v1
+  Menu.setApplicationMenu(null)
+
+  const statePath = getWindowStatePath()
+  const savedBounds = await loadWindowState(statePath)
+  const window = new BrowserWindow(getBrowserWindowOptions({ bounds: savedBounds }))
+
+  // desktop-host-window-and-serving.md FR-2: persist size and position across sessions
+  trackWindowState(window, statePath)
+
+  const serving = new WindowServingController(window, BOOT_HTML)
+
+  // desktop-host-window-and-serving.md FR-4: external link interception and dynamic origin locking
+  setupWindowNavigation(window.webContents, {
+    getAllowedOrigin: () => {
+      const port = serving.getCurrentPort()
+      return port !== undefined ? `http://127.0.0.1:${port}` : undefined
     },
   })
 
   void window.loadFile(BOOT_HTML)
   window.once('ready-to-show', () => window.show())
-  return window
+  return { window, serving }
 }
 
-app.whenReady().then(() => {
-  createWindow()
+app.whenReady().then(async () => {
+  const { serving } = await createWindow()
+
+  void runServerLifecycle({
+    onChildSpawned: (child) => {
+      serverChild = child
+    },
+    onEvent: (event) => {
+      void serving.handleServerEvent(event)
+    },
+  }).catch((err) => {
+    console.error('[deskhost] Server lifecycle terminated:', err)
+  })
 })
 
-// architecture-desktop-host.md FR-11 / desktop-host-process-model.md FR-5:
+// desktop-host-process-model.md FR-5: `before-quit` defers the default
+// quit until the Go server shutdown sequence completes (SIGTERM + SIGKILL).
+// Without `preventDefault()`, Electron would exit while the child is still
+// running.
+app.on('before-quit', (event) => {
+  if (serverChild === undefined || serverChild.exitCode !== null || serverChild.killed) {
+    // No live child — nothing to wait for; let quit proceed immediately.
+    return
+  }
+
+  event.preventDefault()
+  void shutdownServer(serverChild).then(() => app.quit())
+})
+
+// desktop-host-process-model.md FR-5 / architecture-desktop-host.md FR-11:
 // close-means-quit on every platform, including macOS (whose framework
-// default is the opposite). Tier 1 (E11) adds the child-process shutdown
-// this must also wait for.
+// default is the opposite — `window-all-closed` does NOT quit the app).
 app.on('window-all-closed', () => {
   app.quit()
 })
+
+// Expose for Tier 1–3 lifecycle management to set after a successful spawn.
+export function setServerChild(child: ChildProcess): void {
+  serverChild = child
+}
