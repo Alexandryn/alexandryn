@@ -17,11 +17,13 @@ const MAIN = join(__dirname, '../out/main/index.js')
  */
 export function launchHost(extraArgs: string[] = []): Promise<ElectronApplication> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'alexandryn-e2e-user-data-'))
+  const ciFlags = process.env.CI ? ['--no-sandbox', '--disable-setuid-sandbox'] : []
   return _electron.launch({
-    args: [`--user-data-dir=${userDataDir}`, MAIN, ...extraArgs],
+    args: [`--user-data-dir=${userDataDir}`, ...ciFlags, MAIN, ...extraArgs],
     env: { ...process.env, NODE_ENV: 'test' },
   })
 }
+
 
 
 
