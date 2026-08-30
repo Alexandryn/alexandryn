@@ -1,12 +1,14 @@
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { createInterface } from 'node:readline'
+import { assignProcessToJobObject } from './jobObject'
 
 // desktop-host-process-model.md FR-2 — spawn the Go server via
 // child_process.spawn with an argument array, never exec or shell:true.
 // The binary path and arguments are internal (no user/renderer input),
 // but argument-array spawn is the correct default regardless: defense in
 // depth and no shell-interpretation risk, ever.
+
 
 const PORT_PATTERN = /\bPORT=(\d+)\b/
 
@@ -46,7 +48,12 @@ export function spawnServer(binaryPath: string, configPath: string, extraArgs: s
     shell: false,
   })
 
+  // desktop-host-process-model.md FR-6 / architecture-desktop-host.md FR-9:
+  // On Windows, assign child to a Job Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
+  assignProcessToJobObject(child)
+
   let portResolve: (port: number) => void
+
   let portReject: (err: Error) => void
   const portPromise = new Promise<number>((resolve, reject) => {
     portResolve = resolve
