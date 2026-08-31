@@ -169,7 +169,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download web/dist
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: web-dist
           path: web/dist
@@ -332,7 +332,7 @@ jobs:
         run: npm ci
 
       - name: Download server binary
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: server-binary
           path: bin
