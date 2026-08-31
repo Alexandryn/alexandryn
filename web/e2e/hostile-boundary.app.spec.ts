@@ -47,4 +47,22 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
+
+  test('Phase 07: discover malformed queries and long payloads do not crash renderer', async ({
+    page,
+  }) => {
+    const hostilePayload = '!@#$%^&*()_+-=[]{}|;:",.<>?/`~ ' + 'B'.repeat(400)
+    await page.goto(`/discover?q=${encodeURIComponent(hostilePayload)}`)
+
+    await expect(page.getByRole('heading', { name: 'Discover', level: 1 })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  })
+
+  test('Phase 07: discover work detail with special character IDs renders safely', async ({
+    page,
+  }) => {
+    await page.goto(`/discover/works/${encodeURIComponent('!@#$%^&*()_+-=[]')}`)
+
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  })
 })
