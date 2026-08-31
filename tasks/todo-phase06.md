@@ -40,6 +40,7 @@
 
 ## Tier 6 — Security Audit & Closure
 - [x] L23 — Four-attacker security audit → `.claude/audits/0006-phase06-library.md`
-- [ ] **═══ STOP GATE — present audit, await maintainer sign-off ═══**
-- [ ] L24 — Flip 3 specs to `VERIFIED`; update `.claude/specs/README.md`; close Phase 06
+- [x] **═══ STOP GATE — maintainer sign-off received 2026-08-31 ═══**
+- [x] L24 — Flip 3 specs to `VERIFIED`; update `.claude/specs/README.md`; close Phase 06
+
 
