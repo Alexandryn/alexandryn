@@ -18,8 +18,10 @@
 package contracttest
 
 import (
+	"bytes"
 	"context"
 	"io"
+
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -88,6 +90,9 @@ func (v *Validator) ValidateResponse(t testing.TB, handler http.Handler, req *ht
 	}
 
 	// Validate the response.
+	bodyBytes := rr.Body.Bytes()
+	rr.Body = bytes.NewBuffer(bodyBytes)
+
 	input := &openapi3filter.ResponseValidationInput{
 		RequestValidationInput: &openapi3filter.RequestValidationInput{
 			Request:    req,
@@ -96,7 +101,7 @@ func (v *Validator) ValidateResponse(t testing.TB, handler http.Handler, req *ht
 		},
 		Status: rr.Code,
 		Header: rr.Header(),
-		Body:   io.NopCloser(rr.Body),
+		Body:   io.NopCloser(bytes.NewReader(bodyBytes)),
 		Options: &openapi3filter.Options{
 			// Do not require auth headers — every Phase 06 endpoint opts
 			// out of auth (security: []) until phase 12.
@@ -110,6 +115,7 @@ func (v *Validator) ValidateResponse(t testing.TB, handler http.Handler, req *ht
 
 	return rr
 }
+
 
 // Doc returns the loaded OpenAPI document, for tests that need to
 // enumerate paths or inspect schemas directly (e.g. the route-completeness

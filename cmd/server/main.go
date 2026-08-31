@@ -18,10 +18,12 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
+	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
+
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
 // "wait for Postgres to become reachable" retry (FR-3's sole retry
@@ -146,7 +148,18 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("GET /api/v1/library", transporthttp.LibraryHandler(workRepo))
 	mux.Handle("GET /api/v1/works/{id}", transporthttp.WorkDetailHandler(workRepo))
 
+	collRepo := transporthttp.NewLazyCollectionRepository(poolRef)
+	idGen := idgen.New()
+	mux.Handle("GET /api/v1/collections", transporthttp.ListCollectionsHandler(collRepo))
+	mux.Handle("POST /api/v1/collections", transporthttp.CreateCollectionHandler(collRepo, idGen))
+	mux.Handle("GET /api/v1/collections/{id}", transporthttp.GetCollectionHandler(collRepo))
+	mux.Handle("PATCH /api/v1/collections/{id}", transporthttp.RenameCollectionHandler(collRepo))
+	mux.Handle("DELETE /api/v1/collections/{id}", transporthttp.DeleteCollectionHandler(collRepo))
+	mux.Handle("POST /api/v1/collections/{id}/works", transporthttp.AddWorkToCollectionHandler(collRepo, time.Now))
+	mux.Handle("DELETE /api/v1/collections/{id}/works/{workId}", transporthttp.RemoveWorkFromCollectionHandler(collRepo))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
+
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
 
 	return transporthttp.Chain(mux,

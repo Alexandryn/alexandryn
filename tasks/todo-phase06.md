@@ -11,10 +11,11 @@
 - [x] L06 — Write unit, integration, and OpenAPI contract tests for library and work endpoints
 
 ## Tier 2 — Backend Collections Endpoints (Go)
-- [ ] L07 — Implement `/api/v1/collections` list & create handlers
-- [ ] L08 — Implement `/api/v1/collections/{id}` get, rename, and delete handlers
-- [ ] L09 — Implement `/api/v1/collections/{id}/works` add and remove work handlers
-- [ ] L10 — Unit tests, integration tests, and OpenAPI contract tests for collections endpoints
+- [x] L07 — Implement `/api/v1/collections` list & create handlers
+- [x] L08 — Implement `/api/v1/collections/{id}` get, rename, and delete handlers
+- [x] L09 — Implement `/api/v1/collections/{id}/works` add and remove work handlers
+- [x] L10 — Unit tests, integration tests, and OpenAPI contract tests for collections endpoints
+
 
 ## Tier 3 — Frontend Library Screens & TanStack Query (React)
 - [ ] L11 — Create TanStack Query hooks for library cursor pagination and work detail

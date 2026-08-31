@@ -283,10 +283,16 @@ func run(ctx context.Context, deps runDeps) int {
 		return 1
 	}
 	poolRef.Set(pool)
-	if repos != nil && repos.works != nil {
-		poolRef.SetWorkRepository(repos.works)
+	if repos != nil {
+		if repos.works != nil {
+			poolRef.SetWorkRepository(repos.works)
+		}
+		if repos.collections != nil {
+			poolRef.SetCollectionRepository(repos.collections)
+		}
 	}
 	logger.Info("startup step completed", "step", "pool")
+
 
 	logger.Info("ready")
 
