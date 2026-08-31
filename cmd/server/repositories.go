@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
@@ -31,12 +34,22 @@ type repositories struct {
 	highlights         domain.HighlightRepository
 	readingPreferences domain.ReadingPreferencesRepository
 	transactor         domain.Transactor
+	metadataCache      postgres.MetadataCacheRepository
+	coverCache         postgres.CoverCacheRepository
 }
 
 // newRepositories constructs every T24 repository implementation
 // (internal/persistence/postgres) against pool — production's real
 // implementation of runDeps.newPool's repository half.
 func newRepositories(pool *pgxpool.Pool) *repositories {
+	coversDir := ""
+	if userCache, err := os.UserCacheDir(); err == nil && userCache != "" {
+		coversDir = filepath.Join(userCache, "alexandryn", "covers")
+	} else {
+		coversDir = filepath.Join(os.TempDir(), "alexandryn-covers")
+	}
+	coverCacheRepo, _ := postgres.NewCoverCacheRepository(pool, coversDir, nil)
+
 	return &repositories{
 		works:              postgres.NewWorkRepository(pool),
 		authors:            postgres.NewAuthorRepository(pool),
@@ -50,5 +63,7 @@ func newRepositories(pool *pgxpool.Pool) *repositories {
 		highlights:         postgres.NewHighlightRepository(pool),
 		readingPreferences: postgres.NewReadingPreferencesRepository(pool),
 		transactor:         postgres.NewTransactor(pool),
+		metadataCache:      postgres.NewMetadataCacheRepository(pool),
+		coverCache:         coverCacheRepo,
 	}
 }
