@@ -106,6 +106,24 @@ describe('route table (FR-1)', () => {
     ).toBeInTheDocument()
   })
 
+  it('/discover/works/:openLibraryId resolves to DiscoverWorkDetail screen', async () => {
+    server.use(
+      http.get('*/api/v1/discover/works/:openLibraryId', () =>
+        HttpResponse.json({
+          work: {
+            title: 'Middlemarch',
+            authors: [{ name: 'George Eliot' }],
+          },
+          editions: [],
+        }),
+      ),
+    )
+    renderRoute('/discover/works/OL82563W')
+    expect(
+      await screen.findByRole('heading', { name: 'Middlemarch', level: 1 }),
+    ).toBeInTheDocument()
+  })
+
 
   it('/ redirects to /library', async () => {
     renderRoute('/')

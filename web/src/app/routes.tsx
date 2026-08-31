@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import type { Capability } from '../data/bootstrap'
 import { Collections } from '../screens/Collections'
 import { CollectionDetail } from '../screens/CollectionDetail'
+import { Discover, DiscoverWorkDetail } from '../screens/Discover'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
@@ -13,7 +14,7 @@ import { AppShell } from './shell/AppShell'
 
 // Route views are placeholders this phase — phase 06 onward fills them in
 // inside the same shell (this spec's Non-goals). Only <NotFound> (FR-5),
-// /library, and /book/:id have real content.
+// /library, /book/:id, and /discover have real content.
 //
 // Host-only gating (architecture-frontend.md FR-3) is declared here, in
 // one place — the `hostOnly()` wrapper below. The sidebar shows every
@@ -40,7 +41,8 @@ const shellChildren: RouteObject[] = [
   { path: 'collections', element: <Collections /> },
   { path: 'collections/:id', element: <CollectionDetail /> },
   { path: 'collection/:id', element: <CollectionDetail /> },
-  { path: 'discover', element: <ScreenPlaceholder title="Discover" /> },
+  { path: 'discover', element: <Discover /> },
+  { path: 'discover/works/:openLibraryId', element: <DiscoverWorkDetail /> },
   { path: 'activity', element: <ScreenPlaceholder title="Activity" /> },
   { path: 'more', element: <ScreenPlaceholder title="More" /> },
 
