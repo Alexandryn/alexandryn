@@ -196,4 +196,96 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  searchDiscover: {
+    '200': {
+      items: [
+        {
+          openLibraryWorkKey: 'OL82563W',
+          title: 'Middlemarch',
+          authors: [
+            {
+              openLibraryAuthorKey: 'OL21594A',
+              name: 'George Eliot',
+            },
+          ],
+          firstPublishYear: 1871,
+          coverUrl: '/api/v1/discover/covers/8256301',
+          editionCount: 42,
+        },
+      ],
+      total: 1,
+      limit: 20,
+      offset: 0,
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'q: required parameter missing',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'Open Library is temporarily unavailable',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getDiscoverWork: {
+    '200': {
+      work: {
+        title: 'Middlemarch',
+        subtitle: 'A Study of Provincial Life',
+        description:
+          'Middlemarch, A Study of Provincial Life is a novel by Mary Anne Evans, writing as George Eliot.',
+        subjects: ['Provincial life', 'Fiction'],
+        authors: [
+          {
+            openLibraryAuthorKey: 'OL21594A',
+            name: 'George Eliot',
+          },
+        ],
+        coverUrl: '/api/v1/discover/covers/8256301',
+      },
+      editions: [
+        {
+          title: 'Middlemarch',
+          publisher: 'Penguin Classics',
+          publishDate: '2003',
+          language: 'en',
+          openLibraryEditionKey: 'OL7353617M',
+          coverUrl: '/api/v1/discover/covers/8256301',
+        },
+      ],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'openLibraryId: malformed Open Library work ID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'work not found on Open Library',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'Open Library is temporarily unavailable',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getDiscoverCover: {
+    '400': {
+      code: 'invalid_input',
+      message: 'coverId: must be a positive integer',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'cover not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'Open Library Covers API is temporarily unavailable',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const

@@ -41,11 +41,11 @@ function build(): Record<string, Record<string, unknown>> {
       }
       for (const [status, response] of Object.entries(op.responses ?? {})) {
         // 204 / 304 and any other no-body response: no content key in the
-        // spec → no fixture to generate for this status code. This is
-        // correct — not a spec authoring error.
-        if (!response.content) continue
+        // spec → no fixture to generate for this status code. Non-JSON
+        // media types (e.g. image/jpeg) are also skipped.
+        if (!response.content || !response.content['application/json']) continue
         const json = response.content['application/json']
-        if (!json || !('example' in json)) {
+        if (!('example' in json)) {
           throw new Error(
             `${operationId} ${status}: no application/json example in the contract — ` +
               `tier-(a) fixtures need an inline example to generate from`,
