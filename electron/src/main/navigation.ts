@@ -25,13 +25,15 @@ export function isSafeExternalUrl(rawUrl: string): boolean {
  */
 export function openExternalIfSafe(
   rawUrl: string,
-  opener: (url: string) => Promise<void> = shell.openExternal,
+  opener?: (url: string) => Promise<void>,
 ): boolean {
   if (!isSafeExternalUrl(rawUrl)) {
     console.warn('[navigation] Blocked external open attempt for unsafe URL:', rawUrl)
     return false
   }
-  opener(rawUrl).catch((err) => {
+  const defaultOpener = process.env.NODE_ENV === 'test' ? async () => {} : (url: string) => shell.openExternal(url)
+  const effectiveOpener = opener ?? defaultOpener
+  effectiveOpener(rawUrl).catch((err) => {
     console.warn('[navigation] Failed to open external URL in default browser:', rawUrl, err)
   })
   return true
@@ -53,11 +55,12 @@ export function setupWindowNavigation(
   webContents: WebContents,
   options?: NavigationOptions,
 ): void {
-  const opener = options?.opener ?? shell.openExternal
+  const opener = options?.opener
 
   // Intercept window.open and <a target="_blank">
   webContents.setWindowOpenHandler(({ url }) => {
     openExternalIfSafe(url, opener)
+
     return { action: 'deny' }
   })
 
