@@ -2,11 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
+| **Status** | `VERIFIED` (2026-08-31, phase 05 Tier 7 / E30 — implemented Tiers 1–6 (PR #68), audited [`0005`](../audits/0005-phase05-desktop-host.md), all acceptance criteria proven with 97 Vitest tests, 14 Playwright E2E tests, Linux re-exec parentwatch test, D7 Windows job object seam documented) — was `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-14) |
 | **Phase** | `05-desktop-host` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-14 |
+| **Last updated** | 2026-08-31 |
+
 | **Supersedes** | — |
 | **Reviewed in** | [`0032`](../reviews/0032-spec-amendments-phase05-cross-phase-findings.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14 |
 
