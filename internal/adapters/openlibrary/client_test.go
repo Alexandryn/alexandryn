@@ -139,11 +139,11 @@ func TestClient_GetWork(t *testing.T) {
 					authorsList += fmt.Sprintf(`{"author": {"key": "/authors/OL%dA"}}`, i)
 				}
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(fmt.Sprintf(`{
+				_, _ = fmt.Fprintf(w, `{
 					"key": "/works/OL82563W",
 					"title": "Many Authors Work",
 					"authors": [%s]
-				}`, authorsList)))
+				}`, authorsList)
 
 			case "/works/OL82563W/editions.json":
 				w.WriteHeader(http.StatusOK)
