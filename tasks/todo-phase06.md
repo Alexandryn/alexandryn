@@ -34,8 +34,9 @@
 
 
 ## Tier 5 — E2E Walkthrough & Hostile Boundary Tests
-- [ ] L21 — Playwright E2E full library walkthrough (browse, search, filter, paginate, manage collections)
-- [ ] L22 — Hostile boundary tests (malformed cursors, invalid IDs, injection payloads)
+- [x] L21 — Playwright E2E full library walkthrough (browse, search, filter, paginate, manage collections)
+- [x] L22 — Hostile boundary tests (malformed cursors, invalid IDs, injection payloads)
+
 
 ## Tier 6 — Security Audit & Closure
 - [ ] L23 — Four-attacker security audit → `.claude/audits/0006-phase06-library.md`
