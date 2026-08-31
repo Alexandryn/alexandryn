@@ -143,12 +143,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LibraryPage'
+              example:
+                works: []
+                nextCursor: null
         '400':
           description: Invalid parameter value.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "sort: unrecognized value \"relevance\" — must be one of: added_at, title"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/works/{id}:
     get:
@@ -174,18 +181,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkDetail'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXX"
+                title: "Middlemarch"
+                subtitle: ""
+                authors: ["George Eliot"]
+                subjects: ["Fiction"]
+                originalLanguage: "en"
+                ownedEditions:
+                  - id: "01JXXXXXXXXXXXXXXXXXXXXXXY"
+                    language: "en"
+                    isbn: "9780141439549"
+                    publisher: "Penguin Classics"
+                    publicationYear: 2003
+                    addedAt: "2026-01-15T10:00:00Z"
+                    formats: ["epub"]
+                collections:
+                  - id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                    name: "Classics"
+                    addedAt: "2026-01-20T08:00:00Z"
         '400':
           description: Malformed WorkID (not a valid ID shape).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "id: not a valid work ID"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: No work with that ID exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no work with that id"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/collections:
     get:
@@ -210,6 +244,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/CollectionSummary'
+              example:
+                collections: []
     post:
       operationId: createCollection
       summary: Create a new collection
@@ -231,12 +267,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CollectionDetail'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                name: "Classics"
+                works: []
         '400':
           description: Invalid collection name.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "name: exceeds maximum length of 100 characters"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/collections/{id}:
     get:
@@ -261,18 +305,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CollectionDetail'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                name: "Classics"
+                works: []
         '400':
           description: Malformed CollectionID.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "id: not a valid collection ID"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: No collection with that ID exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no collection with that id"
+                correlationId: 00000000-0000-0000-0000-000000000000
     patch:
       operationId: renameCollection
       summary: Rename a collection
@@ -300,18 +356,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CollectionDetail'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                name: "Renamed Collection"
+                works: []
         '400':
           description: Invalid name or malformed CollectionID.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "name: contains control characters"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: No collection with that ID exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no collection with that id"
+                correlationId: 00000000-0000-0000-0000-000000000000
     delete:
       operationId: deleteCollection
       summary: Delete a collection
@@ -335,12 +403,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "id: not a valid collection ID"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: No collection with that ID exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no collection with that id"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/collections/{id}/works:
     post:
@@ -371,18 +447,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CollectionDetail'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                name: "Classics"
+                works: []
         '400':
           description: Malformed ID or missing workId.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "workId: missing required field"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: Collection or Work not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no collection with that id"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/collections/{id}/works/{workId}:
     delete:
@@ -416,12 +504,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "workId: not a valid work ID"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: Collection or membership not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "no membership found for that work in this collection"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
 
 
 

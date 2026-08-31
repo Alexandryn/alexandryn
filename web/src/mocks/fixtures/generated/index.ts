@@ -17,4 +17,145 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  listLibrary: {
+    '200': {
+      works: [],
+      nextCursor: null,
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'sort: unrecognized value "relevance" — must be one of: added_at, title',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getWork: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXX',
+      title: 'Middlemarch',
+      subtitle: '',
+      authors: ['George Eliot'],
+      subjects: ['Fiction'],
+      originalLanguage: 'en',
+      ownedEditions: [
+        {
+          id: '01JXXXXXXXXXXXXXXXXXXXXXXY',
+          language: 'en',
+          isbn: '9780141439549',
+          publisher: 'Penguin Classics',
+          publicationYear: 2003,
+          addedAt: '2026-01-15T10:00:00Z',
+          formats: ['epub'],
+        },
+      ],
+      collections: [
+        {
+          id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+          name: 'Classics',
+          addedAt: '2026-01-20T08:00:00Z',
+        },
+      ],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'id: not a valid work ID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no work with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  listCollections: {
+    '200': {
+      collections: [],
+    },
+  },
+  createCollection: {
+    '201': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      name: 'Classics',
+      works: [],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'name: exceeds maximum length of 100 characters',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getCollection: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      name: 'Classics',
+      works: [],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'id: not a valid collection ID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no collection with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  deleteCollection: {
+    '400': {
+      code: 'invalid_input',
+      message: 'id: not a valid collection ID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no collection with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  renameCollection: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      name: 'Renamed Collection',
+      works: [],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'name: contains control characters',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no collection with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  addWorkToCollection: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      name: 'Classics',
+      works: [],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'workId: missing required field',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no collection with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  removeWorkFromCollection: {
+    '400': {
+      code: 'invalid_input',
+      message: 'workId: not a valid work ID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no membership found for that work in this collection',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const

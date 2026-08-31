@@ -40,7 +40,11 @@ function build(): Record<string, Record<string, unknown>> {
         throw new Error(`${method.toUpperCase()} ${path} has no operationId`)
       }
       for (const [status, response] of Object.entries(op.responses ?? {})) {
-        const json = response.content?.['application/json']
+        // 204 / 304 and any other no-body response: no content key in the
+        // spec → no fixture to generate for this status code. This is
+        // correct — not a spec authoring error.
+        if (!response.content) continue
+        const json = response.content['application/json']
         if (!json || !('example' in json)) {
           throw new Error(
             `${operationId} ${status}: no application/json example in the contract — ` +
