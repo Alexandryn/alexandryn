@@ -18,14 +18,31 @@ function initBootAsset(): void {
   }
 
   if (retryBtn) {
-    retryBtn.addEventListener('click', () => {
-      // Reload to retry startup
-      window.location.search = ''
-      window.location.hash = ''
-      window.location.reload()
+    retryBtn.addEventListener('click', async () => {
+      // Optimistically show loading view
+      if (loadingView) loadingView.style.display = 'block'
+      if (errorView) errorView.style.display = 'none'
+
+      const alex = (window as unknown as { alexandryn?: { system?: { retryStartup?: () => Promise<void> } } }).alexandryn
+      if (alex?.system?.retryStartup) {
+        try {
+          await alex.system.retryStartup()
+        } catch {
+          // If IPC call rejected, fallback to reload
+          window.location.reload()
+        }
+      } else {
+        window.location.reload()
+      }
     })
   }
 }
+
+
+
+
+
+
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initBootAsset)

@@ -6,6 +6,7 @@ import {
   OPERATIONS,
   SOURCE_PICK_LOCAL_FOLDER,
   SYSTEM_GET_APP_VERSION,
+  SYSTEM_RETRY_STARTUP,
 } from '../shared/operations'
 
 // desktop-host-ipc-surface.md FR-2, FR-3, FR-4, FR-5, FR-6.
@@ -36,10 +37,12 @@ export function getPackageVersion(): string {
 export interface IpcHandlerDependencies {
   getAppVersion?: () => string
   showOpenDialog?: typeof dialog.showOpenDialog
+  onRetryStartup?: () => Promise<void> | void
 }
 
 export const OPERATION_SCHEMAS: Record<string, z.ZodType> = {
   [SYSTEM_GET_APP_VERSION.name]: z.void().or(z.undefined()),
+  [SYSTEM_RETRY_STARTUP.name]: z.void().or(z.undefined()),
   [SOURCE_PICK_LOCAL_FOLDER.name]: z.void().or(z.undefined()),
 }
 
@@ -52,6 +55,9 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies = {}): void {
 
   const handlers: Record<string, (args: unknown) => Promise<unknown> | unknown> = {
     [SYSTEM_GET_APP_VERSION.name]: () => getAppVersion(),
+    [SYSTEM_RETRY_STARTUP.name]: async () => {
+      await deps.onRetryStartup?.()
+    },
     [SOURCE_PICK_LOCAL_FOLDER.name]: async () => {
       const result = await showOpenDialog({
         properties: ['openDirectory'],
@@ -62,6 +68,7 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies = {}): void {
       return { path: result.filePaths[0] }
     },
   }
+
 
   for (const op of OPERATIONS) {
     const handler = handlers[op.name]

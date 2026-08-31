@@ -64,20 +64,30 @@ export function spawnServer(binaryPath: string, configPath: string, extraArgs: s
   // the child's logs from Electron's own. Architecture-desktop-host.md
   // API and contracts: the server announces its bound port on stdout as
   // "PORT=<n>" before it starts serving.
+  let portAnnounced = false
   const stdout = createInterface({ input: child.stdout! })
   stdout.on('line', (line) => {
     process.stdout.write(`[server] ${line}\n`)
-    const match = PORT_PATTERN.exec(line)
-    if (match !== null) {
-      const port = parseInt(match[1]!, 10)
-      portResolve(port)
+    if (!portAnnounced) {
+      const match = PORT_PATTERN.exec(line)
+      if (match !== null) {
+        portAnnounced = true
+        const port = parseInt(match[1]!, 10)
+        portResolve(port)
+      }
     }
   })
+
 
   // Stderr: prefix and forward; no PORT scanning needed here.
   const stderr = createInterface({ input: child.stderr! })
   stderr.on('line', (line) => {
     process.stderr.write(`[server] ${line}\n`)
+  })
+
+  // If spawn fails (e.g. ENOENT), reject the portPromise immediately.
+  child.once('error', (err) => {
+    portReject(err)
   })
 
   // If the child exits before announcing a port, reject the promise so the
@@ -90,6 +100,7 @@ export function spawnServer(binaryPath: string, configPath: string, extraArgs: s
       ),
     )
   })
+
 
   return { child, portPromise }
 }

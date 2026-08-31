@@ -11,9 +11,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "format:check": "prettier --check .",
+    "pretest": "go build -o test-helpers/test-server/test-server ./test-helpers/test-server",
     "test": "vitest run --passWithNoTests",
+    "pretest:e2e": "go build -o test-helpers/test-server/test-server ./test-helpers/test-server",
     "test:e2e": "playwright test"
   },
+
   "dependencies": {
     "zod": "4.4.3"
   },
