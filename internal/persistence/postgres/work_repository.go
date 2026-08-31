@@ -2,7 +2,11 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -246,4 +250,446 @@ func (r *WorkRepository) load(ctx context.Context, exec querier, id domain.WorkI
 	}
 
 	return domain.RehydrateWork(id, title, subtitle, authors, subjects, lang, refs, mergedIntoID, contains), nil
+}
+
+type jsonCollectionRef struct {
+	ID      string    `json:"id"`
+	Name    string    `json:"name"`
+	AddedAt time.Time `json:"added_at"`
+}
+
+type jsonOwnedEdition struct {
+	ID              string     `json:"id"`
+	Language        string     `json:"language"`
+	ISBN            *string    `json:"isbn"`
+	Publisher       string     `json:"publisher"`
+	PublicationYear *int       `json:"publication_year"`
+	AddedAt         *time.Time `json:"added_at"`
+	Formats         []string   `json:"formats"`
+}
+
+// QueryLibrary performs a single-query paginated fetch of works matching
+// the given filter, search, sort, and cursor parameters (backend-library-api.md
+// FR-1 through FR-4, FR-9).
+func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery) (*domain.LibraryPage, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	limit := q.Limit
+	if limit <= 0 {
+		limit = 50
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	filter := q.Filter
+	if filter == "" {
+		filter = domain.FilterAll
+	}
+
+	sort := q.Sort
+	if sort == "" {
+		sort = domain.SortAddedAt
+	}
+
+	var filterClause string
+	switch filter {
+	case domain.FilterOwned:
+		filterClause = `EXISTS (
+			SELECT 1 FROM editions e
+			JOIN library_entries le ON le.edition_id = e.id
+			WHERE e.work_id = w.id
+		)`
+	case domain.FilterWanted:
+		filterClause = `EXISTS (
+			SELECT 1 FROM collection_members cm
+			WHERE cm.work_id = w.id
+		) AND NOT EXISTS (
+			SELECT 1 FROM editions e
+			JOIN library_entries le ON le.edition_id = e.id
+			WHERE e.work_id = w.id
+		)`
+	case domain.FilterAll:
+		filterClause = `(EXISTS (
+			SELECT 1 FROM editions e
+			JOIN library_entries le ON le.edition_id = e.id
+			WHERE e.work_id = w.id
+		) OR EXISTS (
+			SELECT 1 FROM collection_members cm
+			WHERE cm.work_id = w.id
+		))`
+	default:
+		return nil, &domain.Error{
+			Category: domain.InvalidInput,
+			Message:  "filter: unrecognized value — must be one of: owned, wanted, all",
+		}
+	}
+
+	var whereClauses []string
+	whereClauses = append(whereClauses, filterClause)
+
+	var args []any
+	argIdx := 1
+
+	if q.Q != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf(`(
+			w.search_vector @@ plainto_tsquery('simple', $%d)
+			OR EXISTS (
+				SELECT 1 FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $%d)
+			)
+		)`, argIdx, argIdx))
+		args = append(args, q.Q)
+		argIdx++
+	}
+
+	var cursorAddedAt time.Time
+	var cursorTitle string
+	var cursorID domain.WorkID
+	var hasCursor bool
+
+	if q.Cursor != "" {
+		if sort == domain.SortTitle {
+			t, id, err := domain.DecodeTitleCursor(q.Cursor)
+			if err != nil {
+				return nil, err
+			}
+			cursorTitle = t
+			cursorID = id
+			hasCursor = true
+		} else {
+			t, id, err := domain.DecodeAddedAtCursor(q.Cursor)
+			if err != nil {
+				return nil, err
+			}
+			cursorAddedAt = t
+			cursorID = id
+			hasCursor = true
+		}
+	}
+
+	query := `WITH work_pool AS (
+		SELECT
+			w.id,
+			w.title,
+			w.subtitle,
+			EXISTS (
+				SELECT 1 FROM editions e
+				JOIN library_entries le ON le.edition_id = e.id
+				WHERE e.work_id = w.id
+			) AS is_owned,
+			COALESCE(
+				(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+				(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+			) AS effective_added_at
+		FROM works w
+		WHERE ` + strings.Join(whereClauses, " AND ") + `
+	)
+	SELECT
+		p.id,
+		p.title,
+		p.subtitle,
+		p.is_owned,
+		p.effective_added_at,
+		COALESCE((
+			SELECT json_agg(a.name ORDER BY wa.author_id)
+			FROM work_authors wa
+			JOIN authors a ON a.id = wa.author_id
+			WHERE wa.work_id = p.id
+		), '[]'::json) AS authors,
+		COALESCE((
+			SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+			FROM collection_members cm
+			JOIN collections c ON c.id = cm.collection_id
+			WHERE cm.work_id = p.id
+		), '[]'::json) AS collections
+	FROM work_pool p `
+
+	var outerWhere []string
+	if hasCursor {
+		if sort == domain.SortTitle {
+			outerWhere = append(outerWhere, fmt.Sprintf(`(p.title > $%d OR (p.title = $%d AND p.id > $%d))`, argIdx, argIdx, argIdx+1))
+			args = append(args, cursorTitle, string(cursorID))
+			argIdx += 2
+		} else {
+			outerWhere = append(outerWhere, fmt.Sprintf(`(p.effective_added_at < $%d OR (p.effective_added_at = $%d AND p.id < $%d))`, argIdx, argIdx, argIdx+1))
+			args = append(args, cursorAddedAt, string(cursorID))
+			argIdx += 2
+		}
+	}
+
+	if len(outerWhere) > 0 {
+		query += " WHERE " + strings.Join(outerWhere, " AND ")
+	}
+
+	if sort == domain.SortTitle {
+		query += " ORDER BY p.title ASC, p.id ASC "
+	} else {
+		query += " ORDER BY p.effective_added_at DESC, p.id DESC "
+	}
+
+	query += fmt.Sprintf(" LIMIT $%d", argIdx)
+	args = append(args, limit+1)
+
+	rows, err := exec.Query(ctx, query, args...)
+
+	if err != nil {
+		return nil, TranslateError(err)
+	}
+	defer rows.Close()
+
+	type workRow struct {
+		id               string
+		title            string
+		subtitle         string
+		isOwned          bool
+		effectiveAddedAt *time.Time
+		authorsJSON      []byte
+		collectionsJSON  []byte
+	}
+
+	var fetched []workRow
+	for rows.Next() {
+		var row workRow
+		if err := rows.Scan(
+			&row.id,
+			&row.title,
+			&row.subtitle,
+			&row.isOwned,
+			&row.effectiveAddedAt,
+			&row.authorsJSON,
+			&row.collectionsJSON,
+		); err != nil {
+			return nil, TranslateError(err)
+		}
+		fetched = append(fetched, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, TranslateError(err)
+	}
+
+	hasMore := len(fetched) > limit
+	if hasMore {
+		fetched = fetched[:limit]
+	}
+
+	resultWorks := make([]*domain.WorkSummary, 0, len(fetched))
+	for _, row := range fetched {
+		var authors []string
+		if len(row.authorsJSON) > 0 {
+			if err := json.Unmarshal(row.authorsJSON, &authors); err != nil {
+				return nil, TranslateError(err)
+			}
+		}
+		if authors == nil {
+			authors = []string{}
+		}
+
+		var rawColls []jsonCollectionRef
+		if len(row.collectionsJSON) > 0 {
+			if err := json.Unmarshal(row.collectionsJSON, &rawColls); err != nil {
+				return nil, TranslateError(err)
+			}
+		}
+
+		collections := make([]domain.CollectionRef, 0, len(rawColls))
+		for _, c := range rawColls {
+			addedAt := c.AddedAt
+			collections = append(collections, domain.CollectionRef{
+				ID:      domain.CollectionID(c.ID),
+				Name:    c.Name,
+				AddedAt: &addedAt,
+			})
+		}
+
+		resultWorks = append(resultWorks, &domain.WorkSummary{
+			ID:          domain.WorkID(row.id),
+			Title:       row.title,
+			Subtitle:    row.subtitle,
+			Authors:     authors,
+			IsOwned:     row.isOwned,
+			Collections: collections,
+			AddedAt:     row.effectiveAddedAt,
+		})
+	}
+
+	var nextCursor string
+	if hasMore && len(resultWorks) > 0 {
+		last := resultWorks[len(resultWorks)-1]
+		if sort == domain.SortTitle {
+			nextCursor = domain.EncodeTitleCursor(last.Title, last.ID)
+		} else {
+			if last.AddedAt != nil {
+				nextCursor = domain.EncodeAddedAtCursor(*last.AddedAt, last.ID)
+			} else {
+				nextCursor = domain.EncodeAddedAtCursor(time.Time{}, last.ID)
+			}
+		}
+	}
+
+	return &domain.LibraryPage{
+		Works:      resultWorks,
+		NextCursor: nextCursor,
+	}, nil
+}
+
+// FindWorkDetail loads one Work's detail including owned editions and
+// collection memberships (backend-library-api.md FR-5).
+func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	query := `SELECT
+		w.id,
+		w.title,
+		w.subtitle,
+		w.original_language,
+		COALESCE((
+			SELECT json_agg(a.name ORDER BY wa.author_id)
+			FROM work_authors wa
+			JOIN authors a ON a.id = wa.author_id
+			WHERE wa.work_id = w.id
+		), '[]'::json) AS authors,
+		COALESCE((
+			SELECT json_agg(s.subject ORDER BY s.subject)
+			FROM work_subjects s
+			WHERE s.work_id = w.id
+		), '[]'::json) AS subjects,
+		COALESCE((
+			SELECT json_agg(
+				json_build_object(
+					'id', e.id,
+					'language', e.language,
+					'isbn', e.isbn,
+					'publisher', e.publisher,
+					'publication_year', e.publication_year,
+					'added_at', le.added_at,
+					'formats', COALESCE((
+						SELECT json_agg(DISTINCT so.file_reference_format ORDER BY so.file_reference_format)
+						FROM source_offerings so
+						WHERE so.edition_id = e.id
+					), '[]'::json)
+				)
+				ORDER BY le.added_at DESC
+			)
+			FROM editions e
+			JOIN library_entries le ON le.edition_id = e.id
+			WHERE e.work_id = w.id
+		), '[]'::json) AS owned_editions,
+		COALESCE((
+			SELECT json_agg(
+				json_build_object(
+					'id', c.id,
+					'name', c.name,
+					'added_at', cm.added_at
+				)
+				ORDER BY cm.added_at DESC
+			)
+			FROM collection_members cm
+			JOIN collections c ON c.id = cm.collection_id
+			WHERE cm.work_id = w.id
+		), '[]'::json) AS collections
+	FROM works w
+	WHERE w.id = $1`
+
+	var workID, title, subtitle string
+	var originalLanguage *string
+	var authorsJSON, subjectsJSON, editionsJSON, collectionsJSON []byte
+
+	err := exec.QueryRow(ctx, query, string(id)).Scan(
+		&workID,
+		&title,
+		&subtitle,
+		&originalLanguage,
+		&authorsJSON,
+		&subjectsJSON,
+		&editionsJSON,
+		&collectionsJSON,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &domain.Error{Category: domain.NotFound, Message: "work not found"}
+		}
+		return nil, TranslateError(err)
+	}
+
+	var lang *domain.Language
+	if originalLanguage != nil {
+		l, err := domain.NewLanguage(*originalLanguage)
+		if err != nil {
+			return nil, TranslateError(err)
+		}
+		lang = &l
+	}
+
+	var authors []string
+	if len(authorsJSON) > 0 {
+		if err := json.Unmarshal(authorsJSON, &authors); err != nil {
+			return nil, TranslateError(err)
+		}
+	}
+	if authors == nil {
+		authors = []string{}
+	}
+
+	var subjects []string
+	if len(subjectsJSON) > 0 {
+		if err := json.Unmarshal(subjectsJSON, &subjects); err != nil {
+			return nil, TranslateError(err)
+		}
+	}
+	if subjects == nil {
+		subjects = []string{}
+	}
+
+	var rawEditions []jsonOwnedEdition
+	if len(editionsJSON) > 0 {
+		if err := json.Unmarshal(editionsJSON, &rawEditions); err != nil {
+			return nil, TranslateError(err)
+		}
+	}
+
+	ownedEditions := make([]domain.OwnedEdition, 0, len(rawEditions))
+	for _, e := range rawEditions {
+		formats := e.Formats
+		if formats == nil {
+			formats = []string{}
+		}
+		ownedEditions = append(ownedEditions, domain.OwnedEdition{
+			ID:              domain.EditionID(e.ID),
+			Language:        e.Language,
+			ISBN:            e.ISBN,
+			Publisher:       e.Publisher,
+			PublicationYear: e.PublicationYear,
+			AddedAt:         e.AddedAt,
+			Formats:         formats,
+		})
+	}
+
+	var rawColls []jsonCollectionRef
+	if len(collectionsJSON) > 0 {
+		if err := json.Unmarshal(collectionsJSON, &rawColls); err != nil {
+			return nil, TranslateError(err)
+		}
+	}
+
+	collections := make([]domain.CollectionRef, 0, len(rawColls))
+	for _, c := range rawColls {
+		addedAt := c.AddedAt
+		collections = append(collections, domain.CollectionRef{
+			ID:      domain.CollectionID(c.ID),
+			Name:    c.Name,
+			AddedAt: &addedAt,
+		})
+	}
+
+	return &domain.WorkDetail{
+		ID:               domain.WorkID(workID),
+		Title:            title,
+		Subtitle:         subtitle,
+		Authors:          authors,
+		Subjects:         subjects,
+		OriginalLanguage: lang,
+		OwnedEditions:    ownedEditions,
+		Collections:      collections,
+	}, nil
 }

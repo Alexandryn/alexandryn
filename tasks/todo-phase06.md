@@ -1,14 +1,14 @@
 # Phase 06: Library — Master TODO
 
 ## Tier 0 — Tooling & OpenAPI Contract Test Framework
-- [ ] L01 — Define Phase 06 endpoint schemas in `api/openapi.yaml`
-- [ ] L02 — Setup OpenAPI contract test tooling in Go test harness / CI
+- [x] L01 — Define Phase 06 endpoint schemas in `api/openapi.yaml`
+- [x] L02 — Setup OpenAPI contract test tooling in Go test harness / CI
 
 ## Tier 1 — Backend Library & Work Endpoints (Go)
-- [ ] L03 — Implement repository queries for library entries with cursor pagination, sorting, and filtering
-- [ ] L04 — Implement `/api/v1/library` HTTP handler with cursor encoding/decoding and error handling
-- [ ] L05 — Implement `/api/v1/works/{id}` HTTP handler returning owned editions and collection memberships
-- [ ] L06 — Unit tests, database integration tests, and OpenAPI contract tests for library & work endpoints
+- [x] L03 — Implement repository queries for library entries with cursor pagination, sorting, and filtering
+- [x] L04 — Implement `/api/v1/library` endpoint handler with query validation and pagination
+- [x] L05 — Implement `/api/v1/works/:id` endpoint handler with work detail, owned editions, formats, and collections
+- [x] L06 — Write unit, integration, and OpenAPI contract tests for library and work endpoints
 
 ## Tier 2 — Backend Collections Endpoints (Go)
 - [ ] L07 — Implement `/api/v1/collections` list & create handlers

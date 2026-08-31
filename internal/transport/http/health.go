@@ -20,7 +20,8 @@ type Pinger interface {
 // backend-persistence.md FR-1). It starts empty at process start and is
 // populated once Postgres is connected and migrated.
 type PoolRef struct {
-	p atomic.Pointer[Pinger]
+	p     atomic.Pointer[Pinger]
+	works atomic.Pointer[domain.WorkRepository]
 }
 
 // Set stores p as the current reference.
@@ -36,6 +37,21 @@ func (r *PoolRef) Get() (Pinger, bool) {
 	}
 	return *stored, true
 }
+
+// SetWorkRepository stores the WorkRepository instance once persistence is initialized.
+func (r *PoolRef) SetWorkRepository(w domain.WorkRepository) {
+	r.works.Store(&w)
+}
+
+// GetWorkRepository returns the current WorkRepository and whether one has been set.
+func (r *PoolRef) GetWorkRepository() (domain.WorkRepository, bool) {
+	stored := r.works.Load()
+	if stored == nil {
+		return nil, false
+	}
+	return *stored, true
+}
+
 
 // Healthz answers "is the process alive" — 200 the instant the process
 // can accept HTTP connections, independent of PostgreSQL state. It takes

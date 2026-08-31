@@ -30,6 +30,14 @@ type WorkRepository interface {
 	FindMergedInto(ctx context.Context, canonical WorkID) ([]*Work, error)
 
 	Save(ctx context.Context, w *Work) error
+
+	// QueryLibrary returns a cursor-paginated, filtered, sorted page of works
+	// (backend-library-api.md FR-1 through FR-4, FR-9).
+	QueryLibrary(ctx context.Context, q LibraryQuery) (*LibraryPage, error)
+
+	// FindWorkDetail returns one Work's detail including owned editions and
+	// collection memberships (backend-library-api.md FR-5).
+	FindWorkDetail(ctx context.Context, id WorkID) (*WorkDetail, error)
 }
 
 type AuthorRepository interface {

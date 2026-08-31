@@ -141,6 +141,11 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", transporthttp.Healthz(poolRef))
 	mux.Handle("/readyz", transporthttp.Readyz(poolRef))
+
+	workRepo := transporthttp.NewLazyWorkRepository(poolRef)
+	mux.Handle("GET /api/v1/library", transporthttp.LibraryHandler(workRepo))
+	mux.Handle("GET /api/v1/works/{id}", transporthttp.WorkDetailHandler(workRepo))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
 
@@ -150,6 +155,7 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 		transporthttp.Logging(logger, newCorrelationID),
 	)
 }
+
 
 // newCorrelationID generates a random per-request correlation ID
 // (backend-errors-and-logging.md FR-7) — 16 bytes of crypto/rand, hex
