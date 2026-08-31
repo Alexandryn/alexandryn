@@ -2,12 +2,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from '../mocks/node'
 import { ApiError } from '../data/http'
 import { mockMatchMedia } from '../test/matchMedia'
 import { CapabilityProvider } from './capability'
 import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
 import { routes } from './routes'
+
 
 let media: ReturnType<typeof mockMatchMedia> | undefined
 afterEach(() => media?.restore())
@@ -27,7 +30,6 @@ function renderRoute(path: string) {
 
 const SHARED: [string, string][] = [
   ['/library', 'Library'],
-  ['/book/42', 'Book'],
   ['/collections', 'Collections'],
   ['/collections/abc', 'Collection'],
   ['/discover', 'Discover'],
@@ -36,7 +38,9 @@ const SHARED: [string, string][] = [
   ['/access', 'Access'],
   ['/connect', 'Connect'],
   ['/reader/9', 'Reader'],
+  ['/read/book-1/ed-1', 'Reader'],
 ]
+
 
 const HOST_ONLY: [string, string][] = [
   ['/sources', 'Sources'],
@@ -50,6 +54,26 @@ describe('route table (FR-1)', () => {
   it.each(SHARED)('%s resolves to the "%s" screen', async (path, heading) => {
     renderRoute(path)
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
+  })
+
+  it('/book/:id resolves to WorkDetail screen', async () => {
+    server.use(
+      http.get('*/api/v1/works/:id', () =>
+        HttpResponse.json({
+          id: '42',
+          title: 'The Hitchhiker Guide',
+          subtitle: '',
+          authors: ['Douglas Adams'],
+          subjects: [],
+          ownedEditions: [],
+          collections: [],
+        }),
+      ),
+    )
+    renderRoute('/book/42')
+    expect(
+      await screen.findByRole('heading', { name: 'The Hitchhiker Guide', level: 1 }),
+    ).toBeInTheDocument()
   })
 
   it('/ redirects to /library', async () => {
@@ -76,10 +100,11 @@ describe('route table (FR-1)', () => {
   )
 
   it('a :id route exposes its param to the view', async () => {
-    renderRoute('/book/abc-123')
+    renderRoute('/collections/abc-123')
     expect(await screen.findByText(/abc-123/)).toBeInTheDocument()
   })
 })
+
 
 describe('RouteError (errorElement, FR-5/FR-7)', () => {
   function Boom(): never {

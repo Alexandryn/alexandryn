@@ -18,11 +18,12 @@
 
 
 ## Tier 3 — Frontend Library Screens & TanStack Query (React)
-- [ ] L11 — Create TanStack Query hooks for library cursor pagination and work detail
-- [ ] L12 — Implement Library Home Screen (Grid/List toggle, search, filter chips, sort select)
-- [ ] L13 — Implement Work Detail Screen with owned editions and collection badges
-- [ ] L14 — Retire MSW tier-(b) fixtures for `/api/v1/library` and `/api/v1/works/:id`
-- [ ] L15 — Vitest component and hook tests
+- [x] L11 — Create TanStack Query hooks for library cursor pagination and work detail
+- [x] L12 — Implement Library Home Screen (Grid/List toggle, search, filter chips, sort select)
+- [x] L13 — Implement Work Detail Screen with owned editions and collection badges
+- [x] L14 — Retire MSW tier-(b) fixtures for `/api/v1/library` and `/api/v1/works/:id`
+- [x] L15 — Vitest component and hook tests
+
 
 ## Tier 4 — Frontend Collections Screens & Membership UI (React)
 - [ ] L16 — Create TanStack Query hooks for collections CRUD and membership mutation

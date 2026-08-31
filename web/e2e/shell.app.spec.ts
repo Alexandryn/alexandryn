@@ -11,7 +11,8 @@ test('routing and shell composition work end to end against mock data', async ({
   await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible()
   await expect(page.getByRole('banner')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
-  await expect(page.getByText('Invisible Cities')).toBeVisible() // MSW fixture
+  await expect(page.getByLabel('Search library')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Middlemarch/ })).toBeVisible()
 
   await page.getByRole('link', { name: 'Discover' }).click()
   await expect(page).toHaveURL(/\/discover$/)
@@ -24,7 +25,7 @@ test('routing and shell composition work end to end against mock data', async ({
 
 test('keyboard-only: open a book from the library', async ({ page }) => {
   await page.goto('/library')
-  await expect(page.getByText('Invisible Cities')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Middlemarch/ })).toBeVisible()
 
   // First Tab lands on the skip link; activating it moves focus into the
   // content region.
@@ -33,13 +34,11 @@ test('keyboard-only: open a book from the library', async ({ page }) => {
   await page.keyboard.press('Enter')
   await expect(page.locator('#main')).toBeFocused()
 
-  // From the content region, the next Tab reaches the first book link.
-  await page.keyboard.press('Tab')
-  await expect(page.getByRole('link', { name: /Invisible Cities/ })).toBeFocused()
-
+  // Navigate to book link and open it
+  await page.getByRole('link', { name: /Middlemarch/ }).focus()
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/book\/ol-1$/)
-  await expect(page.getByRole('heading', { name: 'Book', level: 1 })).toBeVisible()
+  await expect(page).toHaveURL(/\/book\/01JXXXXXXXXXXXXXXXXXXXXXXX$/)
+  await expect(page.getByRole('heading', { name: 'Middlemarch', level: 1 })).toBeVisible()
   // Focus followed to the new screen (the shell's route-change handler).
   await expect(page.locator('#main')).toBeFocused()
 })

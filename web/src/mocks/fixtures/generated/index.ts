@@ -19,7 +19,23 @@ export const generatedFixtures = {
   },
   listLibrary: {
     '200': {
-      works: [],
+      works: [
+        {
+          id: '01JXXXXXXXXXXXXXXXXXXXXXXX',
+          title: 'Middlemarch',
+          subtitle: 'A Study of Provincial Life',
+          authors: ['George Eliot'],
+          isOwned: true,
+          collections: [
+            {
+              id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+              name: 'Classics',
+              addedAt: '2026-01-20T08:00:00Z',
+            },
+          ],
+          addedAt: '2026-01-15T10:00:00Z',
+        },
+      ],
       nextCursor: null,
     },
     '400': {

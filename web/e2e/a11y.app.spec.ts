@@ -19,9 +19,10 @@ test('shell has no axe violations at desktop width (sidebar layout)', async ({ p
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/library')
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
-  await expect(page.getByText('Invisible Cities')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible()
 
   const results = await axe(page).analyze()
+
   expect(results.violations).toEqual([])
 })
 
