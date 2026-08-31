@@ -23,7 +23,12 @@ export function platformBinaryName(): string {
  *   resources convention, independent of the source-tree layout.
  */
 export function resolveServerBinaryPath(): string {
+  if (process.env.ALEXANDRYN_SERVER_BINARY_PATH) {
+    return process.env.ALEXANDRYN_SERVER_BINARY_PATH
+  }
+
   const name = platformBinaryName()
+
 
   if (app.isPackaged) {
     const { resourcesPath } = process as NodeJS.Process & { resourcesPath?: string }

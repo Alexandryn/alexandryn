@@ -22,9 +22,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
+
 
 // isIgnorableSyncErr checks if a sync error is due to stdout being connected to a pipe or pseudo-device
 // where fsync is not supported by the OS kernel (returns EINVAL or ENOTSUP).
@@ -84,7 +86,53 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if strings.HasPrefix(r.URL.Path, "/book/") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Alexandryn</title></head>
+<body>
+  <div id="main" tabindex="-1">
+    <h1>Book</h1>
+    <p>Invisible Cities</p>
+  </div>
+  <script>
+    document.getElementById('main')?.focus();
+  </script>
+</body>
+</html>`))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Alexandryn</title></head>
+<body>
+  <a href="#main" id="skip-link">Skip to content</a>
+  <nav aria-label="Primary"><a href="/library">Library</a></nav>
+  <div id="main" tabindex="-1">
+    <h1>Library</h1>
+    <a href="/book/ol-1" id="book-link">Invisible Cities</a>
+  </div>
+  <script>
+    document.getElementById('skip-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const main = document.getElementById('main');
+      if (main) {
+        main.focus();
+      }
+    });
+  </script>
+</body>
+</html>`))
+	})
+
+
 	srv := &http.Server{
+
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}

@@ -1,4 +1,5 @@
-import { mkdtempSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron, type ElectronApplication } from '@playwright/test'
@@ -15,14 +16,49 @@ const MAIN = join(__dirname, '../out/main/index.js')
  * with `--no-sandbox` only where the runner's own kernel forbids user
  * namespaces (handled by the CI job, not here).
  */
-export function launchHost(extraArgs: string[] = []): Promise<ElectronApplication> {
+export interface LaunchHostOptions {
+  extraArgs?: string[]
+  env?: Record<string, string>
+}
+
+export async function launchHost(options: LaunchHostOptions | string[] = {}): Promise<ElectronApplication> {
+  const extraArgs = Array.isArray(options) ? options : (options.extraArgs ?? [])
+  const customEnv = Array.isArray(options) ? {} : (options.env ?? {})
   const userDataDir = mkdtempSync(join(tmpdir(), 'alexandryn-e2e-user-data-'))
   const ciFlags = process.env.CI ? ['--no-sandbox', '--disable-setuid-sandbox'] : []
-  return _electron.launch({
-    args: [`--user-data-dir=${userDataDir}`, ...ciFlags, MAIN, ...extraArgs],
-    env: { ...process.env, NODE_ENV: 'test' },
+  const testServerBinary = join(__dirname, '../test-helpers/test-server/test-server')
+
+  if (!existsSync(testServerBinary)) {
+    execFileSync('go', ['build', '-o', testServerBinary, './electron/test-helpers/test-server'], {
+      cwd: join(__dirname, '../..'),
+    })
+  }
+
+
+  const app = await _electron.launch({
+    args: [MAIN, `--user-data-dir=${userDataDir}`, ...ciFlags, ...extraArgs],
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      ALEXANDRYN_SERVER_BINARY_PATH: testServerBinary,
+      ...customEnv,
+    },
   })
+
+  const originalClose = app.close.bind(app)
+  app.close = async () => {
+    try {
+      await originalClose()
+    } finally {
+      rmSync(userDataDir, { recursive: true, force: true })
+    }
+  }
+
+  return app
 }
+
+
+
 
 
 

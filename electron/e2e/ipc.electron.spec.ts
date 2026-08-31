@@ -13,8 +13,9 @@ import { launchHost } from './launch'
 let app: ElectronApplication
 
 test.beforeEach(async () => {
-  app = await launchHost()
+  app = await launchHost({ env: { ALEXANDRYN_SKIP_SERVER_LIFECYCLE: '1' } })
 })
+
 
 test.afterEach(async () => {
   await app.close()
@@ -42,8 +43,9 @@ test('window.alexandryn bridge surface is exposed and sandboxed (FR-1 / FR-2 / F
 
   expect(evaluation.hasBridge).toBe(true)
   expect(evaluation.namespaces).toEqual(['system', 'source'])
-  expect(evaluation.systemMethods).toEqual(['getAppVersion'])
+  expect(evaluation.systemMethods).toEqual(['getAppVersion', 'retryStartup'])
   expect(evaluation.sourceMethods).toEqual(['pickLocalFolder'])
+
   expect(evaluation.isPickLocalFolderFn).toBe(true)
   expect(evaluation.hasIpcRenderer).toBe(false)
   expect(evaluation.hasRequire).toBe(false)

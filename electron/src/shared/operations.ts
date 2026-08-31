@@ -22,6 +22,16 @@ export const SYSTEM_GET_APP_VERSION = {
 } as const satisfies OperationDescriptor
 
 /**
+ * system.retryStartup (FR-3) — Re-triggers desktop server startup sequence after cold-start failure.
+ * Takes no arguments.
+ */
+export const SYSTEM_RETRY_STARTUP = {
+  name: 'system.retryStartup',
+  namespace: 'system',
+  method: 'retryStartup',
+} as const satisfies OperationDescriptor
+
+/**
  * source.pickLocalFolder (FR-6) — Opens the OS native folder-selection dialog
  * and returns the chosen absolute path, or null on cancellation.
  * Takes no arguments (main process does not accept arbitrary paths from renderer).
@@ -38,6 +48,7 @@ export const SOURCE_PICK_LOCAL_FOLDER = {
  */
 export const OPERATIONS = [
   SYSTEM_GET_APP_VERSION,
+  SYSTEM_RETRY_STARTUP,
   SOURCE_PICK_LOCAL_FOLDER,
 ] as const
 
@@ -46,11 +57,13 @@ export const OPERATIONS = [
 export interface AlexandrynDesktopBridge {
   system: {
     getAppVersion: () => Promise<string>
+    retryStartup: () => Promise<void>
   }
   source: {
     pickLocalFolder: () => Promise<{ path: string } | null>
   }
 }
+
 
 declare global {
   interface Window {

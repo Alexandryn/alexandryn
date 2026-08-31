@@ -5,7 +5,9 @@ import {
   OPERATIONS,
   SOURCE_PICK_LOCAL_FOLDER,
   SYSTEM_GET_APP_VERSION,
+  SYSTEM_RETRY_STARTUP,
 } from '../shared/operations'
+
 
 // desktop-host-ipc-surface.md FR-2, FR-3, FR-5, FR-6.
 // Tests for main process IPC registration and handler execution.
@@ -55,7 +57,18 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     expect(result).toBe('0.4.0')
   })
 
+  it('system.retryStartup calls onRetryStartup callback on valid invocation (FR-3)', async () => {
+    const mockRetry = vi.fn().mockResolvedValue(undefined)
+    registerIpcHandlers({ onRetryStartup: mockRetry })
+    const handler = handlers.get(SYSTEM_RETRY_STARTUP.name)!
+    expect(handler).toBeDefined()
+
+    await handler({}, undefined)
+    expect(mockRetry).toHaveBeenCalledTimes(1)
+  })
+
   it('source.pickLocalFolder returns path when user selects a directory (FR-6 / E22)', async () => {
+
     const mockShowOpenDialog = vi.fn().mockResolvedValue({
       canceled: false,
       filePaths: ['/home/user/Books/MyLibrary'],

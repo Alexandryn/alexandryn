@@ -10,8 +10,9 @@ import { launchHost } from './launch'
 let app: ElectronApplication
 
 test.beforeEach(async () => {
-  app = await launchHost()
+  app = await launchHost({ env: { ALEXANDRYN_SKIP_SERVER_LIFECYCLE: '1' } })
 })
+
 
 test.afterEach(async () => {
   await app.close()

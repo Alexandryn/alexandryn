@@ -38,6 +38,8 @@ bin/
 *.out
 vendor/
 __debug_bin*
+electron/test-helpers/test-server/test-server
+
 
 # ---- Electron / packaging --------------------------------------------------
 release/

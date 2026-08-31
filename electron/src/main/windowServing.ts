@@ -61,6 +61,7 @@ export class WindowServingController {
     return this.realUiLoaded
   }
 
+
   async handleServerEvent(event: ServerEvent): Promise<void> {
     if (typeof this.window.isDestroyed === 'function' && this.window.isDestroyed()) {
       return
@@ -94,6 +95,7 @@ export class WindowServingController {
       }
 
       case 'Recovering': {
+
         if (this.realUiLoaded) {
           await this.injectRecoveringBanner(event.attempt ?? 1)
         }
@@ -111,8 +113,10 @@ export class WindowServingController {
         })
         break
       }
+
     }
   }
+
 
   private async injectRecoveringBanner(attempt: number): Promise<void> {
     try {

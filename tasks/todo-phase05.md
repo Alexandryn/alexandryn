@@ -80,10 +80,11 @@ and after the security audit (E29 → E30).
 
 **Tier 6 — E2E lifecycle walkthrough**
 
-- [ ] E27 — full `_electron` walkthrough: cold start w/ PostgreSQL unreachable → loading → error (`atStates`) → manual Retry succeeds once PG up → real UI loads → keyboard-only "open a book" slice completes inside Electron
-- [ ] E28 — hostile walkthrough: `window.open('https://evil.example')` blocked (FR-4); preload method w/ oversized/malformed arg blocked (FR-2 Zod) — in the `_electron` suite
+- [x] E27 — full `_electron` walkthrough: cold start w/ PostgreSQL unreachable → loading → error (`atStates`) → manual Retry succeeds once PG up → real UI loads → keyboard-only "open a book" slice completes inside Electron
+- [x] E28 — hostile walkthrough: `window.open('https://evil.example')` blocked (FR-4); preload method w/ oversized/malformed arg blocked (FR-2 Zod) — in the `_electron` suite
 
-**Checkpoint P5-G** — lifecycle walkthrough passes E2E in CI (`xvfb`); hostile blocks proven; keyboard-only book-open completes inside Electron
+**Checkpoint P5-G** — DONE (lifecycle walkthrough passes E2E in CI/xvfb; hostile blocks proven; keyboard-only book-open completes inside Electron; 12 Playwright E2E tests + 96 Vitest unit tests passing)
+
 
 **Tier 7 — Closure**
 
