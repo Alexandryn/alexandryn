@@ -1,8 +1,13 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // WorkRepository and AuthorRepository are declared by internal/domain,
+
+
 // satisfied by internal/persistence/postgres (phase 03's T24) — the
 // pattern ADR 0020 requires: a domain service performs IO through an
 // interface the domain itself owns, never a persistence-specific type
@@ -75,7 +80,23 @@ type CollectionRepository interface {
 	FindByID(ctx context.Context, id CollectionID) (*Collection, error)
 	Save(ctx context.Context, c *Collection) error
 	Delete(ctx context.Context, id CollectionID) error
+
+	// FindAll returns every collection with its work count (backend-library-api.md FR-6).
+	FindAll(ctx context.Context) ([]*CollectionSummary, error)
+
+	// FindDetail returns one collection and its member Works (backend-library-api.md FR-6).
+	FindDetail(ctx context.Context, id CollectionID) (*CollectionDetail, error)
+
+	// AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
+	AddMember(ctx context.Context, collectionID CollectionID, workID WorkID, addedAt time.Time) error
+
+	// RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
+	RemoveMember(ctx context.Context, collectionID CollectionID, workID WorkID) error
+
+	// Rename renames a Collection (backend-library-api.md FR-6).
+	Rename(ctx context.Context, id CollectionID, name string) error
 }
+
 
 // SourceRepository and SourceOfferingRepository back SourceRemovalService
 // (domain-source.md FR-6). Save on both was added by T24 (T24-D2) — phase

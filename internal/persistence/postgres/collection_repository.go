@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -34,7 +35,7 @@ func (r *CollectionRepository) FindByID(ctx context.Context, id domain.Collectio
 	exec := executorFrom(ctx, r.pool)
 
 	var name string
-	err := exec.QueryRow(ctx, "SELECT name FROM collections WHERE id = $1", string(id)).Scan(&name)
+	err := exec.QueryRow(ctx, `SELECT name FROM collections WHERE id = $1`, string(id)).Scan(&name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "collection not found"}
@@ -48,7 +49,7 @@ func (r *CollectionRepository) FindByID(ctx context.Context, id domain.Collectio
 	}
 
 	rows, err := exec.Query(ctx,
-		"SELECT work_id, added_at FROM collection_members WHERE collection_id = $1", string(id))
+		`SELECT work_id, added_at FROM collection_members WHERE collection_id = $1`, string(id))
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -79,12 +80,12 @@ func (r *CollectionRepository) Save(ctx context.Context, c *domain.Collection) e
 		return TranslateError(err)
 	}
 
-	if _, err := exec.Exec(ctx, "DELETE FROM collection_members WHERE collection_id = $1", string(c.ID())); err != nil {
+	if _, err := exec.Exec(ctx, `DELETE FROM collection_members WHERE collection_id = $1`, string(c.ID())); err != nil {
 		return TranslateError(err)
 	}
 	for _, m := range c.Members() {
 		if _, err := exec.Exec(ctx,
-			"INSERT INTO collection_members (collection_id, work_id, added_at) VALUES ($1, $2, $3)",
+			`INSERT INTO collection_members (collection_id, work_id, added_at) VALUES ($1, $2, $3)`,
 			string(c.ID()), string(m.WorkID), m.AddedAt); err != nil {
 			return TranslateError(err)
 		}
@@ -96,11 +97,235 @@ func (r *CollectionRepository) Save(ctx context.Context, c *domain.Collection) e
 func (r *CollectionRepository) Delete(ctx context.Context, id domain.CollectionID) error {
 	exec := executorFrom(ctx, r.pool)
 
-	if _, err := exec.Exec(ctx, "DELETE FROM collection_members WHERE collection_id = $1", string(id)); err != nil {
+	if _, err := exec.Exec(ctx, `DELETE FROM collection_members WHERE collection_id = $1`, string(id)); err != nil {
 		return TranslateError(err)
 	}
-	if _, err := exec.Exec(ctx, "DELETE FROM collections WHERE id = $1", string(id)); err != nil {
+	res, err := exec.Exec(ctx, `DELETE FROM collections WHERE id = $1`, string(id))
+	if err != nil {
 		return TranslateError(err)
+	}
+	if res.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
 	}
 	return nil
 }
+
+// FindAll returns all collections with their respective member work count, ordered by name ASC.
+func (r *CollectionRepository) FindAll(ctx context.Context) ([]*domain.CollectionSummary, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	const query = `SELECT
+		c.id,
+		c.name,
+		COUNT(cm.work_id)::int AS work_count
+	FROM collections c
+	LEFT JOIN collection_members cm ON cm.collection_id = c.id
+	GROUP BY c.id, c.name
+	ORDER BY c.name ASC`
+
+	rows, err := exec.Query(ctx, query)
+	if err != nil {
+		return nil, TranslateError(err)
+	}
+	defer rows.Close()
+
+	var result []*domain.CollectionSummary
+	for rows.Next() {
+		var (
+			id        string
+			name      string
+			workCount int
+		)
+		if err := rows.Scan(&id, &name, &workCount); err != nil {
+			return nil, TranslateError(err)
+		}
+		result = append(result, &domain.CollectionSummary{
+			ID:        domain.CollectionID(id),
+			Name:      name,
+			WorkCount: workCount,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, TranslateError(err)
+	}
+	if result == nil {
+		result = []*domain.CollectionSummary{}
+	}
+	return result, nil
+}
+
+type jsonMemberWork struct {
+	ID          string              `json:"id"`
+	Title       string              `json:"title"`
+	Subtitle    string              `json:"subtitle"`
+	Authors     []string            `json:"authors"`
+	IsOwned     bool                `json:"is_owned"`
+	Collections []jsonCollectionRef `json:"collections"`
+	AddedAt     *time.Time          `json:"added_at"`
+}
+
+// FindDetail returns a single collection by ID and all of its member works.
+func (r *CollectionRepository) FindDetail(ctx context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	const query = `SELECT
+		c.id,
+		c.name,
+		COALESCE((
+			SELECT json_agg(
+				json_build_object(
+					'id', w.id,
+					'title', w.title,
+					'subtitle', w.subtitle,
+					'authors', COALESCE((
+						SELECT json_agg(a.name ORDER BY wa.author_id)
+						FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id
+					), '[]'::json),
+					'is_owned', EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					),
+					'collections', COALESCE((
+						SELECT json_agg(json_build_object('id', c2.id, 'name', c2.name, 'added_at', cm2.added_at) ORDER BY cm2.added_at DESC)
+						FROM collection_members cm2
+						JOIN collections c2 ON c2.id = cm2.collection_id
+						WHERE cm2.work_id = w.id
+					), '[]'::json),
+					'added_at', cm.added_at
+				)
+				ORDER BY cm.added_at DESC
+			)
+			FROM collection_members cm
+			JOIN works w ON w.id = cm.work_id
+			WHERE cm.collection_id = c.id
+		), '[]'::json) AS works
+	FROM collections c
+	WHERE c.id = $1`
+
+	var (
+		collID    string
+		name      string
+		worksJSON []byte
+	)
+
+	err := exec.QueryRow(ctx, query, string(id)).Scan(&collID, &name, &worksJSON)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+		}
+		return nil, TranslateError(err)
+	}
+
+	var rawWorks []jsonMemberWork
+	if len(worksJSON) > 0 {
+		if err := json.Unmarshal(worksJSON, &rawWorks); err != nil {
+			return nil, TranslateError(err)
+		}
+	}
+
+	works := make([]*domain.WorkSummary, 0, len(rawWorks))
+	for _, rw := range rawWorks {
+		authors := rw.Authors
+		if authors == nil {
+			authors = []string{}
+		}
+		colls := make([]domain.CollectionRef, 0, len(rw.Collections))
+		for _, rc := range rw.Collections {
+			addedAt := rc.AddedAt
+			colls = append(colls, domain.CollectionRef{
+				ID:      domain.CollectionID(rc.ID),
+				Name:    rc.Name,
+				AddedAt: &addedAt,
+			})
+		}
+
+		works = append(works, &domain.WorkSummary{
+			ID:          domain.WorkID(rw.ID),
+			Title:       rw.Title,
+			Subtitle:    rw.Subtitle,
+			Authors:     authors,
+			IsOwned:     rw.IsOwned,
+			Collections: colls,
+			AddedAt:     rw.AddedAt,
+		})
+	}
+
+	return &domain.CollectionDetail{
+		ID:    domain.CollectionID(collID),
+		Name:  name,
+		Works: works,
+	}, nil
+}
+
+// AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
+func (r *CollectionRepository) AddMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+	exec := executorFrom(ctx, r.pool)
+
+	var dummy int
+	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1`, string(collectionID)).Scan(&dummy); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+		}
+		return TranslateError(err)
+	}
+
+	if err := exec.QueryRow(ctx, `SELECT 1 FROM works WHERE id = $1`, string(workID)).Scan(&dummy); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &domain.Error{Category: domain.NotFound, Message: "work not found"}
+		}
+		return TranslateError(err)
+	}
+
+	const insertSQL = `INSERT INTO collection_members (collection_id, work_id, added_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (collection_id, work_id) DO NOTHING`
+
+	if _, err := exec.Exec(ctx, insertSQL, string(collectionID), string(workID), addedAt); err != nil {
+		return TranslateError(err)
+	}
+
+	return nil
+}
+
+// RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
+func (r *CollectionRepository) RemoveMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+	exec := executorFrom(ctx, r.pool)
+
+	var dummy int
+	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1`, string(collectionID)).Scan(&dummy); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+		}
+		return TranslateError(err)
+	}
+
+	res, err := exec.Exec(ctx, `DELETE FROM collection_members WHERE collection_id = $1 AND work_id = $2`, string(collectionID), string(workID))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if res.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "no membership found for that work in this collection"}
+	}
+	return nil
+}
+
+// Rename renames a Collection after validating the new name (backend-library-api.md FR-6).
+func (r *CollectionRepository) Rename(ctx context.Context, id domain.CollectionID, name string) error {
+	if err := domain.ValidateBoundedText("name", name, 100); err != nil {
+		return err
+	}
+
+	exec := executorFrom(ctx, r.pool)
+	res, err := exec.Exec(ctx, `UPDATE collections SET name = $1 WHERE id = $2`, name, string(id))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if res.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+	}
+	return nil
+}
+

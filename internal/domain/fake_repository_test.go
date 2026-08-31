@@ -3,9 +3,11 @@ package domain_test
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
+
 
 // fakeWorkRepository is an in-memory domain.WorkRepository, used only by
 // this package's own tests (never internal/testutil — this fake is
@@ -231,7 +233,87 @@ func (r *fakeCollectionRepository) Delete(_ context.Context, id domain.Collectio
 	return nil
 }
 
+func (r *fakeCollectionRepository) FindAll(_ context.Context) ([]*domain.CollectionSummary, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var result []*domain.CollectionSummary
+	for _, c := range r.collections {
+		result = append(result, &domain.CollectionSummary{
+			ID:        c.ID(),
+			Name:      c.Name(),
+			WorkCount: len(c.Members()),
+		})
+	}
+	return result, nil
+}
+
+func (r *fakeCollectionRepository) FindDetail(_ context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.collections[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+	}
+	return &domain.CollectionDetail{
+		ID:    c.ID(),
+		Name:  c.Name(),
+		Works: []*domain.WorkSummary{},
+	}, nil
+}
+
+func (r *fakeCollectionRepository) AddMember(_ context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.collections[collectionID]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+	}
+	c.AddMember(workID, addedAt)
+	return nil
+}
+
+func (r *fakeCollectionRepository) RemoveMember(_ context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.collections[collectionID]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+	}
+	var found bool
+	for _, m := range c.Members() {
+		if m.WorkID == workID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return &domain.Error{Category: domain.NotFound, Message: "no membership found for that work in this collection"}
+	}
+	c.RemoveMember(workID)
+	return nil
+}
+
+
+func (r *fakeCollectionRepository) Rename(_ context.Context, id domain.CollectionID, name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.collections[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
+	}
+	renamed, err := domain.NewCollection(c.ID(), name)
+	if err != nil {
+		return err
+	}
+	for _, m := range c.Members() {
+		renamed.AddMember(m.WorkID, m.AddedAt)
+	}
+	r.collections[id] = renamed
+	return nil
+}
+
 var _ domain.CollectionRepository = (*fakeCollectionRepository)(nil)
+
 
 // fakeSourceRepository is the same pattern, for domain.SourceRepository.
 type fakeSourceRepository struct {
