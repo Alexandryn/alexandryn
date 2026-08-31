@@ -546,8 +546,222 @@ paths:
                 message: "no membership found for that work in this collection"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  # ── Phase 07: Metadata discovery endpoints ─────────────────────────
+  # backend-metadata-adapter.md FR-1 through FR-9, backend-metadata-caching.md FR-6
 
+  /api/v1/discover:
+    get:
+      operationId: searchDiscover
+      summary: Search Open Library for works (offset-paginated)
+      description: >-
+        Proxies search query to Open Library, returning normalised bibliographic
+        results (backend-metadata-adapter.md FR-1, FR-2).
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+          description: Search query string (title, author, or keyword).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of items per page.
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Non-negative offset into the result set.
+      responses:
+        '200':
+          description: Paginated search results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NormalisedSearchResponse'
+              example:
+                items:
+                  - openLibraryWorkKey: "OL82563W"
+                    title: "Middlemarch"
+                    authors:
+                      - openLibraryAuthorKey: "OL21594A"
+                        name: "George Eliot"
+                    firstPublishYear: 1871
+                    coverUrl: "/api/v1/discover/covers/8256301"
+                    editionCount: 42
+                total: 1
+                limit: 20
+                offset: 0
+        '400':
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "q: required parameter missing"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '503':
+          description: Open Library is unavailable or rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: "Open Library is temporarily unavailable"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
+  /api/v1/discover/works/{openLibraryId}:
+    get:
+      operationId: getDiscoverWork
+      summary: Fetch and normalise an Open Library work and its editions
+      description: >-
+        Fetches an Open Library work record by its key (e.g. OL82563W), normalises
+        its bibliographic fields, and resolves up to 50 editions and 20 authors
+        (backend-metadata-adapter.md FR-3, backend-metadata-caching.md FR-2).
+      security: []
+      parameters:
+        - name: openLibraryId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^OL[0-9]+W$'
+          description: Open Library work key (e.g. OL82563W).
+      responses:
+        '200':
+          description: Normalised work detail and editions list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverWorkDetail'
+              example:
+                work:
+                  title: "Middlemarch"
+                  subtitle: "A Study of Provincial Life"
+                  description: "Middlemarch, A Study of Provincial Life is a novel by Mary Anne Evans, writing as George Eliot."
+                  subjects:
+                    - "Provincial life"
+                    - "Fiction"
+                  authors:
+                    - openLibraryAuthorKey: "OL21594A"
+                      name: "George Eliot"
+                  coverUrl: "/api/v1/discover/covers/8256301"
+                editions:
+                  - title: "Middlemarch"
+                    publisher: "Penguin Classics"
+                    publishDate: "2003"
+                    language: "en"
+                    openLibraryEditionKey: "OL7353617M"
+                    coverUrl: "/api/v1/discover/covers/8256301"
+        '400':
+          description: Malformed Open Library work ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "openLibraryId: malformed Open Library work ID"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '404':
+          description: Work not found on Open Library.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "work not found on Open Library"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '503':
+          description: Open Library is unavailable or rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: "Open Library is temporarily unavailable"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+  /api/v1/discover/covers/{coverId}:
+    get:
+      operationId: getDiscoverCover
+      summary: Fetch or serve cached cover image for an Open Library cover ID
+      description: >-
+        Serves binary cover image from local disk cache or proxies from Open Library
+        Covers API with immutable caching (backend-metadata-caching.md FR-6).
+      security: []
+      parameters:
+        - name: coverId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Positive numeric Open Library cover ID.
+      responses:
+        '200':
+          description: Cover image JPEG binary data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: "public, max-age=31536000, immutable"
+            X-Metadata-Cache:
+              schema:
+                type: string
+                enum: [hit, miss]
+              example: "hit"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid cover ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "coverId: must be a positive integer"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '404':
+          description: Cover not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "cover not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '503':
+          description: Open Library Covers API is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: "Open Library Covers API is temporarily unavailable"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
 components:
   securitySchemes:
@@ -825,7 +1039,151 @@ components:
         workId:
           type: string
 
+    # ── Phase 07: Discovery domain schemas ─────────────────────────────
+    # backend-metadata-adapter.md FR-1/FR-2/FR-3
+
+    NormalisedAuthor:
+      type: object
+      additionalProperties: false
+      required: [name]
+      description: >-
+        A normalised author reference (backend-metadata-adapter.md FR-2).
+      properties:
+        openLibraryAuthorKey:
+          type: string
+          nullable: true
+          description: Open Library author key (e.g. OL21594A) or null if unkeyed.
+        name:
+          type: string
+          description: Author display name.
+
+    NormalisedSearchResult:
+      type: object
+      additionalProperties: false
+      required: [openLibraryWorkKey, title, authors, editionCount]
+      description: >-
+        A single search result item in /api/v1/discover
+        (backend-metadata-adapter.md FR-2).
+      properties:
+        openLibraryWorkKey:
+          type: string
+          description: Open Library work key (e.g. OL82563W).
+        title:
+          type: string
+          description: Work title.
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalisedAuthor'
+          description: List of authors credited on this work.
+        firstPublishYear:
+          type: integer
+          nullable: true
+          description: Year of first publication, if known.
+        coverUrl:
+          type: string
+          nullable: true
+          description: Local cover proxy URL (/api/v1/discover/covers/{id}) or null.
+        editionCount:
+          type: integer
+          description: Total number of known editions.
+
+    NormalisedSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      description: >-
+        Paginated response body for GET /api/v1/discover
+        (backend-metadata-adapter.md FR-1).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalisedSearchResult'
+        total:
+          type: integer
+          description: Total number of upstream matching works reported by Open Library.
+        limit:
+          type: integer
+          description: Page size requested.
+        offset:
+          type: integer
+          description: Offset of the current page.
+
+    NormalisedWork:
+      type: object
+      additionalProperties: false
+      required: [title, subtitle, description, subjects, authors]
+      description: >-
+        Normalised Open Library work details (backend-metadata-adapter.md FR-3).
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+          description: Subtitle string or empty string if absent.
+        description:
+          type: string
+          description: Work description or empty string if absent.
+        subjects:
+          type: array
+          items:
+            type: string
+          description: Subject tags.
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalisedAuthor'
+          description: Resolved authors (capped at 20 distinct authors).
+        coverUrl:
+          type: string
+          nullable: true
+          description: Local cover proxy URL (/api/v1/discover/covers/{id}) or null.
+
+    NormalisedEdition:
+      type: object
+      additionalProperties: false
+      required: [title, publisher, publishDate, language, openLibraryEditionKey]
+      description: >-
+        One edition of an Open Library work (backend-metadata-adapter.md FR-3).
+      properties:
+        title:
+          type: string
+        publisher:
+          type: string
+          description: Publisher name or empty string if absent.
+        publishDate:
+          type: string
+          description: Publication date string or empty string if absent.
+        language:
+          type: string
+          description: BCP-47 language tag or empty string if absent.
+        openLibraryEditionKey:
+          type: string
+          description: Open Library edition key (e.g. OL7353617M).
+        coverUrl:
+          type: string
+          nullable: true
+          description: Local cover proxy URL (/api/v1/discover/covers/{id}) or null.
+
+    DiscoverWorkDetail:
+      type: object
+      additionalProperties: false
+      required: [work, editions]
+      description: >-
+        Response body for GET /api/v1/discover/works/{openLibraryId}
+        (backend-metadata-adapter.md FR-3).
+      properties:
+        work:
+          $ref: '#/components/schemas/NormalisedWork'
+        editions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalisedEdition'
+          description: First 50 editions of this work.
+
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.
 security:
   - bearerAuth: []
+
