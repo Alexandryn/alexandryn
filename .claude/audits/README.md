@@ -50,3 +50,7 @@ No phase closes with an open Critical or High finding.
 |---|---|---|---|---|---|
 | [0001](0001-phase03-backend-specs.md) | Phase 03 backend foundation specs (6 specs, 3 ADRs), pre-implementation | 2026-08-14 | 0 | 0 | 1 Medium finding, fixed same session |
 | [0003](0003-cmd-server-startup-shutdown.md) | `cmd/server` startup/shutdown sequence, Checkpoint F (T17-T20) | 2026-08-19 | 0 | 1 | 5 of 6 findings fixed same session; 1 (spec-text amendment) open, deliberately deferred |
+| [0004](0004-phase04-frontend-foundation.md) | Phase 04 frontend foundation (shell, routing, tokens, primitives) | 2026-08-30 | 0 | 0 | Clear |
+| [0005](0005-phase05-desktop-host.md) | Phase 05 desktop host (Electron, parentwatch, IPC surface) | 2026-08-31 | 0 | 1 | 1 High finding, fixed same session |
+| [0006](0006-phase06-library.md) | Phase 06 library domain (backend API, frontend screens, collections) | 2026-08-31 | 0 | 0 | Clear |
+
