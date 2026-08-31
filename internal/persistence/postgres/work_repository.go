@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
+
 
 // WorkRepository is internal/persistence/postgres's domain.WorkRepository
 // implementation (T24, R4). A Work spans five physical tables (works,
@@ -291,61 +290,9 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 		sort = domain.SortAddedAt
 	}
 
-	var filterClause string
-	switch filter {
-	case domain.FilterOwned:
-		filterClause = `EXISTS (
-			SELECT 1 FROM editions e
-			JOIN library_entries le ON le.edition_id = e.id
-			WHERE e.work_id = w.id
-		)`
-	case domain.FilterWanted:
-		filterClause = `EXISTS (
-			SELECT 1 FROM collection_members cm
-			WHERE cm.work_id = w.id
-		) AND NOT EXISTS (
-			SELECT 1 FROM editions e
-			JOIN library_entries le ON le.edition_id = e.id
-			WHERE e.work_id = w.id
-		)`
-	case domain.FilterAll:
-		filterClause = `(EXISTS (
-			SELECT 1 FROM editions e
-			JOIN library_entries le ON le.edition_id = e.id
-			WHERE e.work_id = w.id
-		) OR EXISTS (
-			SELECT 1 FROM collection_members cm
-			WHERE cm.work_id = w.id
-		))`
-	default:
-		return nil, &domain.Error{
-			Category: domain.InvalidInput,
-			Message:  "filter: unrecognized value — must be one of: owned, wanted, all",
-		}
-	}
-
-	var whereClauses []string
-	whereClauses = append(whereClauses, filterClause)
-
-	var args []any
-	argIdx := 1
-
-	if q.Q != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf(`(
-			w.search_vector @@ plainto_tsquery('simple', $%d)
-			OR EXISTS (
-				SELECT 1 FROM work_authors wa
-				JOIN authors a ON a.id = wa.author_id
-				WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $%d)
-			)
-		)`, argIdx, argIdx))
-		args = append(args, q.Q)
-		argIdx++
-	}
-
 	var cursorAddedAt time.Time
 	var cursorTitle string
-	var cursorID domain.WorkID
+	var cursorID string
 	var hasCursor bool
 
 	if q.Cursor != "" {
@@ -355,7 +302,7 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 				return nil, err
 			}
 			cursorTitle = t
-			cursorID = id
+			cursorID = string(id)
 			hasCursor = true
 		} else {
 			t, id, err := domain.DecodeAddedAtCursor(q.Cursor)
@@ -363,12 +310,12 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 				return nil, err
 			}
 			cursorAddedAt = t
-			cursorID = id
+			cursorID = string(id)
 			hasCursor = true
 		}
 	}
 
-	query := `WITH work_pool AS (
+	const queryAddedAt = `WITH work_pool AS (
 		SELECT
 			w.id,
 			w.title,
@@ -383,7 +330,41 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 				(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
 			) AS effective_added_at
 		FROM works w
-		WHERE ` + strings.Join(whereClauses, " AND ") + `
+		WHERE
+			(
+				($1 = 'owned' AND EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				))
+				OR ($1 = 'wanted' AND EXISTS (
+					SELECT 1 FROM collection_members cm
+					WHERE cm.work_id = w.id
+				) AND NOT EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				))
+				OR ($1 = 'all' AND (
+					EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					) OR EXISTS (
+						SELECT 1 FROM collection_members cm
+						WHERE cm.work_id = w.id
+					)
+				))
+			)
+			AND (
+				$2 = ''
+				OR w.search_vector @@ plainto_tsquery('simple', $2)
+				OR EXISTS (
+					SELECT 1 FROM work_authors wa
+					JOIN authors a ON a.id = wa.author_id
+					WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+				)
+			)
 	)
 	SELECT
 		p.id,
@@ -403,42 +384,112 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 			JOIN collections c ON c.id = cm.collection_id
 			WHERE cm.work_id = p.id
 		), '[]'::json) AS collections
-	FROM work_pool p `
+	FROM work_pool p
+	WHERE
+		NOT $3
+		OR (p.effective_added_at, p.id) < ($4, $6)
+	ORDER BY p.effective_added_at DESC, p.id DESC
+	LIMIT $7`
 
-	var outerWhere []string
-	if hasCursor {
-		if sort == domain.SortTitle {
-			outerWhere = append(outerWhere, fmt.Sprintf(`(p.title > $%d OR (p.title = $%d AND p.id > $%d))`, argIdx, argIdx, argIdx+1))
-			args = append(args, cursorTitle, string(cursorID))
-			argIdx += 2
-		} else {
-			outerWhere = append(outerWhere, fmt.Sprintf(`(p.effective_added_at < $%d OR (p.effective_added_at = $%d AND p.id < $%d))`, argIdx, argIdx, argIdx+1))
-			args = append(args, cursorAddedAt, string(cursorID))
-			argIdx += 2
-		}
-	}
+	const queryTitle = `WITH work_pool AS (
+		SELECT
+			w.id,
+			w.title,
+			w.subtitle,
+			EXISTS (
+				SELECT 1 FROM editions e
+				JOIN library_entries le ON le.edition_id = e.id
+				WHERE e.work_id = w.id
+			) AS is_owned,
+			COALESCE(
+				(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+				(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+			) AS effective_added_at
+		FROM works w
+		WHERE
+			(
+				($1 = 'owned' AND EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				))
+				OR ($1 = 'wanted' AND EXISTS (
+					SELECT 1 FROM collection_members cm
+					WHERE cm.work_id = w.id
+				) AND NOT EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				))
+				OR ($1 = 'all' AND (
+					EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					) OR EXISTS (
+						SELECT 1 FROM collection_members cm
+						WHERE cm.work_id = w.id
+					)
+				))
+			)
+			AND (
+				$2 = ''
+				OR w.search_vector @@ plainto_tsquery('simple', $2)
+				OR EXISTS (
+					SELECT 1 FROM work_authors wa
+					JOIN authors a ON a.id = wa.author_id
+					WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+				)
+			)
+	)
+	SELECT
+		p.id,
+		p.title,
+		p.subtitle,
+		p.is_owned,
+		p.effective_added_at,
+		COALESCE((
+			SELECT json_agg(a.name ORDER BY wa.author_id)
+			FROM work_authors wa
+			JOIN authors a ON a.id = wa.author_id
+			WHERE wa.work_id = p.id
+		), '[]'::json) AS authors,
+		COALESCE((
+			SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+			FROM collection_members cm
+			JOIN collections c ON c.id = cm.collection_id
+			WHERE cm.work_id = p.id
+		), '[]'::json) AS collections
+	FROM work_pool p
+	WHERE
+		NOT $3
+		OR (p.title, p.id) > ($5, $6)
+	ORDER BY p.title ASC, p.id ASC
+	LIMIT $7`
 
-	if len(outerWhere) > 0 {
-		query += " WHERE " + strings.Join(outerWhere, " AND ")
-	}
-
+	queryToExec := queryAddedAt
 	if sort == domain.SortTitle {
-		query += " ORDER BY p.title ASC, p.id ASC "
-	} else {
-		query += " ORDER BY p.effective_added_at DESC, p.id DESC "
+		queryToExec = queryTitle
 	}
 
-	query += fmt.Sprintf(" LIMIT $%d", argIdx)
-	args = append(args, limit+1)
-
-	rows, err := exec.Query(ctx, query, args...)
-
+	rows, err := exec.Query(
+		ctx,
+		queryToExec,
+		string(filter),
+		q.Q,
+		hasCursor,
+		cursorAddedAt,
+		cursorTitle,
+		cursorID,
+		limit+1,
+	)
 	if err != nil {
 		return nil, TranslateError(err)
 	}
 	defer rows.Close()
 
 	type workRow struct {
+
 		id               string
 		title            string
 		subtitle         string
