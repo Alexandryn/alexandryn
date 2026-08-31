@@ -3,13 +3,14 @@ import type { Capability } from '../data/bootstrap'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
+import { WorkDetail } from '../screens/WorkDetail'
 import { RequireCapability } from './capability'
 import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
 
 // Route views are placeholders this phase — phase 06 onward fills them in
-// inside the same shell (this spec's Non-goals). Only <NotFound> (FR-5)
-// and, from T9, /library have real content.
+// inside the same shell (this spec's Non-goals). Only <NotFound> (FR-5),
+// /library, and /book/:id have real content.
 //
 // Host-only gating (architecture-frontend.md FR-3) is declared here, in
 // one place — the `hostOnly()` wrapper below. The sidebar shows every
@@ -31,7 +32,8 @@ const shellChildren: RouteObject[] = [
 
   // Shared — render for the host window and a LAN browser alike.
   { path: 'library', element: <Library /> },
-  { path: 'book/:id', element: <ParamPlaceholder title="Book" param="id" /> },
+  { path: 'book/:id', element: <WorkDetail /> },
+
   { path: 'collections', element: <ScreenPlaceholder title="Collections" /> },
   { path: 'collections/:id', element: <ParamPlaceholder title="Collection" param="id" /> },
   { path: 'discover', element: <ScreenPlaceholder title="Discover" /> },
@@ -50,8 +52,10 @@ const shellChildren: RouteObject[] = [
   { path: 'access', element: <ScreenPlaceholder title="Access" note={VIEWER_NOTE} /> },
   { path: 'connect', element: <ScreenPlaceholder title="Connect" note={VIEWER_NOTE} /> },
   { path: 'reader/:id', element: <ParamPlaceholder title="Reader" param="id" /> },
+  { path: 'read/:workId/:editionId', element: <ParamPlaceholder title="Reader" param="workId" /> },
 
   { path: '*', element: <NotFound /> },
+
 ]
 
 export const routes: RouteObject[] = [

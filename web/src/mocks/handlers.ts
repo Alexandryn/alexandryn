@@ -1,13 +1,13 @@
 import { delay, http, HttpResponse } from 'msw'
+
 import { generatedFixtures } from './fixtures/generated'
 import { bootstrapFixture } from './fixtures/handwritten/bootstrap'
 import { notFoundError } from './fixtures/handwritten/errors'
-import { libraryItemsFixture } from './fixtures/handwritten/library'
 
 // The mock backend (frontend-shell-and-routing.md FR-6). Health handlers
 // serve the contract-generated fixtures (tier a); /api/bootstrap and the
-// /api/v1 catch-all are hand-written (tier b). Later tasks add an error
-// path (T8) and /api/v1/library (T9).
+// /api/v1 catch-all are hand-written (tier b).
+// Library, works, and collections endpoints (phase 06) pass through to the real backend.
 export const handlers = [
   http.get('*/healthz', () => HttpResponse.json(generatedFixtures.getHealthz['200'])),
   http.get('*/readyz', () => HttpResponse.json(generatedFixtures.getReadyz['200'])),
@@ -19,7 +19,11 @@ export const handlers = [
     return HttpResponse.json(bootstrapFixture)
   }),
 
-  http.get('*/api/v1/library', () => HttpResponse.json(libraryItemsFixture)),
+  http.get('*/api/v1/library', () => HttpResponse.json(generatedFixtures.listLibrary['200'])),
+  http.get('*/api/v1/works/:id', () => HttpResponse.json(generatedFixtures.getWork['200'])),
 
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]
+
+
+
