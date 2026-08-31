@@ -26,11 +26,12 @@
 
 
 ## Tier 4 — Frontend Collections Screens & Membership UI (React)
-- [ ] L16 — Create TanStack Query hooks for collections CRUD and membership mutation
-- [ ] L17 — Implement Collections Index screen
-- [ ] L18 — Implement Collection Detail screen
-- [ ] L19 — Implement Collection membership toggle dialog on Work Detail
-- [ ] L20 — Retire MSW fixtures for collections routes; Vitest component tests
+- [x] L16 — Create TanStack Query hooks for collections CRUD and membership mutation
+- [x] L17 — Implement Collections Index screen
+- [x] L18 — Implement Collection Detail screen
+- [x] L19 — Implement Collection membership toggle dialog on Work Detail
+- [x] L20 — Retire MSW fixtures for collections routes; Vitest component tests
+
 
 ## Tier 5 — E2E Walkthrough & Hostile Boundary Tests
 - [ ] L21 — Playwright E2E full library walkthrough (browse, search, filter, paginate, manage collections)

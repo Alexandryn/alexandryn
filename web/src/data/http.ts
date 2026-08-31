@@ -32,11 +32,50 @@ export function apiUrl(path: string): string {
   return new URL(path, window.location.origin).toString()
 }
 
-export async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { headers: { Accept: 'application/json' } })
+async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
     throw new ApiError(res.status, body)
   }
+  if (res.status === 204) {
+    return undefined as unknown as T
+  }
   return (await res.json()) as T
+}
+
+export async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiUrl(path), { headers: { Accept: 'application/json' } })
+  return handleResponse<T>(res)
+}
+
+export async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  return handleResponse<T>(res)
+}
+
+export async function patchJson<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  return handleResponse<T>(res)
+}
+
+export async function deleteRequest(path: string): Promise<void> {
+  const res = await fetch(apiUrl(path), {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  })
+  return handleResponse<void>(res)
 }
