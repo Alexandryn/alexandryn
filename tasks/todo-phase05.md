@@ -88,8 +88,9 @@ and after the security audit (E29 → E30).
 
 **Tier 7 — Closure**
 
-- [ ] E29 — security audit (four-attacker; the renderer↔main privilege boundary is THE boundary; + spawn channel, config file, loopback server, external links). `/security-review` + `agent-skills:security-auditor` subagent + `agent-skills:security-and-hardening` checklist → `.claude/audits/0005-phase05-desktop-host.md`. Fix Critical/High w/ regression test each; document accepted Medium/Low.
+- [x] E29 — security audit (four-attacker; the renderer↔main privilege boundary is THE boundary; + spawn channel, config file, loopback server, external links). `/security-review` + `agent-skills:security-auditor` subagent + `agent-skills:security-and-hardening` checklist → `.claude/audits/0005-phase05-desktop-host.md`. Fix Critical/High w/ regression test each; document accepted Medium/Low.
 - [ ] **═══ STOP GATE — present the audit, wait for maintainer sign-off ═══**
+
 - [ ] E30 — closure: 3 specs → `VERIFIED` (acceptance criteria evidenced first); `roadmap/05-desktop-host/README.md` exit criteria walked w/ evidence; `.claude/specs/README.md`; docs (root README, `electron/README.md`, this todo); D7 limitation + every carried Open question recorded
 
 **Checkpoint P5-H (final)** — full suite green (both workspace packages + `go build`/`go test ./...` incl. `parentwatch`); audit recorded, no open Critical/High; 3 specs `VERIFIED`; roadmap exit criteria cited; maintainer approval — phase 05 complete
