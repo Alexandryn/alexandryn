@@ -174,7 +174,8 @@ func TestCollectionRepository_FindDetail(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO authors (id, name) VALUES ('a1', 'Frank Herbert')")
 	mustExecPool(t, pool, "INSERT INTO work_authors (work_id, author_id) VALUES ('w1', 'a1')")
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('e1', 'w1', 'en', 'Chilton')")
-	mustExecPool(t, pool, "INSERT INTO library_entries (edition_id, added_at) VALUES ('e1', '2026-01-01T00:00:00Z')")
+	mustExecPool(t, pool, "INSERT INTO library_entries (id, edition_id, added_at) VALUES ('le1', 'e1', '2026-01-01T00:00:00Z')")
+
 
 	c, _ := domain.NewCollection("c1", "Sci-Fi Favorites")
 	addedAt := time.Date(2026, 2, 15, 12, 0, 0, 0, time.UTC)
