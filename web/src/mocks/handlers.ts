@@ -51,6 +51,41 @@ export const handlers = [
     new HttpResponse(null, { status: 204 }),
   ),
 
+  http.get('*/api/v1/discover', ({ request }) => {
+    const url = new URL(request.url)
+    const q = url.searchParams.get('q')
+    if (!q || q.trim() === '') {
+      return HttpResponse.json(generatedFixtures.searchDiscover['400'], { status: 400 })
+    }
+    if (q.includes('unavailable-test')) {
+      return HttpResponse.json(generatedFixtures.searchDiscover['503'], { status: 503 })
+    }
+    if (q.includes('empty-test')) {
+      return HttpResponse.json({ items: [], total: 0, limit: 20, offset: 0 })
+    }
+    return HttpResponse.json(generatedFixtures.searchDiscover['200'])
+  }),
+
+  http.get('*/api/v1/discover/works/:openLibraryId', ({ params }) => {
+    const id = String(params.openLibraryId)
+    if (id.includes('unavailable')) {
+      return HttpResponse.json(generatedFixtures.getDiscoverWork['503'], { status: 503 })
+    }
+    if (id.includes('not-found') || id.includes('non-existent')) {
+      return HttpResponse.json(generatedFixtures.getDiscoverWork['404'], { status: 404 })
+    }
+    return HttpResponse.json(generatedFixtures.getDiscoverWork['200'])
+  }),
+
+  http.get('*/api/v1/discover/covers/:coverId', () => {
+    return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+      headers: {
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'public, max-age=2592000, immutable',
+      },
+    })
+  }),
+
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]
 
