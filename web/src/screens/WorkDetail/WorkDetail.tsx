@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '../../components/Button/Button'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { FormatBadge } from '../../components/FormatBadge/FormatBadge'
@@ -8,6 +10,7 @@ import { ApiError } from '../../data/http'
 import { useWork } from '../../data/library'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { AddToCollectionModal } from './AddToCollectionModal'
 
 /**
  * Work detail screen at /book/:id (frontend-library-screens.md FR-5).
@@ -20,6 +23,8 @@ export function WorkDetail() {
   const id =
     params.id || (params['*'] ? params['*'].replace(/^book\//, '').split('/')[0] : '') || ''
   const { data: work, error, isPending, refetch } = useWork(id)
+  const [isManageCollectionsOpen, setIsManageCollectionsOpen] = useState(false)
+
 
 
   if (isPending) {
@@ -130,7 +135,17 @@ export function WorkDetail() {
 
       {/* Collections Section */}
       <div className="flex flex-col gap-md border-t border-border pt-lg">
-        <h2 className="text-xl font-medium text-text">Collections</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-medium text-text">Collections</h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsManageCollectionsOpen(true)}
+          >
+            + Add to collection
+          </Button>
+        </div>
+
         {work.collections && work.collections.length > 0 ? (
           <div className="flex flex-wrap gap-sm">
             {work.collections.map((c) => (
@@ -155,6 +170,13 @@ export function WorkDetail() {
           <p className="text-sm text-text-2">Not currently in any collection.</p>
         )}
       </div>
+
+      <AddToCollectionModal
+        open={isManageCollectionsOpen}
+        onOpenChange={setIsManageCollectionsOpen}
+        work={work}
+      />
+
 
       {/* Owned Editions Section */}
       <div className="flex flex-col gap-md border-t border-border pt-lg">

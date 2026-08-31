@@ -1,9 +1,12 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import type { Capability } from '../data/bootstrap'
+import { Collections } from '../screens/Collections'
+import { CollectionDetail } from '../screens/CollectionDetail'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { WorkDetail } from '../screens/WorkDetail'
+
 import { RequireCapability } from './capability'
 import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
@@ -34,8 +37,9 @@ const shellChildren: RouteObject[] = [
   { path: 'library', element: <Library /> },
   { path: 'book/:id', element: <WorkDetail /> },
 
-  { path: 'collections', element: <ScreenPlaceholder title="Collections" /> },
-  { path: 'collections/:id', element: <ParamPlaceholder title="Collection" param="id" /> },
+  { path: 'collections', element: <Collections /> },
+  { path: 'collections/:id', element: <CollectionDetail /> },
+  { path: 'collection/:id', element: <CollectionDetail /> },
   { path: 'discover', element: <ScreenPlaceholder title="Discover" /> },
   { path: 'activity', element: <ScreenPlaceholder title="Activity" /> },
   { path: 'more', element: <ScreenPlaceholder title="More" /> },

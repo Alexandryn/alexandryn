@@ -31,7 +31,6 @@ function renderRoute(path: string) {
 const SHARED: [string, string][] = [
   ['/library', 'Library'],
   ['/collections', 'Collections'],
-  ['/collections/abc', 'Collection'],
   ['/discover', 'Discover'],
   ['/activity', 'Activity'],
   ['/more', 'More'],
@@ -40,7 +39,6 @@ const SHARED: [string, string][] = [
   ['/reader/9', 'Reader'],
   ['/read/book-1/ed-1', 'Reader'],
 ]
-
 
 const HOST_ONLY: [string, string][] = [
   ['/sources', 'Sources'],
@@ -76,6 +74,39 @@ describe('route table (FR-1)', () => {
     ).toBeInTheDocument()
   })
 
+  it('/collections/:id resolves to CollectionDetail screen', async () => {
+    server.use(
+      http.get('*/api/v1/collections/:id', () =>
+        HttpResponse.json({
+          id: 'coll-1',
+          name: 'Favorites',
+          works: [],
+        }),
+      ),
+    )
+    renderRoute('/collections/coll-1')
+    expect(
+      await screen.findByRole('heading', { name: 'Favorites', level: 1 }),
+    ).toBeInTheDocument()
+  })
+
+  it('/collection/:id resolves to CollectionDetail screen', async () => {
+    server.use(
+      http.get('*/api/v1/collections/:id', () =>
+        HttpResponse.json({
+          id: 'coll-2',
+          name: 'Classics',
+          works: [],
+        }),
+      ),
+    )
+    renderRoute('/collection/coll-2')
+    expect(
+      await screen.findByRole('heading', { name: 'Classics', level: 1 }),
+    ).toBeInTheDocument()
+  })
+
+
   it('/ redirects to /library', async () => {
     renderRoute('/')
     expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
@@ -100,10 +131,11 @@ describe('route table (FR-1)', () => {
   )
 
   it('a :id route exposes its param to the view', async () => {
-    renderRoute('/collections/abc-123')
+    renderRoute('/reader/abc-123')
     expect(await screen.findByText(/abc-123/)).toBeInTheDocument()
   })
 })
+
 
 
 describe('RouteError (errorElement, FR-5/FR-7)', () => {
