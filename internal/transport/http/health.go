@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
 // Pinger is the minimal interface /readyz needs from whatever holds the
@@ -20,9 +21,11 @@ type Pinger interface {
 // backend-persistence.md FR-1). It starts empty at process start and is
 // populated once Postgres is connected and migrated.
 type PoolRef struct {
-	p           atomic.Pointer[Pinger]
-	works       atomic.Pointer[domain.WorkRepository]
-	collections atomic.Pointer[domain.CollectionRepository]
+	p             atomic.Pointer[Pinger]
+	works         atomic.Pointer[domain.WorkRepository]
+	collections   atomic.Pointer[domain.CollectionRepository]
+	metadataCache atomic.Pointer[postgres.MetadataCacheRepository]
+	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
 }
 
 // Set stores p as the current reference.
@@ -61,6 +64,34 @@ func (r *PoolRef) SetCollectionRepository(c domain.CollectionRepository) {
 // GetCollectionRepository returns the current CollectionRepository and whether one has been set.
 func (r *PoolRef) GetCollectionRepository() (domain.CollectionRepository, bool) {
 	stored := r.collections.Load()
+	if stored == nil {
+		return nil, false
+	}
+	return *stored, true
+}
+
+// SetMetadataCacheRepository stores the MetadataCacheRepository instance once persistence is initialized.
+func (r *PoolRef) SetMetadataCacheRepository(m postgres.MetadataCacheRepository) {
+	r.metadataCache.Store(&m)
+}
+
+// GetMetadataCacheRepository returns the current MetadataCacheRepository and whether one has been set.
+func (r *PoolRef) GetMetadataCacheRepository() (postgres.MetadataCacheRepository, bool) {
+	stored := r.metadataCache.Load()
+	if stored == nil {
+		return nil, false
+	}
+	return *stored, true
+}
+
+// SetCoverCacheRepository stores the CoverCacheRepository instance once persistence is initialized.
+func (r *PoolRef) SetCoverCacheRepository(c postgres.CoverCacheRepository) {
+	r.coverCache.Store(&c)
+}
+
+// GetCoverCacheRepository returns the current CoverCacheRepository and whether one has been set.
+func (r *PoolRef) GetCoverCacheRepository() (postgres.CoverCacheRepository, bool) {
+	stored := r.coverCache.Load()
 	if stored == nil {
 		return nil, false
 	}

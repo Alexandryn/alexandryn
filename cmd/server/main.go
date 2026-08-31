@@ -16,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
@@ -157,6 +158,14 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("DELETE /api/v1/collections/{id}", transporthttp.DeleteCollectionHandler(collRepo))
 	mux.Handle("POST /api/v1/collections/{id}/works", transporthttp.AddWorkToCollectionHandler(collRepo, time.Now))
 	mux.Handle("DELETE /api/v1/collections/{id}/works/{workId}", transporthttp.RemoveWorkFromCollectionHandler(collRepo))
+
+	openLibraryClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
+	metadataCache := transporthttp.NewLazyMetadataCacheRepository(poolRef)
+	coverCache := transporthttp.NewLazyCoverCacheRepository(poolRef)
+
+	mux.Handle("GET /api/v1/discover", transporthttp.DiscoverSearchHandler(openLibraryClient))
+	mux.Handle("GET /api/v1/discover/works/{openLibraryId}", transporthttp.DiscoverWorkDetailHandler(openLibraryClient, metadataCache))
+	mux.Handle("GET /api/v1/discover/covers/{coverId}", transporthttp.DiscoverCoverHandler(openLibraryClient, coverCache))
 
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 

@@ -211,6 +211,8 @@ func assertRepositoriesConstructed(t *testing.T, repos *repositories) {
 		"highlights":         repos.highlights,
 		"readingPreferences": repos.readingPreferences,
 		"transactor":         repos.transactor,
+		"metadataCache":      repos.metadataCache,
+		"coverCache":         repos.coverCache,
 	}
 	for name, field := range fields {
 		if field == nil {

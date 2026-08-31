@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
 
@@ -152,5 +154,101 @@ func (l *LazyCollectionRepository) Rename(ctx context.Context, id domain.Collect
 		return err
 	}
 	return repo.Rename(ctx, id, name)
+}
+
+// LazyMetadataCacheRepository delegates to postgres.MetadataCacheRepository stored on PoolRef.
+type LazyMetadataCacheRepository struct {
+	ref *PoolRef
+}
+
+// NewLazyMetadataCacheRepository returns a postgres.MetadataCacheRepository wrapping ref.
+func NewLazyMetadataCacheRepository(ref *PoolRef) postgres.MetadataCacheRepository {
+	return &LazyMetadataCacheRepository{ref: ref}
+}
+
+var _ postgres.MetadataCacheRepository = (*LazyMetadataCacheRepository)(nil)
+
+func (l *LazyMetadataCacheRepository) get() (postgres.MetadataCacheRepository, error) {
+	repo, ok := l.ref.GetMetadataCacheRepository()
+	if !ok {
+		return nil, &domain.Error{Category: domain.Unavailable, Message: "database not ready"}
+	}
+	return repo, nil
+}
+
+func (l *LazyMetadataCacheRepository) GetWork(ctx context.Context, key string) (*openlibrary.DiscoverWorkDetail, bool, error) {
+	repo, err := l.get()
+	if err != nil {
+		return nil, false, err
+	}
+	return repo.GetWork(ctx, key)
+}
+
+func (l *LazyMetadataCacheRepository) GetAuthor(ctx context.Context, key string) (*openlibrary.NormalisedAuthor, bool, error) {
+	repo, err := l.get()
+	if err != nil {
+		return nil, false, err
+	}
+	return repo.GetAuthor(ctx, key)
+}
+
+func (l *LazyMetadataCacheRepository) SaveWork(ctx context.Context, workKey string, detail *openlibrary.DiscoverWorkDetail) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.SaveWork(ctx, workKey, detail)
+}
+
+func (l *LazyMetadataCacheRepository) SaveAuthor(ctx context.Context, author *openlibrary.NormalisedAuthor) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.SaveAuthor(ctx, author)
+}
+
+// LazyCoverCacheRepository delegates to postgres.CoverCacheRepository stored on PoolRef.
+type LazyCoverCacheRepository struct {
+	ref *PoolRef
+}
+
+// NewLazyCoverCacheRepository returns a postgres.CoverCacheRepository wrapping ref.
+func NewLazyCoverCacheRepository(ref *PoolRef) postgres.CoverCacheRepository {
+	return &LazyCoverCacheRepository{ref: ref}
+}
+
+var _ postgres.CoverCacheRepository = (*LazyCoverCacheRepository)(nil)
+
+func (l *LazyCoverCacheRepository) get() (postgres.CoverCacheRepository, error) {
+	repo, ok := l.ref.GetCoverCacheRepository()
+	if !ok {
+		return nil, &domain.Error{Category: domain.Unavailable, Message: "database not ready"}
+	}
+	return repo, nil
+}
+
+func (l *LazyCoverCacheRepository) GetCover(ctx context.Context, coverID int64) (string, string, bool, bool, error) {
+	repo, err := l.get()
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return repo.GetCover(ctx, coverID)
+}
+
+func (l *LazyCoverCacheRepository) SaveCover(ctx context.Context, coverID int64, contentType string, data []byte) (string, error) {
+	repo, err := l.get()
+	if err != nil {
+		return "", err
+	}
+	return repo.SaveCover(ctx, coverID, contentType, data)
+}
+
+func (l *LazyCoverCacheRepository) MarkMissing(ctx context.Context, coverID int64) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.MarkMissing(ctx, coverID)
 }
 

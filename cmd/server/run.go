@@ -290,6 +290,12 @@ func run(ctx context.Context, deps runDeps) int {
 		if repos.collections != nil {
 			poolRef.SetCollectionRepository(repos.collections)
 		}
+		if repos.metadataCache != nil {
+			poolRef.SetMetadataCacheRepository(repos.metadataCache)
+		}
+		if repos.coverCache != nil {
+			poolRef.SetCoverCacheRepository(repos.coverCache)
+		}
 	}
 	logger.Info("startup step completed", "step", "pool")
 
