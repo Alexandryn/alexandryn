@@ -81,4 +81,26 @@ export function setupWindowNavigation(
     event.preventDefault()
     openExternalIfSafe(url, opener)
   })
+
+  // Intercept subframe/iframe navigations to external origins (A-0005-02)
+  webContents.on('will-frame-navigate', (event) => {
+    const targetUrl = (event as unknown as { url?: string }).url
+    if (!targetUrl) return
+
+    const currentAllowedOrigin = options?.getAllowedOrigin?.() ?? options?.allowedOrigin
+    if (currentAllowedOrigin !== undefined) {
+      try {
+        const parsed = new URL(targetUrl)
+        if (parsed.origin === currentAllowedOrigin) {
+          return
+        }
+      } catch {
+        // Invalid URL -> block
+      }
+    }
+
+    event.preventDefault()
+    openExternalIfSafe(targetUrl, opener)
+  })
 }
+

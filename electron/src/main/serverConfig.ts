@@ -20,8 +20,14 @@ export interface ServerConfigHandle {
 }
 
 function tomlString(value: string): string {
-  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  return `"${value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')}"`
 }
+
 
 /**
  * Writes the Go server's `config.toml` (architecture-desktop-host.md

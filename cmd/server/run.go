@@ -210,7 +210,13 @@ func run(ctx context.Context, deps runDeps) int {
 		logger.Error("startup failed", "step", "listen", "error", err.Error())
 		return 1
 	}
+	if tcpAddr, ok := listener.Addr().(*net.TCPAddr); ok {
+		// desktop-host-process-model.md FR-2 / architecture-desktop-host.md:
+		// Announces bound ephemeral port to Electron host process.
+		fmt.Printf("PORT=%d\n", tcpAddr.Port)
+	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
+
 
 	srv := deps.newServer(cfg, router)
 	serveErr := make(chan error, 1)
