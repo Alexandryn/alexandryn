@@ -74,6 +74,357 @@ paths:
                 message: not yet started
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  # ── Phase 06: Library domain endpoints ───────────────────────────────
+  # backend-library-api.md FR-1 through FR-7
+
+  /api/v1/library:
+    get:
+      operationId: listLibrary
+      summary: List works in the library (cursor-paginated)
+      description: >-
+        Returns a cursor-paginated list of Works reachable via the given
+        filter (backend-library-api.md FR-1–FR-4). Default limit 50,
+        max 100.
+      security: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Opaque cursor from a previous response's nextCursor. Omit
+            for the first page.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: >-
+            Number of results per page. Must be 1–100 inclusive.
+            A value outside this range, a non-integer, or zero is
+            400 InvalidInput (never silently clamped).
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+          description: >-
+            Full-text search query (PostgreSQL tsquery, parameterized —
+            backend-library-api.md FR-2). Max 200 characters.
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [owned, wanted, all]
+            default: all
+          description: >-
+            Closed vocabulary (backend-library-api.md FR-3). An
+            unrecognized value is 400 InvalidInput.
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [added_at, title]
+            default: added_at
+          description: >-
+            Closed vocabulary (backend-library-api.md FR-4). An
+            unrecognized value is 400 InvalidInput.
+      responses:
+        '200':
+          description: A page of works.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryPage'
+        '400':
+          description: Invalid parameter value.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/works/{id}:
+    get:
+      operationId: getWork
+      summary: Get a single work's detail
+      description: >-
+        Returns one Work's metadata, owned editions (with formats), and
+        collection memberships (backend-library-api.md FR-5). Absent-
+        but-optional fields (cover URL, availability) are simply missing
+        from the response object, not present-but-null.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: WorkID (internal). Malformed shape → 400; not found → 404.
+      responses:
+        '200':
+          description: The work detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkDetail'
+        '400':
+          description: Malformed WorkID (not a valid ID shape).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No work with that ID exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/collections:
+    get:
+      operationId: listCollections
+      summary: List all collections (unpaginated)
+      description: >-
+        Returns every collection with its work count
+        (backend-library-api.md FR-6). No pagination — household-scale
+        collection count assumed manageable.
+      security: []
+      responses:
+        '200':
+          description: All collections.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [collections]
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollectionSummary'
+    post:
+      operationId: createCollection
+      summary: Create a new collection
+      description: >-
+        Creates a new collection (backend-library-api.md FR-6). Name is
+        validated against domain-bibliographic.md FR-5/FR-6's bar
+        (max 100 chars, no control characters).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionCreate'
+      responses:
+        '201':
+          description: The created collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDetail'
+        '400':
+          description: Invalid collection name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/collections/{id}:
+    get:
+      operationId: getCollection
+      summary: Get a collection's detail including member works
+      description: >-
+        Returns one collection and its member Works, each with the
+        per-membership added-at (backend-library-api.md FR-6,
+        domain-library.md FR-9).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CollectionID. Malformed → 400; not found → 404.
+      responses:
+        '200':
+          description: The collection detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDetail'
+        '400':
+          description: Malformed CollectionID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No collection with that ID exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      operationId: renameCollection
+      summary: Rename a collection
+      description: >-
+        Renames a collection (backend-library-api.md FR-6). Membership
+        changes go through POST/DELETE /api/v1/collections/{id}/works,
+        never bundled here.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionRename'
+      responses:
+        '200':
+          description: The renamed collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDetail'
+        '400':
+          description: Invalid name or malformed CollectionID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No collection with that ID exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      operationId: deleteCollection
+      summary: Delete a collection
+      description: >-
+        Deletes the collection and its membership rows. Non-cascading —
+        Works, Editions, and LibraryEntries are untouched
+        (domain-library.md FR-10, backend-library-api.md FR-6).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted successfully. No body.
+        '400':
+          description: Malformed CollectionID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No collection with that ID exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/collections/{id}/works:
+    post:
+      operationId: addWorkToCollection
+      summary: Add a work to a collection
+      description: >-
+        Adds a Work to a Collection (backend-library-api.md FR-7).
+        Idempotent — adding an already-member Work is a no-op (200,
+        original added_at preserved, ON CONFLICT DO NOTHING).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CollectionID. Malformed → 400; not found → 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionMembershipAdd'
+      responses:
+        '200':
+          description: Work is now a member (or already was).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDetail'
+        '400':
+          description: Malformed ID or missing workId.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Collection or Work not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/collections/{id}/works/{workId}:
+    delete:
+      operationId: removeWorkFromCollection
+      summary: Remove a work from a collection
+      description: >-
+        Removes the specific (collectionId, workId) membership row — a
+        hard delete (backend-library-api.md FR-7). The Work, Edition,
+        and every other Collection's membership are untouched. A
+        re-add after removal is a new membership with a fresh added_at.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CollectionID.
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: WorkID. Malformed → 400; not found → 404.
+      responses:
+        '204':
+          description: Removed successfully. No body.
+        '400':
+          description: Malformed ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Collection or membership not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -111,6 +462,244 @@ components:
           type: string
           description: Ties this response to one server log line.
           example: 00000000-0000-0000-0000-000000000000
+
+    # ── Phase 06: Library domain schemas ─────────────────────────────
+    # backend-library-api.md FR-1/FR-5/FR-6/FR-7
+
+    WorkSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, subtitle, authors, isOwned, collections]
+      description: >-
+        One work in the /api/v1/library paginated list
+        (backend-library-api.md FR-1).
+      properties:
+        id:
+          type: string
+          description: WorkID (internal).
+        title:
+          type: string
+        subtitle:
+          type: string
+          description: Empty string when absent — never null.
+        authors:
+          type: array
+          items:
+            type: string
+          description: Author display names.
+        isOwned:
+          type: boolean
+          description: >-
+            True when at least one Edition of this Work has a LibraryEntry
+            (domain-library.md FR-2, computed not stored).
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectionRef'
+          description: Collections this Work is a member of.
+        addedAt:
+          type: string
+          format: date-time
+          description: >-
+            Sort key for the added_at sort mode. Present when the work is
+            owned (LibraryEntry.added_at) or wanted (most recent
+            collection membership added_at). Absent only when a work is
+            somehow reachable with neither (not expected in practice).
+          nullable: true
+
+    LibraryPage:
+      type: object
+      additionalProperties: false
+      required: [works, nextCursor]
+      description: >-
+        Response body for GET /api/v1/library
+        (backend-library-api.md FR-1).
+      properties:
+        works:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkSummary'
+        nextCursor:
+          type: string
+          nullable: true
+          description: >-
+            Opaque cursor for the next page. Null when this is the last
+            page. Clients MUST treat this as an opaque token — its
+            internal encoding is not part of the API contract.
+
+    OwnedEdition:
+      type: object
+      additionalProperties: false
+      required: [id, language, publisher, formats]
+      description: >-
+        One owned Edition in a WorkDetail response
+        (backend-library-api.md FR-5). Amended for phase 11: formats
+        carries the distinct Format values across every SourceOffering
+        referencing this Edition.
+      properties:
+        id:
+          type: string
+          description: EditionID (internal).
+        language:
+          type: string
+          description: BCP-47 language tag.
+        isbn:
+          type: string
+          nullable: true
+        publisher:
+          type: string
+          description: Empty string when absent.
+        publicationYear:
+          type: integer
+          nullable: true
+        addedAt:
+          type: string
+          format: date-time
+          description: LibraryEntry.added_at for this Edition.
+        formats:
+          type: array
+          items:
+            type: string
+          description: >-
+            Distinct Format values (domain-source.md FR-2) across every
+            SourceOffering referencing this Edition. Empty array when no
+            SourceOfferings exist. Always present (never absent), per
+            backend-library-api.md FR-5 amendment.
+
+    CollectionRef:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      description: >-
+        Minimal collection reference embedded in WorkSummary and
+        WorkDetail (backend-library-api.md FR-5/FR-6).
+      properties:
+        id:
+          type: string
+          description: CollectionID (internal).
+        name:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+          description: >-
+            domain-library.md FR-9's per-membership added-at timestamp —
+            when this Work was added to this Collection.
+
+    WorkDetail:
+      type: object
+      additionalProperties: false
+      required: [id, title, subtitle, authors, ownedEditions, collections]
+      description: >-
+        Response body for GET /api/v1/works/{id}
+        (backend-library-api.md FR-5).
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+          description: Empty string when absent.
+        authors:
+          type: array
+          items:
+            type: string
+          description: Author display names.
+        subjects:
+          type: array
+          items:
+            type: string
+        originalLanguage:
+          type: string
+          nullable: true
+          description: BCP-47 language tag.
+        ownedEditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnedEdition'
+          description: >-
+            Editions of this Work for which a LibraryEntry exists
+            (domain-library.md FR-1).
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectionRef'
+          description: >-
+            Collections this Work is a member of, each with the
+            per-membership added-at (domain-library.md FR-9).
+
+    CollectionSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, workCount]
+      description: >-
+        One collection in the GET /api/v1/collections list
+        (backend-library-api.md FR-6).
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        workCount:
+          type: integer
+          description: Number of Works currently in this Collection.
+
+    CollectionDetail:
+      type: object
+      additionalProperties: false
+      required: [id, name, works]
+      description: >-
+        Response body for GET /api/v1/collections/{id}
+        (backend-library-api.md FR-6).
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        works:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkSummary'
+          description: >-
+            Works in this Collection, each carrying the per-membership
+            added-at (domain-library.md FR-9).
+
+    CollectionCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      description: >-
+        Request body for POST /api/v1/collections
+        (backend-library-api.md FR-6).
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Collection name (domain-library.md validation bar).
+
+    CollectionRename:
+      type: object
+      additionalProperties: false
+      required: [name]
+      description: >-
+        Request body for PATCH /api/v1/collections/{id}
+        (backend-library-api.md FR-6).
+      properties:
+        name:
+          type: string
+          maxLength: 100
+
+    CollectionMembershipAdd:
+      type: object
+      additionalProperties: false
+      required: [workId]
+      description: >-
+        Request body for POST /api/v1/collections/{id}/works
+        (backend-library-api.md FR-7).
+      properties:
+        workId:
+          type: string
 
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.
