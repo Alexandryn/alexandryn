@@ -283,15 +283,14 @@ func run(ctx context.Context, deps runDeps) int {
 		return 1
 	}
 	poolRef.Set(pool)
+	if repos != nil && repos.works != nil {
+		poolRef.SetWorkRepository(repos.works)
+	}
 	logger.Info("startup step completed", "step", "pool")
 
-	// repos (T24, R10) holds every domain repository implementation,
-	// constructed against the same pool above. Nothing consumes it yet —
-	// phase 03 registers no /api/v1 routes (backend-service-lifecycle.md's
-	// own Non-goals) — a future phase's handlers are where it gets used.
-	_ = repos
-
 	logger.Info("ready")
+
+
 
 	select {
 	case <-ctx.Done():

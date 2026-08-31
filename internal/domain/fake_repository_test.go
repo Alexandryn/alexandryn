@@ -52,6 +52,24 @@ func (r *fakeWorkRepository) Save(_ context.Context, w *domain.Work) error {
 	return nil
 }
 
+func (r *fakeWorkRepository) QueryLibrary(_ context.Context, _ domain.LibraryQuery) (*domain.LibraryPage, error) {
+	return &domain.LibraryPage{Works: []*domain.WorkSummary{}}, nil
+}
+
+func (r *fakeWorkRepository) FindWorkDetail(_ context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	w, ok := r.works[id]
+	if !ok {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "work not found"}
+	}
+	return &domain.WorkDetail{
+		ID:       w.ID(),
+		Title:    w.Title(),
+		Subtitle: w.Subtitle(),
+	}, nil
+}
+
 var _ domain.WorkRepository = (*fakeWorkRepository)(nil)
 
 // fakeAuthorRepository is the same pattern, for domain.AuthorRepository.
