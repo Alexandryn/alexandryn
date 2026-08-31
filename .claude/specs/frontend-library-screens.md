@@ -2,11 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — "Read" action added to FR-5 for phase 11, [`0038`](../reviews/0038-phase11-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15) |
+| **Status** | `VERIFIED` (2026-08-31, phase 06 Tier 6 / L24 — Tiers 0–5 / PR #71, audit [`0006`](../audits/0006-phase06-library.md), verified by maintainer) |
 | **Phase** | `06-library` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
-| **Last updated** | 2026-08-15 |
+| **Last updated** | 2026-08-31 |
+
 | **Supersedes** | — |
 | **Reviewed in** | [`0033`](../reviews/0033-phase06-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time, all findings fixed; approved by maintainer 2026-08-14. Amended post-approval, [`0038`](../reviews/0038-phase11-cross-spec-review.md) — FR-5 extended with a "Read" entry point for `frontend-reader.md` (phase 11), cross-spec-reviewed, findings fixed, re-confirmed by maintainer 2026-08-15 |
 
