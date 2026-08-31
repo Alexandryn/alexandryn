@@ -315,174 +315,327 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 		}
 	}
 
-	const queryAddedAt = `WITH work_pool AS (
-		SELECT
-			w.id,
-			w.title,
-			w.subtitle,
-			EXISTS (
-				SELECT 1 FROM editions e
-				JOIN library_entries le ON le.edition_id = e.id
-				WHERE e.work_id = w.id
-			) AS is_owned,
-			COALESCE(
-				(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-				(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-			) AS effective_added_at
-		FROM works w
-		WHERE
-			(
-				($1 = 'owned' AND EXISTS (
+	const (
+		queryAddedAtNoCursor = `WITH work_pool AS (
+			SELECT
+				w.id,
+				w.title,
+				w.subtitle,
+				EXISTS (
 					SELECT 1 FROM editions e
 					JOIN library_entries le ON le.edition_id = e.id
 					WHERE e.work_id = w.id
-				))
-				OR ($1 = 'wanted' AND EXISTS (
-					SELECT 1 FROM collection_members cm
-					WHERE cm.work_id = w.id
-				) AND NOT EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				))
-				OR ($1 = 'all' AND (
-					EXISTS (
+				) AS is_owned,
+				COALESCE(
+					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+				) AS effective_added_at
+			FROM works w
+			WHERE
+				(
+					($1 = 'owned' AND EXISTS (
 						SELECT 1 FROM editions e
 						JOIN library_entries le ON le.edition_id = e.id
 						WHERE e.work_id = w.id
-					) OR EXISTS (
+					))
+					OR ($1 = 'wanted' AND EXISTS (
 						SELECT 1 FROM collection_members cm
 						WHERE cm.work_id = w.id
-					)
-				))
-			)
-			AND (
-				$2 = ''
-				OR w.search_vector @@ plainto_tsquery('simple', $2)
-				OR EXISTS (
-					SELECT 1 FROM work_authors wa
-					JOIN authors a ON a.id = wa.author_id
-					WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
-				)
-			)
-	)
-	SELECT
-		p.id,
-		p.title,
-		p.subtitle,
-		p.is_owned,
-		p.effective_added_at,
-		COALESCE((
-			SELECT json_agg(a.name ORDER BY wa.author_id)
-			FROM work_authors wa
-			JOIN authors a ON a.id = wa.author_id
-			WHERE wa.work_id = p.id
-		), '[]'::json) AS authors,
-		COALESCE((
-			SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-			FROM collection_members cm
-			JOIN collections c ON c.id = cm.collection_id
-			WHERE cm.work_id = p.id
-		), '[]'::json) AS collections
-	FROM work_pool p
-	WHERE
-		NOT $3
-		OR (p.effective_added_at, p.id) < ($4, $6)
-	ORDER BY p.effective_added_at DESC, p.id DESC
-	LIMIT $7`
-
-	const queryTitle = `WITH work_pool AS (
-		SELECT
-			w.id,
-			w.title,
-			w.subtitle,
-			EXISTS (
-				SELECT 1 FROM editions e
-				JOIN library_entries le ON le.edition_id = e.id
-				WHERE e.work_id = w.id
-			) AS is_owned,
-			COALESCE(
-				(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-				(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-			) AS effective_added_at
-		FROM works w
-		WHERE
-			(
-				($1 = 'owned' AND EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				))
-				OR ($1 = 'wanted' AND EXISTS (
-					SELECT 1 FROM collection_members cm
-					WHERE cm.work_id = w.id
-				) AND NOT EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				))
-				OR ($1 = 'all' AND (
-					EXISTS (
+					) AND NOT EXISTS (
 						SELECT 1 FROM editions e
 						JOIN library_entries le ON le.edition_id = e.id
 						WHERE e.work_id = w.id
-					) OR EXISTS (
+					))
+					OR ($1 = 'all' AND (
+						EXISTS (
+							SELECT 1 FROM editions e
+							JOIN library_entries le ON le.edition_id = e.id
+							WHERE e.work_id = w.id
+						) OR EXISTS (
+							SELECT 1 FROM collection_members cm
+							WHERE cm.work_id = w.id
+						)
+					))
+				)
+				AND (
+					$2 = ''
+					OR w.search_vector @@ plainto_tsquery('simple', $2)
+					OR EXISTS (
+						SELECT 1 FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					)
+				)
+		)
+		SELECT
+			p.id,
+			p.title,
+			p.subtitle,
+			p.is_owned,
+			p.effective_added_at,
+			COALESCE((
+				SELECT json_agg(a.name ORDER BY wa.author_id)
+				FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = p.id
+			), '[]'::json) AS authors,
+			COALESCE((
+				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+				FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id
+				WHERE cm.work_id = p.id
+			), '[]'::json) AS collections
+		FROM work_pool p
+		ORDER BY p.effective_added_at DESC, p.id DESC
+		LIMIT $3`
+
+		queryAddedAtWithCursor = `WITH work_pool AS (
+			SELECT
+				w.id,
+				w.title,
+				w.subtitle,
+				EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				) AS is_owned,
+				COALESCE(
+					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+				) AS effective_added_at
+			FROM works w
+			WHERE
+				(
+					($1 = 'owned' AND EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'wanted' AND EXISTS (
 						SELECT 1 FROM collection_members cm
 						WHERE cm.work_id = w.id
-					)
-				))
-			)
-			AND (
-				$2 = ''
-				OR w.search_vector @@ plainto_tsquery('simple', $2)
-				OR EXISTS (
-					SELECT 1 FROM work_authors wa
-					JOIN authors a ON a.id = wa.author_id
-					WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					) AND NOT EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'all' AND (
+						EXISTS (
+							SELECT 1 FROM editions e
+							JOIN library_entries le ON le.edition_id = e.id
+							WHERE e.work_id = w.id
+						) OR EXISTS (
+							SELECT 1 FROM collection_members cm
+							WHERE cm.work_id = w.id
+						)
+					))
 				)
-			)
-	)
-	SELECT
-		p.id,
-		p.title,
-		p.subtitle,
-		p.is_owned,
-		p.effective_added_at,
-		COALESCE((
-			SELECT json_agg(a.name ORDER BY wa.author_id)
-			FROM work_authors wa
-			JOIN authors a ON a.id = wa.author_id
-			WHERE wa.work_id = p.id
-		), '[]'::json) AS authors,
-		COALESCE((
-			SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-			FROM collection_members cm
-			JOIN collections c ON c.id = cm.collection_id
-			WHERE cm.work_id = p.id
-		), '[]'::json) AS collections
-	FROM work_pool p
-	WHERE
-		NOT $3
-		OR (p.title, p.id) > ($5, $6)
-	ORDER BY p.title ASC, p.id ASC
-	LIMIT $7`
+				AND (
+					$2 = ''
+					OR w.search_vector @@ plainto_tsquery('simple', $2)
+					OR EXISTS (
+						SELECT 1 FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					)
+				)
+		)
+		SELECT
+			p.id,
+			p.title,
+			p.subtitle,
+			p.is_owned,
+			p.effective_added_at,
+			COALESCE((
+				SELECT json_agg(a.name ORDER BY wa.author_id)
+				FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = p.id
+			), '[]'::json) AS authors,
+			COALESCE((
+				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+				FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id
+				WHERE cm.work_id = p.id
+			), '[]'::json) AS collections
+		FROM work_pool p
+		WHERE (p.effective_added_at < $3 OR (p.effective_added_at = $3 AND p.id < $4))
+		ORDER BY p.effective_added_at DESC, p.id DESC
+		LIMIT $5`
 
-	queryToExec := queryAddedAt
+		queryTitleNoCursor = `WITH work_pool AS (
+			SELECT
+				w.id,
+				w.title,
+				w.subtitle,
+				EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				) AS is_owned,
+				COALESCE(
+					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+				) AS effective_added_at
+			FROM works w
+			WHERE
+				(
+					($1 = 'owned' AND EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'wanted' AND EXISTS (
+						SELECT 1 FROM collection_members cm
+						WHERE cm.work_id = w.id
+					) AND NOT EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'all' AND (
+						EXISTS (
+							SELECT 1 FROM editions e
+							JOIN library_entries le ON le.edition_id = e.id
+							WHERE e.work_id = w.id
+						) OR EXISTS (
+							SELECT 1 FROM collection_members cm
+							WHERE cm.work_id = w.id
+						)
+					))
+				)
+				AND (
+					$2 = ''
+					OR w.search_vector @@ plainto_tsquery('simple', $2)
+					OR EXISTS (
+						SELECT 1 FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					)
+				)
+		)
+		SELECT
+			p.id,
+			p.title,
+			p.subtitle,
+			p.is_owned,
+			p.effective_added_at,
+			COALESCE((
+				SELECT json_agg(a.name ORDER BY wa.author_id)
+				FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = p.id
+			), '[]'::json) AS authors,
+			COALESCE((
+				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+				FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id
+				WHERE cm.work_id = p.id
+			), '[]'::json) AS collections
+		FROM work_pool p
+		ORDER BY p.title ASC, p.id ASC
+		LIMIT $3`
+
+		queryTitleWithCursor = `WITH work_pool AS (
+			SELECT
+				w.id,
+				w.title,
+				w.subtitle,
+				EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id
+					WHERE e.work_id = w.id
+				) AS is_owned,
+				COALESCE(
+					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
+					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
+				) AS effective_added_at
+			FROM works w
+			WHERE
+				(
+					($1 = 'owned' AND EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'wanted' AND EXISTS (
+						SELECT 1 FROM collection_members cm
+						WHERE cm.work_id = w.id
+					) AND NOT EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'all' AND (
+						EXISTS (
+							SELECT 1 FROM editions e
+							JOIN library_entries le ON le.edition_id = e.id
+							WHERE e.work_id = w.id
+						) OR EXISTS (
+							SELECT 1 FROM collection_members cm
+							WHERE cm.work_id = w.id
+						)
+					))
+				)
+				AND (
+					$2 = ''
+					OR w.search_vector @@ plainto_tsquery('simple', $2)
+					OR EXISTS (
+						SELECT 1 FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					)
+				)
+		)
+		SELECT
+			p.id,
+			p.title,
+			p.subtitle,
+			p.is_owned,
+			p.effective_added_at,
+			COALESCE((
+				SELECT json_agg(a.name ORDER BY wa.author_id)
+				FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = p.id
+			), '[]'::json) AS authors,
+			COALESCE((
+				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+				FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id
+				WHERE cm.work_id = p.id
+			), '[]'::json) AS collections
+		FROM work_pool p
+		WHERE (p.title > $3 OR (p.title = $3 AND p.id > $4))
+		ORDER BY p.title ASC, p.id ASC
+		LIMIT $5`
+	)
+
+	var (
+		queryToExec string
+		args        []any
+	)
+
 	if sort == domain.SortTitle {
-		queryToExec = queryTitle
+		if hasCursor {
+			queryToExec = queryTitleWithCursor
+			args = []any{string(filter), q.Q, cursorTitle, cursorID, limit + 1}
+		} else {
+			queryToExec = queryTitleNoCursor
+			args = []any{string(filter), q.Q, limit + 1}
+		}
+	} else {
+		if hasCursor {
+			queryToExec = queryAddedAtWithCursor
+			args = []any{string(filter), q.Q, cursorAddedAt, cursorID, limit + 1}
+		} else {
+			queryToExec = queryAddedAtNoCursor
+			args = []any{string(filter), q.Q, limit + 1}
+		}
 	}
 
-	rows, err := exec.Query(
-		ctx,
-		queryToExec,
-		string(filter),
-		q.Q,
-		hasCursor,
-		cursorAddedAt,
-		cursorTitle,
-		cursorID,
-		limit+1,
-	)
+	rows, err := exec.Query(ctx, queryToExec, args...)
+
 	if err != nil {
 		return nil, TranslateError(err)
 	}
