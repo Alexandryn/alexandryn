@@ -1,274 +1,171 @@
-# Phase 09 — Async Jobs: Implementation Plan
+# Phase 10 — Import Pipeline: Implementation Plan
 
-**Status (2026-09-01):** Implementation complete. All six tiers landed on
-`feat/phase09-async-jobs`. `go test -race` unit + integration suites,
-`golangci-lint`, `go vet`, the repo check scripts, and the web build/tests
-all pass. Security audit `0009` is Clear. Spec is `IMPLEMENTED`; PR open;
-awaiting maintainer review to close the phase (`VERIFIED` + approval).
+**Status (2026-09-01):** Ready for Maintainer Approval. Specs `backend-file-extractors.md`, `backend-import-pipeline.md`, and `frontend-import-confirmation.md` are all `APPROVED`. ADR `0022` scoped for PDF extraction library (`pdfcpu`).
 
----
+**Branch:** `feat/phase10-import` from clean `main` (commit `24b70a8`).
 
-**Original status:** Cleared to start. Spec `backend-job-queue.md` is `APPROVED`
-(independent review `0036`, findings fixed, maintainer signed off
-2026-08-15). ADR `0014` is `Accepted`. No stop-and-ask is owed before
-Tier 0: the scope is fixed by an approved spec and an accepted ADR, and
-this phase has no UI surface (spec Non-goals: "Any UI"), so the
-design-conformance check the constitution requires for UI-facing specs
-does not apply here.
-
-**Branch:** `feat/phase09-async-jobs`, from clean `main`
-(commit `0b5b280`, `git status` clean, phase 08 merged).
-
-**Governing docs:** `backend-job-queue.md` (THE authority),
-ADR `0014` (PostgreSQL-backed queue via `FOR UPDATE SKIP LOCKED`),
-`backend-service-lifecycle.md` FR-6 (amended for phase 09 — job worker
-pool shutdown ordering), `backend-persistence.md` (pool/migration
-patterns), `backend-test-harness.md` FR-3/FR-5/FR-6 (per-package DB,
-`FakeClock`, `FakeIDGenerator`), `backend-errors-and-logging.md` FR-8
-(redaction as a type property).
+**Governing Documents:**
+- `CLAUDE.md` and `.claude/constitution.md` (Constitution §1, §2, §3, §4, §7, §8, §9, §10, §11, §12)
+- `.claude/specs/backend-file-extractors.md` (`APPROVED`, amended for review `0049`)
+- `.claude/specs/backend-import-pipeline.md` (`APPROVED`, amended for review `0049`)
+- `.claude/specs/frontend-import-confirmation.md` (`APPROVED`)
+- `.claude/roadmap/10-import/README.md`
+- `.claude/decisions/0003-design-canvas-split.md` (Design reference check)
+- `.claude/decisions/0021-transaction-contract-and-event-outbox.md` (Transactor persistence)
 
 ---
 
-## 0. Divergences from the task brief, named up front
+## 0. Design Reference & Review Gate Conformance
 
-The task brief and the approved spec disagree on two package-layout
-points. The spec is binding (constitution §1); the divergences are
-recorded here rather than reasoned around silently.
+### Design Reference Conformance (ADR 0003 check)
+- **Canvas consulted:** `Alexandryn-Electron.dc.html` (`atImport` at lines 904–1050), last synced 2026-08-13 (`ANALYSIS.md`).
+- **Classification:** `atImport` is classified as `Binding`.
+- **Divergence / Context:** `ANALYSIS.md` notes: *"atImport: Phase 10 names it — premise contradicted by frontend-import-confirmation.md's Source-gated design, tracked separately"*. `frontend-import-confirmation.md` (approved spec) specifies the source-gated design: "Import from this source" button on `/sources/:id` triggering discovery and navigating to `/import?sourceId=:id` where pending candidates are listed as cards with match comparisons, in-flight progress polling, and distinct failed cards.
+- **DesignSync tool:** Not configured/available in this environment; proceeding against local `.design-reference/` per task instructions.
 
-| Task brief says | Spec says | Followed |
-|---|---|---|
-| Repository at `internal/persistence/postgres/job_repository.go` | "This package (and the `jobs`/worker-pool code generally) lives in a new `internal/jobs` package … it depends on `internal/persistence` for its own `pgxpool` access" (FR-1) | **Spec.** The job store, worker pool, registry, and domain types all live in `internal/jobs`. The `pgxpool.Pool` is still the one shared pool `cmd/server` builds via `postgres.NewPool` — not a second pool. |
-| Worker engine under `internal/adapters/jobs/` *or* `internal/jobs/` | `internal/jobs` (FR-1) | **Spec** — `internal/jobs`. |
-| Column names `attempt_count`, `run_at`, `locked_at`, `locked_by` | `attempts`, `available_at`, `locked_until`, `lease_token` (FR-1) | **Spec** column names. `locked_by` (worker ID) is added as a nullable diagnostic column — it is not load-bearing (the `lease_token` is), but it makes a stuck job's owner visible without extra tooling. |
-| `ClaimNext(ctx, workerID, kinds, limit)` | `… LIMIT 1 …` single-row claim (FR-4) | Spec: one job per claim. No `limit` parameter. |
-| Domain types in `internal/domain/job.go` | "`Job` is a new, persistence-layer type owned entirely by this spec — not a `domain-*` type … MUST NOT be imported by `internal/domain`" (FR-1, Domain model) | **Spec.** Job types live in `internal/jobs`, never `internal/domain`. `internal/jobs` imports `internal/domain` only for `IDGenerator` and the typed `Error`. |
+### Review 0049 Amendments Check
+All five Phase 10 findings from review `0049` are confirmed incorporated into the approved specs:
+1. `backend-import-pipeline.md` FR-4: Three confusable-input shapes (parenthetical qualifier, same-year/series volume collision, standalone colliding with series name) capped at `"medium"` confidence.
+2. Multi-file reading unit recorded as an Open Question (not silently assumed).
+3. `backend-file-extractors.md` FR-9/FR-10: Undecodable UTF-8 zip entry names -> `ErrMalformed` for OPF in EPUB, drop page in CBZ.
+4. `backend-file-extractors.md` FR-2/FR-10: Exclude `__MACOSX/` and dotfiles before classification and page ordering.
+5. `domain-bibliographic.md` FR-6 & `backend-file-extractors.md` FR-8: Empty/whitespace-only title treated as `ErrNoTitle`.
 
-`id` column type: `TEXT PRIMARY KEY`, matching every other table in this
-schema (migration `00002`'s own header: "TEXT primary keys throughout …
-no UUID column type needed, since the ID value is already a UUID string
-generated by internal/idgen"). The spec's "uuid" in FR-1 describes the
-*value*, which `internal/idgen.Generator` already produces.
-
----
-
-## 1. Tier breakdown and commit sequence
-
-Each tier is RED → GREEN → REFACTOR. Integration tests are
-`//go:build integration`, unit tests carry no tag (must never need
-Postgres). Commits are atomic and conventional; **no `Co-Authored-By`,
-no AI-attribution trailers** (task rule + `/caveman-commit`).
-
-### Tier 0 — Planning & database schema
-
-1. `docs: add phase 09 async-jobs implementation plan` — this file.
-2. **RED**: `00006_phase09_jobs.sql` migration + schema integration tests
-   in `internal/persistence/postgres/schema_integration_test.go`
-   (table exists, status/attempts CHECK constraints, both indexes
-   present, down migration reversible and re-appliable) — tests fail
-   (no migration file yet is not how goose fails; the tests assert
-   columns/constraints that do not exist).
-3. **GREEN**: write `00006_phase09_jobs.sql`.
-   - Columns: `id TEXT PK`, `kind TEXT NOT NULL`,
-     `payload JSONB NOT NULL`, `status TEXT NOT NULL DEFAULT 'queued'`,
-     `attempts INT NOT NULL DEFAULT 0`, `max_attempts INT NOT NULL`,
-     `available_at TIMESTAMPTZ NOT NULL`, `locked_until TIMESTAMPTZ`,
-     `lease_token TEXT`, `locked_by TEXT`, `last_error TEXT`,
-     `progress JSONB`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
-     `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
-     `completed_at TIMESTAMPTZ`.
-   - CHECK: `status IN ('queued','running','retrying','completed','dead_letter')`,
-     `attempts >= 0`, `max_attempts >= 1`,
-     `attempts <= max_attempts` is **not** constrained (the reaper path
-     can legitimately leave `attempts == max_attempts` then dead-letter).
-   - Indexes: `jobs_claim_idx ON jobs (available_at) WHERE status IN ('queued','retrying')` (partial, matches the claim query's `WHERE`),
-     `jobs_reaper_idx ON jobs (locked_until) WHERE status = 'running'`.
-   - Down: `DROP TABLE jobs;` (with `DROP INDEX IF EXISTS` first for symmetry).
-   - Commit: `feat(persistence): add jobs table migration`.
-
-### Tier 1 — Domain & queue abstractions (`internal/jobs`, unit-only)
-
-1. **RED/GREEN** `job.go`: `ID`, `Kind`, `State` (+ the five constants),
-   `Job` struct, `JobFilter`, `Progress {Current, Total int}`,
-   `HandlerFunc`, `ReportProgressFunc`, `Permanent(err)` +
-   `IsPermanent(err)` + private `permanentError`. State-transition
-   legality helper `State.CanTransitionTo` with a unit test proving
-   `completed`/`dead_letter` are terminal.
-   Commit: `feat(jobs): add job domain types and state machine`.
-2. **RED/GREEN** `errortext.go`: `RedactedText string` implementing
-   `slog.LogValuer` + `json.Marshaler` (both return `"[redacted]"`,
-   mirroring `config.RedactedString`), `String()` returns the real value
-   for Go callers (`GetJob`/`ListJobs`, spec FR-9). `redactError(err) string`:
-   the one central function every `last_error` write goes through —
-   truncates to 512 bytes on a rune boundary (spec Security). Unit tests:
-   truncation bound, rune safety, `LogValue`/`MarshalJSON` never leak.
-   Commit: `feat(jobs): add last_error truncation and redaction type`.
-3. **RED/GREEN** `backoff.go`: `Backoff {Base, Max time.Duration}`,
-   `Backoff.For(attempts int, jitter float64) time.Duration` =
-   `min(Base * 2^(attempts-1), Max)` then `± 20%` using `jitter ∈ [0,1)`.
-   `jitter` is injected (the poll loop passes `rand.Float64()`), never
-   called inline — keeps the unit test deterministic. Unit tests:
-   attempts 1..10, the `Max` cap, jitter stays within `±20%`, the
-   `attempts-1` exponent (first retry ≈ `Base`, not `2*Base`).
-   Commit: `feat(jobs): add exponential backoff with full jitter`.
-
-### Tier 2 — PostgreSQL job store (`internal/jobs`, integration)
-
-1. Own `TestMain` + `storeTestPool(t)` helper in `internal/jobs`
-   (`export_test.go` / `main_integration_test.go`): `testutil.WithPackageDatabase("jobs", …)`,
-   `postgres.Migrate`, `postgres.NewPool`. Mirrors the postgres package's
-   own harness.
-2. **RED** integration tests for `Store`, then **GREEN** `store.go`:
-   - `Enqueue(ctx, NewJob{Kind, Payload, MaxAttempts, AvailableAt})` → row `queued`.
-   - `ClaimNext(ctx, workerID string, kinds []string, now time.Time) (*Job, error)`:
-     `SELECT id FROM jobs WHERE status IN ('queued','retrying') AND available_at <= $1 ORDER BY available_at LIMIT 1 FOR UPDATE SKIP LOCKED`,
-     then `UPDATE … SET status='running', locked_until=$now+60s, lease_token=$tok, locked_by=$worker, attempts=attempts+1, updated_at=$now`
-     in one short transaction. `now` from the injected clock, never SQL `now()`.
-   - `Heartbeat(ctx, id ID, leaseToken string, now) (bool, error)` —
-     `UPDATE … SET locked_until=$now+60s WHERE id=$1 AND lease_token=$2`;
-     returns `false` when zero rows (lease reclaimed).
-   - `Complete(ctx, id, leaseToken, now, *Progress) (bool, error)` — fenced.
-   - `Fail(ctx, id, leaseToken, now, nextRunAt time.Time, deadLetter bool, lastErr string) (bool, error)` — fenced; writes `redactError`-bounded text.
-   - `RecoverStale(ctx, now) (int, error)` — reaper: per-row txn,
-     `status='running' AND locked_until < $now`, apply the FR-6
-     comparison against the already-incremented `attempts`, new
-     `lease_token`, `last_error='worker lease expired without heartbeat'`.
-   - `UpdateProgress(ctx, id, leaseToken, cur, total int) error` — its own txn (FR-8).
-   - `GetJob(ctx, id) (Job, error)` (NotFound → `domain.Error`),
-     `ListJobs(ctx, JobFilter{Kind, State}) ([]Job, error)`.
-   - Commits: `feat(jobs): add enqueue and claim store operations`,
-     `feat(jobs): add heartbeat, completion, and failure store operations`,
-     `feat(jobs): add stale-job reaper and status queries`.
-3. **RED/GREEN** the concurrency proof:
-   `TestStore_ConcurrentClaim_NeverDoubleClaims` — N goroutines on real
-   pooled connections race `ClaimNext` against M < N claimable jobs;
-   assert exactly M claims, zero duplicates, `attempts == 1` on each.
-   Commit: `test(jobs): prove concurrent claim never double-claims`.
-
-### Tier 3 — Worker pool & engine (`internal/jobs`)
-
-1. **RED/GREEN** `registry.go`: `Registry`, `Register(kind, maxAttempts, HandlerFunc)`,
-   duplicate-kind panic at startup, `lookup`. Unit tests.
-2. **RED/GREEN** `queue.go`: `Queue` (holds `*Registry` + `*Store` +
-   `IDGenerator` + clock). `Register`, `Enqueue(ctx, kind, payload any)` —
-   `InvalidInput` `domain.Error` for an unregistered kind (FR-2),
-   JSON-marshals payload, pulls `maxAttempts` from the registry,
-   `available_at = clock.Now()`. `GetJob`, `ListJobs` delegate to store.
-   Unit tests with a fake store; the unregistered-kind rejection is
-   unit-level.
-3. **RED/GREEN** `engine.go`: `Engine` with `Config`
-   (`Concurrency 4`, `PollInterval 2s`, `LeaseDuration 60s`,
-   `HeartbeatInterval 20s`, `ReaperInterval 30s`, `Backoff{5s, 5m}` —
-   all in `config.go`, each flagged as an untuned placeholder per spec
-   Open questions). `Start(ctx)` launches `Concurrency` pollers + one
-   reaper. Each poller loop: on tick, `ClaimNext`; on a claim, run the
-   handler under a child `context.Context` with a per-job heartbeat
-   goroutine (every `HeartbeatInterval`); a zero-row heartbeat cancels
-   the handler context immediately and the poller writes no result
-   (FR-5). Handler return/panic → `recover()` → `Complete` or `Fail`
-   (with `Permanent`/attempts logic, FR-6), all fenced on the lease
-   token. `Shutdown(ctx)`: stop pollers claiming, cancel running
-   handlers, wait up to `ctx`'s deadline (FR-10).
-   - Tests use `FakeClock` + short real intervals where a goroutine
-     genuinely must be scheduled; time-driven assertions use the fake
-     clock and the store's `$now` parameter, no real `time.Sleep` in
-     assertions (spec Test strategy).
-   - Commits: `feat(jobs): add handler registry`,
-     `feat(jobs): add enqueue API with kind validation`,
-     `feat(jobs): add worker pool engine with heartbeat and reaper`,
-     `feat(jobs): add graceful shutdown for the worker pool`.
-
-### Tier 4 — Server wiring & lifecycle integration (`cmd/server`)
-
-1. **RED** `cmd/server/run_test.go` additions: the worker pool is
-   constructed at FR-1 step 6 (after the pool), and its `Shutdown` is
-   called **between** `srv.Shutdown` and `pool.Close` (FR-6 amendment
-   ordering). A fake engine records call order.
-2. **GREEN**: add `newJobEngine` hook to `runDeps`, construct in
-   `run` after `poolRef.Set(pool)`, thread it into `gracefulShutdown`
-   between the HTTP shutdown and `pool.Close`. `main.go` wires the real
-   `jobs.NewEngine` with the shared pool, `idgen.New()`, `realClock`,
-   and the configured `ShutdownGracePeriod` as the engine shutdown
-   bound (FR-10 — reuse, not a new config key).
-   - No job kinds are registered in production yet (Non-goals: "one
-     synthetic, worked-example handler only"). The synthetic handler is
-     test-only.
-   - Commit: `feat(server): wire job worker pool into lifecycle`.
-
-### Tier 5 — Verification & hostile boundary tests
-
-1. **RED/GREEN** `engine_integration_test.go` synthetic walkthrough
-   (spec E2E row): a test-only handler that fails transiently twice then
-   succeeds on the third attempt; `GetJob` reflects
-   `queued→running→retrying→…→completed`. A second handler returning
-   `Permanent(err)` → immediate `dead_letter`. A third exceeding
-   `max_attempts` → `dead_letter` after the last retry.
-   Commit: `test(jobs): synthetic job walkthrough end to end`.
-2. **RED/GREEN** the fencing test (review `0036` finding #1, spec Test
-   strategy): reclaim while the original worker is still alive; only the
-   current-`lease_token` write succeeds; the stale write affects zero
-   rows and is discarded.
-   Commit: `test(jobs): prove fenced stale write never overwrites reclaim`.
-3. **RED/GREEN** redaction test (spec Acceptance criterion): a handler
-   returning an error whose text contains a secret-shaped string — the
-   stored `last_error` is truncated, and a log-spy assertion proves no
-   status-transition log line carries the payload or error text
-   (Observability).
-   Commit: `test(jobs): prove no payload or error value is logged`.
-4. Full suite: `go test -race ./...`, `go test -race -tags=integration ./...`,
-   `golangci-lint run ./...`, `go vet ./...`, the four `scripts/check-*.sh`,
-   `npm --prefix web test`, `npm --prefix web run build`. Fix to green.
-
-### Tier 6 — Audit, review, PR, CI
-
-1. `.claude/audits/0009-phase09-async-jobs.md` — Four-Attacker + STRIDE,
-   using `.claude/templates/audit.md`. **Stop-and-ask gate here** per the
-   constitution: report audit findings and wait before closing the
-   phase / opening the PR is crossed only on the maintainer's
-   instruction — the task brief provides that instruction explicitly, so
-   the PR is opened, but the audit result is reported plainly first.
-2. `docs`: mark `backend-job-queue.md` `IMPLEMENTED`, tick
-   `.claude/roadmap/09-async-jobs/README.md` exit criteria, note the
-   `backend-service-lifecycle.md` FR-6 amendment is now realised.
-3. `/make-pr` against `main`.
-4. `/security-and-hardening` and `/code-review-and-quality` passes;
-   fold findings back as fix commits.
-5. `gh pr checks` / `gh run watch` until green; fix failures immediately.
-6. Final report under the CLAUDE.md headings.
+### ADR 0022: PDF Library Choice (`pdfcpu`)
+- **Library:** `github.com/pdfcpu/pdfcpu` (pure Go, Apache-2.0).
+- **Constitution §9 Justification:**
+  - *What it does:* Pure Go PDF extraction (trailer `/Info` dictionary and XMP stream extraction).
+  - *Why not stdlib:* Go standard library has no PDF package. Unlike zip+XML (EPUB/CBZ), PDF requires object graph parsing, xref tables, and stream filters (FlateDecode).
+  - *Why not cgo (Poppler/MuPDF):* Avoids non-Go C runtime dependencies, preserving cross-compilation and self-contained binary distribution.
+  - *Mitigations:* Bounded input (250 MiB raw spool limit, 200 MiB decompressed limit, 30s timeout, panic recovery wrapped in `ErrMalformed`).
 
 ---
 
-## 2. Key correctness properties (from the spec, restated for the build)
+## 1. Tier Breakdown & Commit Sequence
 
-- **No double-claim**: `FOR UPDATE`'s row lock (held to commit) + the
-  `status` filter. `SKIP LOCKED` is throughput only. Proven under real
-  concurrency (Tier 2.3).
-- **No double-commit after reclaim**: every worker write
-  (`Heartbeat`/`Complete`/`Fail`) is `WHERE id=$1 AND lease_token=$2`.
-  The reaper regenerates `lease_token`, so a stale worker's writes hit
-  zero rows. Proven by the fencing test (Tier 5.2).
-- **No lost job**: a crashed/abandoned worker leaves the row `running`
-  with an aging `locked_until`; the reaper reclaims it and applies the
-  normal retry/dead-letter path (shutdown and crash produce identical
-  on-disk state — FR-10).
-- **Bounded retry**: `attempts` incremented once at claim; compared
-  against `max_attempts` at completion; never re-incremented by the
-  reaper. `Permanent(err)` forces immediate `dead_letter`.
-- **No secret in logs**: status-transition logs carry `id` + `kind` +
-  `state` only, never `payload`/`last_error`. `last_error` is truncated
-  through one function on every write.
+Each tier strictly follows `RED → GREEN → REFACTOR` (TDD, Constitution §2). Integration tests carry `//go:build integration`. Commits are conventional and atomic with no AI attribution trailers.
 
-## 3. Risks carried into the build
+### Tier 0 — Planning, ADR, Schema Migration & Persistence
+1. `docs: add phase 10 import pipeline implementation plan`
+2. `docs(decisions): add 0022 pdf metadata extraction library adr` — ADR `0022` in `.claude/decisions/` and updated `.claude/decisions/README.md`.
+3. **RED/GREEN**: `00007_phase10_import.sql` migration + schema integration tests in `internal/persistence/postgres/schema_integration_test.go`:
+   - Table `import_candidates` with `id TEXT PRIMARY KEY`, `source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE`, `file_reference JSONB NOT NULL`, `status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','pending','auto_imported','confirmed','rejected','failed'))`, `extracted_metadata JSONB`, `match_candidates JSONB`, `job_id TEXT`, `last_error TEXT`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`, `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`.
+   - Index `import_candidates_source_status_idx ON import_candidates (source_id, status)`.
+   - Reversible down migration `DROP TABLE import_candidates;`.
+   - Commit: `feat(persistence): add import candidates table migration`.
+4. **RED/GREEN**: `import_candidate_repository.go` in `internal/persistence/postgres/` with integration tests (`Create`, `Get`, `List(sourceID, status)`, `UpdateStatus`, `UpdateExtractedAndMatches`, `UpdateLastError`, `ExistsBySourceAndFileRef`).
+   - Commit: `feat(persistence): add import candidate postgres repository`.
 
-- **Time-driven engine tests are the flakiness risk.** Mitigation:
-  drive all claim/lease/backoff timing through `FakeClock` + the store's
-  explicit `$now` parameter; only use short *real* intervals where a
-  goroutine must actually be scheduled, and assert on observable state
-  (`GetJob`), never on wall-clock elapsed.
-- **`-race` on the worker pool.** The heartbeat goroutine, the handler,
-  and the poller share the job's context and lease token — all writes
-  fenced in the DB, but the in-process cancellation path needs a clean
-  `context.CancelFunc` + `sync.WaitGroup` discipline. Covered by running
-  every engine test under `-race`.
-- **`golangci-lint` on new goroutine-heavy code** — `contextcheck`,
-  `noctx`, `errcheck` on the background writes. Budgeted into each GREEN
-  step, not deferred.
+### Tier 1 — File Format Detection & Extractors (`internal/importer/extract`)
+1. **RED/GREEN**: Domain & extractor types, errors (`ErrOversized`, `ErrTooManyEntries`, `ErrMalformed`, `ErrNoTitle`), `ExtractedMetadata` DTO with validation.
+   - Commit: `feat(extract): add extractor types, errors, and metadata dto`.
+2. **RED/GREEN**: `Materialize(ctx, r)` spooling up to 250 MiB in temp file with streaming limit.
+   - Commit: `feat(extract): add stream materializer with 250mib raw cap`.
+3. **RED/GREEN**: Content-sniffed `DetectFormat(f)`:
+   - `%PDF-` prefix -> `pdf`.
+   - Physically first local zip file header `mimetype` with uncompressed `application/epub+zip` -> `epub`.
+   - Entry count <= 10,000; filter `__MACOSX/` and dotfiles; majority image content-type sniff -> `cbz`.
+   - Unit tests against real files and intentionally misnamed files.
+   - Commit: `feat(extract): add content-sniffed format detection`.
+4. **RED/GREEN**: EPUB extractor:
+   - `META-INF/container.xml` -> rootfile OPF -> Dublin Core metadata -> cover image resolution up to 10 MiB.
+   - Undecodable UTF-8 `<rootfile>` target -> `ErrMalformed`.
+   - Empty/whitespace-only title -> `ErrNoTitle`.
+   - Commit: `feat(extract): add epub metadata and cover extractor`.
+5. **RED/GREEN**: CBZ extractor:
+   - `ComicInfo.xml` -> Title/Writer; absent -> `ErrNoTitle`.
+   - Exclude `__MACOSX/` and dotfiles; filter undecodable UTF-8 entry names; first image cover up to 10 MiB.
+   - Commit: `feat(extract): add cbz extractor with comicinfo support`.
+6. **RED/GREEN**: PDF extractor:
+   - `pdfcpu` integration with `/Info` dictionary and XMP fallback.
+   - Commit: `feat(extract): add pdf metadata extractor`.
+7. **RED/GREEN**: Adversarial defences, each with dedicated hostile fixture and test:
+   - Zip bomb (small file expanding > 200 MiB) -> `ErrOversized` without memory spike.
+   - Zip slip (`../../` entry names) -> proven no filesystem writes.
+   - Oversized raw stream (> 250 MiB) -> `ErrOversized`.
+   - > 10,000 entries zip -> `ErrTooManyEntries`.
+   - Malformed XML / truncated PDF / corrupted container -> `ErrMalformed` via panic recovery.
+   - Commit: `test(extract): prove adversarial file defences with hostile fixtures`.
+
+### Tier 2 — Discovery & Matching Engine (`internal/importer`)
+1. **RED/GREEN**: Matching confidence scoring:
+   - Exact ISBN lookup joined through `LibraryEntry`. Exactly 1 hit -> `exact`. >1 hit -> separate `exact` candidates (no auto-accept).
+   - Open Library search scoring: `"high"` (close title + author), `"medium"` (close title, author differs/absent), `"low"` (neither).
+   - Confusable-input caps: parenthetical qualifier differences, same-year/series volume collisions, standalone vs series collision capped at `"medium"`.
+   - Unit tests covering all scoring cases and confusable fixtures.
+   - Commit: `feat(importer): add bibliographic matching and confidence scoring`.
+2. **RED/GREEN**: Auto-accept rule & domain data persistence:
+   - Auto-accept iff exactly one `"exact"` ISBN match to an existing owned `Edition`.
+   - Auto-accept creates `SourceOffering` (with verified content-sniffed `Format`) and `LibraryEntry` via `Transactor`.
+   - Proves via tests that auto-accept NEVER creates new `Work`/`Edition`/`Author` domain data.
+   - Commit: `feat(importer): add narrow auto-accept and transaction persistence`.
+
+### Tier 3 — Import Job Handler (`internal/importer`)
+1. **RED/GREEN**: Job Handler for kind `"import"`:
+   - One job per discovered file.
+   - Step sequence: Load candidate -> `Provider.Resolve` -> `Materialize` -> `DetectFormat` -> `Extract` -> ReportProgress (`resolving`/`extracting`/`matching`) -> Matching -> Auto-accept or set `pending`.
+   - Permanent errors (`ErrOversized`, `ErrTooManyEntries`, `ErrMalformed`, `ErrNoTitle`) wrapped in `jobs.Permanent(err)`, sets candidate `status = 'failed'`.
+   - Transient `Provider.Resolve` error returns ordinary error for job retry.
+   - Commit: `feat(importer): add import job handler for job queue`.
+2. **RED/GREEN**: Integration tests with fake provider and real postgres:
+   - Multi-file batch where one bad file fails/dead-letters while sibling jobs complete successfully.
+   - Commit: `test(importer): prove job handler resilience and batch isolation`.
+
+### Tier 4 — HTTP Surface & Server Wiring (`internal/transport/http`, `cmd/server`)
+1. **RED/GREEN**: Import HTTP endpoints:
+   - `POST /api/v1/import/discover`: synchronously calls `Provider.List`, deduplicates against existing `SourceOffering` and `import_candidates` (in any status), creates `import_candidates` rows (`status: 'queued'`), enqueues one job per item, returns `{ queued: N }`.
+   - `GET /api/v1/import/candidates`: lists candidates with optional `sourceId` and `status` filters in camelCase wire format.
+   - `POST /api/v1/import/candidates/:id/confirm`: actions `attach_existing`, `use_open_library_match`, `create_new`. Validates state (409 on non-pending), creates domain data in transaction, sets `status: 'confirmed'`.
+   - `POST /api/v1/import/candidates/:id/reject`: sets `status: 'rejected'` (409 on non-pending).
+   - Line-1 input validation on all handlers (UUID checks, payload caps, enum validation).
+   - Commit: `feat(transport): add import discovery and confirmation http handlers`.
+2. **RED/GREEN**: Server wiring:
+   - Wire `import` job handler into `cmd/server/main.go` and `cmd/server/run.go` (`jobs.System.Queue().Register`).
+   - Thread `*jobs.Queue` and import repositories into `PoolRef` and `newProductionRouter`.
+   - Commit: `feat(server): wire import pipeline into service lifecycle and router`.
+3. **RED/GREEN**: OpenAPI contract tests:
+   - Update `api/openapi.yaml` with `/api/v1/import*` endpoints.
+   - Extend `internal/testutil/contracttest` to validate all import endpoints.
+   - Commit: `test(contract): extend openapi contract tests to import endpoints`.
+
+### Tier 5 — Frontend Resolution UI (`web/`)
+1. **RED/GREEN**: Source Browse View extension (`web/src/pages/SourceDetail.tsx`):
+   - "Import from this source" button triggering `POST /api/v1/import/discover` and navigating to `/import?sourceId=:id`.
+   - Commit: `feat(web): add import trigger to source browse view`.
+2. **RED/GREEN**: TanStack Query hooks & MSW handlers:
+   - `useImportCandidates`, `useDiscoverImport`, `useConfirmCandidate`, `useRejectCandidate`.
+   - MSW handlers for `/api/v1/import*`.
+   - Commit: `feat(web): add import api hooks and msw mock handlers`.
+3. **RED/GREEN**: Import Confirmation page (`/import`):
+   - In-flight progress indicator ("Processing X of Y...") polling `status=queued`.
+   - Pending candidates cards: extracted metadata, cover image (data URL / fallback), suggested matches with visible text confidence labels (`Exact match`, `High confidence`, `Medium confidence`, `Low confidence`).
+   - Confirm actions (`attach_existing`, `use_open_library_match`, `create_new`) and "Reject".
+   - Distinct "Couldn't be imported" failed section with plain language error and client-side dismissal (`localStorage`).
+   - Accessible keyboard controls, focus styles, aria-live updates.
+   - Vitest component tests + Axe accessibility scan.
+   - Commit: `feat(web): add import confirmation resolution ui`.
+4. **RED/GREEN**: Playwright E2E test:
+   - Add source -> discover -> auto-accept bypasses UI -> pending candidate reviewed & confirmed -> library reflects new book; failed candidate dismissed.
+   - Commit: `test(web): add import resolution e2e flow test`.
+
+### Tier 6 — Verification & Quality Checks
+- `go test -race ./...`
+- `TEST_DATABASE_URL=... go test -race -tags=integration ./...`
+- `golangci-lint run ./...`, `go vet ./...`, `scripts/check-*.sh`
+- `npm --prefix web test`, `npm --prefix web run lint`, `npm --prefix web run build`, Playwright test runs.
+
+### Tier 7 — Security Audit `0010`, Spec Documentation, PR & CI
+1. Security audit `.claude/audits/0010-phase10-import.md` using `.claude/templates/audit.md` (Four-Attacker + STRIDE).
+2. Report audit results to maintainer (Gate 2).
+3. Mark specs `backend-file-extractors.md`, `backend-import-pipeline.md`, `frontend-import-confirmation.md` as `IMPLEMENTED`.
+4. Update `.claude/audits/README.md`, `.claude/specs/README.md`, tick roadmap criteria in `.claude/roadmap/10-import/README.md`.
+5. Open PR against `main` using `make-pr` and monitor CI until green.
+
+---
+
+## 2. Open Questions & Verifications for Maintainer
+
+> [!IMPORTANT]
+> 1. **PDF Library Selection:** We propose using `github.com/pdfcpu/pdfcpu` for pure-Go PDF extraction as documented in ADR `0022`.
+> 2. **Review 0049 edge cases:** All edge case findings (confusable match scoring caps, UTF-8 entry name decoding handling, `__MACOSX/` filtering, whitespace-only title handling) are planned with dedicated tests.
+> 3. **Design Conformance:** As documented in `ANALYSIS.md`, `atImport` in `Alexandryn-Electron.dc.html` serves as visual reference, while the actual interaction is governed by the approved `frontend-import-confirmation.md` source-gated workflow.
