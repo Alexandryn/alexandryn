@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -41,14 +42,18 @@ type repositories struct {
 // newRepositories constructs every T24 repository implementation
 // (internal/persistence/postgres) against pool — production's real
 // implementation of runDeps.newPool's repository half.
-func newRepositories(pool *pgxpool.Pool) *repositories {
+func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories {
+	var l *slog.Logger
+	if len(loggers) > 0 {
+		l = loggers[0]
+	}
 	coversDir := ""
 	if userCache, err := os.UserCacheDir(); err == nil && userCache != "" {
 		coversDir = filepath.Join(userCache, "alexandryn", "covers")
 	} else {
 		coversDir = filepath.Join(os.TempDir(), "alexandryn-covers")
 	}
-	coverCacheRepo, _ := postgres.NewCoverCacheRepository(pool, coversDir, nil)
+	coverCacheRepo, _ := postgres.NewCoverCacheRepository(pool, coversDir, l)
 
 	return &repositories{
 		works:              postgres.NewWorkRepository(pool),
