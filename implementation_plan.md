@@ -1,171 +1,414 @@
-# Phase 10 — Import Pipeline: Implementation Plan
+# Phase 11 — Reader: Implementation Plan
 
-**Status (2026-09-01):** Ready for Maintainer Approval. Specs `backend-file-extractors.md`, `backend-import-pipeline.md`, and `frontend-import-confirmation.md` are all `APPROVED`. ADR `0022` scoped for PDF extraction library (`pdfcpu`).
+**Status (2026-09-01):** Gate 1 scope approved. Maintainer decisions:
+**A1** (amend `domain-reading.md` FR-6/FR-7 to the `(epoch, percentage)`
+model, realign `backend-reading-api.md`, then build the whole phase),
+**B** (keep `columnWidth` + `lineSpacing`), **C** (both reading modes,
+paginated default), **D** (reading-data export enters this phase as a new
+sibling spec — read-only JSON + web download; import + native save
+deferred), **E** (fix the stale `frontend-reader.md` open-question).
+The amendment package (spec edits + ADRs 0023/0024 + new spec
+`reading-data-export.md` + roadmap/index updates) is drafted and awaiting
+a final sign-off on the diff before implementation code begins.
 
-**Branch:** `feat/phase10-import` from clean `main` (commit `24b70a8`).
+**Branch:** `feat/phase11-reader` from clean `main` (commit `cc522d1`).
 
-**Governing Documents:**
-- `CLAUDE.md` and `.claude/constitution.md` (Constitution §1, §2, §3, §4, §7, §8, §9, §10, §11, §12)
-- `.claude/specs/backend-file-extractors.md` (`APPROVED`, amended for review `0049`)
-- `.claude/specs/backend-import-pipeline.md` (`APPROVED`, amended for review `0049`)
-- `.claude/specs/frontend-import-confirmation.md` (`APPROVED`)
-- `.claude/roadmap/10-import/README.md`
-- `.claude/decisions/0003-design-canvas-split.md` (Design reference check)
-- `.claude/decisions/0021-transaction-contract-and-event-outbox.md` (Transactor persistence)
+**Governing documents:**
 
----
-
-## 0. Design Reference & Review Gate Conformance
-
-### Design Reference Conformance (ADR 0003 check)
-- **Canvas consulted:** `Alexandryn-Electron.dc.html` (`atImport` at lines 904–1050), last synced 2026-08-13 (`ANALYSIS.md`).
-- **Classification:** `atImport` is classified as `Binding`.
-- **Divergence / Context:** `ANALYSIS.md` notes: *"atImport: Phase 10 names it — premise contradicted by frontend-import-confirmation.md's Source-gated design, tracked separately"*. `frontend-import-confirmation.md` (approved spec) specifies the source-gated design: "Import from this source" button on `/sources/:id` triggering discovery and navigating to `/import?sourceId=:id` where pending candidates are listed as cards with match comparisons, in-flight progress polling, and distinct failed cards.
-- **DesignSync tool:** Not configured/available in this environment; proceeding against local `.design-reference/` per task instructions.
-
-### Review 0049 Amendments Check
-All five Phase 10 findings from review `0049` are confirmed incorporated into the approved specs:
-1. `backend-import-pipeline.md` FR-4: Three confusable-input shapes (parenthetical qualifier, same-year/series volume collision, standalone colliding with series name) capped at `"medium"` confidence.
-2. Multi-file reading unit recorded as an Open Question (not silently assumed).
-3. `backend-file-extractors.md` FR-9/FR-10: Undecodable UTF-8 zip entry names -> `ErrMalformed` for OPF in EPUB, drop page in CBZ.
-4. `backend-file-extractors.md` FR-2/FR-10: Exclude `__MACOSX/` and dotfiles before classification and page ordering.
-5. `domain-bibliographic.md` FR-6 & `backend-file-extractors.md` FR-8: Empty/whitespace-only title treated as `ErrNoTitle`.
-
-### ADR 0022: PDF Library Choice (`pdfcpu`)
-- **Library:** `github.com/pdfcpu/pdfcpu` (pure Go, Apache-2.0).
-- **Constitution §9 Justification:**
-  - *What it does:* Pure Go PDF extraction (trailer `/Info` dictionary and XMP stream extraction).
-  - *Why not stdlib:* Go standard library has no PDF package. Unlike zip+XML (EPUB/CBZ), PDF requires object graph parsing, xref tables, and stream filters (FlateDecode).
-  - *Why not cgo (Poppler/MuPDF):* Avoids non-Go C runtime dependencies, preserving cross-compilation and self-contained binary distribution.
-  - *Mitigations:* Bounded input (250 MiB raw spool limit, 200 MiB decompressed limit, 30s timeout, panic recovery wrapped in `ErrMalformed`).
+- `CLAUDE.md`, `.claude/constitution.md` (§1, §2, §3, §4, §5, §7, §8, §9, §10, §11, §12)
+- `.claude/roadmap/11-reader/README.md`
+- `.claude/specs/domain-reading.md` (`APPROVED` — **FR-6/FR-7 not implementable until amended**)
+- `.claude/specs/backend-reader-content.md` (`APPROVED`)
+- `.claude/specs/backend-reading-api.md` (`APPROVED`)
+- `.claude/specs/frontend-reader.md` (`APPROVED`)
+- `.claude/reviews/0038-phase11-cross-spec-review.md`, `.claude/reviews/0048-phase02-correctness-review.md`, `.claude/reviews/0049-real-world-edge-case-conformity-review.md`
+- `.claude/decisions/0009-progress-attachment.md`, `.claude/decisions/0020-graph-invariants-in-domain-services.md`, `.claude/decisions/0021-transaction-contract-and-event-outbox.md`
 
 ---
 
-## 1. Tier Breakdown & Commit Sequence
+## 0. Design reference conformance (ADR 0003 check)
 
-Each tier strictly follows `RED → GREEN → REFACTOR` (TDD, Constitution §2). Integration tests carry `//go:build integration`. Commits are conventional and atomic with no AI attribution trailers.
-
-### Tier 0 — Planning, ADR, Schema Migration & Persistence
-1. `docs: add phase 10 import pipeline implementation plan`
-2. `docs(decisions): add 0022 pdf metadata extraction library adr` — ADR `0022` in `.claude/decisions/` and updated `.claude/decisions/README.md`.
-3. **RED/GREEN**: `00007_phase10_import.sql` migration + schema integration tests in `internal/persistence/postgres/schema_integration_test.go`:
-   - Table `import_candidates` with `id TEXT PRIMARY KEY`, `source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE`, `file_reference JSONB NOT NULL`, `status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','pending','auto_imported','confirmed','rejected','failed'))`, `extracted_metadata JSONB`, `match_candidates JSONB`, `job_id TEXT`, `last_error TEXT`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`, `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`.
-   - Index `import_candidates_source_status_idx ON import_candidates (source_id, status)`.
-   - Reversible down migration `DROP TABLE import_candidates;`.
-   - Commit: `feat(persistence): add import candidates table migration`.
-4. **RED/GREEN**: `import_candidate_repository.go` in `internal/persistence/postgres/` with integration tests (`Create`, `Get`, `List(sourceID, status)`, `UpdateStatus`, `UpdateExtractedAndMatches`, `UpdateLastError`, `ExistsBySourceAndFileRef`).
-   - Commit: `feat(persistence): add import candidate postgres repository`.
-
-### Tier 1 — File Format Detection & Extractors (`internal/importer/extract`)
-1. **RED/GREEN**: Domain & extractor types, errors (`ErrOversized`, `ErrTooManyEntries`, `ErrMalformed`, `ErrNoTitle`), `ExtractedMetadata` DTO with validation.
-   - Commit: `feat(extract): add extractor types, errors, and metadata dto`.
-2. **RED/GREEN**: `Materialize(ctx, r)` spooling up to 250 MiB in temp file with streaming limit.
-   - Commit: `feat(extract): add stream materializer with 250mib raw cap`.
-3. **RED/GREEN**: Content-sniffed `DetectFormat(f)`:
-   - `%PDF-` prefix -> `pdf`.
-   - Physically first local zip file header `mimetype` with uncompressed `application/epub+zip` -> `epub`.
-   - Entry count <= 10,000; filter `__MACOSX/` and dotfiles; majority image content-type sniff -> `cbz`.
-   - Unit tests against real files and intentionally misnamed files.
-   - Commit: `feat(extract): add content-sniffed format detection`.
-4. **RED/GREEN**: EPUB extractor:
-   - `META-INF/container.xml` -> rootfile OPF -> Dublin Core metadata -> cover image resolution up to 10 MiB.
-   - Undecodable UTF-8 `<rootfile>` target -> `ErrMalformed`.
-   - Empty/whitespace-only title -> `ErrNoTitle`.
-   - Commit: `feat(extract): add epub metadata and cover extractor`.
-5. **RED/GREEN**: CBZ extractor:
-   - `ComicInfo.xml` -> Title/Writer; absent -> `ErrNoTitle`.
-   - Exclude `__MACOSX/` and dotfiles; filter undecodable UTF-8 entry names; first image cover up to 10 MiB.
-   - Commit: `feat(extract): add cbz extractor with comicinfo support`.
-6. **RED/GREEN**: PDF extractor:
-   - `pdfcpu` integration with `/Info` dictionary and XMP fallback.
-   - Commit: `feat(extract): add pdf metadata extractor`.
-7. **RED/GREEN**: Adversarial defences, each with dedicated hostile fixture and test:
-   - Zip bomb (small file expanding > 200 MiB) -> `ErrOversized` without memory spike.
-   - Zip slip (`../../` entry names) -> proven no filesystem writes.
-   - Oversized raw stream (> 250 MiB) -> `ErrOversized`.
-   - > 10,000 entries zip -> `ErrTooManyEntries`.
-   - Malformed XML / truncated PDF / corrupted container -> `ErrMalformed` via panic recovery.
-   - Commit: `test(extract): prove adversarial file defences with hostile fixtures`.
-
-### Tier 2 — Discovery & Matching Engine (`internal/importer`)
-1. **RED/GREEN**: Matching confidence scoring:
-   - Exact ISBN lookup joined through `LibraryEntry`. Exactly 1 hit -> `exact`. >1 hit -> separate `exact` candidates (no auto-accept).
-   - Open Library search scoring: `"high"` (close title + author), `"medium"` (close title, author differs/absent), `"low"` (neither).
-   - Confusable-input caps: parenthetical qualifier differences, same-year/series volume collisions, standalone vs series collision capped at `"medium"`.
-   - Unit tests covering all scoring cases and confusable fixtures.
-   - Commit: `feat(importer): add bibliographic matching and confidence scoring`.
-2. **RED/GREEN**: Auto-accept rule & domain data persistence:
-   - Auto-accept iff exactly one `"exact"` ISBN match to an existing owned `Edition`.
-   - Auto-accept creates `SourceOffering` (with verified content-sniffed `Format`) and `LibraryEntry` via `Transactor`.
-   - Proves via tests that auto-accept NEVER creates new `Work`/`Edition`/`Author` domain data.
-   - Commit: `feat(importer): add narrow auto-accept and transaction persistence`.
-
-### Tier 3 — Import Job Handler (`internal/importer`)
-1. **RED/GREEN**: Job Handler for kind `"import"`:
-   - One job per discovered file.
-   - Step sequence: Load candidate -> `Provider.Resolve` -> `Materialize` -> `DetectFormat` -> `Extract` -> ReportProgress (`resolving`/`extracting`/`matching`) -> Matching -> Auto-accept or set `pending`.
-   - Permanent errors (`ErrOversized`, `ErrTooManyEntries`, `ErrMalformed`, `ErrNoTitle`) wrapped in `jobs.Permanent(err)`, sets candidate `status = 'failed'`.
-   - Transient `Provider.Resolve` error returns ordinary error for job retry.
-   - Commit: `feat(importer): add import job handler for job queue`.
-2. **RED/GREEN**: Integration tests with fake provider and real postgres:
-   - Multi-file batch where one bad file fails/dead-letters while sibling jobs complete successfully.
-   - Commit: `test(importer): prove job handler resilience and batch isolation`.
-
-### Tier 4 — HTTP Surface & Server Wiring (`internal/transport/http`, `cmd/server`)
-1. **RED/GREEN**: Import HTTP endpoints:
-   - `POST /api/v1/import/discover`: synchronously calls `Provider.List`, deduplicates against existing `SourceOffering` and `import_candidates` (in any status), creates `import_candidates` rows (`status: 'queued'`), enqueues one job per item, returns `{ queued: N }`.
-   - `GET /api/v1/import/candidates`: lists candidates with optional `sourceId` and `status` filters in camelCase wire format.
-   - `POST /api/v1/import/candidates/:id/confirm`: actions `attach_existing`, `use_open_library_match`, `create_new`. Validates state (409 on non-pending), creates domain data in transaction, sets `status: 'confirmed'`.
-   - `POST /api/v1/import/candidates/:id/reject`: sets `status: 'rejected'` (409 on non-pending).
-   - Line-1 input validation on all handlers (UUID checks, payload caps, enum validation).
-   - Commit: `feat(transport): add import discovery and confirmation http handlers`.
-2. **RED/GREEN**: Server wiring:
-   - Wire `import` job handler into `cmd/server/main.go` and `cmd/server/run.go` (`jobs.System.Queue().Register`).
-   - Thread `*jobs.Queue` and import repositories into `PoolRef` and `newProductionRouter`.
-   - Commit: `feat(server): wire import pipeline into service lifecycle and router`.
-3. **RED/GREEN**: OpenAPI contract tests:
-   - Update `api/openapi.yaml` with `/api/v1/import*` endpoints.
-   - Extend `internal/testutil/contracttest` to validate all import endpoints.
-   - Commit: `test(contract): extend openapi contract tests to import endpoints`.
-
-### Tier 5 — Frontend Resolution UI (`web/`)
-1. **RED/GREEN**: Source Browse View extension (`web/src/pages/SourceDetail.tsx`):
-   - "Import from this source" button triggering `POST /api/v1/import/discover` and navigating to `/import?sourceId=:id`.
-   - Commit: `feat(web): add import trigger to source browse view`.
-2. **RED/GREEN**: TanStack Query hooks & MSW handlers:
-   - `useImportCandidates`, `useDiscoverImport`, `useConfirmCandidate`, `useRejectCandidate`.
-   - MSW handlers for `/api/v1/import*`.
-   - Commit: `feat(web): add import api hooks and msw mock handlers`.
-3. **RED/GREEN**: Import Confirmation page (`/import`):
-   - In-flight progress indicator ("Processing X of Y...") polling `status=queued`.
-   - Pending candidates cards: extracted metadata, cover image (data URL / fallback), suggested matches with visible text confidence labels (`Exact match`, `High confidence`, `Medium confidence`, `Low confidence`).
-   - Confirm actions (`attach_existing`, `use_open_library_match`, `create_new`) and "Reject".
-   - Distinct "Couldn't be imported" failed section with plain language error and client-side dismissal (`localStorage`).
-   - Accessible keyboard controls, focus styles, aria-live updates.
-   - Vitest component tests + Axe accessibility scan.
-   - Commit: `feat(web): add import confirmation resolution ui`.
-4. **RED/GREEN**: Playwright E2E test:
-   - Add source -> discover -> auto-accept bypasses UI -> pending candidate reviewed & confirmed -> library reflects new book; failed candidate dismissed.
-   - Commit: `test(web): add import resolution e2e flow test`.
-
-### Tier 6 — Verification & Quality Checks
-- `go test -race ./...`
-- `TEST_DATABASE_URL=... go test -race -tags=integration ./...`
-- `golangci-lint run ./...`, `go vet ./...`, `scripts/check-*.sh`
-- `npm --prefix web test`, `npm --prefix web run lint`, `npm --prefix web run build`, Playwright test runs.
-
-### Tier 7 — Security Audit `0010`, Spec Documentation, PR & CI
-1. Security audit `.claude/audits/0010-phase10-import.md` using `.claude/templates/audit.md` (Four-Attacker + STRIDE).
-2. Report audit results to maintainer (Gate 2).
-3. Mark specs `backend-file-extractors.md`, `backend-import-pipeline.md`, `frontend-import-confirmation.md` as `IMPLEMENTED`.
-4. Update `.claude/audits/README.md`, `.claude/specs/README.md`, tick roadmap criteria in `.claude/roadmap/10-import/README.md`.
-5. Open PR against `main` using `make-pr` and monitor CI until green.
+- **Canvas consulted:** `Alexandryn-Web.dc.html`, `atReader` block
+  (lines 428–530) plus its `rd:` state and `RTHEMES`/`SAMPLES`/`MARKS`
+  mock data (lines 719–890). Read fresh at drafting time, not from memory.
+- **`ANALYSIS.md` sync date as read at drafting:** last synced **2026-08-13**
+  (second sync, byte-identical re-pull noted). Scope-classification pass
+  dated **2026-08-17**.
+- **Classification:** `atReader` (Web) = **Binding** — "Phase 11, approved
+  spec; confirmed intentionally single-captured (`architecture-system.md`
+  FR-6, `frontend-reader.md` NFRs)". Not unclassified, not exploratory.
+- **Contradiction found — flagged for Gate 1, not reasoned around:**
+  `frontend-reader.md`'s Open questions still say *"No design-reference
+  screen for the reader"*. That is **stale**. The spec was approved
+  2026-08-15; the classification pass that recorded `atReader` as a
+  captured, binding screen is dated 2026-08-17 — two days later. A binding
+  captured reader screen exists and the approved spec believes it does not.
+- **Divergences between `atReader` and `frontend-reader.md` scope:**
+  1. The canvas exposes a **column-width** control (Narrow / Default /
+     Wide) that no spec FR names. Spec FR-4's preference set is
+     `font, fontSize, lineSpacing, theme`.
+  2. The canvas shows **no paginated/continuous-scroll toggle**; its
+     content region is a single scrolling column with a page counter.
+     Spec FR-2 requires both modes with a persisted toggle, paginated
+     default.
+  3. The canvas has **no visible line-spacing control**; the spec has one
+     and no column-width one.
+  4. The canvas's Marks panel carries an **Export** action. No spec FR
+     names export.
+  These are surface-vs-scope tensions (design binding for look, roadmap
+  binding for scope, ADR 0003 addendum). Proposed reconciliation is in
+  "Open questions for Gate 1" below — not resolved unilaterally.
+- **DesignSync re-pull:** tool not reachable in this environment
+  (`plugin:github` MCP failed to connect; `DesignSync` deferred-tool not
+  exercised). Proceeding against local `.design-reference/` per the
+  standing task convention, same as phase 10's plan recorded.
 
 ---
 
-## 2. Open Questions & Verifications for Maintainer
+## 1. Current state — what already exists
 
-> [!IMPORTANT]
-> 1. **PDF Library Selection:** We propose using `github.com/pdfcpu/pdfcpu` for pure-Go PDF extraction as documented in ADR `0022`.
-> 2. **Review 0049 edge cases:** All edge case findings (confusable match scoring caps, UTF-8 entry name decoding handling, `__MACOSX/` filtering, whitespace-only title handling) are planned with dedicated tests.
-> 3. **Design Conformance:** As documented in `ANALYSIS.md`, `atImport` in `Alexandryn-Electron.dc.html` serves as visual reference, while the actual interaction is governed by the approved `frontend-import-confirmation.md` source-gated workflow.
+Phase 02 and the phase-10 groundwork already landed a large share of what a
+naive reading of the task's Tier 0 would re-create. **No duplicate tables,
+types, or repositories will be created.**
+
+| Area | State on `main` | Source |
+|---|---|---|
+| `reading_progress`, `bookmarks`, `highlights`, `reading_preferences`, `outbox` tables | **Exist** in migration `00002_phase02_schema.sql` | phase 02 |
+| `domain.ReadingProgress`, `ProgressReport`, `Bookmark`, `Highlight`, `ReadingPreferences`, `PrecisePosition` types | **Exist** (`internal/domain/reading_progress.go`, `bookmark_and_highlight.go`, `reading_preferences.go`) | commit `623a0c9` (P19–P21) |
+| `domain.ReadingProgressService.AttachPrecisePosition` (graph invariant) | **Exists** | commit `623a0c9` |
+| `ReconcileProgress` domain function | **Does not exist — deliberately blocked** | roadmap 02 exit criteria; review `0048` finding 1 |
+| Domain repo interfaces (`ReadingProgressRepository`, `BookmarkRepository`, `HighlightRepository`, `ReadingPreferencesRepository`) | **Exist** (`internal/domain/repository.go`) | commit `2489017` (R8) |
+| Postgres repos for all four + integration tests | **Exist** (`internal/persistence/postgres/*_repository.go`) | commit `2489017` (R8) |
+| `internal/reader/*` (content serving + reading API transport) | **Does not exist** | — this phase |
+| `extract.Materialize`, decompressed/entry-count caps, `BoundedReader` | **Exist**, reusable as-is | phase 10 |
+| `sources.Provider.Resolve(ctx, FileReference) (io.ReadCloser, error)` | **Exists** | phase 08 |
+| `SourceOfferingRepository.FindByEdition` | **Missing** — only `FindByID`, `FindBySource` | — this phase adds it |
+| OpenAPI `/api/v1/reading*` + `/api/v1/library/editions/{id}/reader/*` paths | **Missing** | — this phase |
+| `web/` reader screen, `web/src/data/reading.ts`, foliate-js dep | **Missing** | — this phase |
+| ADRs 0023 (rendering engine), 0024 (HTML sanitiser) | **Missing** | — this phase |
+
+---
+
+## 2. The `ReconcileProgress` blocker
+
+`backend-reading-api.md` FR-2 (the `POST .../progress` endpoint) is built
+entirely on `domain.ReconcileProgress`. That function **must not be
+implemented** until `domain-reading.md` FR-6/FR-7 are amended
+(`domain-reading.md` status line; roadmap 02 exit criteria; review `0048`
+findings 1, 2, 11).
+
+Review `0048` already decided the fix in principle:
+
+> reconciliation becomes max over `(epoch, percentage)`; server-assigned
+> epoch, observed-epoch precondition for the offline case, third
+> `Rejected` outcome
+
+But **no spec text has been amended** to match. `domain-reading.md` FR-2/
+FR-6/FR-7 still describe furthest-`Percentage`-wins with a free-form
+"explicit override", and `backend-reading-api.md` FR-2 still describes
+`ReconcileProgress(canonical, report) -> ReadingProgress` with that same
+override model and no epoch. The `reading_progress` table has no `epoch`
+column.
+
+This is a spec-vs-spec conflict that blocks part of the phase. Per the
+constitution's Review-gates clause and CLAUDE.md, resolving it is a
+stop-and-ask, not something to reason around. Options are in "Open
+questions for Gate 1" below (item A).
+
+Everything else in the phase — content serving, bookmarks, highlights,
+preferences, `GET` progress, the whole frontend reader — is unblocked and
+does not depend on `ReconcileProgress`.
+
+---
+
+## 3. ADRs to author (Gate 1 scope statement)
+
+### ADR 0023 — Reader rendering engine: `foliate-js`
+
+- **Decision:** vendor `foliate-js` as the client rendering engine — EPUB
+  pagination (reflowable CSS-multi-column + scrolled) and CFI
+  generation/resolution via its own `epubcfi.js`.
+- **Options weighed:** `futurepress/epub.js` (larger, maintainers' own
+  forks cite layout-rebuild problems), hand-rolled pagination + CFI
+  (rejected — CFI grammar and multi-column pagination are both large,
+  well-trodden correctness problems, unlike phase 10's stdlib-only
+  zip+XML), `foliate-js` (chosen — real CFI support, no hard deps, both
+  modes built in; its own README warns it is unstable and its default
+  `blob:`-URL approach is not securely sandboxable — closed here by
+  never using that default, see ADR 0024 + `backend-reader-content.md`).
+- **§9:** what it does / why not hand-rolled / what breaks if abandoned
+  (CFI data is a W3C standard, not foliate's invention — a future swap
+  keeps the stored positions).
+- **Vendoring mechanism:** pinned exact version. `foliate-js` is
+  distributed as ES modules; decision records whether it enters as an
+  `npm` dependency (exact pin, no `^`) or a checked-in vendored copy
+  under `web/vendor/` — leaning `npm` exact-pin for lockfile visibility
+  and `CODEOWNERS` review, matching every other web dep.
+
+### ADR 0024 — Server-side EPUB HTML/SVG sanitisation: `microcosm-cc/bluemonday`
+
+- **Decision:** sanitise all served HTML/XHTML server-side with a
+  `bluemonday` policy built from `UGCPolicy()`, further restricted to
+  reject non-relative / non-`data:` `href`/`src`, strip
+  `<iframe>/<object>/<embed>/<link>`, strip inline `<svg>` wholesale,
+  strip `style` attributes, route `<style>` block text through the
+  hand-written CSS scheme scanner (`backend-reader-content.md` FR-6/FR-7).
+- **Options weighed:** hand-rolled HTML sanitiser (rejected — the classic
+  place to smuggle XSS past a naive filter), `bluemonday` (chosen —
+  allowlist model on Go's own `net/html` tokenizer, OWASP-Java-Sanitizer
+  lineage), strip-all-to-text (rejected — destroys legitimate book
+  markup).
+- **§9:** built on stdlib tokenizer, self-contained policy object, a
+  replacement is one function call's implementation.
+- CSS sanitisation stays hand-written (bounded `url(` / `@import` scheme
+  scan) — justified separately in the spec as a narrow problem.
+
+---
+
+## 4. Migration `00008_phase11_reader.sql`
+
+Confirmed scope (A1 + D):
+
+```sql
+-- +goose Up
+ALTER TABLE reading_progress ADD COLUMN epoch BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE bookmarks  ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE highlights ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+-- +goose Down
+ALTER TABLE highlights DROP COLUMN created_at;
+ALTER TABLE bookmarks  DROP COLUMN created_at;
+ALTER TABLE reading_progress DROP COLUMN epoch;
+```
+
+- `epoch` — `domain-reading.md` FR-2/FR-6 as amended; `NOT NULL DEFAULT 0`
+  so existing rows (none in production yet) get epoch 0.
+- `created_at` on `bookmarks`/`highlights` — `reading-data-export.md`
+  FR-4; the domain types gain a `CreatedAt` field, set at construction.
+- No other schema change: `reading_preferences.settings` is `JSONB` and
+  absorbs `{font, fontSize, lineSpacing, theme, layoutMode, columnWidth}`;
+  `reading_progress.precise_position_value` already carries the CFI
+  string; `bookmarks.position` / `highlights.start_position`/`end_position`
+  already carry CFI strings.
+- `schema_integration_test.go` gets assertions for the three new columns.
+
+---
+
+## 5. Tiered implementation (Red → Green → Refactor per tier)
+
+### Tier 0 — spec amendments, ADRs, migration  *(amendments done; awaiting diff sign-off)*
+
+- **Done in the amendment package:** ADR 0023, ADR 0024 (`Accepted`);
+  `domain-reading.md` FR-2/FR-6/FR-7 + Domain model + State transitions +
+  Failure modes + acceptance criteria amended to the `(epoch, percentage)`
+  model; `backend-reading-api.md` FR-2/FR-3 + contract + failure modes +
+  acceptance criteria realigned; `frontend-reader.md` FR-2/FR-4/FR-5/FR-6
+  + Open questions amended; ADR 0009 addendum; new spec
+  `reading-data-export.md`; `roadmap/11-reader/README.md`,
+  `specs/README.md`, `decisions/README.md` updated.
+- **On sign-off, then code:** `go get github.com/microcosm-cc/bluemonday@<pin>`;
+  add `foliate-js` per ADR 0023 (both recorded in the PR body, §9);
+  migration `00008` (epoch + 2× created_at) + `schema_integration_test.go`
+  assertions.
+
+### Tier 1 — `ReconcileProgress` / `OverrideProgress` domain functions
+
+- RED: table-driven — lexical `max` over `(epoch, percentage)`;
+  `Advanced` / `Unchanged` / `Rejected` outcomes; below-stored-epoch →
+  `Rejected`; clamp of an over-reported `ObservedEpoch`. Property-based:
+  (a) fold over same-epoch reports (generator emits **no** overrides) is
+  order-independent; (b) `OverrideProgress` then any stale reports keeps
+  the override's percentage.
+- GREEN: pure functions in `internal/domain/reconcile_progress.go`;
+  `ProgressReport` gains `ObservedEpoch`, `ReadingProgress` gains `Epoch`,
+  new `ReconcileResult` type.
+- The caller (Tier 3) emits one `ReadingProgressUpdated` on `Advanced`/
+  `overridden`, none on `Unchanged`/`Rejected` (`domain-events.md` FR-5 —
+  no mutation, no event; consistent, no amendment to that spec needed).
+- `Bookmark`/`Highlight` gain `CreatedAt` (`reading-data-export.md` FR-4).
+
+### Tier 2 — `internal/reader/content` (backend content serving + sanitisation)
+
+- `SourceOfferingRepository.FindByEdition(editionID) []*SourceOffering`
+  ordered `observed_at DESC` — RED integration test first.
+- Content resolver: ownership check (`LibraryEntry` join) → resolve bytes
+  via each offering's `Provider.Resolve` in turn → `extract.Materialize`
+  (reused) → in-process LRU cache (5 editions, 10-min idle, injected
+  `Clock`, reference-counted, cache-owned context independent of request
+  context) holding the temp file + open `zip.Reader`.
+- `*path` validation (`..`/absolute rejected before lookup).
+- Per-entry: 200 MiB streaming cap + 10k entry cap (reused constants),
+  30 s per-request `ctx` timeout.
+- Content-type dispatch by `http.DetectContentType`: HTML/XHTML →
+  bluemonday policy; CSS → scheme scanner; image/font (not SVG) → as-is;
+  standalone SVG + unrecognised → `400`.
+- `Content-Security-Policy: default-src 'self'; script-src 'none';
+  object-src 'none'` on every response.
+- `internal/reader/content/adversarial_test.go`: `<script>`, event-handler
+  attrs, inline `<svg>`, `style` attr, `javascript:` URI in href/src/CSS
+  `url()`, absolute external URL, `url(javascript:...)`, zip-bomb entry,
+  zip-slip `*path`, zip-slip reference inside content, log-redaction
+  assertion. All RED first.
+
+### Tier 3 — `internal/reader/api` (reading API transport)
+
+- `internal/reader/api` handlers:
+  - `GET /api/v1/reading/works/{workId}/progress` → `{progress|null}`
+  - `POST /api/v1/reading/works/{workId}/progress` → construct
+    `ProgressReport`, transactional `SELECT ... FOR UPDATE` on the
+    singleton row, `ReconcileProgress`, persist, return canonical
+    *(conditional on item A; otherwise this endpoint is deferred)*
+  - `GET/POST /api/v1/reading/editions/{editionId}/bookmarks`,
+    `DELETE /api/v1/reading/bookmarks/{bookmarkId}`
+  - `GET/POST /api/v1/reading/editions/{editionId}/highlights`,
+    `PATCH/DELETE /api/v1/reading/highlights/{highlightId}`
+  - `GET/PUT /api/v1/reading/preferences` (scoped by `X-Device-Id`)
+  - `GET /api/v1/reading/export` (+ `?workId=`) — versioned JSON,
+    `Content-Disposition: attachment`, read-only, counts-only logging
+    (`reading-data-export.md`)
+- `X-Device-Id` UUID-v4 shape check on progress + preferences endpoints
+  only (`400` otherwise); **not** on bookmarks/highlights.
+- CFI shallow structural check (`internal/reader/api/cfi.go`): begins
+  `epubcfi(`, ends `)`, balanced brackets/parens, charset allowlist,
+  length cap. Reused for bookmark position, highlight start/end,
+  `precisePosition.cfi`. `endCfi` not sorting before `startCfi`.
+- `percentage` `[0.0,1.0]`; `precisePosition.editionId` belongs to
+  `:workId`'s Work.
+- Log-redaction: no title / CFI / note / label / percentage in any log
+  line — targeted test across every endpoint.
+
+### Tier 4 — OpenAPI contract + server wiring
+
+- Add all paths to `api/openapi.yaml`.
+- `internal/testutil/contracttest` extended — route-completeness +
+  request/response validation.
+- Wire routes in `cmd/server/main.go`; construct the content cache once
+  at startup and inject (`cmd/server/repositories.go` / `run.go`).
+
+### Tier 5 — Frontend reader (`web/`)
+
+- `npm run mocks:gen-fixtures` from the extended OpenAPI.
+- `web/src/data/reading.ts` — TanStack Query hooks (progress, bookmarks,
+  highlights, preferences), `X-Device-Id` from `localStorage`
+  (`crypto.randomUUID()` on first use).
+- `web/src/screens/Reader/` — route `/read/:workId/:editionId`
+  (`frontend-library-screens.md` FR-5's "Read" action already carries
+  both IDs):
+  - `<iframe sandbox="allow-same-origin">` — **never** `allow-scripts`,
+    asserted by a test under every code path incl. theme changes.
+  - foliate-js renderer pointed at
+    `/api/v1/library/editions/:editionId/reader/content/*path` directly,
+    no `blob:`.
+  - Chrome per `atReader`: top bar (← Library, title·chapter, tools),
+    tap-content toggles chrome, bottom progress bar.
+  - Contents panel (left), Marks panel (right), Reading/Aa panel — theme
+    light/sepia/dark (`RTHEMES` hex values), type-size stepper,
+    line-spacing, layout toggle (paginated default), column width
+    (pending item B).
+  - Debounced writes: preferences 500 ms, position report 3 s + unload
+    best-effort.
+  - Position restore: open at last CFI, `Percentage` fallback.
+  - Bookmark-this-page + selection→highlight with note + category swatch.
+  - Marks panel "Export" button → `GET /api/v1/reading/export` → `Blob`
+    + `<a download>` (web/LAN only, no Electron). Accessible name, in
+    focus order.
+- `web/src/screens/Reader/Reader.test.tsx` — Vitest unit/component +
+  `axe` a11y + responsive (desktop + narrow LAN width). Sandbox-attr and
+  script-inert fixtures RED first.
+- Wire the "Read" entry point / route into the shell + router.
+
+### Tier 6 — Full verification suite
+
+Backend: `go test -race ./...`; integration with `TEST_DATABASE_URL`;
+`golangci-lint run ./...`; `govulncheck ./...`.
+Frontend: `npm --prefix web test`; `lint`; `build`;
+`check:token-styling`; `check:a11y-tabindex`.
+Boundary scripts: `check-import-boundaries.sh`,
+`check-parameterized-queries.sh`, `check-compose-published-port.sh`.
+
+### Tier 7 — Security audit `0011` + Gate 2
+
+- `.claude/audits/0011-phase11-reader.md` — Four-Attacker + STRIDE over
+  each trust boundary (client `*path`, EPUB bytes, EPUB content →
+  browser, `X-Device-Id`, highlight/bookmark strings, CFI strings, the
+  content cache). Same shape as `0010`.
+- Present findings for **Gate 2 sign-off**. No PR before sign-off.
+- On sign-off: specs → `IMPLEMENTED`; roadmap exit criteria walked;
+  `domain-reading.md` re-confirmation recorded if item A amended it.
+
+### Tier 8 — PR + CI
+
+- Atomic conventional commits throughout (no `Co-Authored-By` / AI
+  trailers). Push `feat/phase11-reader`.
+- PR vs `main`: summary, test matrix, verification proof, audit link.
+- `gh pr checks --watch` until `CI/Backend`, `CI/Frontend`, `CI/Desktop`,
+  `CI/Contracts`, `CI/Repo` all green.
+
+---
+
+## 6. Gate 1 questions — resolved
+
+**A → A1.** Amend `domain-reading.md` FR-6/FR-7 to review 0048's
+`(epoch, percentage)` model; realign `backend-reading-api.md`. Done in
+the amendment package; full phase (incl. position save/restore) proceeds.
+
+**B → keep both.** `ReadingPreferences` carries `lineSpacing` **and**
+`columnWidth` (JSONB, no migration cost). `frontend-reader.md` FR-4
+amended.
+
+**C → follow the spec.** Both paginated + continuous-scroll,
+paginated default; the canvas's single-scroll depiction is one toggle
+state. `frontend-reader.md` FR-2 amended.
+
+**D → in scope, as a new sibling spec.** `reading-data-export.md`:
+read-only `GET /api/v1/reading/export`, versioned JSON, web download.
+Import, Electron-native save, and preferences export explicitly deferred.
+Migration `00008` adds `created_at` to `bookmarks`/`highlights`.
+
+**E → corrected.** `frontend-reader.md` Open questions now point at the
+binding `atReader` canvas and the 2026-08-17 classification.
+
+## 7. Superseded — original Gate 1 questions
+
+**A. `ReconcileProgress` / `domain-reading.md` FR-6-7 amendment (blocker).**
+The progress-report write path can't be built against the current spec
+text. Which:
+
+- **A1 (recommended):** I amend `domain-reading.md` FR-2/FR-6/FR-7 and
+  realign `backend-reading-api.md` FR-2 to review `0048`'s already-decided
+  `(epoch, percentage)` model — server-assigned epoch, observed-epoch
+  precondition, third `Rejected` outcome — present the amendment diff for
+  your approval, then implement the full phase including position
+  save/restore. Adds spec work; keeps the phase whole (position
+  save/restore is a roadmap exit criterion).
+- **A2:** Defer the `POST .../progress` endpoint and `ReconcileProgress`
+  to a follow-up phase-11 task once phase 02's own amendment lands.
+  This session ships content serving + bookmarks + highlights +
+  preferences + `GET progress` + the full reader UI with position
+  *reporting* wired but the reconcile/persist step stubbed. Phase 11
+  can't close (exit criterion "position reliably saved and restored")
+  until the follow-up.
+- **A3:** Implement `ReconcileProgress` now to review `0048`'s spec, record
+  it as an ADR, and flag the `domain-reading.md` text amendment as an
+  immediate fast-follow rather than a Gate 1 pre-condition. Faster; softer
+  on gate discipline.
+
+**B. `atReader` column-width vs spec line-spacing.** The binding canvas has
+a column-width control and no line-spacing one; the spec is the reverse.
+Proposed: keep **both** in `ReadingPreferences` (`lineSpacing` +
+`columnWidth`), since the `JSONB` column costs nothing and both are real
+reading affordances — the spec's FR-4 explicitly says phase 11 fixes the
+field set. Confirm, or drop one.
+
+**C. `atReader` shows no paginated/scroll toggle; spec FR-2 requires
+both.** Proposed: follow the spec (build both, paginated default), treat
+the canvas's single-scroll depiction as one captured state of the toggle,
+not a scope cut. Confirm.
+
+**D. Marks-panel "Export" action in the canvas.** No spec FR. Proposed:
+out of scope this phase, tracked as a follow-up — not built, not removed
+from the design record. Confirm.
+
+**E. Stale `frontend-reader.md` Open-questions line** ("no design-reference
+screen for the reader"). Proposed: correct it to point at `atReader` +
+the 2026-08-17 classification as part of this phase's doc updates.
+Confirm.
