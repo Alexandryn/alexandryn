@@ -13,8 +13,12 @@ import (
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
+	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
 	"github.com/Alexandryn/alexandryn/internal/config"
+	"github.com/Alexandryn/alexandryn/internal/idgen"
+	"github.com/Alexandryn/alexandryn/internal/importer"
+	"github.com/Alexandryn/alexandryn/internal/jobs"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
@@ -384,6 +388,15 @@ func run(ctx context.Context, deps runDeps) int {
 		Codec:     sources.NewCursorCodec(cursorSubkey),
 	})
 
+	if repos != nil {
+		if repos.importCandidates != nil {
+			poolRef.SetImportCandidateRepository(repos.importCandidates)
+		}
+		if repos.importerService != nil {
+			poolRef.SetImporterService(repos.importerService)
+		}
+	}
+
 	logger.Info("startup step completed", "step", "pool")
 
 	var jobSystem jobRunner
@@ -395,6 +408,18 @@ func run(ctx context.Context, deps runDeps) int {
 			return 1
 		}
 		if js != nil {
+			if jsConcrete, ok := js.(*jobs.System); ok && repos != nil && repos.importCandidates != nil {
+				sourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
+				olClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
+				matcher := importer.NewMatcher(repos.importCandidates, olClient)
+				importHandler := importer.NewJobHandler(sourceResolver, repos.importCandidates, matcher, repos.importerService)
+				jsConcrete.Queue().Register("import", 3, importHandler)
+
+				sourceChecker := transporthttp.NewSourceCheckerAdapter(repos.sources)
+				jobEnqueuer := transporthttp.NewJobQueueEnqueuer(jsConcrete.Queue())
+				discoveryCoord := importer.NewDiscoveryCoordinator(sourceChecker, sourceResolver, repos.importCandidates, jobEnqueuer, idgen.New())
+				poolRef.SetDiscoveryCoordinator(discoveryCoord)
+			}
 			js.Start(ctx)
 			jobSystem = js
 			logger.Info("startup step completed", "step", "jobs")

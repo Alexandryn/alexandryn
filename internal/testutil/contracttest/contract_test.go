@@ -13,6 +13,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
 	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/testutil/contracttest"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
@@ -72,6 +73,10 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/sources/{id}/health-check",
 		"/api/v1/sources/{id}/browse",
 		"/api/v1/sources/{id}/search",
+		"/api/v1/import/discover",
+		"/api/v1/import/candidates",
+		"/api/v1/import/candidates/{id}/confirm",
+		"/api/v1/import/candidates/{id}/reject",
 	}
 	for _, p := range phasePaths {
 		if doc.Paths.Find(p) == nil {
@@ -441,6 +446,151 @@ func TestRealSourcesHandlersPassContractTest(t *testing.T) {
 		h := transporthttp.GetSourceHandler(repo)
 		req := mustRequest(t, "GET", "/api/v1/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ", nil)
 		req.SetPathValue("id", "01JXXXXXXXXXXXXXXXXXXXXXXZ")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+}
+
+type contractMockImportCandidateRepo struct {
+	mu         sync.Mutex
+	candidates map[string]postgres.ImportCandidateRecord
+}
+
+func (m *contractMockImportCandidateRepo) Create(ctx context.Context, rec postgres.ImportCandidateRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.candidates[rec.ID] = rec
+	return nil
+}
+
+func (m *contractMockImportCandidateRepo) Get(ctx context.Context, id string) (postgres.ImportCandidateRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.candidates[id]
+	if !ok {
+		return postgres.ImportCandidateRecord{}, &domain.Error{Category: domain.NotFound, Message: "candidate not found"}
+	}
+	return c, nil
+}
+
+func (m *contractMockImportCandidateRepo) List(ctx context.Context, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var list []postgres.ImportCandidateRecord
+	for _, c := range m.candidates {
+		list = append(list, c)
+	}
+	return list, nil
+}
+
+func (m *contractMockImportCandidateRepo) UpdateStatus(ctx context.Context, id string, status string, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.candidates[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "candidate not found"}
+	}
+	c.Status = status
+	c.UpdatedAt = now
+	m.candidates[id] = c
+	return nil
+}
+
+func (m *contractMockImportCandidateRepo) UpdateExtractedAndMatches(ctx context.Context, id string, status string, extracted []byte, matches []byte, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.candidates[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "candidate not found"}
+	}
+	c.Status = status
+	c.ExtractedMetadata = extracted
+	c.MatchCandidates = matches
+	c.UpdatedAt = now
+	m.candidates[id] = c
+	return nil
+}
+
+func (m *contractMockImportCandidateRepo) UpdateFailed(ctx context.Context, id string, lastError string, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.candidates[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "candidate not found"}
+	}
+	c.Status = postgres.ImportCandidateStatusFailed
+	c.LastError = &lastError
+	c.UpdatedAt = now
+	m.candidates[id] = c
+	return nil
+}
+
+func (m *contractMockImportCandidateRepo) ExistsBySourceAndFileRefID(ctx context.Context, sourceID string, fileRefID string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.candidates {
+		if c.SourceID == sourceID && c.FileReference.ReferenceID == fileRefID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type contractMockDiscoveryRunner struct{}
+
+func (d *contractMockDiscoveryRunner) Discover(ctx context.Context, sourceID string, now time.Time) (importer.DiscoverResult, error) {
+	return importer.DiscoverResult{
+		DiscoveredCount: 2,
+		SkippedCount:    0,
+		JobIDs:          []string{"01JJOB1", "01JJOB2"},
+	}, nil
+}
+
+func TestRealImportHandlersPassContractTest(t *testing.T) {
+	v := contracttest.New(t)
+
+	ref, _ := domain.NewFileReference("ref-1.epub", "epub", nil)
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	candRepo := &contractMockImportCandidateRepo{
+		candidates: map[string]postgres.ImportCandidateRecord{
+			"01JCANDIDATE1": {
+				ID:                "01JCANDIDATE1",
+				SourceID:          "01JSOURCE1",
+				FileReference:     ref,
+				Status:            "pending",
+				ExtractedMetadata: []byte(`{"title":"Dune","authors":["Frank Herbert"]}`),
+				MatchCandidates:   []byte(`[{"type":"open_library_work","confidence":"high","title":"Dune"}]`),
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+		},
+	}
+
+	t.Run("POST /api/v1/import/discover", func(t *testing.T) {
+		h := transporthttp.ImportDiscoverHandler(&contractMockDiscoveryRunner{})
+		req := mustRequest(t, "POST", "/api/v1/import/discover", bytes.NewReader([]byte(`{"sourceId":"01JSOURCE1"}`)))
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusAccepted {
+			t.Errorf("expected 202, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/import/candidates", func(t *testing.T) {
+		h := transporthttp.ImportCandidatesListHandler(candRepo)
+		req := mustRequest(t, "GET", "/api/v1/import/candidates?sourceId=01JSOURCE1&status=pending", nil)
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST /api/v1/import/candidates/{id}/reject", func(t *testing.T) {
+		svc := importer.NewService(nil, nil, nil, nil, nil, candRepo, nil, nil, nil)
+		h := transporthttp.ImportCandidateRejectHandler(svc, candRepo)
+		req := mustRequest(t, "POST", "/api/v1/import/candidates/01JCANDIDATE1/reject", nil)
+		req.SetPathValue("id", "01JCANDIDATE1")
 		rr := v.ValidateResponse(t, h, req)
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rr.Code)
