@@ -86,6 +86,58 @@ export const handlers = [
     })
   }),
 
+  http.get('*/api/v1/sources', () => HttpResponse.json(generatedFixtures.listSources['200'])),
+  http.post('*/api/v1/sources', () =>
+    HttpResponse.json(generatedFixtures.createSource['201'], { status: 201 }),
+  ),
+  http.get('*/api/v1/sources/:id', ({ params }) => {
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.getSource['404'], { status: 404 })
+    }
+    return HttpResponse.json(generatedFixtures.getSource['200'])
+  }),
+  http.patch('*/api/v1/sources/:id', ({ params }) => {
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.updateSource['404'], { status: 404 })
+    }
+    return HttpResponse.json(generatedFixtures.updateSource['200'])
+  }),
+  http.delete('*/api/v1/sources/:id', ({ params }) => {
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.deleteSource['404'], { status: 404 })
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.post('*/api/v1/sources/:id/health-check', ({ params }) => {
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.checkSourceHealth['404'], { status: 404 })
+    }
+    return HttpResponse.json(generatedFixtures.checkSourceHealth['200'])
+  }),
+  http.get('*/api/v1/sources/:id/browse', ({ params }) => {
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.browseSource['404'], { status: 404 })
+    }
+    if (String(params.id).includes('unavailable')) {
+      return HttpResponse.json(generatedFixtures.browseSource['503'], { status: 503 })
+    }
+    return HttpResponse.json(generatedFixtures.browseSource['200'])
+  }),
+  http.get('*/api/v1/sources/:id/search', ({ params, request }) => {
+    const url = new URL(request.url)
+    const q = url.searchParams.get('q')
+    if (String(params.id).includes('non-existent') || String(params.id).includes('not-found')) {
+      return HttpResponse.json(generatedFixtures.searchSource['404'], { status: 404 })
+    }
+    if (String(params.id).includes('no-search')) {
+      return HttpResponse.json(generatedFixtures.searchSource['409'], { status: 409 })
+    }
+    if (!q || q.trim() === '') {
+      return HttpResponse.json(generatedFixtures.searchSource['400'], { status: 400 })
+    }
+    return HttpResponse.json(generatedFixtures.searchSource['200'])
+  }),
+
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]
 
