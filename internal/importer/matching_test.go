@@ -7,6 +7,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
 type fakeLibraryFinder struct {
