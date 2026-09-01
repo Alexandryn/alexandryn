@@ -155,6 +155,9 @@ func (r *SourceRecordRepository) UpdateHealth(ctx context.Context, id, status, d
 // credential — crypto.LoadOrCreateKey's first-run vs. lost-key check
 // (FR-13).
 func (r *SourceRecordRepository) CountWithCredential(ctx context.Context) (int, error) {
+	if r == nil || r.pool == nil {
+		return 0, nil
+	}
 	exec := executorFrom(ctx, r.pool)
 	var n int
 	err := exec.QueryRow(ctx, `SELECT count(*) FROM sources WHERE credential_ciphertext IS NOT NULL`).Scan(&n)

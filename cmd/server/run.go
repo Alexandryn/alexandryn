@@ -8,8 +8,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
+	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
@@ -92,9 +96,10 @@ type runDeps struct {
 	// watchParent watches the Electron host parent process PID for termination (E25).
 	watchParent func(pid int) error
 
+	userConfigDir func() (string, error)
+
 	stderr io.Writer
 }
-
 
 // waitForPostgres calls obtain up to maxAttempts times, sleeping backoff
 // between failed attempts (never after the last one), and returns nil on
@@ -217,7 +222,6 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
-
 	srv := deps.newServer(cfg, router)
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(listener) }()
@@ -296,13 +300,62 @@ func run(ctx context.Context, deps runDeps) int {
 		if repos.coverCache != nil {
 			poolRef.SetCoverCacheRepository(repos.coverCache)
 		}
+		if repos.sourceRecords != nil {
+			poolRef.SetSourceRecordRepository(repos.sourceRecords)
+		}
+		if repos.sourceRemoval != nil {
+			poolRef.SetSourceRemovalService(repos.sourceRemoval)
+		}
 	}
+
+	appDataDir := ""
+	userConfigDirFn := deps.userConfigDir
+	if userConfigDirFn == nil {
+		userConfigDirFn = os.UserConfigDir
+	}
+	if userConfig, err := userConfigDirFn(); err == nil && userConfig != "" {
+		appDataDir = filepath.Join(userConfig, "alexandryn")
+	} else {
+		appDataDir = filepath.Join(os.TempDir(), "alexandryn")
+	}
+
+	key, err := crypto.LoadOrCreateKey(appDataDir, func() (int, error) {
+		if repos != nil && repos.sourceRecords != nil {
+			return repos.sourceRecords.CountWithCredential(ctx)
+		}
+		return 0, nil
+	}, logger)
+	if err != nil {
+		logger.Error("failed to load or create source credential key", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	cryptoSvc, err := crypto.NewService(key)
+	if err != nil {
+		logger.Error("failed to initialize source crypto service", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	cursorSubkey, err := cryptoSvc.DeriveSubkey("source-cursor-hmac-v1")
+	if err != nil {
+		logger.Error("failed to derive cursor subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	poolRef.SetSourceCrypto(transporthttp.SourceCrypto{
+		Encryptor: cryptoSvc,
+		Codec:     sources.NewCursorCodec(cursorSubkey),
+	})
+
 	logger.Info("startup step completed", "step", "pool")
 
-
 	logger.Info("ready")
-
-
 
 	select {
 	case <-ctx.Done():

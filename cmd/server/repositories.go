@@ -37,6 +37,8 @@ type repositories struct {
 	transactor         domain.Transactor
 	metadataCache      postgres.MetadataCacheRepository
 	coverCache         postgres.CoverCacheRepository
+	sourceRecords      *postgres.SourceRecordRepository
+	sourceRemoval      *domain.SourceRemovalService
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -55,20 +57,27 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 	}
 	coverCacheRepo, _ := postgres.NewCoverCacheRepository(pool, coversDir, l)
 
+	sourceRepo := postgres.NewSourceRepository(pool)
+	sourceOfferingRepo := postgres.NewSourceOfferingRepository(pool)
+	transactor := postgres.NewTransactor(pool)
+	sourceRemovalSvc := domain.NewSourceRemovalService(sourceRepo, sourceOfferingRepo, transactor)
+
 	return &repositories{
 		works:              postgres.NewWorkRepository(pool),
 		authors:            postgres.NewAuthorRepository(pool),
 		editions:           postgres.NewEditionRepository(pool),
 		libraryEntries:     postgres.NewLibraryEntryRepository(pool),
 		collections:        postgres.NewCollectionRepository(pool),
-		sources:            postgres.NewSourceRepository(pool),
-		sourceOfferings:    postgres.NewSourceOfferingRepository(pool),
+		sources:            sourceRepo,
+		sourceOfferings:    sourceOfferingRepo,
 		readingProgress:    postgres.NewReadingProgressRepository(pool),
 		bookmarks:          postgres.NewBookmarkRepository(pool),
 		highlights:         postgres.NewHighlightRepository(pool),
 		readingPreferences: postgres.NewReadingPreferencesRepository(pool),
-		transactor:         postgres.NewTransactor(pool),
+		transactor:         transactor,
 		metadataCache:      postgres.NewMetadataCacheRepository(pool),
 		coverCache:         coverCacheRepo,
+		sourceRecords:      postgres.NewSourceRecordRepository(pool),
+		sourceRemoval:      sourceRemovalSvc,
 	}
 }
