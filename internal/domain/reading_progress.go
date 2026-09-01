@@ -22,11 +22,17 @@ type ReadingProgress struct {
 	id              ReadingProgressID
 	workID          WorkID
 	percentage      Percentage
+	epoch           int64
 	precisePosition *PrecisePosition
 	deviceID        DeviceID
 	observedAt      time.Time
 }
 
+// NewReadingProgress constructs the first canonical value for a Work —
+// epoch 0 by construction (domain-reading.md's State transitions: "first
+// ProgressReport becomes the canonical ReadingProgress directly, Epoch
+// := 0"). A later epoch is only ever reached through OverrideProgress
+// (FR-7); ReconcileProgress never raises it.
 func NewReadingProgress(id ReadingProgressID, workID WorkID, percentage Percentage, deviceID DeviceID, observedAt time.Time) *ReadingProgress {
 	return &ReadingProgress{
 		id:         id,
@@ -43,6 +49,11 @@ func (r *ReadingProgress) WorkID() WorkID { return r.workID }
 
 func (r *ReadingProgress) Percentage() Percentage { return r.percentage }
 
+// Epoch is the server-assigned, monotonically non-decreasing generation
+// counter reconciliation orders on before percentage (domain-reading.md
+// FR-2/FR-6). Bumped only by OverrideProgress (FR-7).
+func (r *ReadingProgress) Epoch() int64 { return r.epoch }
+
 func (r *ReadingProgress) PrecisePosition() *PrecisePosition { return r.precisePosition }
 
 func (r *ReadingProgress) DeviceID() DeviceID { return r.deviceID }
@@ -57,6 +68,11 @@ func (r *ReadingProgress) ObservedAt() time.Time { return r.observedAt }
 type ProgressReport struct {
 	WorkID          WorkID
 	Percentage      Percentage
+	// ObservedEpoch is the Epoch the reporting device last received from
+	// the server for this Work (0 if it has never synced) —
+	// ReconcileProgress's ordering key is (ObservedEpoch, Percentage),
+	// clamped to the stored Epoch (domain-reading.md FR-6 as amended).
+	ObservedEpoch   int64
 	PrecisePosition *PrecisePosition
 	DeviceID        DeviceID
 	ReportedAt      time.Time

@@ -65,7 +65,7 @@ func TestRehydrateReadingProgress_SetsPrecisePosition(t *testing.T) {
 	observedAt := time.Now().UTC()
 	pos := &domain.PrecisePosition{EditionID: "edition-1", Value: "loc-100"}
 
-	p := domain.RehydrateReadingProgress("progress-1", "work-1", pct, pos, "device-1", observedAt)
+	p := domain.RehydrateReadingProgress("progress-1", "work-1", pct, 0, pos, "device-1", observedAt)
 
 	if p.ID() != "progress-1" {
 		t.Fatalf("ID() = %v, want progress-1", p.ID())
