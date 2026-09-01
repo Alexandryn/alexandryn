@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
+	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
@@ -24,7 +25,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
-
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
 // "wait for Postgres to become reachable" retry (FR-3's sole retry
@@ -73,6 +73,7 @@ func main() {
 		runMigrations: func(ctx context.Context, cfg *config.Config) error {
 			return postgres.Migrate(ctx, cfg.DatabaseURL.Reveal())
 		},
+		userConfigDir: os.UserConfigDir,
 		newPool: func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
 			pool, err := postgres.NewPool(ctx, cfg.DatabaseURL.Reveal(), cfg.DBPoolMaxConns)
 			if err != nil {
@@ -84,7 +85,6 @@ func main() {
 		stderr:      os.Stderr,
 	}))
 }
-
 
 // newObtainPostgres (spawn.go, spawn_darwin.go) is FR-1 step 5's real,
 // per-platform implementation: spawn a bundled instance when no
@@ -167,6 +167,18 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("GET /api/v1/discover/works/{openLibraryId}", transporthttp.DiscoverWorkDetailHandler(openLibraryClient, metadataCache))
 	mux.Handle("GET /api/v1/discover/covers/{coverId}", transporthttp.DiscoverCoverHandler(openLibraryClient, coverCache))
 
+	sourceRepo := transporthttp.NewLazySourceRecordRepository(poolRef)
+	sourceSem := sources.NewSemaphore(sources.DefaultOutboundLimit)
+
+	mux.Handle("POST /api/v1/sources", transporthttp.CreateSourceHandler(sourceRepo, poolRef, sourceSem, idGen, logger))
+	mux.Handle("GET /api/v1/sources", transporthttp.ListSourcesHandler(sourceRepo))
+	mux.Handle("GET /api/v1/sources/{id}", transporthttp.GetSourceHandler(sourceRepo))
+	mux.Handle("PATCH /api/v1/sources/{id}", transporthttp.UpdateSourceHandler(sourceRepo, poolRef, sourceSem, logger))
+	mux.Handle("DELETE /api/v1/sources/{id}", transporthttp.DeleteSourceHandler(sourceRepo, poolRef))
+	mux.Handle("POST /api/v1/sources/{id}/health-check", transporthttp.HealthCheckSourceHandler(sourceRepo, poolRef, sourceSem, logger))
+	mux.Handle("GET /api/v1/sources/{id}/browse", transporthttp.BrowseSourceHandler(sourceRepo, poolRef, sourceSem, logger))
+	mux.Handle("GET /api/v1/sources/{id}/search", transporthttp.SearchSourceHandler(sourceRepo, poolRef, sourceSem, logger))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
@@ -177,7 +189,6 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 		transporthttp.Logging(logger, newCorrelationID),
 	)
 }
-
 
 // newCorrelationID generates a random per-request correlation ID
 // (backend-errors-and-logging.md FR-7) — 16 bytes of crypto/rand, hex

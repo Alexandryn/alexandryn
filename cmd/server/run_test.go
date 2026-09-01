@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/config"
+	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
@@ -448,6 +450,44 @@ func TestRun_PoolReferencePopulatedAfterStep6(t *testing.T) {
 	}
 }
 
+func TestRun_SourceRepositoriesAndCryptoPopulatedAfterStep6(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+	deps.userConfigDir = func() (string, error) { return t.TempDir(), nil }
+
+	var capturedRef *transporthttp.PoolRef
+	deps.newRouter = func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef) http.Handler {
+		order = append(order, "router")
+		capturedRef = poolRef
+		return http.NewServeMux()
+	}
+
+	pool := &fakePool{}
+	repos := &repositories{
+		sourceRecords: postgres.NewSourceRecordRepository(nil),
+		sourceRemoval: domain.NewSourceRemovalService(nil, nil, nil),
+	}
+	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
+		order = append(order, "pool")
+		return pool, repos, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	run(ctx, deps)
+
+	if _, ok := capturedRef.GetSourceRecordRepository(); !ok {
+		t.Fatal("source record repository is not set on poolRef")
+	}
+	if _, ok := capturedRef.GetSourceRemovalService(); !ok {
+		t.Fatal("source removal service is not set on poolRef")
+	}
+	sc, ok := capturedRef.GetSourceCrypto()
+	if !ok || sc.Encryptor == nil || sc.Codec == nil {
+		t.Fatal("source crypto is not set on poolRef")
+	}
+}
+
 func TestRun_PoolConstructionFailureStopsBeforeReady(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
@@ -842,7 +882,6 @@ func TestRun_ParentWatch_InvokedWhenDesktopParentPIDSet(t *testing.T) {
 	}
 }
 
-
 func TestRun_ParentWatch_FailureHaltsStartup(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
@@ -868,4 +907,3 @@ func TestRun_ParentWatch_FailureHaltsStartup(t *testing.T) {
 		t.Fatal("expected watchParent error to be logged")
 	}
 }
-
