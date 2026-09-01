@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 4 and 5 — the `Sensitive() bool` method is replaced by a sealed `Event` with `PublicEvent`/`SensitiveEvent` markers and sinks typed against them, making the barrier genuinely compile-time; the acquisition path is split into `…Imported` event types. FR-5 restated as emission-not-delivery per [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)) |
+| **Status** | `APPROVED` (maintainer read 2026-08-19; amended same day for [`0048`](../reviews/0048-phase02-correctness-review.md) findings 4 and 5 — the `Sensitive() bool` method is replaced by a sealed `Event` with `PublicEvent`/`SensitiveEvent` markers and sinks typed against them, making the barrier genuinely compile-time; the acquisition path is split into `…Imported` event types. FR-5 restated as emission-not-delivery per [ADR 0021](../decisions/0021-transaction-contract-and-event-outbox.md)) — minor amendment 2026-09-01: FR-5's `ReconcileProgress` example and its acceptance criterion updated for `domain-reading.md`'s amended reconcile model (one event on an `Advanced`/`overridden` outcome, zero on `Rejected`/`Unchanged`) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -190,9 +190,13 @@ different one with a very different trust level).
   list, extensible) MUST emit exactly one event per logical change — not
   zero (silently mutating with no event, defeating phase 15/Activity's
   ability to observe anything), not more than one for a single logical
-  operation (e.g. `ReconcileProgress`, `domain-reading.md` FR-6, emits
-  one `ReadingProgressUpdated` for the reconciled result, not one per
-  input report).
+  operation (e.g. a progress reconciliation that *advances* the canonical
+  value — `domain-reading.md` FR-6's `Advanced` or FR-7's `overridden`
+  outcome — emits one `ReadingProgressUpdated` for the reconciled result,
+  not one per input report). A reconciliation whose outcome is `Rejected`
+  or `Unchanged` (`domain-reading.md` FR-6 as amended 2026-09-01) mutates
+  nothing, and so emits nothing — that is not a "zero" violation, because
+  there was no mutation to describe.
 
   **This is a rule about emission, not delivery.** Exactly one event is
   *written*, in the same transaction as the mutation it describes
@@ -284,7 +288,7 @@ state of its own.
 | A new event type implementing neither `PublicEvent` nor `SensitiveEvent` | Doesn't compile — `Event` is sealed by an unexported method, so a type that satisfies neither marker cannot be constructed or passed anywhere events flow (FR-1) | A compiler error | N/A — this is the point |
 | A logging sink handed a `SensitiveEvent` | Doesn't compile — the sink is declared over `PublicEvent` (FR-3) | A compiler error at the call site | N/A; there is no runtime path to reach |
 | A logging consumer attempts to register for a `Sensitive` event stream | FR-3's registration-time rejection | An error at wiring time, not a runtime leak discovered later | Refused; the logging pipeline never receives the event |
-| `ReconcileProgress` (a single logical operation) accidentally emits two events | FR-5 violation, caught by a test, not by this domain at runtime | N/A — this is a test-time correctness check, not a runtime-enforced invariant (no cheap way to detect "should have been one event" generically) | Named as a testable requirement, not something the type system can catch, unlike FR-1/FR-3 |
+| A progress reconciliation accidentally emits two events, or emits one on a `Rejected`/`Unchanged` outcome | FR-5 violation, caught by a test, not by this domain at runtime | N/A — this is a test-time correctness check, not a runtime-enforced invariant (no cheap way to detect "should have been one event" generically) | Named as a testable requirement, not something the type system can catch, unlike FR-1/FR-3 |
 
 ## Security considerations
 
@@ -341,9 +345,10 @@ This entire spec is a security/privacy control. Restated concretely:
       (sensitive) and the Discover path emits `EditionCreated` (public)
       for what is otherwise the same record creation — FR-2's acquisition
       split, which is the one classification a compiler cannot check
-- [ ] `ReconcileProgress` (`domain-reading.md` FR-6) writes exactly one
-      `ReadingProgressUpdated` per call, tested directly — emission, not
-      delivery (FR-5)
+- [ ] A progress reconciliation writes exactly one `ReadingProgressUpdated`
+      when it advances the canonical value (`Advanced`/`overridden`) and
+      zero when it does not (`Rejected`/`Unchanged`) — `domain-reading.md`
+      FR-6 as amended; tested directly — emission, not delivery (FR-5)
 
 ## Open questions
 
