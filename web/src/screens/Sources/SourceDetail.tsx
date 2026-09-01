@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '../../components/Button/Button'
 import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { Input } from '../../components/Input/Input'
 import { SourceCandidateList } from '../../components/SourceCandidateList/SourceCandidateList'
 import { SourceStatusBadge } from '../../components/SourceStatusBadge/SourceStatusBadge'
 import { Spinner } from '../../components/Spinner/Spinner'
+import { useDiscoverImport } from '../../data/import'
 import { useHealthCheckSource, useSource, useSourceCandidates } from '../../data/sources'
 import { ApiError } from '../../data/http'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -15,6 +17,7 @@ import { cx } from '../../lib/cx'
  * Renders browsable and searchable candidate books for a specific source.
  */
 export function SourceDetail() {
+  const navigate = useNavigate()
   const params = useParams<{ id?: string; '*'?: string }>()
   const id =
     params.id ||
@@ -28,6 +31,7 @@ export function SourceDetail() {
     refetch: refetchSource,
   } = useSource(id)
   const healthCheckMutation = useHealthCheckSource()
+  const discoverMutation = useDiscoverImport()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -100,14 +104,40 @@ export function SourceDetail() {
             <p className="text-xs font-mono text-text-3 mt-4xs">{configDisplay}</p>
           </div>
 
-          <SourceStatusBadge
-            health={source.health}
-            onCheckAgain={() => healthCheckMutation.mutate(source.id)}
-            isChecking={
-              healthCheckMutation.isPending && healthCheckMutation.variables === source.id
-            }
-          />
+          <div className="flex items-center gap-sm">
+            <Button
+              variant="primary"
+              onClick={() => {
+                discoverMutation.mutate(
+                  { sourceId: source.id },
+                  {
+                    onSuccess: () => {
+                      navigate(`/import?sourceId=${encodeURIComponent(source.id)}`)
+                    },
+                  },
+                )
+              }}
+              disabled={discoverMutation.isPending}
+            >
+              {discoverMutation.isPending ? 'Discovering files...' : 'Import from this source'}
+            </Button>
+            <SourceStatusBadge
+              health={source.health}
+              onCheckAgain={() => healthCheckMutation.mutate(source.id)}
+              isChecking={
+                healthCheckMutation.isPending && healthCheckMutation.variables === source.id
+              }
+            />
+          </div>
         </div>
+
+        {discoverMutation.isError && (
+          <div className="rounded-md border border-danger/30 bg-danger/10 p-sm text-sm text-danger" role="alert">
+            {discoverMutation.error instanceof ApiError
+              ? discoverMutation.error.message
+              : 'Failed to start import discovery.'}
+          </div>
+        )}
       </div>
 
       {/* Search Input (only when canSearch: true) */}

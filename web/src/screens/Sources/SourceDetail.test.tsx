@@ -104,4 +104,30 @@ describe('SourceDetail Screen (FR-6)', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-404')
   })
+
+  it('triggers discover import mutation on click and navigates', async () => {
+    let discoverCalled = false
+    server.use(
+      http.get('*/api/v1/sources/src-123', () => HttpResponse.json(mockSource)),
+      http.get('*/api/v1/sources/src-123/browse', () =>
+        HttpResponse.json({ items: mockCandidates, nextCursor: null }),
+      ),
+      http.post('*/api/v1/import/discover', () => {
+        discoverCalled = true
+        return HttpResponse.json({ discoveredCount: 5, skippedCount: 0, jobIds: ['job-1'] }, { status: 202 })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<SourceDetail />, {
+      routerEntries: ['/sources/src-123'],
+    })
+
+    const importBtn = await screen.findByRole('button', { name: 'Import from this source' })
+    await user.click(importBtn)
+
+    await waitFor(() => {
+      expect(discoverCalled).toBe(true)
+    })
+  })
 })
