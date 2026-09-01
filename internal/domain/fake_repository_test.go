@@ -8,7 +8,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-
 // fakeWorkRepository is an in-memory domain.WorkRepository, used only by
 // this package's own tests (never internal/testutil — this fake is
 // domain-specific, not a cross-package fixture like Clock/FS).
@@ -293,7 +292,6 @@ func (r *fakeCollectionRepository) RemoveMember(_ context.Context, collectionID 
 	return nil
 }
 
-
 func (r *fakeCollectionRepository) Rename(_ context.Context, id domain.CollectionID, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -313,7 +311,6 @@ func (r *fakeCollectionRepository) Rename(_ context.Context, id domain.Collectio
 }
 
 var _ domain.CollectionRepository = (*fakeCollectionRepository)(nil)
-
 
 // fakeSourceRepository is the same pattern, for domain.SourceRepository.
 type fakeSourceRepository struct {
@@ -444,6 +441,10 @@ func (r *fakeReadingProgressRepository) FindByWork(_ context.Context, workID dom
 		return nil, &domain.Error{Category: domain.NotFound, Message: "reading progress not found"}
 	}
 	return p, nil
+}
+
+func (r *fakeReadingProgressRepository) FindByWorkForUpdate(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.FindByWork(ctx, workID)
 }
 
 func (r *fakeReadingProgressRepository) Save(_ context.Context, p *domain.ReadingProgress) error {

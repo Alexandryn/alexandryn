@@ -77,6 +77,24 @@ func ReconcileProgress(canonical *ReadingProgress, report ProgressReport) Reconc
 	}
 }
 
+// FirstProgress builds the canonical ReadingProgress from the very first
+// ProgressReport for a Work — Epoch 0, the report's values taken
+// directly (domain-reading.md State transitions: "first ProgressReport
+// becomes the canonical ReadingProgress directly", the report's
+// ObservedEpoch ignored because there was nothing to observe). The
+// caller mints the id.
+func FirstProgress(id ReadingProgressID, report ProgressReport) *ReadingProgress {
+	return &ReadingProgress{
+		id:              id,
+		workID:          report.WorkID,
+		percentage:      report.Percentage,
+		epoch:           0,
+		precisePosition: report.PrecisePosition,
+		deviceID:        report.DeviceID,
+		observedAt:      report.ReportedAt,
+	}
+}
+
 // OverrideProgress expresses a deliberate backward move (a real re-read,
 // domain-reading.md FR-7). It produces a new canonical value at
 // canonical.Epoch + 1 with the target percentage, unconditionally — the
