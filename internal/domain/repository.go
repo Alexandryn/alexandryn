@@ -111,6 +111,11 @@ type SourceRepository interface {
 type SourceOfferingRepository interface {
 	FindByID(ctx context.Context, id SourceOfferingID) (*SourceOffering, error)
 	FindBySource(ctx context.Context, sourceID SourceID) ([]*SourceOffering, error)
+	// FindByEdition returns every SourceOffering for editionID, most
+	// recently observed first — the fallback order the reader's content
+	// path tries sources in (backend-reader-content.md FR-2). An empty
+	// slice (never a NotFound error) when the Edition has no offerings.
+	FindByEdition(ctx context.Context, editionID EditionID) ([]*SourceOffering, error)
 	Save(ctx context.Context, o *SourceOffering) error
 	Delete(ctx context.Context, id SourceOfferingID) error
 }

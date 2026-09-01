@@ -392,6 +392,18 @@ func (r *fakeSourceOfferingRepository) FindBySource(_ context.Context, sourceID 
 	return result, nil
 }
 
+func (r *fakeSourceOfferingRepository) FindByEdition(_ context.Context, editionID domain.EditionID) ([]*domain.SourceOffering, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var result []*domain.SourceOffering
+	for _, o := range r.offerings {
+		if o.EditionID() == editionID {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
+
 func (r *fakeSourceOfferingRepository) Save(_ context.Context, o *domain.SourceOffering) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
