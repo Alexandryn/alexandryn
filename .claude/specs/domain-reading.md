@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19) — **FR-6/FR-7 must not be implemented until amended**: the two are mutually unsatisfiable (furthest-wins with an explicit override is not order-independent), and the acceptance criteria at `:251-255` cannot both pass. Amendment pending, Group 2a; reconciliation becomes max over `(epoch, percentage)` per that pass. Separately amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) findings 7 and 8 — Open questions sharpens what phase 11's `PrecisePosition` format must survive and records a phase-14 cross-device identity-agreement gap; neither touches FR-6/FR-7, needs re-confirmation |
+| **Status** | `APPROVED` — FR-6/FR-7 amended 2026-09-01 for [`0048`](../reviews/0048-phase02-correctness-review.md) finding 1 (the Group 2a change): reconciliation is now `max` over the total order `(epoch, percentage)`, with a server-assigned monotonic `epoch`, an observed-epoch precondition that yields a third `Rejected` outcome for a stale report, and an explicit backward move expressed as a server epoch bump rather than a free-form override. `ProgressReport` gains `ObservedEpoch`; `ReadingProgress` gains `Epoch`. Acceptance criteria `:251-255` rewritten to be jointly satisfiable. Implementable as of this amendment (phase 11). Separately amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) findings 7 and 8 — Open questions sharpens what phase 11's `PrecisePosition` format must survive and records a phase-14 cross-device identity-agreement gap. Maintainer re-confirmation of both amendments pending. |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -75,19 +75,23 @@ devices report different progress for the same book.
   literal text. It doesn't, because this FR forbids it directly.
 - **FR-2** The canonical, singleton `ReadingProgress` (FR-1) carries a
   `Percentage` (0.0–1.0, edition-independent, always meaningful) as its
-  primary, portable value; an optional `PrecisePosition` tagged with the
-  `Edition` ID it was recorded against; and `DeviceID`/`observed-at`
-  recording *provenance* — which device's report is currently reflected,
-  and when. These provenance fields describe the canonical record's
-  history, not a second, independently-stored copy. A `PrecisePosition`
-  is used only when the user is reading that *same* `Edition` again;
-  reading a *different* `Edition` of the same `Work` falls back to
-  `Percentage` as the best available estimate, per ADR 0009. An incoming
-  update from a device (a **`ProgressReport`** — `Work` ID, `Percentage`,
-  optional `PrecisePosition`, `DeviceID`, reported-at) is a distinct,
-  ephemeral type, never itself persisted — it exists only as
-  `ReconcileProgress`'s input (FR-6), which produces the next value of
-  the one canonical `ReadingProgress` row.
+  primary, portable value; an **`Epoch`** (a non-negative, monotonically
+  non-decreasing integer, server-assigned — see FR-6, and never set or
+  advanced by a reporting device directly); an optional `PrecisePosition`
+  tagged with the `Edition` ID it was recorded against; and
+  `DeviceID`/`observed-at` recording *provenance* — which device's report
+  is currently reflected, and when. These provenance fields describe the
+  canonical record's history, not a second, independently-stored copy. A
+  `PrecisePosition` is used only when the user is reading that *same*
+  `Edition` again; reading a *different* `Edition` of the same `Work`
+  falls back to `Percentage` as the best available estimate, per ADR
+  0009. An incoming update from a device (a **`ProgressReport`** — `Work`
+  ID, `Percentage`, optional `PrecisePosition`, `DeviceID`, reported-at,
+  and an **`ObservedEpoch`**: the `Epoch` value the reporting device last
+  received from the server for this `Work`, or `0` if it has never
+  synced) is a distinct, ephemeral type, never itself persisted — it
+  exists only as `ReconcileProgress`'s input (FR-6), which produces the
+  next value of the one canonical `ReadingProgress` row.
 - **FR-3** `Bookmark` and `Highlight` MUST attach to `Edition` (not
   `Work`), since their position data is inherently content/format-specific
   — a bookmark at "location 4210" is only meaningful for the exact
@@ -105,26 +109,72 @@ devices report different progress for the same book.
   first `ReadingPreferences` MUST start from system defaults — there is
   no cross-device inheritance; a second device does not silently copy a
   first device's settings.
-- **FR-6** Conflict resolution (ADR 0009: furthest-`Percentage`-wins, with
-  an explicit override) MUST be a named domain operation —
-  `ReconcileProgress(canonical ReadingProgress, incoming ProgressReport)
-  -> ReadingProgress` (FR-2's types) — taking the current singleton
-  (FR-1) and one incoming report for the same `Work` and producing the
-  next canonical value. Never implicit in whichever write happens to land
-  last in storage. `ReconcileProgress` MUST be commutative and
-  associative: folding any number of devices' reports into the canonical
-  value, in any order, MUST produce the same result. This is what makes
-  multi-device sync (phase 14) correct regardless of message arrival
-  order — without it, two devices syncing in a different order than two
-  others could disagree about the canonical progress. "Furthest wins"
-  satisfies this by construction (it's a max function); stated here as a
-  requirement so a future change to the reconciliation rule can't
-  silently drop the property.
-- **FR-7** `ReconcileProgress` (FR-6) MUST accept an explicit override
-  (the user deliberately choosing the "earlier" position, e.g. after a
-  real re-read) — furthest-wins is the *default*, not the *only* legal
-  outcome, or FR-6's own "deliberately re-reading a chapter" user story
-  becomes impossible to satisfy.
+- **FR-6** Conflict resolution (ADR 0009) MUST be a named domain
+  operation — `ReconcileProgress(canonical ReadingProgress, incoming
+  ProgressReport) -> ReconcileResult` (FR-2's types) — taking the current
+  singleton (FR-1) and one incoming report for the same `Work` and
+  producing the next canonical value plus an outcome tag. Never implicit
+  in whichever write happens to land last in storage.
+
+  The rule is **`max` over the total order `(epoch, percentage)`**,
+  compared lexicographically (`epoch` first, `percentage` as tiebreak).
+  The report's ordering key is a fixed function of the report alone:
+  `(report.ObservedEpoch, report.Percentage)`. Reconciliation compares
+  that key against the canonical `(Epoch, Percentage)`:
+
+  - report key **strictly greater** — the report advances the canonical
+    value; outcome `Advanced`. The new canonical takes the report's
+    `Percentage`, `PrecisePosition`, `DeviceID`, and reported-at as
+    provenance, and keeps `Epoch` equal to the report's `ObservedEpoch`
+    (which, for a normal forward report, equals the canonical `Epoch`
+    already — a device reporting `ObservedEpoch` *higher* than the
+    stored `Epoch` is clamped down to the stored value before comparison,
+    since only the server assigns `Epoch`, so such a report can only ever
+    compete on `Percentage` at the current epoch).
+  - report key **equal** — no mutation; outcome `Unchanged`. Provenance
+    is not rewritten for an exact tie (this is what makes the operation
+    deterministic without a separate tiebreak — a tie is a no-op in a
+    `max` fold; see Open questions, now closed).
+  - report key **strictly less** — the report is behind the canonical
+    value; outcome `Rejected`. The canonical value is returned unchanged.
+    A report with `ObservedEpoch` below the stored `Epoch` (a device that
+    was offline across an epoch bump — FR-7) always lands here: it was
+    formed against a superseded view and must re-sync before it can
+    compete again.
+
+  `ReconcileProgress` MUST be commutative and associative **over the set
+  of well-formed `ProgressReport`s at the current epoch** (each carrying
+  `ObservedEpoch` equal to the stored `Epoch` — the honest steady-state
+  case): folding any number of such reports into the canonical value, in
+  any order, MUST produce the same result. This holds by construction —
+  within that set the report key is exactly `(Epoch, report.Percentage)`,
+  a fixed function of the report, so the final canonical value is `max`
+  over a fixed multiset under a total order. The `Advanced`/`Unchanged`/
+  `Rejected` tag is a per-step label; it does not affect the fold's final
+  value. The clamp (for an `ObservedEpoch` above the stored `Epoch`) and
+  the stale-report `Rejected` path (for one below it) are boundary
+  defences for malformed or out-of-date input, outside this set — they
+  do not need to preserve the fold property, only to be deterministic,
+  which they are. This is what makes multi-device sync (phase 14) correct
+  regardless of message arrival order.
+- **FR-7** A deliberate backward move (the user choosing an "earlier"
+  position after a real re-read, ADR 0009's own user story) is expressed
+  as a **server epoch bump**, not a free-form flag on a concurrent
+  report. A distinct operation — `OverrideProgress(canonical
+  ReadingProgress, target Percentage, at PrecisePosition, by DeviceID) ->
+  ReadingProgress` — produces a new canonical value with `Epoch =
+  canonical.Epoch + 1` and `Percentage = target`, unconditionally (the
+  bumped epoch makes `(canonical.Epoch + 1, target)` strictly greater
+  than the old `(canonical.Epoch, anything)` under the FR-6 order, so the
+  override always wins without special-casing the comparison). This is a
+  deliberate, server-serialised act — two overrides racing are ordered by
+  the server one at a time, each seeing the other's committed epoch,
+  never folded concurrently — so it is explicitly **outside** FR-6's
+  commutativity guarantee, which covers automatic background progress
+  reports only. After an override, every device still reporting the old
+  epoch is `Rejected` by FR-6 until it re-syncs and observes the new
+  `Epoch` — which is the intended effect: the re-read sticks, and a stale
+  device cannot silently clobber it.
 - **FR-8** A reading status (`NotStarted`, `InProgress`, `Finished`) MUST
   be computed from `Percentage` (0.0 → `NotStarted`, 1.0 → `Finished`,
   otherwise `InProgress`) — never stored separately, same
@@ -151,13 +201,22 @@ devices report different progress for the same book.
 ## Domain model
 
 - **`ReadingProgress`** — the canonical, singleton-per-`Work` record
-  (FR-1): internal ID, `Work` ID (required), `Percentage`,
+  (FR-1): internal ID, `Work` ID (required), `Percentage`, `Epoch`
+  (non-negative, monotonically non-decreasing, server-assigned — FR-2/
+  FR-6),
   `PrecisePosition` (optional, `Edition`-tagged — MUST belong to the same
   `Work`), `DeviceID` and observed-at timestamp recording *provenance*
   (which report is currently reflected), not a second stored copy.
 - **`ProgressReport`** — ephemeral, never persisted, `ReconcileProgress`'s
-  input only: `Work` ID, `Percentage`, `PrecisePosition` (optional),
-  `DeviceID`, reported-at (FR-2).
+  input only: `Work` ID, `Percentage`, `ObservedEpoch` (the `Epoch` the
+  device last saw for this `Work`, `0` if never synced — FR-2/FR-6),
+  `PrecisePosition` (optional), `DeviceID`, reported-at (FR-2).
+- **`ReconcileResult`** — `ReconcileProgress`'s return (FR-6): the next
+  canonical `ReadingProgress` and an outcome tag (`Advanced`,
+  `Unchanged`, `Rejected`). A pure value; the caller (phase 03/11's
+  persistence wiring) decides what to write and whether to emit
+  `ReadingProgressUpdated` (`domain-events.md` FR-5 — one event on
+  `Advanced`, none on `Unchanged`/`Rejected`, since neither mutates).
 - **`Bookmark`** — internal ID, `Edition` ID (required, FR-3), position,
   optional label.
 - **`Highlight`** — internal ID, `Edition` ID (required, FR-3), start
@@ -172,18 +231,28 @@ devices report different progress for the same book.
 ## API and contracts
 
 Not applicable — pure Go model. `FR-6`'s `ReconcileProgress` is a domain
-function signature (two `ReadingProgress` in, one out), not a transport
-concern; phase 03/14 wire it to whatever sync mechanism reports progress.
+function signature (a canonical `ReadingProgress` plus one
+`ProgressReport` in, a `ReconcileResult` out) and `FR-7`'s
+`OverrideProgress` is a second one; neither is a transport concern.
+Phase 11 (`backend-reading-api.md`) and phase 14 wire them to whatever
+mechanism reports progress, inside a row-locked transaction so the
+read-then-write is atomic.
 
 ## State transitions
 
 ```
 No ReadingProgress exists for a Work -> first ProgressReport becomes the
-    canonical ReadingProgress directly (no reconciliation needed, nothing to reconcile against)
+    canonical ReadingProgress directly, Epoch := 0 (nothing to reconcile
+    against; the report's ObservedEpoch is ignored, there was nothing to observe)
 ReadingProgress already exists (FR-1's singleton) -> a new ProgressReport arrives, any Device
-    -> ReconcileProgress(canonical, report) -> next canonical value (FR-6)
-    -> furthest Percentage wins by default (ADR 0009)
-    -> explicit override accepted (FR-7), e.g. user chooses to go back
+    -> ReconcileProgress(canonical, report) -> ReconcileResult (FR-6)
+    -> report key (ObservedEpoch, Percentage) vs canonical (Epoch, Percentage), lexical max
+    -> strictly greater: Advanced (canonical takes report's values, Epoch unchanged)
+    -> equal: Unchanged (no mutation, provenance not rewritten)
+    -> strictly less, or ObservedEpoch below stored Epoch: Rejected (canonical unchanged)
+Deliberate backward move -> OverrideProgress (FR-7), server-serialised
+    -> new canonical: Epoch := Epoch + 1, Percentage := target, unconditionally
+    -> every device still on the old Epoch is Rejected by FR-6 until it re-syncs
 Edition switched (same Work) -> Percentage carries over; PrecisePosition
     from the old Edition is not reused for the new one (FR-2)
 Bookmark/Highlight created -> scoped to one Edition; not carried over on
@@ -205,7 +274,9 @@ otherwise.
 
 | Failure | Detected how | Caller sees | System does |
 |---|---|---|---|
-| Two devices report conflicting progress for the same `Work` | `ReconcileProgress` invoked (FR-6) | The reconciled result (furthest by default) | Never silently drops a report at the *function* level — `ReconcileProgress` is deterministic and both inputs are known to it. **Correction**: the superseded report's value is not currently captured by any event (`domain-events.md` FR-5 requires exactly one `ReadingProgressUpdated` per reconciliation) — it is not "auditable via events" as an earlier draft of this spec claimed. Only the winning, canonical value is observable after the fact. |
+| Two devices report conflicting progress for the same `Work` at the same epoch | `ReconcileProgress` invoked (FR-6) | The reconciled result — lexical `max` over `(epoch, percentage)` | Never silently drops a report at the *function* level — `ReconcileProgress` is deterministic and both inputs are known to it. The superseded report's value is not captured by any event (`domain-events.md` FR-5 emits one `ReadingProgressUpdated` on `Advanced` only) — only the winning canonical value is observable after the fact. |
+| A device offline across an epoch bump reports its old-epoch progress | `ReconcileProgress`: `report.ObservedEpoch` below stored `Epoch` (FR-6) | Outcome `Rejected`; canonical returned unchanged | The device must re-sync (observe the new `Epoch`) and re-report before it can compete again — its offline progress is not lost by the device, just not accepted until it is reconciled against the current epoch |
+| Two deliberate overrides race | `OverrideProgress` serialised by the server (FR-7) | Each override sees the other's committed `Epoch`; the later one produces `Epoch + 1` again | Deterministic given server arrival order — an override is a deliberate user action, not a background report, so this is not a case FR-6's commutativity needs to cover |
 | `Percentage` reported outside `[0.0, 1.0]` | Construction-time validation | A domain-level error | Refused; no `ReadingProgress` constructed with an out-of-bounds value |
 | `PrecisePosition` exists but the user is now reading a different `Edition` | FR-2's fallback rule | `Percentage`-based position only | `PrecisePosition` from the prior `Edition` is not applied to the new one, avoiding a nonsensical position (e.g. a PDF page number applied to an EPUB) |
 
@@ -233,7 +304,7 @@ otherwise.
 |---|---|
 | Unit | FR-1 through FR-7, table-driven |
 | Integration | Not applicable — no I/O |
-| Property-based | "Progress never exceeds its bounds and never moves backwards without an explicit reset" (phase 02's own test strategy, verbatim) — generate adversarial sequences of reports and reconciliations, assert the invariant holds throughout |
+| Property-based | Two disjoint properties, so the override and the commutativity criteria are jointly satisfiable (`0048` finding 2): (a) over generated sequences of **same-epoch `ProgressReport`s only** — no overrides in the generator — `ReconcileProgress` folded in any order yields the same canonical value, and `Percentage` never exceeds `[0.0, 1.0]`; (b) `OverrideProgress` followed by any sequence of old-epoch reports leaves the override's `Percentage` canonical (every stale report `Rejected`) |
 | Table-driven | The cross-edition case phase 02's roadmap explicitly demands tested: progress on Edition A, switch to Edition B of the same Work, `Percentage` carries over, `PrecisePosition` does not |
 
 ## Acceptance criteria
@@ -248,11 +319,18 @@ otherwise.
       is rejected
 - [ ] A test proves switching editions preserves `Percentage` and drops
       the now-inapplicable `PrecisePosition`
-- [ ] A test proves `ReconcileProgress` picks the furthest `Percentage` by
-      default and accepts an explicit override for the backward case
-- [ ] A property-based test proves `ReconcileProgress` is commutative and
-      associative — reconciling three or more reports in different orders
-      always produces the same canonical result (FR-6)
+- [ ] A test proves `ReconcileProgress` picks the lexical `max` over
+      `(epoch, percentage)` — a further same-epoch `Percentage` advances,
+      an equal key is `Unchanged`, a lower key or a below-stored-epoch
+      `ObservedEpoch` is `Rejected` (FR-6)
+- [ ] A test proves `OverrideProgress` sets the canonical value to the
+      target `Percentage` at `Epoch + 1` unconditionally, and that every
+      subsequent old-epoch report is `Rejected` (FR-7)
+- [ ] A property-based test proves `ReconcileProgress` folded over any
+      number of **same-epoch** reports in any order always produces the
+      same canonical result — the generator emits no overrides, and a
+      second property (FR-7) covers the override case separately, so the
+      two criteria above are jointly satisfiable (`0048` findings 1, 2)
 - [ ] `Bookmark`/`Highlight` cannot be constructed without a valid
       `Edition` reference
 - [ ] A test proves no code path in this package can produce a log-shaped
@@ -276,9 +354,11 @@ otherwise.
   or duplicating an existing mark
   ([`0049`](../reviews/0049-real-world-edge-case-conformity-review.md),
   finding 7).
-- **Reconciliation when both reports have identical `Percentage`** — ADR
-  0009 doesn't cover an exact tie; likely "most recent observed-at wins"
-  as a tiebreaker, not decided here.
+- **Reconciliation when two reports have an identical `(epoch,
+  percentage)` key** — **closed** by the 2026-09-01 amendment: an exact
+  tie is `Unchanged`, a no-op in the `max` fold, provenance not
+  rewritten. No timestamp tiebreak is needed or wanted — one would
+  reintroduce an ordering dependence the fold is designed not to have.
 - **Cross-device identity agreement, ahead of phase 14** —
   `ReconcileProgress` (FR-6) assumes the system and every reporting
   device already agree on which `Work`/`Edition` a `ProgressReport` is

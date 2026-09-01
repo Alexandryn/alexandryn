@@ -45,6 +45,20 @@ staleness). This is a reconciliation *function*
 (`ReconcileProgress(existing, new) -> result`), never an implicit
 side effect of whichever write reaches storage last.
 
+## Addendum (2026-09-01) — reconciliation mechanism refined
+
+The conflict-resolution *intent* below stands: furthest reading progress
+wins, deliberate backward moves stay possible. The *mechanism* is
+refined per review [`0048`](../reviews/0048-phase02-correctness-review.md)
+finding 1, which showed "furthest-wins plus a free-form override" is not
+order-independent. `domain-reading.md` FR-6/FR-7 (amended the same day)
+now specify: reconciliation is lexical `max` over `(epoch, percentage)`
+with a server-assigned monotonic `epoch`; a stale report (observed epoch
+below the stored epoch) is `Rejected`; a deliberate backward move is a
+server epoch bump, serialised, explicitly outside the commutativity
+guarantee. This ADR's "Confidence" note — medium on the exact mechanism,
+tie-break open — is now resolved there.
+
 ## Options considered
 
 ### Option A — Attach to Work, Percentage primary, Edition-tagged precise position as fallback-aware secondary (chosen)

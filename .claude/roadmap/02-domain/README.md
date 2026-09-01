@@ -138,7 +138,10 @@ history from leaking into logs by accident.
       undecided, phase 11's job — a naive string comparison would be
       actively wrong, not just untested); and FR-6/FR-7
       (`ReconcileProgress`) aren't implemented at all, separately blocked
-      on that spec's own pending amendment
+      on that spec's own pending amendment — **amendment landed
+      2026-09-01 (`0048` finding 1: `max` over `(epoch, percentage)`);
+      phase 11 implements `ReconcileProgress`/`OverrideProgress` with
+      tests and closes this exception**
 - [x] The work/edition/file distinction holds throughout, with no shortcut type
 - [x] Books with no external metadata are a tested normal case —
       `TestNewWork_ZeroEditionsAndZeroExternalReferencesIsLegal`
