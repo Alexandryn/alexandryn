@@ -83,7 +83,7 @@ describe('SourceDetail Screen (FR-6)', () => {
 
     await waitFor(() => {
       expect(capturedSearchQuery).toBe('Gibson')
-      expect(screen.getByRole('heading', { name: 'Neuromancer', level: 3 })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Neuromancer', level: 2 })).toBeInTheDocument()
     })
   })
 
