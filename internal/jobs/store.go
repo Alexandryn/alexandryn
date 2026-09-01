@@ -337,7 +337,7 @@ func scanJob(row scannable) (Job, error) {
 		j.LockedBy = *lockedBy
 	}
 	if lastError != nil {
-		j.LastError = *lastError
+		j.LastError = RedactedText(*lastError)
 	}
 	if len(progressRaw) > 0 {
 		var p Progress

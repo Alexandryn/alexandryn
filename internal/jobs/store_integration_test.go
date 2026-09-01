@@ -206,7 +206,7 @@ func TestStore_Fail_RetryingThenDeadLetter(t *testing.T) {
 	if got.State != jobs.StateRetrying || !got.AvailableAt.Equal(nextRun) {
 		t.Fatalf("after fail #1: state=%q availableAt=%v", got.State, got.AvailableAt)
 	}
-	if got.LastError != "temporary glitch" {
+	if got.LastError.String() != "temporary glitch" {
 		t.Fatalf("LastError = %q", got.LastError)
 	}
 
@@ -274,7 +274,7 @@ func TestStore_RecoverStale_ReclaimsWithNewTokenAndRetryLogic(t *testing.T) {
 	if got.LeaseToken == originalToken {
 		t.Fatal("lease token was not regenerated on reclaim")
 	}
-	if got.LastError != "worker lease expired without heartbeat" {
+	if got.LastError.String() != "worker lease expired without heartbeat" {
 		t.Fatalf("LastError = %q", got.LastError)
 	}
 	if !got.AvailableAt.Equal(afterExpiry.Add(10 * time.Second)) {
