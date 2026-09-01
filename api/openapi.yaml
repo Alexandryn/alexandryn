@@ -1212,18 +1212,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportDiscoverResponse'
+              example:
+                discoveredCount: 5
+                skippedCount: 1
+                jobIds:
+                  - "01JJOB1"
+                  - "01JJOB2"
         '400':
           description: Source cannot list or invalid input.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "source does not support listing"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: Source not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/import/candidates:
     get:
@@ -1248,12 +1262,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportCandidateListResponse'
+              example:
+                candidates:
+                  - id: "01JCAND1"
+                    sourceId: "01JSRC1"
+                    fileReference:
+                      id: "dune.epub"
+                      format: "epub"
+                      sizeBytes: 1048576
+                    status: "pending"
+                    extractedMetadata:
+                      title: "Dune"
+                      authors:
+                        - "Frank Herbert"
+                      isbn: "9780441172719"
+                    matchCandidates:
+                      - type: "open_library_work"
+                        confidence: "high"
+                        title: "Dune"
+                        author: "Frank Herbert"
+                        openLibraryWorkKey: "OL893415W"
+                    createdAt: "2026-09-01T12:00:00Z"
+                    updatedAt: "2026-09-01T12:00:00Z"
         '400':
           description: Invalid status query param.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "invalid status filter"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/import/candidates/{id}/confirm:
     post:
@@ -1278,24 +1318,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportCandidate'
+              example:
+                id: "01JCAND1"
+                sourceId: "01JSRC1"
+                fileReference:
+                  id: "dune.epub"
+                  format: "epub"
+                  sizeBytes: 1048576
+                status: "confirmed"
+                createdAt: "2026-09-01T12:00:00Z"
+                updatedAt: "2026-09-01T12:00:00Z"
         '400':
           description: Invalid action or payload.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "invalid action"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '404':
           description: Candidate not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "candidate not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '409':
           description: Candidate not in pending status.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: conflict
+                message: "candidate is not pending"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
   /api/v1/import/candidates/{id}/reject:
     post:
@@ -1314,18 +1376,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportCandidate'
+              example:
+                id: "01JCAND1"
+                sourceId: "01JSRC1"
+                fileReference:
+                  id: "dune.epub"
+                  format: "epub"
+                  sizeBytes: 1048576
+                status: "rejected"
+                createdAt: "2026-09-01T12:00:00Z"
+                updatedAt: "2026-09-01T12:00:00Z"
         '404':
           description: Candidate not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "candidate not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
         '409':
           description: Candidate not in pending status.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: conflict
+                message: "candidate is not pending"
+                correlationId: 00000000-0000-0000-0000-000000000000
 
 components:
   securitySchemes:
