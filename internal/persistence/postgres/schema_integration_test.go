@@ -180,8 +180,11 @@ func TestSchema_Phase08MigrationIsReversible(t *testing.T) {
 	if err := goose.SetDialect("postgres"); err != nil {
 		t.Fatalf("SetDialect: %v", err)
 	}
-	if err := goose.DownContext(context.Background(), db, "."); err != nil {
-		t.Fatalf("goose down 00005: %v", err)
+	// Roll back to version 4 (before 00005) explicitly rather than a
+	// single step, so this test stays correct as later migrations are
+	// added on top of head.
+	if err := goose.DownToContext(context.Background(), db, ".", 4); err != nil {
+		t.Fatalf("goose down to 00004: %v", err)
 	}
 
 	if _, err := db.ExecContext(context.Background(), "SELECT config_base_url FROM sources LIMIT 1"); err == nil {
