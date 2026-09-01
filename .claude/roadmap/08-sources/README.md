@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Specs approved, implementation not started |
+| **Status** | `IMPLEMENTED` (Tiers 0–6 complete, security audit clear, ready for maintainer verification) |
 | **Depends on** | Phase 06 |
 | **Blocks** | 09, 10 |
 | **Opened** | — |
