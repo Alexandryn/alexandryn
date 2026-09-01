@@ -139,5 +139,18 @@ export const handlers = [
     return HttpResponse.json(generatedFixtures.searchSource['200'])
   }),
 
+  http.post('*/api/v1/import/discover', () =>
+    HttpResponse.json(generatedFixtures.discoverImport['202'], { status: 202 }),
+  ),
+  http.get('*/api/v1/import/candidates', () =>
+    HttpResponse.json(generatedFixtures.listImportCandidates['200']),
+  ),
+  http.post('*/api/v1/import/candidates/:id/confirm', () =>
+    HttpResponse.json(generatedFixtures.confirmImportCandidate['200']),
+  ),
+  http.post('*/api/v1/import/candidates/:id/reject', () =>
+    HttpResponse.json(generatedFixtures.rejectImportCandidate['200']),
+  ),
+
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]

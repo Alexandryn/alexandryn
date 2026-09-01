@@ -484,4 +484,111 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  discoverImport: {
+    '202': {
+      discoveredCount: 5,
+      skippedCount: 1,
+      jobIds: ['01JJOB1', '01JJOB2'],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'source does not support listing',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  listImportCandidates: {
+    '200': {
+      candidates: [
+        {
+          id: '01JCAND1',
+          sourceId: '01JSRC1',
+          fileReference: {
+            id: 'dune.epub',
+            format: 'epub',
+            sizeBytes: 1048576,
+          },
+          status: 'pending',
+          extractedMetadata: {
+            title: 'Dune',
+            authors: ['Frank Herbert'],
+            isbn: '9780441172719',
+          },
+          matchCandidates: [
+            {
+              type: 'open_library_work',
+              confidence: 'high',
+              title: 'Dune',
+              author: 'Frank Herbert',
+              openLibraryWorkKey: 'OL893415W',
+            },
+          ],
+          createdAt: '2026-09-01T12:00:00Z',
+          updatedAt: '2026-09-01T12:00:00Z',
+        },
+      ],
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'invalid status filter',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  confirmImportCandidate: {
+    '200': {
+      id: '01JCAND1',
+      sourceId: '01JSRC1',
+      fileReference: {
+        id: 'dune.epub',
+        format: 'epub',
+        sizeBytes: 1048576,
+      },
+      status: 'confirmed',
+      createdAt: '2026-09-01T12:00:00Z',
+      updatedAt: '2026-09-01T12:00:00Z',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'invalid action',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'candidate not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '409': {
+      code: 'conflict',
+      message: 'candidate is not pending',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  rejectImportCandidate: {
+    '200': {
+      id: '01JCAND1',
+      sourceId: '01JSRC1',
+      fileReference: {
+        id: 'dune.epub',
+        format: 'epub',
+        sizeBytes: 1048576,
+      },
+      status: 'rejected',
+      createdAt: '2026-09-01T12:00:00Z',
+      updatedAt: '2026-09-01T12:00:00Z',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'candidate not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '409': {
+      code: 'conflict',
+      message: 'candidate is not pending',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const
