@@ -255,30 +255,14 @@ func (s *Service) ConfirmOpenLibraryMatch(
 		}
 
 		if olDetail != nil && len(olDetail.Editions) > 0 {
-			matched := false
-			if meta.ISBN != nil && *meta.ISBN != "" {
-				for _, ed := range olDetail.Editions {
-					if ed.Language != "" {
-						if l, err := domain.NewLanguage(ed.Language); err == nil {
-							lang = l
-						}
-					}
-					if ed.Publisher != "" {
-						pub = ed.Publisher
-					}
-					matched = true
-					break
+			ed := olDetail.Editions[0]
+			if ed.Language != "" {
+				if l, err := domain.NewLanguage(ed.Language); err == nil {
+					lang = l
 				}
 			}
-			if !matched && olDetail.Editions[0].Title != "" {
-				if olDetail.Editions[0].Language != "" {
-					if l, err := domain.NewLanguage(olDetail.Editions[0].Language); err == nil {
-						lang = l
-					}
-				}
-				if olDetail.Editions[0].Publisher != "" {
-					pub = olDetail.Editions[0].Publisher
-				}
+			if ed.Publisher != "" {
+				pub = ed.Publisher
 			}
 		}
 

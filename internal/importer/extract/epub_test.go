@@ -4,20 +4,18 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
 )
 
-func TestExtractEPUB_ValidEPUB2And3(t *testing.T) {
+func TestExtractEPUB_Success(t *testing.T) {
 	ctx := context.Background()
 
-	// Build a valid synthetic EPUB archive
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
-	// mimetype (Store)
+	// mimetype (must be Store)
 	wMime, _ := zw.CreateHeader(&zip.FileHeader{Name: "mimetype", Method: zip.Store})
 	_, _ = wMime.Write([]byte("application/epub+zip"))
 
@@ -32,18 +30,18 @@ func TestExtractEPUB_ValidEPUB2And3(t *testing.T) {
 
 	// OEBPS/content.opf
 	wOpf, _ := zw.Create("OEBPS/content.opf")
-	_, _ = wOpf.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+	_, _ = wOpf.Write([]byte(`<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:title>Dune</dc:title>
     <dc:creator>Frank Herbert</dc:creator>
-    <dc:identifier id="pub-id" opf:scheme="ISBN">9780441172719</dc:identifier>
+    <dc:identifier id="isbn">978-0-441-17271-9</dc:identifier>
     <dc:language>en</dc:language>
     <dc:publisher>Chilton Books</dc:publisher>
-    <dc:description>Set on the desert planet Arrakis...</dc:description>
+    <meta name="cover" content="cover-image"/>
   </metadata>
   <manifest>
-    <item id="cover-img" href="images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>
+    <item id="cover-image" href="images/cover.jpg" media-type="image/jpeg"/>
     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
   </manifest>
   <spine>
@@ -59,8 +57,6 @@ func TestExtractEPUB_ValidEPUB2And3(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	meta, err := extract.Extract(ctx, extract.FormatEPUB, tmp)
 	if err != nil {
@@ -115,8 +111,6 @@ func TestExtractEPUB_MissingTitleIsErrNoTitle(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatEPUB, tmp)
 	if err != extract.ErrNoTitle {
@@ -138,8 +132,6 @@ func TestExtractEPUB_MalformedXMLIsErrMalformed(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatEPUB, tmp)
 	if err != extract.ErrMalformed {

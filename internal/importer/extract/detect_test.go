@@ -12,8 +12,6 @@ import (
 
 func TestDetectFormat_PDF(t *testing.T) {
 	tmp := createTempFile(t, []byte("%PDF-1.7\n%\xe2\xe3\xcf\xd3\n"))
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	format, err := extract.DetectFormat(tmp)
 	if err != nil {
@@ -48,8 +46,6 @@ func TestDetectFormat_EPUB(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	format, err := extract.DetectFormat(tmp)
 	if err != nil {
@@ -83,8 +79,6 @@ func TestDetectFormat_CBZ(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	format, err := extract.DetectFormat(tmp)
 	if err != nil {
@@ -106,8 +100,6 @@ func TestDetectFormat_TooManyEntries(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.DetectFormat(tmp)
 	if err != extract.ErrTooManyEntries {
@@ -117,8 +109,6 @@ func TestDetectFormat_TooManyEntries(t *testing.T) {
 
 func TestDetectFormat_Unknown(t *testing.T) {
 	tmp := createTempFile(t, []byte("random text content not a zip or pdf"))
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	format, err := extract.DetectFormat(tmp)
 	if err != nil {
@@ -135,6 +125,10 @@ func createTempFile(t *testing.T, data []byte) *os.File {
 	if err != nil {
 		t.Fatalf("CreateTemp: %v", err)
 	}
+	t.Cleanup(func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
+	})
 	if _, err := tmp.Write(data); err != nil {
 		t.Fatalf("Write: %v", err)
 	}

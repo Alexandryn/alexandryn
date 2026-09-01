@@ -83,7 +83,7 @@ func ExtractEPUB(ctx context.Context, f *os.File) (meta ExtractedMetadata, err e
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
+		defer func() { _ = rc.Close() }()
 
 		lr := io.LimitReader(rc, maxBytes+1)
 		data, err := io.ReadAll(lr)
