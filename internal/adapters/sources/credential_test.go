@@ -70,7 +70,7 @@ func TestCredential_NeverAppearsInFmt(t *testing.T) {
 	c := mustCredential(t)
 	for _, s := range []string{
 		fmt.Sprintf("%v", c),
-		fmt.Sprintf("%s", c),
+		c.String(),
 		fmt.Sprintf("%+v", c),
 		fmt.Sprint(c),
 	} {

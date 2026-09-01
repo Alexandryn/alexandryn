@@ -130,16 +130,6 @@ func (m *mockSourceRecordRepo) UpdateHealth(ctx context.Context, id, status, det
 
 var _ transporthttp.SourceRecordRepository = (*mockSourceRecordRepo)(nil)
 
-type mockRemovalService struct {
-	removedID domain.SourceID
-	err       error
-}
-
-func (m *mockRemovalService) Remove(ctx context.Context, id domain.SourceID, now time.Time) error {
-	m.removedID = id
-	return m.err
-}
-
 func testSourceCrypto(t *testing.T) transporthttp.SourceCrypto {
 	t.Helper()
 	key := bytes.Repeat([]byte{0x42}, 32)
