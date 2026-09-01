@@ -35,13 +35,14 @@ func (r *ReadingProgressRepository) FindByWork(ctx context.Context, workID domai
 
 	var id string
 	var percentage float64
+	var epoch int64
 	var precisePositionEditionID, precisePositionValue *string
 	var deviceID string
 	var observedAt time.Time
 	err := exec.QueryRow(ctx,
-		`SELECT id, percentage, precise_position_edition_id, precise_position_value, device_id, observed_at
+		`SELECT id, percentage, epoch, precise_position_edition_id, precise_position_value, device_id, observed_at
 			FROM reading_progress WHERE work_id = $1`, string(workID),
-	).Scan(&id, &percentage, &precisePositionEditionID, &precisePositionValue, &deviceID, &observedAt)
+	).Scan(&id, &percentage, &epoch, &precisePositionEditionID, &precisePositionValue, &deviceID, &observedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "reading progress not found"}
@@ -63,7 +64,7 @@ func (r *ReadingProgressRepository) FindByWork(ctx context.Context, workID domai
 	}
 
 	return domain.RehydrateReadingProgress(
-		domain.ReadingProgressID(id), workID, pct, precisePosition, domain.DeviceID(deviceID), observedAt,
+		domain.ReadingProgressID(id), workID, pct, epoch, precisePosition, domain.DeviceID(deviceID), observedAt,
 	), nil
 }
 
@@ -79,16 +80,17 @@ func (r *ReadingProgressRepository) Save(ctx context.Context, p *domain.ReadingP
 	}
 
 	_, err := exec.Exec(ctx, `INSERT INTO reading_progress
-			(id, work_id, percentage, precise_position_edition_id, precise_position_value, device_id, observed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+			(id, work_id, percentage, epoch, precise_position_edition_id, precise_position_value, device_id, observed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (id) DO UPDATE SET
 			work_id = EXCLUDED.work_id,
 			percentage = EXCLUDED.percentage,
+			epoch = EXCLUDED.epoch,
 			precise_position_edition_id = EXCLUDED.precise_position_edition_id,
 			precise_position_value = EXCLUDED.precise_position_value,
 			device_id = EXCLUDED.device_id,
 			observed_at = EXCLUDED.observed_at`,
-		string(p.ID()), string(p.WorkID()), float64(p.Percentage()),
+		string(p.ID()), string(p.WorkID()), float64(p.Percentage()), p.Epoch(),
 		precisePositionEditionID, precisePositionValue, string(p.DeviceID()), p.ObservedAt())
 	if err != nil {
 		return TranslateError(err)
