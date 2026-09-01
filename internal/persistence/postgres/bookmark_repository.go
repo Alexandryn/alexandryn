@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,9 +30,10 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 	exec := executorFrom(ctx, r.pool)
 
 	var editionID, position, label string
+	var createdAt time.Time
 	err := exec.QueryRow(ctx,
-		"SELECT edition_id, position, label FROM bookmarks WHERE id = $1", string(id),
-	).Scan(&editionID, &position, &label)
+		"SELECT edition_id, position, label, created_at FROM bookmarks WHERE id = $1", string(id),
+	).Scan(&editionID, &position, &label, &createdAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "bookmark not found"}
@@ -39,14 +41,14 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 		return nil, TranslateError(err)
 	}
 
-	return domain.NewBookmark(id, domain.EditionID(editionID), position, label), nil
+	return domain.NewBookmark(id, domain.EditionID(editionID), position, label, createdAt), nil
 }
 
 func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.Bookmark, error) {
 	exec := executorFrom(ctx, r.pool)
 
 	rows, err := exec.Query(ctx,
-		"SELECT id, position, label FROM bookmarks WHERE edition_id = $1", string(editionID))
+		"SELECT id, position, label, created_at FROM bookmarks WHERE edition_id = $1 ORDER BY created_at, id", string(editionID))
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -55,10 +57,11 @@ func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain
 	var result []*domain.Bookmark
 	for rows.Next() {
 		var id, position, label string
-		if err := rows.Scan(&id, &position, &label); err != nil {
+		var createdAt time.Time
+		if err := rows.Scan(&id, &position, &label, &createdAt); err != nil {
 			return nil, TranslateError(err)
 		}
-		result = append(result, domain.NewBookmark(domain.BookmarkID(id), editionID, position, label))
+		result = append(result, domain.NewBookmark(domain.BookmarkID(id), editionID, position, label, createdAt))
 	}
 	if err := rows.Err(); err != nil {
 		return nil, TranslateError(err)
@@ -69,13 +72,13 @@ func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain
 func (r *BookmarkRepository) Save(ctx context.Context, b *domain.Bookmark) error {
 	exec := executorFrom(ctx, r.pool)
 
-	_, err := exec.Exec(ctx, `INSERT INTO bookmarks (id, edition_id, position, label)
-		VALUES ($1, $2, $3, $4)
+	_, err := exec.Exec(ctx, `INSERT INTO bookmarks (id, edition_id, position, label, created_at)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (id) DO UPDATE SET
 			edition_id = EXCLUDED.edition_id,
 			position = EXCLUDED.position,
 			label = EXCLUDED.label`,
-		string(b.ID()), string(b.EditionID()), b.Position(), b.Label())
+		string(b.ID()), string(b.EditionID()), b.Position(), b.Label(), b.CreatedAt())
 	if err != nil {
 		return TranslateError(err)
 	}

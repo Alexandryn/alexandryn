@@ -6,6 +6,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
@@ -18,7 +19,7 @@ func TestBookmarkRepository_SaveAndFindByID_RoundTrip(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewBookmarkRepository(pool)
 
-	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-10", "Chapter start")
+	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-10", "Chapter start", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, b); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -56,9 +57,9 @@ func TestBookmarkRepository_FindByEdition(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-2', 'work-1', 'en', '')")
 	repo := postgres.NewBookmarkRepository(pool)
 
-	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "")
-	b2 := domain.NewBookmark("bookmark-2", "edition-1", "loc-2", "")
-	b3 := domain.NewBookmark("bookmark-3", "edition-2", "loc-3", "")
+	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "", time.Now().UTC().Truncate(time.Microsecond))
+	b2 := domain.NewBookmark("bookmark-2", "edition-1", "loc-2", "", time.Now().UTC().Truncate(time.Microsecond))
+	b3 := domain.NewBookmark("bookmark-3", "edition-2", "loc-3", "", time.Now().UTC().Truncate(time.Microsecond))
 	for _, b := range []*domain.Bookmark{b1, b2, b3} {
 		if err := repo.Save(ctx, b); err != nil {
 			t.Fatalf("Save %v: %v", b.ID(), err)
@@ -81,12 +82,12 @@ func TestBookmarkRepository_Save_UpdatesInPlace(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewBookmarkRepository(pool)
 
-	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "Original")
+	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "Original", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, b1); err != nil {
 		t.Fatalf("Save b1: %v", err)
 	}
 
-	b2 := domain.NewBookmark("bookmark-1", "edition-1", "loc-2", "Updated")
+	b2 := domain.NewBookmark("bookmark-1", "edition-1", "loc-2", "Updated", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, b2); err != nil {
 		t.Fatalf("Save b2: %v", err)
 	}
@@ -107,7 +108,7 @@ func TestBookmarkRepository_Delete(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewBookmarkRepository(pool)
 
-	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "")
+	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, b); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestBookmarkRepository_SQLInjectionProof(t *testing.T) {
 	repo := postgres.NewBookmarkRepository(pool)
 
 	hostileLabel := `O'Brien'; DROP TABLE bookmarks; --`
-	b := domain.NewBookmark("bookmark-injection", "edition-1", "loc-1", hostileLabel)
+	b := domain.NewBookmark("bookmark-injection", "edition-1", "loc-1", hostileLabel, time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, b); err != nil {
 		t.Fatalf("Save with hostile label: %v", err)
 	}

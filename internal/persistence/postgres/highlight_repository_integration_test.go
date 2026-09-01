@@ -6,6 +6,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
@@ -18,7 +19,7 @@ func TestHighlightRepository_SaveAndFindByID_RoundTrip(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewHighlightRepository(pool)
 
-	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "Important", "insight")
+	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "Important", "insight", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, h); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -59,9 +60,9 @@ func TestHighlightRepository_FindByEdition(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-2', 'work-1', 'en', '')")
 	repo := postgres.NewHighlightRepository(pool)
 
-	h1 := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "")
-	h2 := domain.NewHighlight("highlight-2", "edition-1", "loc-3", "loc-4", "", "")
-	h3 := domain.NewHighlight("highlight-3", "edition-2", "loc-5", "loc-6", "", "")
+	h1 := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "", time.Now().UTC().Truncate(time.Microsecond))
+	h2 := domain.NewHighlight("highlight-2", "edition-1", "loc-3", "loc-4", "", "", time.Now().UTC().Truncate(time.Microsecond))
+	h3 := domain.NewHighlight("highlight-3", "edition-2", "loc-5", "loc-6", "", "", time.Now().UTC().Truncate(time.Microsecond))
 	for _, h := range []*domain.Highlight{h1, h2, h3} {
 		if err := repo.Save(ctx, h); err != nil {
 			t.Fatalf("Save %v: %v", h.ID(), err)
@@ -84,12 +85,12 @@ func TestHighlightRepository_Save_UpdatesInPlace(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewHighlightRepository(pool)
 
-	h1 := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "Original", "cat-a")
+	h1 := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "Original", "cat-a", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, h1); err != nil {
 		t.Fatalf("Save h1: %v", err)
 	}
 
-	h2 := domain.NewHighlight("highlight-1", "edition-1", "loc-3", "loc-4", "Updated", "cat-b")
+	h2 := domain.NewHighlight("highlight-1", "edition-1", "loc-3", "loc-4", "Updated", "cat-b", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, h2); err != nil {
 		t.Fatalf("Save h2: %v", err)
 	}
@@ -110,7 +111,7 @@ func TestHighlightRepository_Delete(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
 	repo := postgres.NewHighlightRepository(pool)
 
-	h := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "")
+	h := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, h); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestHighlightRepository_SQLInjectionProof(t *testing.T) {
 	repo := postgres.NewHighlightRepository(pool)
 
 	hostileNote := `O'Brien'; DROP TABLE highlights; --`
-	h := domain.NewHighlight("highlight-injection", "edition-1", "loc-1", "loc-2", hostileNote, "")
+	h := domain.NewHighlight("highlight-injection", "edition-1", "loc-1", "loc-2", hostileNote, "", time.Now().UTC().Truncate(time.Microsecond))
 	if err := repo.Save(ctx, h); err != nil {
 		t.Fatalf("Save with hostile note: %v", err)
 	}
