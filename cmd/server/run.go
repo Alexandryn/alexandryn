@@ -40,6 +40,17 @@ type shutdownableServer interface {
 	Close() error
 }
 
+// jobRunner is the minimal surface run needs from the background job
+// worker pool (backend-job-queue.md): start it once PostgreSQL is
+// reachable (FR-1 step 6), stop it during graceful shutdown, between the
+// HTTP server stopping and the shared pool closing
+// (backend-service-lifecycle.md FR-6, amended for phase 09). *jobs.System
+// implements it; tests use a fake that records call order.
+type jobRunner interface {
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context) error
+}
+
 // clock is the one method run needs from "now" — FR-5's grace-period
 // deadline is computed from it instead of time.Now() directly, so a test
 // can fix it and assert the exact deadline without any real waiting
@@ -93,6 +104,12 @@ type runDeps struct {
 	// one call rather than two separate hooks.
 	newPool func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error)
 
+	// newJobSystem constructs the background job worker pool against the
+	// shared connection pool (FR-1 step 6). nil disables jobs — the
+	// default for tests that don't exercise them. A non-nil hook
+	// returning an error fails startup like any other step (FR-3).
+	newJobSystem func(cfg *config.Config, logger *slog.Logger, pool pgPool) (jobRunner, error)
+
 	// watchParent watches the Electron host parent process PID for termination (E25).
 	watchParent func(pid int) error
 
@@ -142,7 +159,7 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 // Close have both had their chance — never before, never concurrently.
 // pool may be nil: a shutdown signal arriving before FR-1 step 6 has
 // constructed one has nothing to close yet.
-func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, pool pgPool, logger *slog.Logger) int {
+func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, pool pgPool, jobSystem jobRunner, logger *slog.Logger) int {
 	logger.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
@@ -162,6 +179,20 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 		} else {
 			logger.Error("shutdown did not complete cleanly", "error", err.Error())
 		}
+	}
+
+	// backend-service-lifecycle.md FR-6, amended for phase 09: the job
+	// worker pool stops after the HTTP server has stopped accepting work
+	// and before the shared pgxpool a running job's heartbeat/completion
+	// write depends on is closed. A job still running when this grace
+	// period expires is abandoned to the reaper (backend-job-queue.md
+	// FR-10), not force-killed.
+	if jobSystem != nil {
+		jobCtx, jobCancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
+		if err := jobSystem.Shutdown(jobCtx); err != nil {
+			logger.Warn("job worker pool did not stop within the grace period", "error", err.Error())
+		}
+		jobCancel()
 	}
 
 	if pool != nil {
@@ -231,7 +262,7 @@ func run(ctx context.Context, deps runDeps) int {
 			// The signal that ended this loop was a shutdown, not a
 			// database failure — FR-4 requires attempting Shutdown, not
 			// exiting through the ordinary FR-3 failure path below.
-			return gracefulShutdown(cfg, deps, srv, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -251,7 +282,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if err := deps.runMigrations(ctx, cfg); err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -272,7 +303,7 @@ func run(ctx context.Context, deps runDeps) int {
 	pool, repos, err := deps.newPool(ctx, cfg)
 	if err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -355,16 +386,39 @@ func run(ctx context.Context, deps runDeps) int {
 
 	logger.Info("startup step completed", "step", "pool")
 
+	var jobSystem jobRunner
+	if deps.newJobSystem != nil {
+		js, err := deps.newJobSystem(cfg, logger, pool)
+		if err != nil {
+			logger.Error("startup failed", "step", "jobs", "error", err.Error())
+			pool.Close()
+			return 1
+		}
+		if js != nil {
+			js.Start(ctx)
+			jobSystem = js
+			logger.Info("startup step completed", "step", "jobs")
+		}
+	}
+
 	logger.Info("ready")
 
 	select {
 	case <-ctx.Done():
-		return gracefulShutdown(cfg, deps, srv, pool, logger)
+		return gracefulShutdown(cfg, deps, srv, pool, jobSystem, logger)
 	case err := <-serveErr:
 		// The server stopped on its own, not via a shutdown signal — no
 		// Shutdown was called, but FR-6's "close the pool before the
 		// process exits" applies regardless of why the process is
-		// exiting.
+		// exiting. The job worker pool still stops first, so a running
+		// job's final write lands before the pool goes away.
+		if jobSystem != nil {
+			jobCtx, jobCancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
+			if sErr := jobSystem.Shutdown(jobCtx); sErr != nil {
+				logger.Warn("job worker pool did not stop within the grace period", "error", sErr.Error())
+			}
+			jobCancel()
+		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("http server stopped unexpectedly", "error", err.Error())
 			pool.Close()

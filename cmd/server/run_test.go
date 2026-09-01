@@ -907,3 +907,118 @@ func TestRun_ParentWatch_FailureHaltsStartup(t *testing.T) {
 		t.Fatal("expected watchParent error to be logged")
 	}
 }
+
+// fakeJobRunner records Start/Shutdown against the shared order slice so
+// tests can assert the job worker pool's position in FR-1 step 6 and in
+// the FR-6 shutdown ordering (amended for phase 09).
+type fakeJobRunner struct {
+	order        *[]string
+	shutdownErr  error
+	shutdownCtxs []context.Context
+}
+
+func (j *fakeJobRunner) Start(context.Context) {
+	*j.order = append(*j.order, "jobStart")
+}
+
+func (j *fakeJobRunner) Shutdown(ctx context.Context) error {
+	*j.order = append(*j.order, "jobShutdown")
+	j.shutdownCtxs = append(j.shutdownCtxs, ctx)
+	return j.shutdownErr
+}
+
+func indexOf(order []string, step string) int {
+	for i, s := range order {
+		if s == step {
+			return i
+		}
+	}
+	return -1
+}
+
+// backend-service-lifecycle.md FR-6 (amended for phase 09): the job
+// worker pool starts after the pool is constructed and stops between the
+// HTTP server's Shutdown and the pool's Close.
+func TestRun_JobWorkerPoolStartsAfterPoolAndStopsBeforePoolClose(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+	jr := &fakeJobRunner{order: &order}
+	deps.newJobSystem = func(*config.Config, *slog.Logger, pgPool) (jobRunner, error) { return jr, nil }
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	run(ctx, deps)
+
+	poolIdx := indexOf(order, "pool")
+	startIdx := indexOf(order, "jobStart")
+	shutdownIdx := indexOf(order, "shutdown")
+	jobShutdownIdx := indexOf(order, "jobShutdown")
+	closeIdx := indexOf(order, "poolClose")
+
+	if poolIdx == -1 || startIdx == -1 || shutdownIdx == -1 || jobShutdownIdx == -1 || closeIdx == -1 {
+		t.Fatalf("missing a step in order = %v", order)
+	}
+	if startIdx < poolIdx {
+		t.Fatalf("job pool started before the connection pool: %v", order)
+	}
+	if shutdownIdx >= jobShutdownIdx || jobShutdownIdx >= closeIdx {
+		t.Fatalf("shutdown order = %v; want shutdown < jobShutdown < poolClose", order)
+	}
+}
+
+// The job worker pool's shutdown context uses the configured grace
+// period as its bound (FR-10), computed off the injected clock.
+func TestRun_JobWorkerPoolShutdownUsesGracePeriodDeadline(t *testing.T) {
+	var order []string
+	deps, _ := recordingDeps(t, &order)
+
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	deps.clock = testutil.NewFakeClock(fixed)
+	deps.loadConfig = func() (*config.Config, error) {
+		order = append(order, "config")
+		return &config.Config{
+			LogLevel:            "info",
+			BindAddress:         "127.0.0.1:0",
+			HTTPMaxBodyBytes:    1 << 20,
+			ShutdownGracePeriod: 9 * time.Second,
+		}, nil
+	}
+	jr := &fakeJobRunner{order: &order}
+	deps.newJobSystem = func(*config.Config, *slog.Logger, pgPool) (jobRunner, error) { return jr, nil }
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	run(ctx, deps)
+
+	if len(jr.shutdownCtxs) != 1 {
+		t.Fatalf("job Shutdown called %d times, want 1", len(jr.shutdownCtxs))
+	}
+	deadline, ok := jr.shutdownCtxs[0].Deadline()
+	if !ok || !deadline.Equal(fixed.Add(9*time.Second)) {
+		t.Fatalf("job Shutdown deadline = %v (ok=%v), want %v", deadline, ok, fixed.Add(9*time.Second))
+	}
+}
+
+// FR-3: a job-subsystem construction failure fails startup like any
+// other step — logged, non-zero exit, pool closed.
+func TestRun_JobSystemConstructionFailureExitsNonZero(t *testing.T) {
+	var order []string
+	deps, spy := recordingDeps(t, &order)
+	deps.newJobSystem = func(*config.Config, *slog.Logger, pgPool) (jobRunner, error) {
+		return nil, errors.New("job pool wiring is broken")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	code := run(ctx, deps)
+
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if indexOf(order, "poolClose") == -1 {
+		t.Fatalf("pool was not closed after the job-subsystem failure: %v", order)
+	}
+	if !spy.Contains("startup failed") {
+		t.Fatal("expected a startup-failed log line for the jobs step")
+	}
+}
