@@ -42,7 +42,6 @@ const SHARED: [string, string][] = [
 
 const HOST_ONLY: [string, string][] = [
   ['/sources', 'Sources'],
-  ['/sources/7', 'Source'],
   ['/import', 'Import'],
   ['/settings', 'Settings'],
   ['/system', 'System'],
@@ -121,6 +120,26 @@ describe('route table (FR-1)', () => {
     renderRoute('/discover/works/OL82563W')
     expect(
       await screen.findByRole('heading', { name: 'Middlemarch', level: 1 }),
+    ).toBeInTheDocument()
+  })
+
+  it('/sources/:id resolves to SourceDetail screen', async () => {
+    server.use(
+      http.get('*/api/v1/sources/:id', () =>
+        HttpResponse.json({
+          id: 'src-1',
+          label: 'Personal OPDS',
+          kind: 'opds',
+          config: { baseUrl: 'https://opds.example.org' },
+          hasCredential: false,
+          health: { status: 'reachable', checkedAt: null, detail: null },
+          capabilities: { canList: true, canSearch: false, canDownload: true },
+        }),
+      ),
+    )
+    renderRoute('/sources/src-1')
+    expect(
+      await screen.findByRole('heading', { name: 'Personal OPDS', level: 1 }),
     ).toBeInTheDocument()
   })
 
