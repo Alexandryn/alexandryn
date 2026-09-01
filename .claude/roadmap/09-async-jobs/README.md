@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Status** | Specs approved, implementation not started |
+| **Status** | Implementation complete on `feat/phase09-async-jobs` (2026-09-01); security audit `0009` clear; awaiting maintainer review to close |
 | **Depends on** | Phase 08 |
 | **Blocks** | 10, 15 |
-| **Opened** | — |
+| **Opened** | 2026-09-01 |
 | **Closed** | — |
 
 ## Objective
@@ -116,14 +116,25 @@ something real to build on rather than starting from nothing.
 
 ## Exit criteria
 
-- [ ] The broker-or-not ADR recorded and `Accepted`
-- [ ] `backend-job-queue.md` `APPROVED` with a recorded review
-- [ ] Enqueue, execute, retry, dead-letter all functional and tested,
-      including concurrent-worker correctness (no double-execution)
-- [ ] Job status and progress queryable by callers
-- [ ] Test coverage across unit, integration, and E2E for this slice
-- [ ] The spec in this phase is `VERIFIED`
-- [ ] Security audit recorded in `.claude/audits/` with no open Critical
-      or High findings
-- [ ] Documentation updated
-- [ ] Maintainer approval recorded
+- [x] The broker-or-not ADR recorded and `Accepted` (ADR `0014`)
+- [x] `backend-job-queue.md` `APPROVED` with a recorded review (`0036`)
+- [x] Enqueue, execute, retry, dead-letter all functional and tested,
+      including concurrent-worker correctness (no double-execution) —
+      `TestStore_ConcurrentClaim_NeverDoubleClaims` (20 goroutines / 8
+      jobs, zero duplicates), `TestEngine_SyntheticWalkthrough`,
+      `TestEngine_ExhaustsAttemptsThenDeadLetters`,
+      `TestEngine_PermanentFailureDeadLettersImmediately`
+- [x] Job status and progress queryable by callers — `Queue.GetJob` /
+      `Queue.ListJobs`, `Store.UpdateProgress`
+- [x] Test coverage across unit, integration, and E2E for this slice —
+      `internal/jobs` unit (backoff, state machine, registry, redaction,
+      queue validation) + integration (store operations, concurrency,
+      fencing, reaper, shutdown, synthetic walkthrough); `cmd/server`
+      lifecycle-ordering tests
+- [ ] The spec in this phase is `VERIFIED` — pending maintainer close
+- [x] Security audit recorded in `.claude/audits/` with no open Critical
+      or High findings — `0009-phase09-async-jobs.md` (2 Low, 2
+      Informational, all accepted)
+- [x] Documentation updated — spec + roadmap + specs/audits indexes;
+      `backend-service-lifecycle.md` FR-6's phase-09 amendment now realised
+- [ ] Maintainer approval recorded — pending
