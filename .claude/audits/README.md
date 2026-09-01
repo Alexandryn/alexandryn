@@ -54,4 +54,5 @@ No phase closes with an open Critical or High finding.
 | [0005](0005-phase05-desktop-host.md) | Phase 05 desktop host (Electron, parentwatch, IPC surface) | 2026-08-31 | 0 | 1 | 1 High finding, fixed same session |
 | [0006](0006-phase06-library.md) | Phase 06 library domain (backend API, frontend screens, collections) | 2026-08-31 | 0 | 0 | Clear |
 | [0007](0007-phase07-metadata.md) | Phase 07 metadata discovery & caching (Open Library client, cover LRU cache, Discover screen) | 2026-08-31 | 0 | 0 | Clear |
+| [0009](0009-phase09-async-jobs.md) | Phase 09 async jobs (PostgreSQL-backed queue, worker pool, retry/backoff, dead-letter, reaper, lifecycle wiring) | 2026-09-01 | 0 | 0 | Clear (2 Low, 2 Informational, all accepted) |
 

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `IMPLEMENTED` (branch `feat/phase09-async-jobs`, 2026-09-01; `APPROVED` via independent review `0036`, findings fixed, maintainer signed off 2026-08-15; security audit `0009` clear — no open Critical/High). `VERIFIED` pending maintainer close. |
 | **Phase** | `09-async-jobs` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
-| **Last updated** | 2026-08-15 |
+| **Last updated** | 2026-09-01 |
 | **Supersedes** | — |
 | **Reviewed in** | [`0036`](../reviews/0036-phase09-cross-spec-review.md) (two independent agents, cross-spec) — Needs rework at review time (1 Blocking, confirmed independently by both; 6 Major), all findings fixed; approved by maintainer 2026-08-15 |
 
