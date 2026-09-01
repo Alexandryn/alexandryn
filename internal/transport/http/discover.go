@@ -97,6 +97,7 @@ func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.Met
 		if cacheRepo != nil {
 			if cached, hit, err := cacheRepo.GetWork(r.Context(), openLibraryID); err == nil && hit && cached != nil {
 				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("X-Metadata-Cache", "hit")
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(cached)
 				return
@@ -121,6 +122,7 @@ func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.Met
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Metadata-Cache", "miss")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(detail)
 	})
@@ -152,6 +154,7 @@ func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCac
 				}
 				w.Header().Set("Content-Type", contentType)
 				w.Header().Set("Cache-Control", "public, max-age=2592000, immutable")
+				w.Header().Set("X-Metadata-Cache", "hit")
 				http.ServeFile(w, r, filePath)
 				return
 			}
@@ -184,6 +187,7 @@ func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCac
 			if saveErr == nil && savedPath != "" {
 				w.Header().Set("Content-Type", contentType)
 				w.Header().Set("Cache-Control", "public, max-age=2592000, immutable")
+				w.Header().Set("X-Metadata-Cache", "miss")
 				http.ServeFile(w, r, savedPath)
 				return
 			}
@@ -192,6 +196,7 @@ func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCac
 		// Direct byte write fallback
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Cache-Control", "public, max-age=2592000, immutable")
+		w.Header().Set("X-Metadata-Cache", "miss")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	})

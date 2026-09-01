@@ -240,6 +240,9 @@ func TestDiscoverWorkDetailHandler(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("got status %d, want 200", rec.Code)
 		}
+		if xmc := rec.Header().Get("X-Metadata-Cache"); xmc != "hit" {
+			t.Errorf("got X-Metadata-Cache %q, want 'hit'", xmc)
+		}
 		if upstreamCalled {
 			t.Error("expected cache hit to not call upstream client")
 		}
@@ -273,6 +276,9 @@ func TestDiscoverWorkDetailHandler(t *testing.T) {
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("got status %d, want 200", rec.Code)
+		}
+		if xmc := rec.Header().Get("X-Metadata-Cache"); xmc != "miss" {
+			t.Errorf("got X-Metadata-Cache %q, want 'miss'", xmc)
 		}
 		if cacheRepo.saveWorkCalls != 1 {
 			t.Errorf("expected 1 SaveWork call on cache miss, got %d", cacheRepo.saveWorkCalls)
@@ -363,6 +369,9 @@ func TestDiscoverCoverHandler(t *testing.T) {
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("got status %d, want 200", rec.Code)
+		}
+		if xmc := rec.Header().Get("X-Metadata-Cache"); xmc != "hit" {
+			t.Errorf("got X-Metadata-Cache %q, want 'hit'", xmc)
 		}
 		if cc := rec.Header().Get("Cache-Control"); cc != "public, max-age=2592000, immutable" {
 			t.Errorf("got Cache-Control %q, want 'public, max-age=2592000, immutable'", cc)
