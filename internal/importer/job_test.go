@@ -94,6 +94,11 @@ func (r *fakeCandidateRepo) UpdateFailed(ctx context.Context, id string, lastErr
 }
 
 func (r *fakeCandidateRepo) ExistsBySourceAndFileRefID(ctx context.Context, sourceID string, fileRefID string) (bool, error) {
+	for _, c := range r.candidates {
+		if c.SourceID == sourceID && c.FileReference.ReferenceID == fileRefID {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 
