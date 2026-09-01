@@ -125,7 +125,6 @@ func (r *ImportCandidateRepository) List(ctx context.Context, sourceID *string, 
 	if status != nil && *status != "" {
 		query += fmt.Sprintf(` AND status = $%d`, argIdx)
 		args = append(args, *status)
-		argIdx++
 	}
 
 	query += ` ORDER BY created_at, id`

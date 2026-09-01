@@ -52,7 +52,7 @@ func NewJobHandler(
 			_ = candRepo.UpdateFailed(ctx, payload.CandidateID, failErr, now)
 			return jobs.Permanent(fmt.Errorf("resolving source file: %w", err))
 		}
-		defer stream.Close()
+		defer func() { _ = stream.Close() }()
 
 		// 2. Materialize up to 250 MiB
 		tmpFile, cleanup, err := extract.Materialize(ctx, stream)

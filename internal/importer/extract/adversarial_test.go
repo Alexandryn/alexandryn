@@ -38,10 +38,10 @@ func TestAdversarial_ZipBombRejectedWithErrOversized(t *testing.T) {
 		Method: zip.Deflate,
 	})
 	if err != nil {
-		t.Fatalf("CreateHeader: %v", err)
+		t.Fatalf("create opf header: %v", err)
 	}
 
-	zeros := make([]byte, 10*1024*1024) // 10 MiB chunk of zeros
+	zeros := make([]byte, 10*1024*1024)
 	for i := 0; i < 21; i++ {
 		if _, err := wOpf.Write(zeros); err != nil {
 			t.Fatalf("write zero chunk: %v", err)
@@ -50,8 +50,6 @@ func TestAdversarial_ZipBombRejectedWithErrOversized(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err = extract.Extract(ctx, extract.FormatEPUB, tmp)
 	if err != extract.ErrOversized {
@@ -87,8 +85,6 @@ func TestAdversarial_ZipSlipSafe(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	// Extraction operates purely in memory
 	meta, err := extract.Extract(ctx, extract.FormatEPUB, tmp)
@@ -129,8 +125,6 @@ func TestAdversarial_TooManyZipEntries(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatCBZ, tmp)
 	if err != extract.ErrTooManyEntries {
@@ -149,8 +143,6 @@ func TestAdversarial_MalformedContainerXmlPanicRecovery(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatEPUB, tmp)
 	if err != extract.ErrMalformed {

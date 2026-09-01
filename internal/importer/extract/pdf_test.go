@@ -2,7 +2,6 @@ package extract_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
@@ -39,8 +38,6 @@ func TestExtractPDF_ValidPDF(t *testing.T) {
 	ctx := context.Background()
 
 	tmp := createTempFile(t, validPDF)
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	meta, err := extract.Extract(ctx, extract.FormatPDF, tmp)
 	if err != nil {
@@ -95,8 +92,6 @@ startxref
 `)
 
 	tmp := createTempFile(t, pdfWithoutTitle)
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatPDF, tmp)
 	if err != extract.ErrNoTitle {
@@ -108,8 +103,6 @@ func TestExtractPDF_CorruptedPDFIsErrMalformed(t *testing.T) {
 	ctx := context.Background()
 
 	tmp := createTempFile(t, []byte("%PDF-1.4\ncorrupted content truncated"))
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatPDF, tmp)
 	if err != extract.ErrMalformed {

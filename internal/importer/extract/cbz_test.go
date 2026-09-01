@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
@@ -43,8 +42,6 @@ func TestExtractCBZ_WithComicInfo(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	meta, err := extract.Extract(ctx, extract.FormatCBZ, tmp)
 	if err != nil {
@@ -79,8 +76,6 @@ func TestExtractCBZ_WithoutComicInfoReturnsErrNoTitle(t *testing.T) {
 	_ = zw.Close()
 
 	tmp := createTempFile(t, buf.Bytes())
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
 
 	_, err := extract.Extract(ctx, extract.FormatCBZ, tmp)
 	if err != extract.ErrNoTitle {
