@@ -38,8 +38,9 @@ type Engine struct {
 	jitter func() float64
 
 	startOnce sync.Once
-	cancel    context.CancelFunc
 	wg        sync.WaitGroup
+	mu        sync.Mutex // guards cancel
+	cancel    context.CancelFunc
 }
 
 // NewEngine builds a worker pool. Any zero field of cfg is filled from
@@ -65,7 +66,9 @@ func NewEngine(store *Store, registry *Registry, clock Clock, ids domain.IDGener
 func (e *Engine) Start(ctx context.Context) {
 	e.startOnce.Do(func() {
 		runCtx, cancel := context.WithCancel(ctx)
+		e.mu.Lock()
 		e.cancel = cancel
+		e.mu.Unlock()
 
 		for i := 0; i < e.cfg.Concurrency; i++ {
 			workerID := "worker-" + e.ids.NewID()
@@ -88,10 +91,13 @@ func (e *Engine) Start(ctx context.Context) {
 // exactly as a crash is recovered (FR-10). It never force-kills or
 // corrupts a job row.
 func (e *Engine) Shutdown(ctx context.Context) error {
-	if e.cancel == nil {
+	e.mu.Lock()
+	cancel := e.cancel
+	e.mu.Unlock()
+	if cancel == nil {
 		return nil // never started
 	}
-	e.cancel()
+	cancel()
 
 	done := make(chan struct{})
 	go func() {
