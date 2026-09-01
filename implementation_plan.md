@@ -1,380 +1,266 @@
-# Phase 08 — Sources: Implementation Plan
+# Phase 09 — Async Jobs: Implementation Plan
 
-**Status:** Reviewed 2026-08-31 — maintainer approved recommendations for 0.1, 0.2, 0.3 and open questions 2–6. Cleared to start Tier 0. No code written yet.
-**Branch:** `feat/phase08-sources`, created from `main` (phase 07 is merged — `main` tree == old `feat/phase07-metadata` tree, verified by empty `git diff`).
-**Governing specs:** `backend-source-adapter.md` (APPROVED), `frontend-source-management.md` (APPROVED), `domain-source.md` (APPROVED, phase 02).
-**Roadmap:** `.claude/roadmap/08-sources/README.md`.
+**Status:** Cleared to start. Spec `backend-job-queue.md` is `APPROVED`
+(independent review `0036`, findings fixed, maintainer signed off
+2026-08-15). ADR `0014` is `Accepted`. No stop-and-ask is owed before
+Tier 0: the scope is fixed by an approved spec and an accepted ADR, and
+this phase has no UI surface (spec Non-goals: "Any UI"), so the
+design-conformance check the constitution requires for UI-facing specs
+does not apply here.
+
+**Branch:** `feat/phase09-async-jobs`, from clean `main`
+(commit `0b5b280`, `git status` clean, phase 08 merged).
+
+**Governing docs:** `backend-job-queue.md` (THE authority),
+ADR `0014` (PostgreSQL-backed queue via `FOR UPDATE SKIP LOCKED`),
+`backend-service-lifecycle.md` FR-6 (amended for phase 09 — job worker
+pool shutdown ordering), `backend-persistence.md` (pool/migration
+patterns), `backend-test-harness.md` FR-3/FR-5/FR-6 (per-package DB,
+`FakeClock`, `FakeIDGenerator`), `backend-errors-and-logging.md` FR-8
+(redaction as a type property).
 
 ---
 
-## 0. Resolved before Tier 0
+## 0. Divergences from the task brief, named up front
 
-### 0.1 Design-reference conformance — RESOLVED: proceed on the approved spec
+The task brief and the approved spec disagree on two package-layout
+points. The spec is binding (constitution §1); the divergences are
+recorded here rather than reasoned around silently.
 
-**DesignSync pull, 2026-08-31.** Project `Alexandryn interactive prototype`
-(`78075626-e444-438f-8437-205d57129a37`, owner Luann). `list_files` →
-`Alexandryn Electron.dc.html` fetched and `diff`ed against the local
-`.design-reference/Alexandryn-Electron.dc.html`: **byte-identical for the
-Sources sections** (list `atSources`, detail `atSourceDetail`, and the
-`addOpen` wizard). The design project has not changed since the local
-sync; `ANALYSIS.md`'s 2026-08-13 date is still accurate. No re-sync of
-`.design-reference/` needed.
-
-What the capture actually draws (verified against the real remote file,
-not memory):
-
-- **`atSources`** — card grid; per card: abbr chip, name, `kind` mono
-  label, status pill (dot + one-word `state`), URL, `BOOKS` count,
-  `LAST SYNC`, "Sync"/"Open" row actions; a "Source activity" feed
-  below; a dashed "Add a source" card.
-- **`atSourceDetail`** — back link, header + status pill, "Sync now" /
-  "Edit" / "···", four stat tiles (`BOOKS INDEXED`, `LAST SYNC`,
-  `STORAGE`, `AUTHENTICATION`), an ACTIVITY feed, a CONFIGURATION panel
-  (Sync frequency, Metadata sync, Preferred format, On import),
-  "Disconnect source".
-- **Add-source modal** — a 4-step wizard: (1) source type, **5 kinds**
-  (OPDS, Local Folder, Remote Library, Cloud Storage, Custom Provider);
-  (2) Catalog URL + Display name + Username/Password + **"Store
-  credentials in the system keychain"** toggle + "Advanced settings";
-  (3) Test — "Connection successful / Responded in 148 ms" + a
-  Protocol/Auth/Entries/Formats table; (4) Configure — Synchronise
-  metadata, Sync frequency, Preferred format, On acquire.
-- Mock status vocabulary: **2 states only** (`Connected`/ok,
-  `Unavailable`/er).
-
-Every point where the capture exceeds or contradicts the approved
-`frontend-source-management.md` is either a **deliberately deferred
-phase** or an **approach the backend spec already decided against**:
-
-| Capture | Approved spec | Why spec wins |
+| Task brief says | Spec says | Followed |
 |---|---|---|
-| 5 source kinds | `local-folder` \| `opds` only | roadmap Scope→Out; `ANALYSIS.md` already tracks this "not a classification problem" |
-| "Store credentials in the system keychain" toggle | local key-file AES-256-GCM, always, no keychain | `backend-source-adapter.md` FR-13 + its "Local key file over OS-keychain integration" section decided this explicitly (Electron `safeStorage` is Node-only, would need an IPC round-trip per credential op) |
-| 4-step wizard, Test step, Configure step (sync freq / metadata sync / preferred format / on-import) | single form; health check auto-runs on create; no sync/format/import config | wizard step 4 is entirely phase 09 (scheduled re-check) + phase 10 (import) |
-| "Sync now" / "Last sync" / "Books indexed" / "Storage" / activity feed | health check (reachable/unreachable + `detail`); no counts, storage, sync, or events | phase 09/10; no source event surface this phase |
-| 2 status states | 11 states (FR-3) | 11 is a strict superset — richer, fully compatible |
-| no browse/search of contents; no HTTPS warning | FR-6 candidate browse+search; FR-5 inline HTTPS warning | spec adds these; capture is simply silent, not contradictory |
+| Repository at `internal/persistence/postgres/job_repository.go` | "This package (and the `jobs`/worker-pool code generally) lives in a new `internal/jobs` package … it depends on `internal/persistence` for its own `pgxpool` access" (FR-1) | **Spec.** The job store, worker pool, registry, and domain types all live in `internal/jobs`. The `pgxpool.Pool` is still the one shared pool `cmd/server` builds via `postgres.NewPool` — not a second pool. |
+| Worker engine under `internal/adapters/jobs/` *or* `internal/jobs/` | `internal/jobs` (FR-1) | **Spec** — `internal/jobs`. |
+| Column names `attempt_count`, `run_at`, `locked_at`, `locked_by` | `attempts`, `available_at`, `locked_until`, `lease_token` (FR-1) | **Spec** column names. `locked_by` (worker ID) is added as a nullable diagnostic column — it is not load-bearing (the `lease_token` is), but it makes a stuck job's owner visible without extra tooling. |
+| `ClaimNext(ctx, workerID, kinds, limit)` | `… LIMIT 1 …` single-row claim (FR-4) | Spec: one job per claim. No `limit` parameter. |
+| Domain types in `internal/domain/job.go` | "`Job` is a new, persistence-layer type owned entirely by this spec — not a `domain-*` type … MUST NOT be imported by `internal/domain`" (FR-1, Domain model) | **Spec.** Job types live in `internal/jobs`, never `internal/domain`. `internal/jobs` imports `internal/domain` only for `IDGenerator` and the typed `Error`. |
 
-**Decision (maintainer, 2026-08-31): proceed on the approved spec.**
-The phase-08 screen is a strict subset shape — card grid + 11-state
-health + capability badges + single-form add/edit/remove + candidate
-browse/search + HTTPS warning — rendered in the capture's visual
-language (card shape, mono `kind`/section labels, status pill, stat
-tiles) with the deferred surfaces (sync, counts, storage, activity,
-wizard, keychain toggle, extra kinds) left out. `ANALYSIS.md` needs no
-edit; this plan section is the recorded design-conformance evidence.
-
-### 0.2 Repository naming — RESOLVED: `SourceRecordRepository`
-
-`internal/persistence/postgres/source_repository.go` already exists (T24) implementing the thin `domain.SourceRepository` (id, label, capabilities, kind) used only by `domain.SourceRemovalService`. Phase 08 needs a richer persistent record (config, encrypted credential, health status/detail/timestamp, detected capabilities, validated search-link URL).
-
-A new type in `internal/persistence/postgres/sources.go` — `SourceRecordRepository` — owns the full phase-08 row. The existing `SourceRepository` and `SourceRemovalService` stay untouched for the atomic delete cascade (`domain-source.md` FR-6); the `DELETE` handler composes `SourceRemovalService` for the cascade and then relies on the same `sources` row being gone. Both types read/write the one `sources` table, which migration `00005` extends. No second table for source config.
-
-### 0.3 Component name — RESOLVED: `<SourceCandidateList>`
-
-The brief's Tier 4 says `<SourceCatalogBrowser>`; the approved spec (FR-6) names `<SourceCandidateList>`. **Spec wins** — the component is `<SourceCandidateList>`, with a thin `<SourceCatalogView>` screen-level wrapper if a container is useful.
-
-### 0.4 Open questions 2–6 — RESOLVED (maintainer: "go with your recommendations")
-
-- **SSRF scope (Q2):** implement exactly `backend-source-adapter.md` FR-4/FR-11 — origin-pin every source-supplied URL (cursor, discovered search link) to the configured `baseUrl` origin, disable redirect-following entirely, treat every `3xx` as failure. **No** DNS-based private-range block on the user's *configured* `baseUrl` (a LAN OPDS server is the primary use case and the spec's accepted threat model permits it). Record as an explicit accepted risk in audit `0008`. No dev override flag is built (nothing to override).
-- **Cursor signing key (Q4):** derive an HMAC subkey from the credential key file via stdlib `crypto/hkdf` if the pinned Go version has it; otherwise a second random key persisted in the same key-file format. Confirm at implementation.
-- **`Resolve` depth (Q5):** real implementation for both providers (local: traversal-checked `os.Open`; opds: origin-pinned authenticated `GET` of the acquisition href), no HTTP surface (spec Non-goals).
-- **`created_at` on `sources` (Q6):** added by migration `00005`; existing rows backfill via `DEFAULT now()`.
+`id` column type: `TEXT PRIMARY KEY`, matching every other table in this
+schema (migration `00002`'s own header: "TEXT primary keys throughout …
+no UUID column type needed, since the ID value is already a UUID string
+generated by internal/idgen"). The spec's "uuid" in FR-1 describes the
+*value*, which `internal/idgen.Generator` already produces.
 
 ---
 
-## 1. Architecture overview
+## 1. Tier breakdown and commit sequence
 
-```
-internal/adapters/crypto/           credential AES-256-GCM service + key file
-internal/adapters/sources/
-    candidate.go                    SourceCandidate DTO (adapter-owned, not domain)
-    provider.go                     Provider interface: List, Search, Resolve, Probe
-    origin.go                       same-origin check (FR-11)
-    concurrency.go                  global 50-slot semaphore (FR-14)
-    cursor.go                       opaque cursor encode/decode (server-signed)
-    local/                          local-folder Provider
-    opds/                           OPDS 1.2 (Atom) + 2.0 (JSON) Provider
-        client.go                   no-redirect HTTP client, size cap, timeout, Basic Auth
-        atom.go / atom_test.go      OPDS 1.2 parse → CandidateFeed
-        json.go / json_test.go      OPDS 2.0 parse → CandidateFeed
-        capability.go               CanSearch detection from root feed
-internal/domain/source_credential.go   Credential value type (dual redaction interfaces)
-internal/persistence/postgres/sources.go   SourceRecordRepository (full row)
-internal/transport/http/sources.go         8 handlers, line-1 validation
-```
+Each tier is RED → GREEN → REFACTOR. Integration tests are
+`//go:build integration`, unit tests carry no tag (must never need
+Postgres). Commits are atomic and conventional; **no `Co-Authored-By`,
+no AI-attribution trailers** (task rule + `/caveman-commit`).
 
-Domain boundary held: no OPDS/filesystem type enters `internal/domain`. `SourceCandidate` is adapter-owned (mirrors `NormalisedSearchResult` from phase 07). The only `domain` type the adapter constructs is `domain.FileReference` (`domain-source.md` FR-4, needs no `Edition`). `domain.Credential` is a new value type but only for the redaction contract; the ciphertext lives in the persistence layer.
+### Tier 0 — Planning & database schema
 
----
+1. `docs: add phase 09 async-jobs implementation plan` — this file.
+2. **RED**: `00006_phase09_jobs.sql` migration + schema integration tests
+   in `internal/persistence/postgres/schema_integration_test.go`
+   (table exists, status/attempts CHECK constraints, both indexes
+   present, down migration reversible and re-appliable) — tests fail
+   (no migration file yet is not how goose fails; the tests assert
+   columns/constraints that do not exist).
+3. **GREEN**: write `00006_phase09_jobs.sql`.
+   - Columns: `id TEXT PK`, `kind TEXT NOT NULL`,
+     `payload JSONB NOT NULL`, `status TEXT NOT NULL DEFAULT 'queued'`,
+     `attempts INT NOT NULL DEFAULT 0`, `max_attempts INT NOT NULL`,
+     `available_at TIMESTAMPTZ NOT NULL`, `locked_until TIMESTAMPTZ`,
+     `lease_token TEXT`, `locked_by TEXT`, `last_error TEXT`,
+     `progress JSONB`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
+     `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
+     `completed_at TIMESTAMPTZ`.
+   - CHECK: `status IN ('queued','running','retrying','completed','dead_letter')`,
+     `attempts >= 0`, `max_attempts >= 1`,
+     `attempts <= max_attempts` is **not** constrained (the reaper path
+     can legitimately leave `attempts == max_attempts` then dead-letter).
+   - Indexes: `jobs_claim_idx ON jobs (available_at) WHERE status IN ('queued','retrying')` (partial, matches the claim query's `WHERE`),
+     `jobs_reaper_idx ON jobs (locked_until) WHERE status = 'running'`.
+   - Down: `DROP TABLE jobs;` (with `DROP INDEX IF EXISTS` first for symmetry).
+   - Commit: `feat(persistence): add jobs table migration`.
 
-## 2. Tier-by-tier plan
+### Tier 1 — Domain & queue abstractions (`internal/jobs`, unit-only)
 
-Each tier: RED (failing tests) → GREEN → refactor → two independent subagent reviews (`agent-skills:review` + `agent-skills:security-and-hardening` where security-relevant) → `/commit`. Small commits per `incremental-implementation`.
+1. **RED/GREEN** `job.go`: `ID`, `Kind`, `State` (+ the five constants),
+   `Job` struct, `JobFilter`, `Progress {Current, Total int}`,
+   `HandlerFunc`, `ReportProgressFunc`, `Permanent(err)` +
+   `IsPermanent(err)` + private `permanentError`. State-transition
+   legality helper `State.CanTransitionTo` with a unit test proving
+   `completed`/`dead_letter` are terminal.
+   Commit: `feat(jobs): add job domain types and state machine`.
+2. **RED/GREEN** `errortext.go`: `RedactedText string` implementing
+   `slog.LogValuer` + `json.Marshaler` (both return `"[redacted]"`,
+   mirroring `config.RedactedString`), `String()` returns the real value
+   for Go callers (`GetJob`/`ListJobs`, spec FR-9). `redactError(err) string`:
+   the one central function every `last_error` write goes through —
+   truncates to 512 bytes on a rune boundary (spec Security). Unit tests:
+   truncation bound, rune safety, `LogValue`/`MarshalJSON` never leak.
+   Commit: `feat(jobs): add last_error truncation and redaction type`.
+3. **RED/GREEN** `backoff.go`: `Backoff {Base, Max time.Duration}`,
+   `Backoff.For(attempts int, jitter float64) time.Duration` =
+   `min(Base * 2^(attempts-1), Max)` then `± 20%` using `jitter ∈ [0,1)`.
+   `jitter` is injected (the poll loop passes `rand.Float64()`), never
+   called inline — keeps the unit test deterministic. Unit tests:
+   attempts 1..10, the `Max` cap, jitter stays within `±20%`, the
+   `attempts-1` exponent (first retry ≈ `Base`, not `2*Base`).
+   Commit: `feat(jobs): add exponential backoff with full jitter`.
 
-### Tier 0 — Contract, schema, migration, fixtures
+### Tier 2 — PostgreSQL job store (`internal/jobs`, integration)
 
-**Files**
-- `api/openapi.yaml`: add 8 operations under `/api/v1/sources*` with request/response schemas and **inline `application/json` examples** (gen-fixtures requires them). New component schemas: `Source`, `SourceConfig`, `SourceCredentialInput`, `SourceHealth`, `SourceCapabilities`, `SourceCandidate`, `SourceCandidatePage`, `SourceListResponse`. Reuse existing `Error`.
-- `internal/persistence/postgres/migrations/00005_phase08_sources.sql` (Goose up/down). Extends `sources`:
-  - `config_base_path TEXT NOT NULL DEFAULT ''`
-  - `config_base_url TEXT NOT NULL DEFAULT ''`
-  - `credential_ciphertext BYTEA` (nullable — null = no credential)
-  - `credential_nonce BYTEA` (nullable)
-  - `health_status TEXT NOT NULL DEFAULT 'unknown'` (`unknown|reachable|unreachable`)
-  - `health_detail TEXT` (nullable, closed vocab from FR-6)
-  - `health_checked_at TIMESTAMPTZ` (nullable)
-  - `search_link_url TEXT` (nullable — origin-validated once at health-check, FR-11)
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`
-  - `can_list/can_search/can_download` already exist; keep, default false.
-  - CHECK constraint: `kind IN ('local-folder','opds')` (new rows only; existing test rows use these or none). CHECK: a non-null credential requires `kind='opds'` (FR-1).
-  - Down migration drops the added columns.
-- `web/scripts/gen-fixtures.ts`: no code change; re-run `npm run mocks:gen-fixtures` to emit fixtures from the new examples.
-- `internal/testutil/contracttest/contract_test.go`: extend the route-completeness table so every `/api/v1/sources*` path has a registered handler and vice-versa.
+1. Own `TestMain` + `storeTestPool(t)` helper in `internal/jobs`
+   (`export_test.go` / `main_integration_test.go`): `testutil.WithPackageDatabase("jobs", …)`,
+   `postgres.Migrate`, `postgres.NewPool`. Mirrors the postgres package's
+   own harness.
+2. **RED** integration tests for `Store`, then **GREEN** `store.go`:
+   - `Enqueue(ctx, NewJob{Kind, Payload, MaxAttempts, AvailableAt})` → row `queued`.
+   - `ClaimNext(ctx, workerID string, kinds []string, now time.Time) (*Job, error)`:
+     `SELECT id FROM jobs WHERE status IN ('queued','retrying') AND available_at <= $1 ORDER BY available_at LIMIT 1 FOR UPDATE SKIP LOCKED`,
+     then `UPDATE … SET status='running', locked_until=$now+60s, lease_token=$tok, locked_by=$worker, attempts=attempts+1, updated_at=$now`
+     in one short transaction. `now` from the injected clock, never SQL `now()`.
+   - `Heartbeat(ctx, id ID, leaseToken string, now) (bool, error)` —
+     `UPDATE … SET locked_until=$now+60s WHERE id=$1 AND lease_token=$2`;
+     returns `false` when zero rows (lease reclaimed).
+   - `Complete(ctx, id, leaseToken, now, *Progress) (bool, error)` — fenced.
+   - `Fail(ctx, id, leaseToken, now, nextRunAt time.Time, deadLetter bool, lastErr string) (bool, error)` — fenced; writes `redactError`-bounded text.
+   - `RecoverStale(ctx, now) (int, error)` — reaper: per-row txn,
+     `status='running' AND locked_until < $now`, apply the FR-6
+     comparison against the already-incremented `attempts`, new
+     `lease_token`, `last_error='worker lease expired without heartbeat'`.
+   - `UpdateProgress(ctx, id, leaseToken, cur, total int) error` — its own txn (FR-8).
+   - `GetJob(ctx, id) (Job, error)` (NotFound → `domain.Error`),
+     `ListJobs(ctx, JobFilter{Kind, State}) ([]Job, error)`.
+   - Commits: `feat(jobs): add enqueue and claim store operations`,
+     `feat(jobs): add heartbeat, completion, and failure store operations`,
+     `feat(jobs): add stale-job reaper and status queries`.
+3. **RED/GREEN** the concurrency proof:
+   `TestStore_ConcurrentClaim_NeverDoubleClaims` — N goroutines on real
+   pooled connections race `ClaimNext` against M < N claimable jobs;
+   assert exactly M claims, zero duplicates, `attempts == 1` on each.
+   Commit: `test(jobs): prove concurrent claim never double-claims`.
 
-**RED tests**
-- Contract route-completeness test fails (paths declared, no handlers yet).
-- `schema_integration_test.go`: assert `00005` applies and the new columns/constraints exist; assert `down` then `up` round-trips.
-- `check-dist-*` unaffected.
+### Tier 3 — Worker pool & engine (`internal/jobs`)
 
-### Tier 1 — Adapters & providers (backend)
+1. **RED/GREEN** `registry.go`: `Registry`, `Register(kind, maxAttempts, HandlerFunc)`,
+   duplicate-kind panic at startup, `lookup`. Unit tests.
+2. **RED/GREEN** `queue.go`: `Queue` (holds `*Registry` + `*Store` +
+   `IDGenerator` + clock). `Register`, `Enqueue(ctx, kind, payload any)` —
+   `InvalidInput` `domain.Error` for an unregistered kind (FR-2),
+   JSON-marshals payload, pulls `maxAttempts` from the registry,
+   `available_at = clock.Now()`. `GetJob`, `ListJobs` delegate to store.
+   Unit tests with a fake store; the unregistered-kind rejection is
+   unit-level.
+3. **RED/GREEN** `engine.go`: `Engine` with `Config`
+   (`Concurrency 4`, `PollInterval 2s`, `LeaseDuration 60s`,
+   `HeartbeatInterval 20s`, `ReaperInterval 30s`, `Backoff{5s, 5m}` —
+   all in `config.go`, each flagged as an untuned placeholder per spec
+   Open questions). `Start(ctx)` launches `Concurrency` pollers + one
+   reaper. Each poller loop: on tick, `ClaimNext`; on a claim, run the
+   handler under a child `context.Context` with a per-job heartbeat
+   goroutine (every `HeartbeatInterval`); a zero-row heartbeat cancels
+   the handler context immediately and the poller writes no result
+   (FR-5). Handler return/panic → `recover()` → `Complete` or `Fail`
+   (with `Permanent`/attempts logic, FR-6), all fenced on the lease
+   token. `Shutdown(ctx)`: stop pollers claiming, cancel running
+   handlers, wait up to `ctx`'s deadline (FR-10).
+   - Tests use `FakeClock` + short real intervals where a goroutine
+     genuinely must be scheduled; time-driven assertions use the fake
+     clock and the store's `$now` parameter, no real `time.Sleep` in
+     assertions (spec Test strategy).
+   - Commits: `feat(jobs): add handler registry`,
+     `feat(jobs): add enqueue API with kind validation`,
+     `feat(jobs): add worker pool engine with heartbeat and reaper`,
+     `feat(jobs): add graceful shutdown for the worker pool`.
 
-#### 1a. Credential crypto (`internal/adapters/crypto/`)
+### Tier 4 — Server wiring & lifecycle integration (`cmd/server`)
 
-- `crypto.go`: `Service` with `Encrypt(plaintext []byte) (ciphertext, nonce []byte, err error)` and `Decrypt(ciphertext, nonce []byte) ([]byte, error)` — AES-256-GCM, `crypto/aes` + `crypto/cipher` + `crypto/rand`. No new dependency (constitution §9; spec's dependency-justification section).
-- `keyfile.go`: `LoadOrCreateKey(path string, hasCredentialedSources func() (int, error), logger *slog.Logger) ([]byte, error)` — FR-13's exact startup logic:
-  - key file present → read, verify 32 bytes.
-  - absent + `hasCredentialedSources()==0` → generate silently, write `0600`.
-  - absent + `>0` → `logger.Warn` with the affected **count only** (never labels), generate replacement `0600`.
-  - `0600` set at creation (`os.OpenFile(path, O_CREATE|O_EXCL|O_WRONLY, 0o600)`).
-  - Key path: `filepath.Join(userConfigDir, "alexandryn", "source-credentials.key")` — same directory family as `pgdata` (`cmd/server/spawn.go:128` precedent). `userConfigDir` injected for tests.
+1. **RED** `cmd/server/run_test.go` additions: the worker pool is
+   constructed at FR-1 step 6 (after the pool), and its `Shutdown` is
+   called **between** `srv.Shutdown` and `pool.Close` (FR-6 amendment
+   ordering). A fake engine records call order.
+2. **GREEN**: add `newJobEngine` hook to `runDeps`, construct in
+   `run` after `poolRef.Set(pool)`, thread it into `gracefulShutdown`
+   between the HTTP shutdown and `pool.Close`. `main.go` wires the real
+   `jobs.NewEngine` with the shared pool, `idgen.New()`, `realClock`,
+   and the configured `ShutdownGracePeriod` as the engine shutdown
+   bound (FR-10 — reuse, not a new config key).
+   - No job kinds are registered in production yet (Non-goals: "one
+     synthetic, worked-example handler only"). The synthetic handler is
+     test-only.
+   - Commit: `feat(server): wire job worker pool into lifecycle`.
 
-**RED tests** (`crypto_test.go`, `keyfile_test.go`)
-- Encrypt→Decrypt round-trip returns original.
-- Tampered ciphertext / wrong key → GCM auth-tag error (not silent garbage).
-- Wrong nonce → error.
-- Key file created with mode `0600` exactly (stat check).
-- Missing key + zero credentialed sources → silent generate, no warn line (capture `slog` output).
-- Missing key + N credentialed sources → one `warn` line containing `N`, **not** containing any source label; new key generated.
-- Corrupt key file (wrong length) → error, no panic.
+### Tier 5 — Verification & hostile boundary tests
 
-#### 1b. `domain.Credential` value type (`internal/domain/source_credential.go`)
+1. **RED/GREEN** `engine_integration_test.go` synthetic walkthrough
+   (spec E2E row): a test-only handler that fails transiently twice then
+   succeeds on the third attempt; `GetJob` reflects
+   `queued→running→retrying→…→completed`. A second handler returning
+   `Permanent(err)` → immediate `dead_letter`. A third exceeding
+   `max_attempts` → `dead_letter` after the last retry.
+   Commit: `test(jobs): synthetic job walkthrough end to end`.
+2. **RED/GREEN** the fencing test (review `0036` finding #1, spec Test
+   strategy): reclaim while the original worker is still alive; only the
+   current-`lease_token` write succeeds; the stale write affects zero
+   rows and is discarded.
+   Commit: `test(jobs): prove fenced stale write never overwrites reclaim`.
+3. **RED/GREEN** redaction test (spec Acceptance criterion): a handler
+   returning an error whose text contains a secret-shaped string — the
+   stored `last_error` is truncated, and a log-spy assertion proves no
+   status-transition log line carries the payload or error text
+   (Observability).
+   Commit: `test(jobs): prove no payload or error value is logged`.
+4. Full suite: `go test -race ./...`, `go test -race -tags=integration ./...`,
+   `golangci-lint run ./...`, `go vet ./...`, the four `scripts/check-*.sh`,
+   `npm --prefix web test`, `npm --prefix web run build`. Fix to green.
 
-- `Credential{ Username, Password string }` — unexported fields, constructor `NewCredential(user, pass string)` validating non-empty + bounded length + no control chars.
-- Implements `slog.LogValuer`, `json.Marshaler`, `fmt.Stringer` → all return `"[redacted]"` (mirror `config.RedactedString`; spec cites `backend-errors-and-logging.md` FR-8's dual-interface mechanism, "a future credential" is this case).
-- `Reveal() (user, pass string)` — the single deliberate accessor.
+### Tier 6 — Audit, review, PR, CI
 
-**RED tests** (`source_credential_test.go`)
-- `slog` of a struct embedding `Credential` never contains the real password (both single-attr and whole-struct paths — FR-8's dual concern).
-- `json.Marshal` of same never contains it.
-- `%v` / `%s` never contains it.
-- `Reveal()` returns the real values.
-- Empty username/password/control chars rejected.
-
-#### 1c. Shared adapter pieces (`internal/adapters/sources/`)
-
-- `candidate.go`: `SourceCandidate{ Title string; Author *string; FileReference domain.FileReference; CoverURL *string }`; `CandidateFeed{ Items []SourceCandidate; NextPageURL string }` (adapter-internal); `CandidatePage{ Items []SourceCandidate; NextCursor *string }` (returned to transport). De-dup by upstream entry id within a page (FR-9, mirrors phase 07 review 0034 #17).
-- `provider.go`: `Provider` interface —
-  ```go
-  type Provider interface {
-      Probe(ctx context.Context) ProbeResult                      // FR-6 + FR-5
-      List(ctx context.Context, cursor string, limit int) (CandidatePage, error)   // FR-7, FR-15
-      Search(ctx context.Context, q, cursor string, limit int) (CandidatePage, error) // FR-8
-      Resolve(ctx context.Context, ref domain.FileReference) (io.ReadCloser, error)  // FR-15 (stub OK this phase — no HTTP surface, but interface + local impl real)
-  }
-  type ProbeResult struct { Status string; Detail *string; Capabilities domain.SourceCapabilities; SearchLinkURL *string }
-  ```
-- `origin.go`: `SameOrigin(configured, candidate string) bool` — scheme+host+port compare after `url.Parse`; rejects non-http(s); used by cursor decode and capability detection (FR-11).
-- `concurrency.go`: `Semaphore` = buffered `chan struct{}` size 50, `TryAcquire() bool` (non-blocking, immediate `false` when full → transport maps to `503`), `Release()`. One global instance wired in `cmd/server`. (FR-14 — immediate reject, never queue.)
-- `cursor.go`: opaque cursor = base64(`HMAC-SHA256(key, payload) || payload`) where payload is `{sourceID, kind, position}` — position is last-seen filename (local) or the **already-origin-validated** next-page URL (opds). Decode re-checks HMAC + re-checks origin for opds before returning. Signing key: reuse the credential key or a derived subkey (HKDF) — decision: derive with `hkdf` from the same key file via `crypto/hkdf` (Go 1.24 stdlib) to avoid a second key file. **Flag:** if stdlib `crypto/hkdf` unavailable in the pinned Go version, fall back to a second random key in the same file format; will confirm Go version at implementation.
-
-**RED tests** (`origin_test.go`, `concurrency_test.go`, `cursor_test.go`)
-- `SameOrigin`: same host/scheme/port true; different host, different scheme, different port, `file://`, `http://169.254.169.254`, credential-in-url all false.
-- Semaphore: 50 acquires succeed, 51st `TryAcquire()` returns false; after `Release()` the next succeeds.
-- Cursor: tampered payload → decode error; valid round-trips; opds cursor whose embedded URL is off-origin → decode error even with valid HMAC.
-
-#### 1d. Local-folder provider (`internal/adapters/sources/local/`)
-
-- `local.go`: constructed with a **resolved real `basePath`** (`filepath.EvalSymlinks` once at construction). 
-- `Probe`: `os.Stat` basePath → `path-not-found` / `path-not-readable` / reachable; caps `CanList=true, CanDownload=true, CanSearch=false` (FR-5).
-- `List`: `os.ReadDir`, filter to regular files with a supported ebook extension (`.epub .pdf .mobi .azw3 .cbz .cbr .fb2 .djvu` — closed list, unsupported skipped), sort by name, page by cursor (last-seen filename). For each file: join+clean, `filepath.EvalSymlinks`, prefix-check resolved path is still under resolved basePath; **skip silently** (log `warn`, host-free) if outside or broken link (FR-12). Build `SourceCandidate` with `FileReference{ReferenceID: filename, Format: ext, SizeBytes: &size}` — filename is opaque, never re-concatenated from cursor.
-- `Search`: returns `409`-equivalent sentinel error (`CanSearch=false`).
-- `Resolve`: real — open the traversal-checked path, return the file handle (phase 10 consumer; TOCTOU residual accepted per FR-12).
-- `basePath` **shape** validation (`ValidatePath`) — separate, used by transport at create/update: absolute; no control chars; length ≤ host `PATH_MAX` (Linux 4096) / accept Windows UNC `\\server\share` shape (FR-3 amendment for review 0049 finding 6). Non-existence / unreadable is **not** a shape error — it's a health-check failure.
-
-**RED tests** (`local_test.go`) — table-driven against `t.TempDir()`
-- Lists supported files sorted; skips unsupported extensions; skips subdirectories.
-- Symlink whose name is inside basePath but target resolves outside → **omitted**, not error; `warn` logged without the target path.
-- Broken symlink → omitted.
-- Lexical `../` in a returned name is impossible (names come from `ReadDir`) but a crafted filename containing `..` is still treated as opaque and never escapes.
-- Pagination: cursor resumes at the right filename, no overlap, no gap; final page `NextCursor==nil`.
-- `ValidatePath`: relative path rejected; control-char path rejected; > 4096 chars rejected; UNC shape accepted; `/mnt/does-not-exist` passes shape (health check will fail later).
-- `Probe`: missing dir → `path-not-found`; unreadable dir (chmod 000) → `path-not-readable`; good dir → reachable + caps.
-
-#### 1e. OPDS provider (`internal/adapters/sources/opds/`)
-
-- `client.go`: `http.Client` with `CheckRedirect: func(...) error { return http.ErrUseLastResponse }` (FR-11 — redirects disabled entirely), 5s timeout, 5 MiB `io.LimitReader` cap, `Authorization: Basic` header always attached when a credential is configured (FR-4 — no "try without auth first"). Every outbound call goes through the global `Semaphore` (FR-14) — `503` on full. A `3xx` status → `http-3xx-unsupported` (probe) / `Unavailable` (browse/search).
-- `atom.go`: OPDS 1.2 parser. `encoding/xml` `Decoder` with `Strict=true`, **no custom `Entity` map**, `d.CharsetReader` restricted to UTF-8/US-ASCII only. Go's `encoding/xml` does not process `<!DOCTYPE>`/`<!ENTITY>` (no DTD support) → Billion Laughs / external-entity XXE structurally impossible; still assert this with fixtures. Additional bounds: max 5 MiB input (already capped upstream), max token depth (reject pathological nesting), max entry count per page (e.g. 500). Extract: feed `<link rel="self">`, `rel="next"`, `rel="search"` (→ OpenSearch description URL); per `<entry>`: `<title>`, `<author><name>`, acquisition link (`rel` prefix `http://opds-spec.org/acquisition`) → `FileReference` (href as opaque ReferenceID, `type` attr → format), `<link rel="http://opds-spec.org/image">` → coverUrl. Normalise into `CandidateFeed`. No raw XML type escapes.
-- `json.go`: OPDS 2.0 parser. `encoding/json` into a bounded struct. `metadata`, `links` (`self`/`next`/`search` templated), `publications[].metadata.{title,author}`, `.links[]` acquisition-typed → `FileReference`, `.images[]` → coverUrl. `navigation`/`groups` handled (navigation feed → items are sub-feed links, but for browse we only surface `publications`; a pure-navigation feed yields an empty page + the nav links are not candidates this phase — matches "list a directory's files" scope). Same 500-item cap.
-- `capability.go`: `DetectCapabilities(rootFeed)` — `CanList=true`, `CanDownload=true`, `CanSearch = rootFeed advertises rel="search" AND that search URL is same-origin as baseUrl` (FR-11 — off-origin search link → `CanSearch=false`, link discarded, not stored). Returns the validated search URL for persistence.
-- `probe.go`: `GET baseUrl`, expect 2xx, body parseable as Atom or 2.0 JSON, run capability detection, classify failures into the FR-6 closed vocabulary. `http-4xx` on a source **with a credential** → `auth-rejected`; credential-decrypt failure also → `auth-rejected` (FR-13, intentional ambiguity).
-
-**RED tests** (`atom_test.go`, `json_test.go`, `client_test.go`, `capability_test.go`) — recorded fixtures under `testdata/`
-- OPDS 1.2: real navigation feed, real acquisition feed, feed with duplicated `<entry><id>` → de-duped, feed with `<!DOCTYPE ... <!ENTITY lol ...>>` billion-laughs payload → parsed without expansion / rejected, no memory blowup; feed with external entity (`SYSTEM "file:///etc/passwd"`) → not resolved.
-- OPDS 2.0: real feed with `publications`, real navigation feed, templated search link, duplicated publication identifier → de-duped, deeply-nested JSON → bounded/rejected.
-- `client`: redirect response (302 to same-origin and to off-origin) → **never followed**, treated as failure; 5 MiB+1 body → capped/`Unavailable`; slow response → context timeout → `timeout`; `Authorization` header present on every request when credential set; absent when not.
-- `capability`: root feed with same-origin `rel="search"` → `CanSearch=true` + URL returned; off-origin `rel="search"` → `CanSearch=false`, URL not returned; no search link → `CanSearch=false`.
-- `probe`: 200 valid → reachable + caps; 401/403 with credential → `auth-rejected`; 404 no credential → `http-4xx`; 500 → `http-5xx`; 302 → `http-3xx-unsupported`; garbage body → `unparseable-response`; connection refused → `connection-refused`; hang → `timeout`.
-
-### Tier 2 — Persistence (`internal/persistence/postgres/sources.go`)
-
-- `SourceRecordRepository` methods:
-  - `Create(ctx, rec SourceRecord) error`
-  - `List(ctx) ([]SourceRecord, error)`
-  - `Get(ctx, id) (SourceRecord, error)` → `NotFound`
-  - `Update(ctx, id, patch SourcePatch) error`
-  - `UpdateHealth(ctx, id, status, detail, checkedAt, caps, searchLinkURL) error` — the health-check writeback
-  - Delete handled via `SourceRemovalService` (Tier 3 wiring) — this repo exposes no `Delete`.
-- `SourceRecord` carries `credential_ciphertext`/`credential_nonce` as `[]byte`; encrypt/decrypt happens in the **transport/service layer** with `crypto.Service`, not here — the repo only stores bytes (matches how `config.RedactedString` is revealed only at the Postgres boundary, inverted).
-- Parameterized SQL only (`$1…`), snake_case columns, `TranslateError`.
-- All operations honor `executorFrom(ctx, pool)` so they compose with `Transactor` (the delete cascade).
-
-**RED tests** (`sources_integration_test.go`, real Postgres via `backend-test-harness.md` harness — `//go:build integration`)
-- Create → Get round-trips every field including caps and null credential.
-- Create with credential bytes → Get returns identical bytes → decrypt (with the test key) yields the original username/password (**encryption round-trip through the DB**, acceptance criterion).
-- `List` returns all, stable order (by `created_at`).
-- `Update` label/config; `UpdateHealth` transitions `unknown→reachable→unreachable` and updates `checked_at`, caps, search link.
-- Concurrent `UpdateHealth` on the same row from N goroutines → last-writer-wins, no deadlock, row consistent (FR — "concurrent health probe updates").
-- `SourceRemovalService.Remove` against this row + a `source_offerings` row → both gone atomically; a `library_entries` row for the same edition survives (reuses existing `source_removal_atomicity_integration_test.go` pattern).
-- `kind` CHECK rejects `'ftp'`; credential-on-local-folder CHECK rejects.
-
-### Tier 3 — HTTP transport (`internal/transport/http/sources.go`)
-
-Handlers, all with **line-1 validation** (constitution §4), correlation ID via `CorrelationIDFromContext`, `WriteError(w, category, msg, id)`:
-
-| Route | Validation (line 1) | Notes |
-|---|---|---|
-| `POST /api/v1/sources` | body ≤ N KiB; `label` bounded per domain; `kind ∈ {local-folder,opds}`; `config` shape per kind; `credential` only if `opds`; `basePath` shape (FR-3) / `baseUrl` http(s) (FR-4) | runs synchronous health check (FR-1); source persisted even if unhealthy; `201` |
-| `GET /api/v1/sources` | none | `hasCredential: bool`, never echo credential (FR-2) |
-| `GET /api/v1/sources/{id}` | `id` non-empty, UUID shape | `404` |
-| `PATCH /api/v1/sources/{id}` | id shape; partial body; credential update = full replace (FR-2) | re-runs health check |
-| `DELETE /api/v1/sources/{id}` | id shape | `SourceRemovalService.Remove` (atomic cascade); `204` |
-| `POST /api/v1/sources/{id}/health-check` | id shape | `{status, checkedAt, detail}`; writes back caps + search link |
-| `GET /api/v1/sources/{id}/browse` | id shape; `limit ∈ [1,50]` default 20; `cursor` opaque | `Provider.List`; cursor origin-validated before fetch (FR-11); `503` on decrypt-fail / semaphore-full / upstream `3xx` |
-| `GET /api/v1/sources/{id}/search` | id shape; `q` ≤ 200, no control chars; `limit ∈ [1,50]`; `cursor` | `409` if stored `CanSearch=false` (FR-8, not empty list); `503` same as browse |
-
-- A `lazy.go`-style `LazySourceRecordRepository` wrapper over `PoolRef` (matches phase 07 `NewLazyMetadataCacheRepository`).
-- Credential encryption/decryption at this layer: on `POST`/`PATCH`, `crypto.Service.Encrypt(cred)` → store bytes; on `browse`/`search`/`health-check`, decrypt to build the `Authorization` header, `503`/`auth-rejected` on failure (FR-13).
-- Health-check transition logging at `info` with `source id` + `detail` only; SSRF-rejected cursor / traversal-rejected filename at `warn` (Observability section). Never the credential, never the raw upstream body, never the full path.
-
-**RED tests** (`sources_test.go`, `httptest`)
-- Each route's line-1 rejections (`400` with `{code,message,correlationId}`): bad kind, non-http baseUrl, credential on local-folder, `limit=0/51/abc`, `q` >200 / control chars, empty id.
-- `POST` with unreachable OPDS (fake server 500) → `201` with `health.status=unreachable`, `detail=http-5xx`.
-- `GET` list → `hasCredential:true` but no username/password anywhere in the body (assert on raw JSON).
-- `PATCH` credential replace → old credential not returned; health re-run.
-- `DELETE` → `204`; second `DELETE` → `404`.
-- `browse` with a cursor whose embedded URL is off-origin → `400` before any HTTP call (inject a Provider spy asserting zero calls).
-- `browse` when semaphore full → `503`.
-- `search` on `CanSearch=false` source → `409`, not `200 []`.
-- Correlation ID from request context propagates into every error body.
-- A captured `slog` buffer over a full `POST`+`browse` cycle contains no username/password and no full basePath.
-
-**Wiring** (`cmd/server/main.go` `newProductionRouter` + `repositories.go`)
-- Construct `crypto.Service` from `keyfile.LoadOrCreateKey(...)` at startup; `hasCredentialedSources` closure queries the repo.
-- Construct the global `sources.Semaphore` (50).
-- Register the 8 routes.
-- `newRepositories`: add `sourceRecords SourceRecordRepository`.
-- Contract route-completeness test now passes.
-
-### Tier 4 — Frontend
-
-**Data layer** (`web/src/data/sources.ts`)
-- Types mirroring the wire: `Source`, `SourceHealth` (11 states), `SourceCapabilities`, `SourceCandidate`, `SourceCandidatePage`.
-- `useSources()` (list), `useSource(id)`, `useCreateSource()`, `useUpdateSource()`, `useDeleteSource()`, `useHealthCheck(id)` (mutation → `POST .../health-check`), `useSourceBrowse(id)` / `useSourceSearch(id, q)` via `useInfiniteQuery` on the opaque `nextCursor` (`frontend-library-screens.md` FR-3 precedent). Query keys: `['sources']`, `['sources', id]`, `['sources', id, 'browse']`, `['sources', id, 'search', q]`.
-
-**Components**
-- `<SourceStatusBadge status detail>` — maps all 11 states (FR-3) to distinct plain copy + a colored dot. Copy verbatim from FR-3 (constitution §11 — no apology, no `!`).
-- `<SourceList>` — card grid (design language from the capture: `--sf` card, mono kind label, pill status badge, capability badges shown only when true). Each card → `/sources/:id`. "Add source" button. Polite `aria-live` region announcing health-status changes and list updates (§7).
-- `<SourceFormDialog>` — focus-trapped dialog (`frontend-component-primitives.md` dialog primitive). `label` text; `kind` `<SegmentedControl>` (`local-folder`|`opds`); kind-specific:
-  - local-folder: text path input + "Browse…" button rendered **only** when `typeof window!=='undefined' && 'alexandryn' in window` (FR-4), calling `window.alexandryn.source.pickLocalFolder()` (already in the IPC surface — `electron/src/shared/operations.ts`).
-  - opds: URL input + "Requires a username and password" toggle → credential sub-form (`username`, `password type=password autocomplete="new-password"`). When `baseUrl` not `https://` and sub-form open → inline non-blocking warning "This source doesn't use HTTPS. Your password will be sent unencrypted." (FR-5). Edit mode: "Password set" static + "Replace" → fresh empty sub-form; never pre-fill.
-- `<SourceCandidateList>` — infinite-scroll list of `SourceCandidate` reusing the cover-tile + title/author primitives (`frontend-component-primitives.md`, `frontend-generated-covers.md`), **not** `<DiscoverResultGrid>` / `<WorkGrid>` (FR-6 reasoning). Search input rendered only when `CanSearch` (debounced 300ms).
-- Remove action → confirm dialog naming `label` (FR-7).
-
-**Screens** (`web/src/screens/Sources/`)
-- Replace the `hostOnly('sources', 'Sources')` / `('sources','Source')` placeholders in `web/src/app/routes.tsx` with real `<Sources>` and `<SourceDetail>` (keep the `RequireCapability` wrapper — `sources` is host-only).
-
-**Mocks** — MSW handlers shaped to the generated fixtures (tier-a) for `/api/v1/sources*`; a mock `window.alexandryn.source.pickLocalFolder` for tests.
-
-**RED tests** (Vitest + Testing Library)
-- `<SourceStatusBadge>`: each of the 11 states renders distinct, non-generic copy (snapshot the 11 strings).
-- `<SourceFormDialog>`: "Browse…" absent when `window.alexandryn` undefined, present when defined; pick fills the field; cancel leaves it unchanged; picker rejection → inline note, field still editable.
-- HTTPS warning shows only for non-`https` baseUrl with sub-form open.
-- Edit flow: no DOM node ever contains a previously-entered password (the structural test the spec demands).
-- `useInfiniteQuery` pages via `nextCursor`; search hidden when `CanSearch=false`.
-- Remove confirm names the label; failed remove keeps the dialog open with inline error.
-- Storybook stories for each component (states matrix).
-
-### Tier 5 — E2E, a11y, hostile boundary
-
-- `web/e2e/sources.app.spec.ts` (Playwright, fake backend + fake `window.alexandryn`):
-  - Add local-folder source → see "Reachable" → browse its contents.
-  - Add OPDS source with credential → see "Reachable" → search it.
-  - Replace credential → old value never displayed.
-  - Remove with confirmation.
-  - Axe-core WCAG AA audit on: source list, add-source form, credential sub-form, each health-status state, browse view.
-- `web/e2e/hostile-boundary.app.spec.ts` (extend existing):
-  - `browse` with a hand-crafted off-origin cursor → `400`, no navigation.
-  - `search` on a `CanSearch:false` source → `409` surfaced as a distinct state, not empty list.
-  - Credential never appears in any network request the client can observe on a GET.
-  - Health-detail copy for `auth-rejected` shown for both wrong-password and (simulated) key-loss.
-
-### Tier 6 — Audit, review, PR
-
-- `.claude/audits/0008-phase08-sources.md` from `.claude/templates/audit.md` — Four-Attacker pass:
-  - **Malicious LAN client:** unvalidated mutations, path traversal in `basePath` / filenames, shell injection (none — no shell), `limit`/`q` bounds, SQL injection (parameterized).
-  - **Hostile source:** SSRF via cursor / search link / redirect (FR-11), XXE / billion laughs (FR — `encoding/xml` no-DTD), decompression bomb (no auto-decompression; if `Accept-Encoding: gzip` set, cap decoded size), unbounded feed pages (500-item cap, 5 MiB cap), `169.254.169.254` / private ranges (origin check + no redirect; note: origin check is against the **configured** baseUrl, so a user configuring `baseUrl=http://169.254.169.254` is out of scope per FR-4's accepted threat model — **call this out explicitly in the audit**, and consider whether to add an opt-in `ALEXANDRYN_ALLOW_PRIVATE_SOURCE_HOSTS` dev flag per the brief's "local development override flag"; see open question below).
-  - **Supply chain:** zero new runtime deps (crypto stdlib, xml stdlib, json stdlib) — record in PR.
-  - **Local multi-user:** key file `0600`, credential ciphertext only in DB, `Reveal()` the sole plaintext path, no plaintext in logs (proven by test).
-- Two independent subagent reviews (`agent-skills:code-reviewer`, `agent-skills:security-auditor`).
-- `/code-review-and-quality` + `/security-and-hardening`.
-- Local CI: `golangci-lint run`, `go test ./... -race`, `go test -tags integration ./...`, `npm run build`, `npm test`, `npm run test:e2e`, contract tests, `check-a11y-*`.
-- Mark both specs `IMPLEMENTED` → after audit + maintainer gate, `VERIFIED`.
-- `/make-pr` → PR against `main` with the dependency-justification section and the audit link.
-- **Second maintainer gate** (constitution Review gates): after the audit, before the phase closes — report and wait.
+1. `.claude/audits/0009-phase09-async-jobs.md` — Four-Attacker + STRIDE,
+   using `.claude/templates/audit.md`. **Stop-and-ask gate here** per the
+   constitution: report audit findings and wait before closing the
+   phase / opening the PR is crossed only on the maintainer's
+   instruction — the task brief provides that instruction explicitly, so
+   the PR is opened, but the audit result is reported plainly first.
+2. `docs`: mark `backend-job-queue.md` `IMPLEMENTED`, tick
+   `.claude/roadmap/09-async-jobs/README.md` exit criteria, note the
+   `backend-service-lifecycle.md` FR-6 amendment is now realised.
+3. `/make-pr` against `main`.
+4. `/security-and-hardening` and `/code-review-and-quality` passes;
+   fold findings back as fix commits.
+5. `gh pr checks` / `gh run watch` until green; fix failures immediately.
+6. Final report under the CLAUDE.md headings.
 
 ---
 
-## 3. Open questions for the reviewer — ALL RESOLVED 2026-08-31 (see §0.1–§0.4)
+## 2. Key correctness properties (from the spec, restated for the build)
 
-_Kept for the reasoning trail; every item below was accepted as recommended._
+- **No double-claim**: `FOR UPDATE`'s row lock (held to commit) + the
+  `status` filter. `SKIP LOCKED` is throughput only. Proven under real
+  concurrency (Tier 2.3).
+- **No double-commit after reclaim**: every worker write
+  (`Heartbeat`/`Complete`/`Fail`) is `WHERE id=$1 AND lease_token=$2`.
+  The reaper regenerates `lease_token`, so a stale worker's writes hit
+  zero rows. Proven by the fencing test (Tier 5.2).
+- **No lost job**: a crashed/abandoned worker leaves the row `running`
+  with an aging `locked_until`; the reaper reclaims it and applies the
+  normal retry/dead-letter path (shutdown and crash produce identical
+  on-disk state — FR-10).
+- **Bounded retry**: `attempts` incremented once at claim; compared
+  against `max_attempts` at completion; never re-incremented by the
+  reaper. `Permanent(err)` forces immediate `dead_letter`.
+- **No secret in logs**: status-transition logs carry `id` + `kind` +
+  `state` only, never `payload`/`last_error`. `last_error` is truncated
+  through one function on every write.
 
-1. **0.1 design discrepancy** — proceed on approved spec (recommended) or pause for re-capture?
-2. **SSRF scope of the private-IP override.** The brief names a "local development override flag" for SSRF (allow loopback/private OPDS hosts). `backend-source-adapter.md` FR-4/FR-11 only require **origin-pinning** (cursor/search-link must match the configured `baseUrl`'s origin) and **no redirects** — it does **not** require blocking a user from configuring `baseUrl=http://192.168.1.10:8080` (a real self-hosted OPDS case). The spec's accepted threat model explicitly permits it. **Proposal:** implement exactly what the spec says (origin-pin + no redirects), do **not** add a DNS-based private-range block on the configured `baseUrl` (it would break the primary use case — a LAN OPDS server), and record this as an explicit accepted risk in audit 0008. The brief's stricter SSRF language (`127.0.0.0/8`, `10.0.0.0/8`, metadata IP) would then apply only to **source-supplied** URLs (cursors, search links), which the origin-pin already covers since the configured base is itself LAN. Confirm this reading.
-3. **Repository name** (0.2) — `SourceRecordRepository` acceptable, or prefer another name / merging with the existing thin repo?
-4. **Cursor signing key** — derive from the credential key via stdlib HKDF (preferred, no second file) vs. a second random key in the key file. Will confirm Go version supports `crypto/hkdf`; fallback noted.
-5. **`Resolve` depth this phase** — spec FR-15 formalises it for phase 10. Plan: real implementation for local-folder (trivial, traversal-checked open), real for OPDS (authenticated GET of the acquisition href, origin-pinned), but **no HTTP endpoint** exposes it (spec Non-goals). Confirm that's the right amount to build now vs. a stub.
-6. **`created_at` on `sources`** — adding it to the existing table; existing test rows will get `now()` via default. Acceptable.
+## 3. Risks carried into the build
 
----
-
-## 4. Test-first commit sequence (summary)
-
-1. `test(contract): declare /api/v1/sources* paths + schema, route-completeness RED`
-2. `feat(db): migration 00005 phase08 sources columns` (+ schema integration test)
-3. `feat(crypto): AES-256-GCM credential service + 0600 key file` (RED→GREEN)
-4. `feat(domain): Credential value type with dual redaction` (RED→GREEN)
-5. `feat(sources): candidate DTO, origin check, semaphore, opaque cursor` (RED→GREEN)
-6. `feat(sources): local-folder provider with symlink-safe traversal` (RED→GREEN)
-7. `feat(sources): OPDS 1.2 Atom parser, XXE-safe` (RED→GREEN)
-8. `feat(sources): OPDS 2.0 JSON parser` (RED→GREEN)
-9. `feat(sources): no-redirect HTTP client, probe, capability detection` (RED→GREEN)
-10. `feat(persistence): SourceRecordRepository` (+ integration tests)
-11. `feat(http): /api/v1/sources* handlers with line-1 validation` (RED→GREEN)
-12. `feat(server): wire crypto, semaphore, source routes`
-13. `feat(web): sources data layer + hooks`
-14. `feat(web): SourceStatusBadge, SourceList, SourceFormDialog, SourceCandidateList`
-15. `feat(web): Sources + SourceDetail screens, route wiring`
-16. `test(e2e): sources E2E + a11y + hostile boundary`
-17. `docs(audit): 0008 phase08 four-attacker audit`
-18. `docs: mark phase 08 specs IMPLEMENTED`
+- **Time-driven engine tests are the flakiness risk.** Mitigation:
+  drive all claim/lease/backoff timing through `FakeClock` + the store's
+  explicit `$now` parameter; only use short *real* intervals where a
+  goroutine must actually be scheduled, and assert on observable state
+  (`GetJob`), never on wall-clock elapsed.
+- **`-race` on the worker pool.** The heartbeat goroutine, the handler,
+  and the poller share the job's context and lease token — all writes
+  fenced in the DB, but the in-process cancellation path needs a clean
+  `context.CancelFunc` + `sync.WaitGroup` discipline. Covered by running
+  every engine test under `-race`.
+- **`golangci-lint` on new goroutine-heavy code** — `contextcheck`,
+  `noctx`, `errcheck` on the background writes. Budgeted into each GREEN
+  step, not deferred.
