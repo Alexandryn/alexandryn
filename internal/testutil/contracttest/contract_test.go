@@ -58,6 +58,11 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/discover",
 		"/api/v1/discover/works/{openLibraryId}",
 		"/api/v1/discover/covers/{coverId}",
+		"/api/v1/sources",
+		"/api/v1/sources/{id}",
+		"/api/v1/sources/{id}/health-check",
+		"/api/v1/sources/{id}/browse",
+		"/api/v1/sources/{id}/search",
 	}
 	for _, p := range phasePaths {
 		if doc.Paths.Find(p) == nil {
@@ -237,5 +242,79 @@ func TestValidDiscoverCoverPassesContractTest(t *testing.T) {
 	}
 }
 
+// ── Phase 08: Sources ────────────────────────────────────────────────
+// backend-source-adapter.md FR-2/FR-6/FR-7. These validate the spec's
+// own shapes against hand-built valid bodies — the real handlers land in
+// Tier 3 and get their own contract coverage then.
 
+func serveJSON(status int, body string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	})
+}
 
+func TestValidSourceListPassesContractTest(t *testing.T) {
+	v := contracttest.New(t)
+	body := `{"sources":[{
+		"id":"01JXXXXXXXXXXXXXXXXXXXXXXZ","label":"Personal OPDS","kind":"opds",
+		"config":{"baseUrl":"https://opds.example.org/catalog"},
+		"hasCredential":true,
+		"health":{"status":"reachable","checkedAt":"2026-08-31T12:00:00Z","detail":null},
+		"capabilities":{"canList":true,"canSearch":true,"canDownload":true}
+	}]}`
+	rr := v.ValidateResponse(t, serveJSON(http.StatusOK, body), mustRequest(t, "GET", "/api/v1/sources", nil))
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestValidSourceHealthPassesContractTest(t *testing.T) {
+	v := contracttest.New(t)
+	body := `{"status":"unreachable","checkedAt":"2026-08-31T12:10:00Z","detail":"timeout"}`
+	req := mustRequest(t, "POST", "/api/v1/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ/health-check", nil)
+	rr := v.ValidateResponse(t, serveJSON(http.StatusOK, body), req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestValidSourceBrowsePassesContractTest(t *testing.T) {
+	v := contracttest.New(t)
+	body := `{"items":[{
+		"title":"The Left Hand of Darkness","author":"Ursula K. Le Guin",
+		"fileReference":{"referenceId":"left-hand.epub","format":"EPUB","sizeBytes":512000},
+		"coverUrl":null
+	}],"nextCursor":null}`
+	req := mustRequest(t, "GET", "/api/v1/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ/browse", nil)
+	rr := v.ValidateResponse(t, serveJSON(http.StatusOK, body), req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestValidSourceSearchConflictPassesContractTest(t *testing.T) {
+	v := contracttest.New(t)
+	body := `{"code":"conflict","message":"this source does not support search","correlationId":"00000000-0000-0000-0000-000000000000"}`
+	req := mustRequest(t, "GET", "/api/v1/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ/search?q=earthsea", nil)
+	rr := v.ValidateResponse(t, serveJSON(http.StatusConflict, body), req)
+	if rr.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d", rr.Code)
+	}
+}
+
+func TestBrokenSourceResponseFailsContractTest(t *testing.T) {
+	v := contracttest.New(t)
+	// Missing required `capabilities` — must be rejected.
+	body := `{"sources":[{"id":"x","label":"L","kind":"opds","config":{},"hasCredential":false,
+		"health":{"status":"unknown","checkedAt":null,"detail":null}}]}`
+	inner := &fakeT{t: t}
+	func() {
+		defer func() { recover() }() //nolint:errcheck
+		v.ValidateResponse(inner, serveJSON(http.StatusOK, body), mustRequest(t, "GET", "/api/v1/sources", nil))
+	}()
+	if !inner.failed {
+		t.Error("expected contract validation to reject a Source missing `capabilities`")
+	}
+}

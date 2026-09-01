@@ -288,4 +288,200 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  listSources: {
+    '200': {
+      sources: [
+        {
+          id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+          label: 'Personal OPDS',
+          kind: 'opds',
+          config: {
+            baseUrl: 'https://opds.example.org/catalog',
+          },
+          hasCredential: true,
+          health: {
+            status: 'reachable',
+            checkedAt: '2026-08-31T12:00:00Z',
+            detail: null,
+          },
+          capabilities: {
+            canList: true,
+            canSearch: true,
+            canDownload: true,
+          },
+        },
+      ],
+    },
+  },
+  createSource: {
+    '201': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      label: 'Personal OPDS',
+      kind: 'opds',
+      config: {
+        baseUrl: 'https://opds.example.org/catalog',
+      },
+      hasCredential: true,
+      health: {
+        status: 'reachable',
+        checkedAt: '2026-08-31T12:00:00Z',
+        detail: null,
+      },
+      capabilities: {
+        canList: true,
+        canSearch: false,
+        canDownload: true,
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'kind: must be one of local-folder, opds',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getSource: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      label: 'Studio NAS',
+      kind: 'local-folder',
+      config: {
+        basePath: '/srv/books',
+      },
+      hasCredential: false,
+      health: {
+        status: 'reachable',
+        checkedAt: '2026-08-31T12:00:00Z',
+        detail: null,
+      },
+      capabilities: {
+        canList: true,
+        canSearch: false,
+        canDownload: true,
+      },
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  deleteSource: {
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  updateSource: {
+    '200': {
+      id: '01JXXXXXXXXXXXXXXXXXXXXXXZ',
+      label: 'Personal OPDS (renamed)',
+      kind: 'opds',
+      config: {
+        baseUrl: 'https://opds.example.org/catalog',
+      },
+      hasCredential: true,
+      health: {
+        status: 'reachable',
+        checkedAt: '2026-08-31T12:05:00Z',
+        detail: null,
+      },
+      capabilities: {
+        canList: true,
+        canSearch: true,
+        canDownload: true,
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'config.baseUrl: must be an http or https URL',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  checkSourceHealth: {
+    '200': {
+      status: 'unreachable',
+      checkedAt: '2026-08-31T12:10:00Z',
+      detail: 'timeout',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  browseSource: {
+    '200': {
+      items: [
+        {
+          title: 'The Left Hand of Darkness',
+          author: 'Ursula K. Le Guin',
+          fileReference: {
+            referenceId: 'left-hand-of-darkness.epub',
+            format: 'EPUB',
+            sizeBytes: 512000,
+          },
+          coverUrl: null,
+        },
+      ],
+      nextCursor: null,
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'limit: must be an integer between 1 and 50',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'source is unavailable right now',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  searchSource: {
+    '200': {
+      items: [
+        {
+          title: 'A Wizard of Earthsea',
+          author: 'Ursula K. Le Guin',
+          fileReference: {
+            referenceId: 'wizard-of-earthsea.epub',
+            format: 'EPUB',
+            sizeBytes: null,
+          },
+          coverUrl: 'https://opds.example.org/covers/earthsea.jpg',
+        },
+      ],
+      nextCursor: 'eyJwIjoyfQ',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'q: search query must be non-empty',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'source not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '409': {
+      code: 'conflict',
+      message: 'this source does not support search',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'source is unavailable right now',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const

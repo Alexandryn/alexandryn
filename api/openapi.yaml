@@ -763,6 +763,438 @@ paths:
                 message: "Open Library Covers API is temporarily unavailable"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  # ── Phase 08: Sources ──────────────────────────────────────────────
+  # backend-source-adapter.md FR-1..FR-9
+
+  /api/v1/sources:
+    get:
+      operationId: listSources
+      summary: List every configured source
+      description: >-
+        Returns all configured sources with health status and detected
+        capabilities. A stored credential is represented only as
+        `hasCredential` — the username and password are never echoed
+        back (backend-source-adapter.md FR-2).
+      security: []
+      responses:
+        '200':
+          description: All configured sources.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceListResponse'
+              example:
+                sources:
+                  - id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                    label: "Personal OPDS"
+                    kind: opds
+                    config:
+                      baseUrl: "https://opds.example.org/catalog"
+                    hasCredential: true
+                    health:
+                      status: reachable
+                      checkedAt: "2026-08-31T12:00:00Z"
+                      detail: null
+                    capabilities:
+                      canList: true
+                      canSearch: true
+                      canDownload: true
+    post:
+      operationId: createSource
+      summary: Add a source
+      description: >-
+        Creates a source and runs a synchronous health check as part of
+        creation. The source is created even if the health check fails —
+        an unreachable source now may be reachable later
+        (backend-source-adapter.md FR-1).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+      responses:
+        '201':
+          description: The created source, with its create-time health result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                label: "Personal OPDS"
+                kind: opds
+                config:
+                  baseUrl: "https://opds.example.org/catalog"
+                hasCredential: true
+                health:
+                  status: reachable
+                  checkedAt: "2026-08-31T12:00:00Z"
+                  detail: null
+                capabilities:
+                  canList: true
+                  canSearch: false
+                  canDownload: true
+        '400':
+          description: Invalid source configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "kind: must be one of local-folder, opds"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+  /api/v1/sources/{id}:
+    get:
+      operationId: getSource
+      summary: Get one source
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: SourceID (internal).
+      responses:
+        '200':
+          description: The source.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                label: "Studio NAS"
+                kind: local-folder
+                config:
+                  basePath: "/srv/books"
+                hasCredential: false
+                health:
+                  status: reachable
+                  checkedAt: "2026-08-31T12:00:00Z"
+                  detail: null
+                capabilities:
+                  canList: true
+                  canSearch: false
+                  canDownload: true
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+    patch:
+      operationId: updateSource
+      summary: Update a source
+      description: >-
+        Updates label, config, or credential and re-runs the health
+        check. A credential update replaces the stored value entirely —
+        there is no partial-field credential update
+        (backend-source-adapter.md FR-2).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceUpdate'
+      responses:
+        '200':
+          description: The updated source, with its re-checked health result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+              example:
+                id: "01JXXXXXXXXXXXXXXXXXXXXXXZ"
+                label: "Personal OPDS (renamed)"
+                kind: opds
+                config:
+                  baseUrl: "https://opds.example.org/catalog"
+                hasCredential: true
+                health:
+                  status: reachable
+                  checkedAt: "2026-08-31T12:05:00Z"
+                  detail: null
+                capabilities:
+                  canList: true
+                  canSearch: true
+                  canDownload: true
+        '400':
+          description: Invalid update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "config.baseUrl: must be an http or https URL"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+    delete:
+      operationId: deleteSource
+      summary: Remove a source
+      description: >-
+        Removes the source and cascades to every SourceOffering
+        referencing it, atomically (domain-source.md FR-6). LibraryEntry
+        records are untouched.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: The source was removed.
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+  /api/v1/sources/{id}/health-check:
+    post:
+      operationId: checkSourceHealth
+      summary: Probe a source's reachability now
+      description: >-
+        Runs a lightweight reachability probe and re-detects capabilities
+        (backend-source-adapter.md FR-5, FR-6). `detail` is a closed
+        vocabulary — never a raw error message or response body.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The probe result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceHealth'
+              example:
+                status: unreachable
+                checkedAt: "2026-08-31T12:10:00Z"
+                detail: timeout
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+  /api/v1/sources/{id}/browse:
+    get:
+      operationId: browseSource
+      summary: List a source's contents as unmatched candidates
+      description: >-
+        Returns a page of SourceCandidate items — a title/author guess, a
+        FileReference, and an optional cover URL. Never a domain
+        SourceOffering (backend-source-adapter.md FR-7, FR-9, FR-10). The
+        cursor is opaque and server-validated; an off-origin continuation
+        link is rejected before any fetch (FR-11).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque pagination token from a previous response.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: A page of candidates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceCandidatePage'
+              example:
+                items:
+                  - title: "The Left Hand of Darkness"
+                    author: "Ursula K. Le Guin"
+                    fileReference:
+                      referenceId: "left-hand-of-darkness.epub"
+                      format: "EPUB"
+                      sizeBytes: 512000
+                    coverUrl: null
+                nextCursor: null
+        '400':
+          description: Invalid cursor or limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "limit: must be an integer between 1 and 50"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '503':
+          description: >-
+            The source is unavailable — unreachable, a redirect, a
+            decryption failure, or the outbound concurrency cap was
+            reached (backend-source-adapter.md FR-13, FR-14).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: "source is unavailable right now"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
+  /api/v1/sources/{id}/search:
+    get:
+      operationId: searchSource
+      summary: Search a source's catalog
+      description: >-
+        Same SourceCandidate shape as browse, via the source's advertised
+        search mechanism. Returns 409 when the source's detected
+        CanSearch is false — never a silent empty result
+        (backend-source-adapter.md FR-8).
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: A page of candidates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceCandidatePage'
+              example:
+                items:
+                  - title: "A Wizard of Earthsea"
+                    author: "Ursula K. Le Guin"
+                    fileReference:
+                      referenceId: "wizard-of-earthsea.epub"
+                      format: "EPUB"
+                      sizeBytes: null
+                    coverUrl: "https://opds.example.org/covers/earthsea.jpg"
+                nextCursor: "eyJwIjoyfQ"
+        '400':
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_input
+                message: "q: search query must be non-empty"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '404':
+          description: No source with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "source not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '409':
+          description: This source does not support search.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: conflict
+                message: "this source does not support search"
+                correlationId: 00000000-0000-0000-0000-000000000000
+        '503':
+          description: The source is unavailable right now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unavailable
+                message: "source is unavailable right now"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -1181,6 +1613,236 @@ components:
           items:
             $ref: '#/components/schemas/NormalisedEdition'
           description: First 50 editions of this work.
+
+    # ── Phase 08: Source domain schemas ───────────────────────────────
+    # backend-source-adapter.md FR-1/FR-2/FR-5/FR-6/FR-9
+
+    SourceKind:
+      type: string
+      enum: [local-folder, opds]
+      description: >-
+        The provider kind — a closed vocabulary
+        (backend-source-adapter.md FR-1).
+
+    SourceCapabilities:
+      type: object
+      additionalProperties: false
+      required: [canList, canSearch, canDownload]
+      description: >-
+        The fixed capability set (domain-source.md FR-1), re-detected on
+        every health check (backend-source-adapter.md FR-5).
+      properties:
+        canList:
+          type: boolean
+        canSearch:
+          type: boolean
+        canDownload:
+          type: boolean
+
+    SourceHealth:
+      type: object
+      additionalProperties: false
+      required: [status, checkedAt, detail]
+      description: >-
+        The result of the last reachability probe
+        (backend-source-adapter.md FR-6).
+      properties:
+        status:
+          type: string
+          enum: [unknown, reachable, unreachable]
+          description: >-
+            `unknown` before the first check has run; `reachable` or
+            `unreachable` after.
+        checkedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the probe ran. Null before the first check.
+        detail:
+          type: string
+          nullable: true
+          enum:
+            - timeout
+            - connection-refused
+            - http-4xx
+            - http-5xx
+            - http-3xx-unsupported
+            - unparseable-response
+            - path-not-found
+            - path-not-readable
+            - auth-rejected
+          description: >-
+            A closed-vocabulary failure category when `unreachable` —
+            never a raw error message or response body, which could leak
+            a credential or configuration detail. Null when reachable or
+            not yet checked.
+
+    SourceConfig:
+      type: object
+      additionalProperties: false
+      description: >-
+        Kind-specific connection config: `basePath` for `local-folder`,
+        `baseUrl` for `opds`. Exactly one is present per source. Neither
+        is secret — both are echoed back
+        (backend-source-adapter.md FR-2).
+      properties:
+        basePath:
+          type: string
+          description: Absolute filesystem path (local-folder sources).
+        baseUrl:
+          type: string
+          description: The catalog's http/https base URL (opds sources).
+
+    SourceCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      description: >-
+        HTTP Basic Auth credential — write-only, opds sources only. Never
+        returned by any response (backend-source-adapter.md FR-1, FR-2).
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+
+    Source:
+      type: object
+      additionalProperties: false
+      required: [id, label, kind, config, hasCredential, health, capabilities]
+      description: >-
+        A configured source (backend-source-adapter.md FR-2). A stored
+        credential appears only as `hasCredential: true` — the response
+        shape structurally cannot carry the username or password.
+      properties:
+        id:
+          type: string
+          description: SourceID (internal).
+        label:
+          type: string
+        kind:
+          $ref: '#/components/schemas/SourceKind'
+        config:
+          $ref: '#/components/schemas/SourceConfig'
+        hasCredential:
+          type: boolean
+        health:
+          $ref: '#/components/schemas/SourceHealth'
+        capabilities:
+          $ref: '#/components/schemas/SourceCapabilities'
+
+    SourceListResponse:
+      type: object
+      additionalProperties: false
+      required: [sources]
+      description: Response body for GET /api/v1/sources.
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+
+    SourceCreate:
+      type: object
+      additionalProperties: false
+      required: [label, kind, config]
+      description: >-
+        Request body for POST /api/v1/sources
+        (backend-source-adapter.md FR-1).
+      properties:
+        label:
+          type: string
+          maxLength: 100
+          description: Source label (domain-source.md validation bar).
+        kind:
+          $ref: '#/components/schemas/SourceKind'
+        config:
+          $ref: '#/components/schemas/SourceConfig'
+        credential:
+          $ref: '#/components/schemas/SourceCredentialInput'
+
+    SourceUpdate:
+      type: object
+      additionalProperties: false
+      description: >-
+        Request body for PATCH /api/v1/sources/{id}. Every field is
+        optional; a present `credential` replaces the stored value
+        entirely (backend-source-adapter.md FR-2).
+      properties:
+        label:
+          type: string
+          maxLength: 100
+        config:
+          $ref: '#/components/schemas/SourceConfig'
+        credential:
+          $ref: '#/components/schemas/SourceCredentialInput'
+
+    FileReference:
+      type: object
+      additionalProperties: false
+      required: [referenceId, format, sizeBytes]
+      description: >-
+        An opaque, source-scoped file identifier (domain-source.md FR-4).
+        `referenceId` is never a path or URL a client should interpret.
+      properties:
+        referenceId:
+          type: string
+        format:
+          type: string
+          description: Declared format (e.g. EPUB, PDF).
+        sizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: Size in bytes when the source reports it, otherwise null.
+
+    SourceCandidate:
+      type: object
+      additionalProperties: false
+      required: [title, author, fileReference, coverUrl]
+      description: >-
+        One browsed or searched item — an unmatched candidate, never a
+        domain SourceOffering (backend-source-adapter.md FR-9, FR-10).
+        Every string here has already passed the adapter's normalisation
+        and validation.
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+          nullable: true
+        fileReference:
+          $ref: '#/components/schemas/FileReference'
+        coverUrl:
+          type: string
+          nullable: true
+          description: >-
+            A cover image URL for opds candidates whose entry advertises
+            one; always null for local-folder.
+
+    SourceCandidatePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      description: >-
+        A page of candidates for GET /api/v1/sources/{id}/browse and
+        /search (backend-source-adapter.md FR-7, FR-8).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceCandidate'
+        nextCursor:
+          type: string
+          nullable: true
+          description: >-
+            Opaque token for the next page, or null on the last page.
+            Clients MUST treat it as opaque — the encoding is not part of
+            the contract.
 
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.
