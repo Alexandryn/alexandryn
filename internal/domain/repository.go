@@ -129,6 +129,13 @@ type ReadingProgressRepository interface {
 	// ReadingProgress exists for workID yet — FR-1's singleton-per-Work
 	// invariant means this is the only lookup shape this type needs.
 	FindByWork(ctx context.Context, workID WorkID) (*ReadingProgress, error)
+	// FindByWorkForUpdate is FindByWork with a row lock (SELECT ... FOR
+	// UPDATE), for the reconcile-and-persist transaction
+	// (backend-reading-api.md FR-2) — the read and the write must be
+	// atomic or two concurrent reports lose an update. NotFound when
+	// none exists yet (the caller then inserts the first canonical row,
+	// racing on the work_id UNIQUE constraint).
+	FindByWorkForUpdate(ctx context.Context, workID WorkID) (*ReadingProgress, error)
 	Save(ctx context.Context, p *ReadingProgress) error
 }
 

@@ -31,6 +31,16 @@ func NewReadingProgressRepository(pool *pgxpool.Pool) *ReadingProgressRepository
 var _ domain.ReadingProgressRepository = (*ReadingProgressRepository)(nil)
 
 func (r *ReadingProgressRepository) FindByWork(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.findByWork(ctx, workID, "")
+}
+
+// FindByWorkForUpdate adds SELECT ... FOR UPDATE so the reconcile
+// transaction's read-then-write is atomic (backend-reading-api.md FR-2).
+func (r *ReadingProgressRepository) FindByWorkForUpdate(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.findByWork(ctx, workID, " FOR UPDATE")
+}
+
+func (r *ReadingProgressRepository) findByWork(ctx context.Context, workID domain.WorkID, lock string) (*domain.ReadingProgress, error) {
 	exec := executorFrom(ctx, r.pool)
 
 	var id string
@@ -41,7 +51,7 @@ func (r *ReadingProgressRepository) FindByWork(ctx context.Context, workID domai
 	var observedAt time.Time
 	err := exec.QueryRow(ctx,
 		`SELECT id, percentage, epoch, precise_position_edition_id, precise_position_value, device_id, observed_at
-			FROM reading_progress WHERE work_id = $1`, string(workID),
+			FROM reading_progress WHERE work_id = $1`+lock, string(workID),
 	).Scan(&id, &percentage, &epoch, &precisePositionEditionID, &precisePositionValue, &deviceID, &observedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
