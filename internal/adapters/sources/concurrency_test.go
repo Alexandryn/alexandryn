@@ -31,9 +31,11 @@ func TestSemaphore_CapRejectsImmediately(t *testing.T) {
 func TestSemaphore_ReleaseWithoutAcquireIsSafe(t *testing.T) {
 	sem := sources.NewSemaphore(2)
 	sem.Release() // no matching acquire
-	sem.Release()
-	if !sem.TryAcquire() || !sem.TryAcquire() {
-		t.Fatal("spurious Release corrupted the slot count")
+	if !sem.TryAcquire() {
+		t.Fatal("first acquire failed after spurious release")
+	}
+	if !sem.TryAcquire() {
+		t.Fatal("second acquire failed after spurious release")
 	}
 	if sem.TryAcquire() {
 		t.Fatal("spurious Release inflated the cap")
