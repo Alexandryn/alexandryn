@@ -10,10 +10,10 @@ import (
 )
 
 type fakeLibraryFinder struct {
-	hits []importer.ExistingEditionHit
+	hits []postgres.ExistingEditionHit
 }
 
-func (f *fakeLibraryFinder) FindOwnedByISBN(ctx context.Context, isbn string) ([]importer.ExistingEditionHit, error) {
+func (f *fakeLibraryFinder) FindOwnedByISBN(ctx context.Context, isbn string) ([]postgres.ExistingEditionHit, error) {
 	return f.hits, nil
 }
 
@@ -38,7 +38,7 @@ func TestMatching_ExistingLibraryExactHit(t *testing.T) {
 	meta, _ := extract.NewExtractedMetadata("Dune", []string{"Frank Herbert"}, &isbn, nil, nil, nil, nil, extract.FormatEPUB)
 
 	libFinder := &fakeLibraryFinder{
-		hits: []importer.ExistingEditionHit{
+		hits: []postgres.ExistingEditionHit{
 			{
 				EditionID: "ed-dune-1",
 				WorkID:    "work-dune-1",
@@ -76,7 +76,7 @@ func TestMatching_MultipleExistingLibraryHitsDoesNotAutoAccept(t *testing.T) {
 	meta, _ := extract.NewExtractedMetadata("Dune", []string{"Frank Herbert"}, &isbn, nil, nil, nil, nil, extract.FormatEPUB)
 
 	libFinder := &fakeLibraryFinder{
-		hits: []importer.ExistingEditionHit{
+		hits: []postgres.ExistingEditionHit{
 			{EditionID: "ed-dune-1", Title: "Dune", ISBN: isbn},
 			{EditionID: "ed-dune-2", Title: "Dune Special Edition", ISBN: isbn},
 		},

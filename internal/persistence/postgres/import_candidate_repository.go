@@ -248,3 +248,47 @@ func scanImportCandidate(row pgx.Row) (ImportCandidateRecord, error) {
 
 	return rec, nil
 }
+
+// ExistingEditionHit represents an owned edition in this library matching an ISBN (backend-import-pipeline.md FR-4(a)).
+type ExistingEditionHit struct {
+	EditionID string
+	WorkID    string
+	Title     string
+	Author    string
+	CoverURL  *string
+	ISBN      string
+}
+
+// FindOwnedByISBN queries the database for owned editions matching isbn joined through library_entries (FR-4(a)).
+func (r *ImportCandidateRepository) FindOwnedByISBN(ctx context.Context, isbn string) ([]ExistingEditionHit, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	query := `SELECT e.id, e.work_id, w.title, COALESCE(string_agg(a.name, ', ' ORDER BY wa.ordering), ''), e.isbn
+		FROM editions e
+		JOIN works w ON e.work_id = w.id
+		JOIN library_entries le ON le.edition_id = e.id
+		LEFT JOIN work_authors wa ON wa.work_id = w.id
+		LEFT JOIN authors a ON a.id = wa.author_id
+		WHERE e.isbn = $1
+		GROUP BY e.id, e.work_id, w.title, e.isbn
+		ORDER BY e.id`
+
+	rows, err := exec.Query(ctx, query, isbn)
+	if err != nil {
+		return nil, TranslateError(err)
+	}
+	defer rows.Close()
+
+	var hits []ExistingEditionHit
+	for rows.Next() {
+		var hit ExistingEditionHit
+		if err := rows.Scan(&hit.EditionID, &hit.WorkID, &hit.Title, &hit.Author, &hit.ISBN); err != nil {
+			return nil, TranslateError(err)
+		}
+		hits = append(hits, hit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, TranslateError(err)
+	}
+	return hits, nil
+}

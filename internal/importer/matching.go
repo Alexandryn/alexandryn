@@ -8,6 +8,7 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
 type MatchCandidateType string
@@ -37,19 +38,9 @@ type MatchCandidate struct {
 	OpenLibraryWorkKey *string            `json:"openLibraryWorkKey,omitempty"`
 }
 
-// ExistingEditionHit is an edition record already owned in this library (FR-4(a)).
-type ExistingEditionHit struct {
-	EditionID string
-	WorkID    string
-	Title     string
-	Author    string
-	CoverURL  *string
-	ISBN      string
-}
-
 // ExistingLibraryFinder searches the existing owned library for matching editions.
 type ExistingLibraryFinder interface {
-	FindOwnedByISBN(ctx context.Context, isbn string) ([]ExistingEditionHit, error)
+	FindOwnedByISBN(ctx context.Context, isbn string) ([]postgres.ExistingEditionHit, error)
 }
 
 // OpenLibrarySearcher is the metadata search capability from phase 07.
