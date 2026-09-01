@@ -7,7 +7,6 @@ import (
 
 // WorkRepository and AuthorRepository are declared by internal/domain,
 
-
 // satisfied by internal/persistence/postgres (phase 03's T24) — the
 // pattern ADR 0020 requires: a domain service performs IO through an
 // interface the domain itself owns, never a persistence-specific type
@@ -96,7 +95,6 @@ type CollectionRepository interface {
 	// Rename renames a Collection (backend-library-api.md FR-6).
 	Rename(ctx context.Context, id CollectionID, name string) error
 }
-
 
 // SourceRepository and SourceOfferingRepository back SourceRemovalService
 // (domain-source.md FR-6). Save on both was added by T24 (T24-D2) — phase
