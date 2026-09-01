@@ -96,9 +96,9 @@ func TestReadingProgressRepository_FindByWorkAndSave(t *testing.T) {
 func TestBookmarkRepository_SaveFindByIDAndFindByEdition(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeBookmarkRepository()
-	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "")
-	b2 := domain.NewBookmark("bookmark-2", "edition-1", "loc-2", "")
-	b3 := domain.NewBookmark("bookmark-3", "edition-OTHER", "loc-3", "")
+	b1 := domain.NewBookmark("bookmark-1", "edition-1", "loc-1", "", time.Now())
+	b2 := domain.NewBookmark("bookmark-2", "edition-1", "loc-2", "", time.Now())
+	b3 := domain.NewBookmark("bookmark-3", "edition-OTHER", "loc-3", "", time.Now())
 
 	for _, b := range []*domain.Bookmark{b1, b2, b3} {
 		if err := repo.Save(ctx, b); err != nil {
@@ -129,7 +129,7 @@ func TestBookmarkRepository_SaveFindByIDAndFindByEdition(t *testing.T) {
 func TestHighlightRepository_SaveFindByIDAndFindByEdition(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeHighlightRepository()
-	h := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "")
+	h := domain.NewHighlight("highlight-1", "edition-1", "loc-1", "loc-2", "", "", time.Now())
 
 	if err := repo.Save(ctx, h); err != nil {
 		t.Fatalf("Save: %v", err)

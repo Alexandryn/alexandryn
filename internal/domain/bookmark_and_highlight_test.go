@@ -1,13 +1,18 @@
 package domain_test
 
-import "testing"
+import (
+	"testing"
+	"time"
 
-import "github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/domain"
+)
+
+var markTime = time.Date(2026, 8, 28, 20, 0, 0, 0, time.UTC)
 
 // domain-reading.md FR-3: Bookmark and Highlight MUST attach to Edition
 // (not Work) — EditionID is a required positional argument.
 func TestNewBookmark(t *testing.T) {
-	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-42", "Great line")
+	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-42", "Great line", markTime)
 	if b.EditionID() != "edition-1" {
 		t.Fatalf("EditionID() = %v, want edition-1", b.EditionID())
 	}
@@ -17,10 +22,14 @@ func TestNewBookmark(t *testing.T) {
 	if b.Label() != "Great line" {
 		t.Fatalf("Label() = %q, want %q", b.Label(), "Great line")
 	}
+	// reading-data-export.md FR-4: CreatedAt is recorded at construction.
+	if !b.CreatedAt().Equal(markTime) {
+		t.Fatalf("CreatedAt() = %v, want %v", b.CreatedAt(), markTime)
+	}
 }
 
 func TestNewBookmark_LabelOptional(t *testing.T) {
-	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-42", "")
+	b := domain.NewBookmark("bookmark-1", "edition-1", "loc-42", "", markTime)
 	if b.Label() != "" {
 		t.Fatalf("Label() = %q, want empty", b.Label())
 	}
@@ -29,7 +38,7 @@ func TestNewBookmark_LabelOptional(t *testing.T) {
 // FR-4: a Highlight MUST record a start and end position (both
 // Edition-scoped) and MAY carry a note and a category/color.
 func TestNewHighlight(t *testing.T) {
-	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "Interesting", "yellow")
+	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "Interesting", "yellow", markTime)
 	if h.EditionID() != "edition-1" {
 		t.Fatalf("EditionID() = %v, want edition-1", h.EditionID())
 	}
@@ -39,10 +48,13 @@ func TestNewHighlight(t *testing.T) {
 	if h.Note() != "Interesting" || h.Category() != "yellow" {
 		t.Fatalf("Note/Category = %q/%q, want Interesting/yellow", h.Note(), h.Category())
 	}
+	if !h.CreatedAt().Equal(markTime) {
+		t.Fatalf("CreatedAt() = %v, want %v", h.CreatedAt(), markTime)
+	}
 }
 
 func TestNewHighlight_NoteAndCategoryOptional(t *testing.T) {
-	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "", "")
+	h := domain.NewHighlight("highlight-1", "edition-1", "loc-10", "loc-20", "", "", markTime)
 	if h.Note() != "" || h.Category() != "" {
 		t.Fatalf("Note/Category = %q/%q, want both empty", h.Note(), h.Category())
 	}
