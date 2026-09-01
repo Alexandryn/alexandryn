@@ -83,7 +83,11 @@ type Job struct {
 	LockedUntil *time.Time
 	LeaseToken  string
 	LockedBy    string
-	LastError   string
+	// LastError is the most recent failure's message, already truncated
+	// to 512 bytes on write (redactError). Its type redacts it under
+	// slog and JSON so a status-transition log line cannot carry it
+	// (Observability); Go callers read the real text via String().
+	LastError   RedactedText
 	Progress    *Progress
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
