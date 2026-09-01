@@ -11,7 +11,6 @@ import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
 import { routes } from './routes'
 
-
 let media: ReturnType<typeof mockMatchMedia> | undefined
 afterEach(() => media?.restore())
 
@@ -84,9 +83,7 @@ describe('route table (FR-1)', () => {
       ),
     )
     renderRoute('/collections/coll-1')
-    expect(
-      await screen.findByRole('heading', { name: 'Favorites', level: 1 }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Favorites', level: 1 })).toBeInTheDocument()
   })
 
   it('/collection/:id resolves to CollectionDetail screen', async () => {
@@ -100,9 +97,7 @@ describe('route table (FR-1)', () => {
       ),
     )
     renderRoute('/collection/coll-2')
-    expect(
-      await screen.findByRole('heading', { name: 'Classics', level: 1 }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Classics', level: 1 })).toBeInTheDocument()
   })
 
   it('/discover/works/:openLibraryId resolves to DiscoverWorkDetail screen', async () => {
@@ -143,7 +138,6 @@ describe('route table (FR-1)', () => {
     ).toBeInTheDocument()
   })
 
-
   it('/ redirects to /library', async () => {
     renderRoute('/')
     expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
@@ -172,8 +166,6 @@ describe('route table (FR-1)', () => {
     expect(await screen.findByText(/abc-123/)).toBeInTheDocument()
   })
 })
-
-
 
 describe('RouteError (errorElement, FR-5/FR-7)', () => {
   function Boom(): never {

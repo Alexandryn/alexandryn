@@ -16,9 +16,7 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('link', { name: /Middlemarch/ })).toBeVisible()
   })
 
-  test('non-existent work ID renders dedicated 404 without retry button', async ({
-    page,
-  }) => {
+  test('non-existent work ID renders dedicated 404 without retry button', async ({ page }) => {
     await page.goto('/book/non-existent-work-id-999999')
 
     await expect(page.getByText("This book isn't in your library.")).toBeVisible()
@@ -66,9 +64,7 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 08: non-existent source ID renders 404 error state safely', async ({
-    page,
-  }) => {
+  test('Phase 08: non-existent source ID renders 404 error state safely', async ({ page }) => {
     await page.goto('/sources/non-existent-source-id-999999')
 
     await expect(page.getByRole('alert')).toBeVisible()
@@ -78,7 +74,10 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
   test('Phase 08: malformed cursor or search params on source browse do not crash renderer', async ({
     page,
   }) => {
-    await page.goto('/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ?cursor=forged_bad_cursor_payload_9999&q=' + encodeURIComponent('"><script>alert(1)</script>'))
+    await page.goto(
+      '/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ?cursor=forged_bad_cursor_payload_9999&q=' +
+        encodeURIComponent('"><script>alert(1)</script>'),
+    )
 
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })

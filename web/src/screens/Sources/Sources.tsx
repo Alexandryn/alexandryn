@@ -7,12 +7,7 @@ import { Modal } from '../../components/Modal/Modal'
 import { SourceFormDialog } from '../../components/SourceFormDialog/SourceFormDialog'
 import { SourceStatusBadge } from '../../components/SourceStatusBadge/SourceStatusBadge'
 import { Spinner } from '../../components/Spinner/Spinner'
-import {
-  useDeleteSource,
-  useHealthCheckSource,
-  useSources,
-  type Source,
-} from '../../data/sources'
+import { useDeleteSource, useHealthCheckSource, useSources, type Source } from '../../data/sources'
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -87,9 +82,7 @@ export function Sources() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-lg">
             {sources.map((src) => {
               const isLocal = src.kind === 'local-folder'
-              const configDisplay = isLocal
-                ? src.config.basePath
-                : src.config.baseUrl
+              const configDisplay = isLocal ? src.config.basePath : src.config.baseUrl
 
               return (
                 <div
@@ -125,8 +118,7 @@ export function Sources() {
                       health={src.health}
                       onCheckAgain={() => healthCheckMutation.mutate(src.id)}
                       isChecking={
-                        healthCheckMutation.isPending &&
-                        healthCheckMutation.variables === src.id
+                        healthCheckMutation.isPending && healthCheckMutation.variables === src.id
                       }
                     />
 
@@ -187,10 +179,7 @@ export function Sources() {
       </div>
 
       {/* Add Source Dialog */}
-      <SourceFormDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-      />
+      <SourceFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
 
       {/* Edit Source Dialog */}
       {editingSource && (

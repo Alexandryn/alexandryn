@@ -47,8 +47,9 @@ export const handlers = [
   http.post('*/api/v1/collections/:id/works', () =>
     HttpResponse.json(generatedFixtures.addWorkToCollection['200']),
   ),
-  http.delete('*/api/v1/collections/:id/works/:workId', () =>
-    new HttpResponse(null, { status: 204 }),
+  http.delete(
+    '*/api/v1/collections/:id/works/:workId',
+    () => new HttpResponse(null, { status: 204 }),
   ),
 
   http.get('*/api/v1/discover', ({ request }) => {
@@ -140,7 +141,3 @@ export const handlers = [
 
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]
-
-
-
-

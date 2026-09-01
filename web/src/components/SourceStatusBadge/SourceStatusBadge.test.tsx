@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { SourceStatusBadge } from './SourceStatusBadge'
+import type { SourceHealthDetail } from '../../data/sources'
 
 describe('SourceStatusBadge (FR-3)', () => {
   it('renders Reachable state with success tone', () => {
@@ -41,7 +42,7 @@ describe('SourceStatusBadge (FR-3)', () => {
         health={{
           status: 'unreachable',
           checkedAt: '2026-08-31T12:00:00Z',
-          detail: detail as any,
+          detail: detail as SourceHealthDetail,
         }}
       />,
     )

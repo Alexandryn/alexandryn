@@ -38,7 +38,9 @@ describe('SourceDetail Screen (FR-6)', () => {
       routerEntries: ['/sources/src-123'],
     })
 
-    expect(await screen.findByRole('heading', { name: 'Science Fiction OPDS', level: 1 })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Science Fiction OPDS', level: 1 }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Reachable')).toBeInTheDocument()
     expect(screen.getByLabelText('Search this source')).toBeInTheDocument()
     expect(await screen.findAllByText('The Dispossessed')).toHaveLength(2)

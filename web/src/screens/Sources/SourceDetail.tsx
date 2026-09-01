@@ -5,11 +5,7 @@ import { Input } from '../../components/Input/Input'
 import { SourceCandidateList } from '../../components/SourceCandidateList/SourceCandidateList'
 import { SourceStatusBadge } from '../../components/SourceStatusBadge/SourceStatusBadge'
 import { Spinner } from '../../components/Spinner/Spinner'
-import {
-  useHealthCheckSource,
-  useSource,
-  useSourceCandidates,
-} from '../../data/sources'
+import { useHealthCheckSource, useSource, useSourceCandidates } from '../../data/sources'
 import { ApiError } from '../../data/http'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { cx } from '../../lib/cx'
@@ -22,9 +18,7 @@ export function SourceDetail() {
   const params = useParams<{ id?: string; '*'?: string }>()
   const id =
     params.id ||
-    (params['*']
-      ? params['*'].replace(/^(sources|source)\//, '').split('/')[0]
-      : '') ||
+    (params['*'] ? params['*'].replace(/^(sources|source)\//, '').split('/')[0] : '') ||
     ''
   const {
     data: source,
@@ -69,17 +63,9 @@ export function SourceDetail() {
       <div className="p-3xl">
         <ErrorState
           title="Could not load source"
-          description={
-            sourceError instanceof ApiError
-              ? sourceError.message
-              : 'Source not found.'
-          }
+          description={sourceError instanceof ApiError ? sourceError.message : 'Source not found.'}
           code={sourceError instanceof ApiError ? sourceError.code : undefined}
-          correlationId={
-            sourceError instanceof ApiError
-              ? sourceError.correlationId
-              : undefined
-          }
+          correlationId={sourceError instanceof ApiError ? sourceError.correlationId : undefined}
           onRetry={() => void refetchSource()}
         />
       </div>
@@ -118,8 +104,7 @@ export function SourceDetail() {
             health={source.health}
             onCheckAgain={() => healthCheckMutation.mutate(source.id)}
             isChecking={
-              healthCheckMutation.isPending &&
-              healthCheckMutation.variables === source.id
+              healthCheckMutation.isPending && healthCheckMutation.variables === source.id
             }
           />
         </div>

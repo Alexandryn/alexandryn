@@ -1,1 +1,2 @@
-export { SourceStatusBadge, type SourceStatusBadgeProps, getHealthDescription } from './SourceStatusBadge'
+export { SourceStatusBadge, type SourceStatusBadgeProps } from './SourceStatusBadge'
+export { getHealthDescription } from './healthDescription'
