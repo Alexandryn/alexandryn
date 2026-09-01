@@ -41,7 +41,7 @@ const SHARED: [string, string][] = [
 
 const HOST_ONLY: [string, string][] = [
   ['/sources', 'Sources'],
-  ['/import', 'Import'],
+  ['/import', 'Import Review'],
   ['/settings', 'Settings'],
   ['/system', 'System'],
 ]

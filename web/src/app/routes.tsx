@@ -3,6 +3,7 @@ import type { Capability } from '../data/bootstrap'
 import { Collections } from '../screens/Collections'
 import { CollectionDetail } from '../screens/CollectionDetail'
 import { Discover, DiscoverWorkDetail } from '../screens/Discover'
+import { Import } from '../screens/Import'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
@@ -64,7 +65,14 @@ const shellChildren: RouteObject[] = [
       </RequireCapability>
     ),
   },
-  { path: 'import', element: hostOnly('import', 'Import') },
+  {
+    path: 'import',
+    element: (
+      <RequireCapability capability="import">
+        <Import />
+      </RequireCapability>
+    ),
+  },
   { path: 'settings', element: hostOnly('settings', 'Settings') },
   { path: 'system', element: hostOnly('system', 'System') },
 
