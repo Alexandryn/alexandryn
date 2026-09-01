@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE feed [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+  <!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">
+  <!ENTITY lol5 "&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;">
+]>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:uuid:lol</id>
+  <title>&lol5;</title>
+  <link rel="self" href="/opds/lol"/>
+  <entry><title>&lol5;</title><id>x</id>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/d/x.epub"/>
+  </entry>
+</feed>

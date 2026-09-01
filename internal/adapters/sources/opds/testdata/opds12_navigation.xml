@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:uuid:nav</id>
+  <title>Catalog Root</title>
+  <updated>2026-08-01T00:00:00Z</updated>
+  <link rel="self" href="/opds" type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+  <entry>
+    <title>All Books</title>
+    <id>urn:uuid:nav-all</id>
+    <link rel="subsection" href="/opds/all" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  </entry>
+</feed>
