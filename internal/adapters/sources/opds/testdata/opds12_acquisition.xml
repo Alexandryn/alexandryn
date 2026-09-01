@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog">
+  <id>urn:uuid:acq-feed</id>
+  <title>Recent Additions</title>
+  <updated>2026-08-01T00:00:00Z</updated>
+  <link rel="self" href="/opds/recent" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="next" href="/opds/recent?page=2" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="search" type="application/opensearchdescription+xml" href="/opds/opensearch.xml"/>
+  <entry>
+    <title>The Left Hand of Darkness</title>
+    <id>urn:uuid:book-1</id>
+    <updated>2026-08-01T00:00:00Z</updated>
+    <author><name>Ursula K. Le Guin</name></author>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/download/book-1.epub"/>
+    <link rel="http://opds-spec.org/image" href="/covers/book-1.jpg"/>
+  </entry>
+  <entry>
+    <title>A Wizard of Earthsea</title>
+    <id>urn:uuid:book-2</id>
+    <updated>2026-08-01T00:00:00Z</updated>
+    <author><name>Ursula K. Le Guin</name></author>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/pdf" href="/download/book-2.pdf"/>
+  </entry>
+  <entry>
+    <title>Untitled scan</title>
+    <id>urn:uuid:book-3</id>
+    <link rel="http://opds-spec.org/image" href="https://tracker.evil.example/pixel.gif"/>
+    <link rel="http://opds-spec.org/acquisition" href="/download/book-3.epub"/>
+  </entry>
+</feed>

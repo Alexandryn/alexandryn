@@ -1,0 +1,19 @@
+{
+  "metadata": { "title": "Bookshelf", "numberOfItems": 2 },
+  "links": [
+    { "rel": "self", "href": "https://opds.example.org/2.0/feed", "type": "application/opds+json" },
+    { "rel": "next", "href": "/2.0/feed?page=2", "type": "application/opds+json" },
+    { "rel": "search", "href": "/2.0/search?q={searchTerms}", "type": "application/opds+json", "templated": true }
+  ],
+  "publications": [
+    {
+      "metadata": { "title": "Kindred", "author": "Octavia E. Butler" },
+      "links": [ { "rel": "http://opds-spec.org/acquisition", "href": "/2.0/dl/kindred.epub", "type": "application/epub+zip" } ],
+      "images": [ { "href": "/2.0/covers/kindred.jpg", "type": "image/jpeg" } ]
+    },
+    {
+      "metadata": { "title": "Dawn", "author": [ { "name": "Octavia E. Butler" } ] },
+      "links": [ { "rel": ["http://opds-spec.org/acquisition/open-access"], "href": "/2.0/dl/dawn.pdf", "type": "application/pdf" } ]
+    }
+  ]
+}

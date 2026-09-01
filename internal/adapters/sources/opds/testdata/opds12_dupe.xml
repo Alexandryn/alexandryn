@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:uuid:dupe</id>
+  <title>Dupe</title>
+  <link rel="self" href="/opds/dupe"/>
+  <entry>
+    <title>Only Once</title><id>urn:uuid:dup-1</id>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/d/1.epub"/>
+  </entry>
+  <entry>
+    <title>Only Once (again)</title><id>urn:uuid:dup-1</id>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/d/1b.epub"/>
+  </entry>
+</feed>

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!DOCTYPE feed [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:uuid:xxe</id>
+  <title>XXE test &xxe;</title>
+  <link rel="self" href="/opds/xxe"/>
+  <entry><title>&xxe;</title><id>x</id>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/d/x.epub"/>
+  </entry>
+</feed>

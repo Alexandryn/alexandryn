@@ -1,0 +1,8 @@
+{
+  "metadata": { "title": "Dupe" },
+  "links": [ { "rel": "self", "href": "https://opds.example.org/2.0/dupe" } ],
+  "publications": [
+    { "metadata": { "title": "Same" }, "links": [ { "rel": "http://opds-spec.org/acquisition", "href": "/dl/same.epub", "type": "application/epub+zip" } ] },
+    { "metadata": { "title": "Same 2" }, "links": [ { "rel": "http://opds-spec.org/acquisition", "href": "/dl/same.epub", "type": "application/epub+zip" } ] }
+  ]
+}

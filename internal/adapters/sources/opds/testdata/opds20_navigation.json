@@ -1,0 +1,7 @@
+{
+  "metadata": { "title": "Root" },
+  "links": [ { "rel": "self", "href": "https://opds.example.org/2.0/" } ],
+  "navigation": [
+    { "title": "New", "href": "/2.0/new", "type": "application/opds+json", "rel": "current" }
+  ]
+}
