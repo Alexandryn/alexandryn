@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (maintainer read 2026-08-19) — no correctness defect found in this spec's reasoning. Amended 2026-08-21 and confirmed the same day: FR-6's cascade is now **declared atomic**, composed through ADR 0021's `Transactor`. One amendment still pending: FR-2's re-observation rule (`:94-95`) refreshes the timestamp without saying whether the `FileReference`'s opaque identifier is refreshed with it. Amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 2 — a new Open question records the multi-file-per-reading-unit gap; not fixed, needs re-confirmation |
+| **Status** | `IMPLEMENTED` (all Tiers 0–6 implemented and verified, security audit Clear) |
 | **Phase** | `02-domain` |
 | **Author** | Claude (Sonnet 5), for review by Luann Moreira |
 | **Created** | 2026-08-14 |

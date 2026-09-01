@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `IMPLEMENTED` (all Tiers 0–6 implemented and verified, security audit Clear) |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval — `Provider.List` Go interface formalised for phase 10, [`0037`](../reviews/0037-phase10-cross-spec-review.md), findings fixed, re-confirmed 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 6 — FR-3 now names maximum path length and UNC-path shape as validation dimensions; needs re-confirmation) |
+| **Status** | `IMPLEMENTED` (all Tiers 0–6 implemented and verified, security audit Clear) |
 | **Phase** | `08-sources` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
