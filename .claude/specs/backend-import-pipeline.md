@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) finding 1 — FR-4 names three confusable-input shapes its scoring MUST NOT rate above `"medium"`, with matching test-strategy fixtures; finding 2 recorded as an Open question, not fixed; needs re-confirmation) |
+| **Status** | `IMPLEMENTED` (audit `0010`) |
 | **Phase** | `10-import` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
