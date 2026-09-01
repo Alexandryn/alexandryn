@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -15,12 +16,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
+	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
@@ -80,6 +83,20 @@ func main() {
 				return nil, nil, err
 			}
 			return pool, newRepositories(pool), nil
+		},
+		newJobSystem: func(cfg *config.Config, logger *slog.Logger, pool pgPool) (jobRunner, error) {
+			// The pool run holds is the pgPool interface; the job
+			// subsystem needs the concrete *pgxpool.Pool it shares with
+			// every repository (backend-job-queue.md FR-1 — one pool, not
+			// a second). In production newPool always returns exactly
+			// that; a mismatch is a wiring bug worth failing loudly on.
+			pgxPool, ok := pool.(*pgxpool.Pool)
+			if !ok {
+				return nil, fmt.Errorf("job worker pool needs a *pgxpool.Pool, got %T", pool)
+			}
+			return jobs.NewSystem(pgxPool, idgen.New(), jobs.SystemClock{}, logger, jobs.Config{
+				ShutdownGracePeriod: cfg.ShutdownGracePeriod,
+			}), nil
 		},
 		watchParent: parentwatch.Watch,
 		stderr:      os.Stderr,
