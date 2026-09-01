@@ -71,6 +71,39 @@ func (r *SourceOfferingRepository) FindBySource(ctx context.Context, sourceID do
 	return result, nil
 }
 
+// FindByEdition returns every offering for editionID, most recently
+// observed first (backend-reader-content.md FR-2's fallback order).
+func (r *SourceOfferingRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.SourceOffering, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	rows, err := exec.Query(ctx,
+		`SELECT id, source_id, file_reference_id, file_reference_format, file_reference_size_bytes, observed_at
+			FROM source_offerings WHERE edition_id = $1 ORDER BY observed_at DESC, id`, string(editionID))
+	if err != nil {
+		return nil, TranslateError(err)
+	}
+	defer rows.Close()
+
+	var result []*domain.SourceOffering
+	for rows.Next() {
+		var id, sourceID, referenceID, format string
+		var sizeBytes *int64
+		var observedAt time.Time
+		if err := rows.Scan(&id, &sourceID, &referenceID, &format, &sizeBytes, &observedAt); err != nil {
+			return nil, TranslateError(err)
+		}
+		ref, err := domain.NewFileReference(referenceID, format, sizeBytes)
+		if err != nil {
+			return nil, TranslateError(err)
+		}
+		result = append(result, domain.NewSourceOffering(domain.SourceOfferingID(id), domain.SourceID(sourceID), editionID, ref, observedAt))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, TranslateError(err)
+	}
+	return result, nil
+}
+
 func (r *SourceOfferingRepository) Save(ctx context.Context, o *domain.SourceOffering) error {
 	exec := executorFrom(ctx, r.pool)
 

@@ -35,6 +35,10 @@ func (f *failAfterNDeletes) FindByID(ctx context.Context, id domain.SourceOfferi
 	return f.real.FindByID(ctx, id)
 }
 
+func (f *failAfterNDeletes) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.SourceOffering, error) {
+	return f.real.FindByEdition(ctx, editionID)
+}
+
 func (f *failAfterNDeletes) FindBySource(ctx context.Context, sourceID domain.SourceID) ([]*domain.SourceOffering, error) {
 	return f.real.FindBySource(ctx, sourceID)
 }

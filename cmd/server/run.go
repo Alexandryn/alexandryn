@@ -19,6 +19,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
+	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
@@ -340,6 +341,11 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		if repos.sourceRemoval != nil {
 			poolRef.SetSourceRemovalService(repos.sourceRemoval)
+		}
+		if repos.libraryEntries != nil && repos.sourceOfferings != nil && repos.sourceRecords != nil {
+			contentSourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
+			contentResolver := content.NewResolver(repos.libraryEntries, repos.sourceOfferings, contentSourceResolver)
+			poolRef.SetReaderContentCache(content.NewCache(contentResolver.Load))
 		}
 	}
 

@@ -205,6 +205,8 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("POST /api/v1/import/candidates/{id}/confirm", transporthttp.ImportCandidateConfirmHandler(importerSvc, candRepo, openLibraryClient))
 	mux.Handle("POST /api/v1/import/candidates/{id}/reject", transporthttp.ImportCandidateRejectHandler(importerSvc, candRepo))
 
+	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
