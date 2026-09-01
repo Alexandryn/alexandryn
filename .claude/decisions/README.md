@@ -71,6 +71,7 @@ deserves to know they were already weighed.
 | [0019](0019-toml-library.md) | Config-file parsing uses `pelletier/go-toml/v2`, decoded into a `map[string]any` for the per-key lookup `internal/config` already uses | Accepted |
 | [0020](0020-graph-invariants-in-domain-services.md) | Invariants that depend on reading other records live in domain services holding domain-defined repository interfaces, never in value constructors | Accepted |
 | [0021](0021-transaction-contract-and-event-outbox.md) | Operations spanning repositories compose through a domain-declared `Transactor` carrying its handle in context; events are written to a transactional outbox | Accepted |
+| [0022](0022-pdf-metadata-extraction-library.md) | PDF metadata extraction uses `pdfcpu`, wrapped in bounded streams and panic recovery | Accepted |
 
 ## Open questions not yet ADRs
 
