@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -212,6 +213,40 @@ func TestSchema_ReadingProgressUniqueByWork(t *testing.T) {
 
 	_, err := pool.Exec(ctx, "INSERT INTO reading_progress (id, work_id, percentage, device_id, observed_at) VALUES ('progress-2', 'work-1', 0.7, 'device-2', now())")
 	assertUniqueViolation(t, err)
+}
+
+// Migration 00008 (phase 11): reading_progress.epoch and
+// bookmarks/highlights.created_at exist, with their DEFAULT applied to
+// rows inserted without them (domain-reading.md FR-6 as amended;
+// reading-data-export.md FR-4).
+func TestSchema_Phase11ReaderColumns(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, "INSERT INTO works (id, title) VALUES ('work-1', 'Title')")
+	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language) VALUES ('edition-1', 'work-1', 'en')")
+	mustExecPool(t, pool, "INSERT INTO reading_progress (id, work_id, percentage, device_id, observed_at) VALUES ('progress-1', 'work-1', 0.5, 'device-1', now())")
+	mustExecPool(t, pool, "INSERT INTO bookmarks (id, edition_id, position) VALUES ('bookmark-1', 'edition-1', 'epubcfi(/6/4!/4)')")
+	mustExecPool(t, pool, "INSERT INTO highlights (id, edition_id, start_position, end_position) VALUES ('highlight-1', 'edition-1', 'epubcfi(/6/4!/4/1:0)', 'epubcfi(/6/4!/4/1:9)')")
+
+	var epoch int64
+	if err := pool.QueryRow(ctx, "SELECT epoch FROM reading_progress WHERE id = 'progress-1'").Scan(&epoch); err != nil {
+		t.Fatalf("select epoch: %v", err)
+	}
+	if epoch != 0 {
+		t.Fatalf("epoch = %d, want 0 (the DEFAULT)", epoch)
+	}
+
+	var bookmarkCreated, highlightCreated time.Time
+	if err := pool.QueryRow(ctx, "SELECT created_at FROM bookmarks WHERE id = 'bookmark-1'").Scan(&bookmarkCreated); err != nil {
+		t.Fatalf("select bookmarks.created_at: %v", err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT created_at FROM highlights WHERE id = 'highlight-1'").Scan(&highlightCreated); err != nil {
+		t.Fatalf("select highlights.created_at: %v", err)
+	}
+	if bookmarkCreated.IsZero() || highlightCreated.IsZero() {
+		t.Fatalf("created_at DEFAULT not applied: bookmark=%v highlight=%v", bookmarkCreated, highlightCreated)
+	}
 }
 
 // domain-bibliographic.md FR-8: an Edition cannot exist without a real
