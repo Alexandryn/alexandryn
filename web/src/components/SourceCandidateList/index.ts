@@ -1,5 +1,2 @@
-export {
-  SourceCandidateList,
-  type SourceCandidateListProps,
-  formatBytes,
-} from './SourceCandidateList'
+export { SourceCandidateList, type SourceCandidateListProps } from './SourceCandidateList'
+export { formatBytes } from './formatBytes'

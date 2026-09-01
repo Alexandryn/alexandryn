@@ -13,9 +13,15 @@ function renderWithQueryClient(ui: ReactNode) {
       mutations: { retry: false },
     },
   })
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
+interface AlexandrynWindow {
+  alexandryn?: {
+    source?: {
+      pickLocalFolder?: () => Promise<{ path: string } | null>
+    }
+  }
 }
 
 describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
@@ -38,12 +44,12 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
 
     // Mock window.alexandryn
     const pickLocalFolder = vi.fn().mockResolvedValue({ path: '/home/user/books' })
-    ;(window as any).alexandryn = { source: { pickLocalFolder } }
+    ;(window as unknown as AlexandrynWindow).alexandryn = { source: { pickLocalFolder } }
 
     renderWithQueryClient(<SourceFormDialog open={true} onOpenChange={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'Browse...' })).toBeInTheDocument()
 
-    delete (window as any).alexandryn
+    delete (window as unknown as AlexandrynWindow).alexandryn
   })
 
   it('shows HTTP warning when non-HTTPS URL has credential form open (FR-5)', async () => {
@@ -54,9 +60,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     await user.click(screen.getByText('OPDS catalog'))
 
     // Enable credentials
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Requires a username and password' }),
-    )
+    await user.click(screen.getByRole('checkbox', { name: 'Requires a username and password' }))
 
     // Type http:// URL
     const urlInput = screen.getByLabelText('Catalog base URL')
@@ -80,11 +84,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     }
 
     renderWithQueryClient(
-      <SourceFormDialog
-        open={true}
-        onOpenChange={vi.fn()}
-        source={opdsSourceWithCred}
-      />,
+      <SourceFormDialog open={true} onOpenChange={vi.fn()} source={opdsSourceWithCred} />,
     )
 
     expect(screen.getByRole('heading', { name: 'Edit source' })).toBeInTheDocument()

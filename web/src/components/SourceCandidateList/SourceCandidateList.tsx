@@ -6,6 +6,7 @@ import { FormatBadge } from '../FormatBadge/FormatBadge'
 import { Spinner } from '../Spinner/Spinner'
 import type { SourceCandidate } from '../../data/sources'
 import { cx } from '../../lib/cx'
+import { formatBytes } from './formatBytes'
 
 export interface SourceCandidateListProps {
   candidates: SourceCandidate[]
@@ -17,14 +18,6 @@ export interface SourceCandidateListProps {
   onRetry?: () => void
   emptyMessage?: string
   className?: string
-}
-
-export function formatBytes(bytes: number | null): string {
-  if (bytes === null || bytes === undefined || bytes <= 0) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 /**
@@ -58,12 +51,7 @@ export function SourceCandidateList({
   }
 
   if (candidates.length === 0) {
-    return (
-      <EmptyState
-        title="No items found"
-        description={emptyMessage}
-      />
-    )
+    return <EmptyState title="No items found" description={emptyMessage} />
   }
 
   return (
@@ -100,9 +88,7 @@ export function SourceCandidateList({
                 </p>
                 <div className="mt-4xs flex items-center justify-between gap-xs">
                   <FormatBadge format={candidate.fileReference.format} />
-                  {sizeStr && (
-                    <span className="text-3xs font-mono text-text-3">{sizeStr}</span>
-                  )}
+                  {sizeStr && <span className="text-3xs font-mono text-text-3">{sizeStr}</span>}
                 </div>
               </div>
             </div>
@@ -112,11 +98,7 @@ export function SourceCandidateList({
 
       {hasNextPage && fetchNextPage && (
         <div className="flex justify-center p-md">
-          <Button
-            variant="secondary"
-            onClick={fetchNextPage}
-            disabled={isFetchingNextPage}
-          >
+          <Button variant="secondary" onClick={fetchNextPage} disabled={isFetchingNextPage}>
             {isFetchingNextPage ? 'Loading more...' : 'Load more'}
           </Button>
         </div>

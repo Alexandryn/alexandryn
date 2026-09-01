@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { server } from '../../mocks/node'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { Sources } from './Sources'
+import type { SourceCreate } from '../../data/sources'
 
 const mockSources = [
   {
@@ -29,11 +30,7 @@ const mockSources = [
 
 describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
   it('renders empty state when there are no sources', async () => {
-    server.use(
-      http.get('*/api/v1/sources', () =>
-        HttpResponse.json({ sources: [] }),
-      ),
-    )
+    server.use(http.get('*/api/v1/sources', () => HttpResponse.json({ sources: [] })))
 
     renderWithProviders(<Sources />, { routerEntries: ['/sources'] })
 
@@ -42,11 +39,7 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
   })
 
   it('renders source cards with health badge, capabilities and browse link', async () => {
-    server.use(
-      http.get('*/api/v1/sources', () =>
-        HttpResponse.json({ sources: mockSources }),
-      ),
-    )
+    server.use(http.get('*/api/v1/sources', () => HttpResponse.json({ sources: mockSources })))
 
     renderWithProviders(<Sources />, { routerEntries: ['/sources'] })
 
@@ -59,14 +52,12 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
   })
 
   it('opens create modal, submits new source, and closes modal on success', async () => {
-    let createdPayload: any = null
+    let createdPayload: SourceCreate | null = null
 
     server.use(
-      http.get('*/api/v1/sources', () =>
-        HttpResponse.json({ sources: mockSources }),
-      ),
+      http.get('*/api/v1/sources', () => HttpResponse.json({ sources: mockSources })),
       http.post('*/api/v1/sources', async ({ request }) => {
-        createdPayload = await request.json()
+        createdPayload = (await request.json()) as SourceCreate
         return HttpResponse.json(
           {
             id: 's-new',
@@ -113,9 +104,7 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
     let deletedId: string | null = null
 
     server.use(
-      http.get('*/api/v1/sources', () =>
-        HttpResponse.json({ sources: mockSources }),
-      ),
+      http.get('*/api/v1/sources', () => HttpResponse.json({ sources: mockSources })),
       http.delete('*/api/v1/sources/:id', ({ params }) => {
         deletedId = params.id as string
         return new HttpResponse(null, { status: 204 })

@@ -76,7 +76,6 @@ const shellChildren: RouteObject[] = [
   { path: 'read/:workId/:editionId', element: <ParamPlaceholder title="Reader" param="workId" /> },
 
   { path: '*', element: <NotFound /> },
-
 ]
 
 export const routes: RouteObject[] = [
