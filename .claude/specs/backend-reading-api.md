@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01 to realign FR-2/FR-3, the API contract, failure modes, and acceptance criteria with `domain-reading.md`'s own 2026-09-01 amendment ([`0048`](../reviews/0048-phase02-correctness-review.md) finding 1): reconciliation is `max` over `(epoch, percentage)`, the `POST` body gains `observedEpoch` and an optional `override`, the response gains `epoch` and an outcome tag. Maintainer re-confirmation pending. |
 | **Phase** | `11-reader` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -90,43 +90,57 @@ Nothing exists yet to store or serve a `ReadingProgress`,
   which this spec deliberately doesn't do.
 - **FR-2** `GET /api/v1/reading/works/:workId/progress` returns the
   canonical `ReadingProgress` for that `Work` (`domain-reading.md`
-  FR-1's singleton), or `{ progress: null }` if none exists yet (a
-  legal, common state — a `Work` nobody has started). `POST
+  FR-1's singleton), including its `epoch`, or `{ progress: null }` if
+  none exists yet (a legal, common state — a `Work` nobody has started;
+  a client with no stored progress reports `observedEpoch: 0`). `POST
   /api/v1/reading/works/:workId/progress` (body: `{ percentage: number,
-  precisePosition: { editionId, cfi: string } | null }`) constructs a
-  `ProgressReport` (`domain-reading.md` FR-2: this `Work` ID, the
-  reported `percentage`, optional `precisePosition`, the `X-Device-Id`
-  header's value, current server time as reported-at) and calls
-  `ReconcileProgress` against the current canonical value (or treats
-  this report as the first canonical value directly if none exists —
-  `domain-reading.md`'s own State transitions section's "no
-  reconciliation needed, nothing to reconcile against" case), then
-  persists the result in one transaction. **The read of the current
-  canonical value and the write of the reconciled result MUST happen
-  within the same transaction, with the read acquiring a row lock
-  (`SELECT ... FOR UPDATE` against the singleton `ReadingProgress` row
-  for this `Work`, or an equivalent `INSERT ... ON CONFLICT` compare-
-  and-swap keyed on the row's own last-written value) — without this,
-  two concurrent reports for the same `Work` can both read the same
-  stale canonical value, both compute their own "reconciled" result
+  observedEpoch: number, precisePosition: { editionId, cfi: string } |
+  null, override?: boolean }`) constructs a `ProgressReport`
+  (`domain-reading.md` FR-2: this `Work` ID, the reported `percentage`,
+  the `observedEpoch`, optional `precisePosition`, the `X-Device-Id`
+  header's value, current server time as reported-at). When `override`
+  is absent or `false` it calls `ReconcileProgress` against the current
+  canonical value (or treats this report as the first canonical value
+  directly if none exists — `domain-reading.md`'s State transitions
+  section's "nothing to reconcile against" case, `epoch` initialised to
+  `0`). When `override` is `true` it calls `OverrideProgress`
+  (`domain-reading.md` FR-7) instead — the deliberate backward move,
+  which bumps `epoch` and sets `percentage` unconditionally. Either
+  result is persisted in one transaction. **The read of the current
+  canonical value and the write of the result MUST happen within the
+  same transaction, with the read acquiring a row lock (`SELECT ... FOR
+  UPDATE` against the singleton `ReadingProgress` row for this `Work`,
+  or an equivalent `INSERT ... ON CONFLICT` compare-and-swap) — without
+  this, two concurrent reports for the same `Work` can both read the
+  same stale canonical value, both compute their own result
   independently, and whichever commits second silently overwrites the
-  first's result even if the first's was the furthest-wins outcome,
-  exactly the lost-update bug `ReconcileProgress`'s own
-  commutative/associative guarantee (`domain-reading.md` FR-6) exists
-  to prevent — a guarantee about the pure function's own mathematics,
-  not a guarantee about a read-then-write sequence with no isolation
-  around it.** Returns the new canonical `ReadingProgress`, which the
-  caller MUST NOT assume equals what it just submitted —
-  `ReconcileProgress`'s furthest-wins rule (`domain-reading.md` FR-6)
-  may return the *existing* value unchanged if the incoming report is
-  behind it.
-- **FR-3** `percentage` MUST be validated `[0.0, 1.0]` at this
-  boundary (`400 InvalidInput` otherwise) — restating
-  `domain-reading.md` FR-2's own construction-time invariant at the
+  first even if the first was the `max`-over-`(epoch, percentage)`
+  outcome, exactly the lost-update bug `ReconcileProgress`'s
+  commutative/associative guarantee (`domain-reading.md` FR-6) exists to
+  prevent — a guarantee about the pure function's mathematics, not about
+  a read-then-write sequence with no isolation around it. `OverrideProgress`
+  needs the same lock for the same reason, and additionally because its
+  `epoch := epoch + 1` step must serialise against a concurrent
+  override.** Returns the new canonical `ReadingProgress` (with its
+  `epoch`) and the reconcile outcome tag (`advanced` / `unchanged` /
+  `rejected` / `overridden`); the caller MUST NOT assume the returned
+  value equals what it just submitted — a report behind the canonical
+  value, or against a superseded epoch, is `rejected` and the existing
+  value is returned unchanged (`domain-reading.md` FR-6). A `rejected`
+  outcome is still HTTP `200` — the report was well-formed, it just did
+  not win.
+- **FR-3** `percentage` MUST be validated `[0.0, 1.0]` and
+  `observedEpoch` MUST be validated as a non-negative integer within a
+  sane bound (`400 InvalidInput` otherwise) — restating
+  `domain-reading.md` FR-2's construction-time invariants at the
   transport layer, the same "validate again at the boundary, don't
   assume the domain layer's check is the only one a caller will ever
   hit" discipline this project has applied everywhere else external
-  input crosses into a domain construction call.
+  input crosses into a domain construction call. `observedEpoch` above
+  the stored `epoch` is not itself an error — it is clamped to the
+  stored value before reconciliation (`domain-reading.md` FR-6: only the
+  server assigns `epoch`), so a client cannot fast-forward the epoch by
+  over-reporting.
 - **FR-4** `precisePosition.cfi` (when present) MUST pass a **shallow
   structural check** — begins with the literal `epubcfi(`, ends with
   `)`, brackets/parentheses balanced, and contains only characters the
@@ -235,8 +249,8 @@ All endpoints follow `architecture-contracts.md`'s existing
 conventions (base path `/api/v1`, error envelope, versioning); FR-1
 specifies exactly which endpoints require the `X-Device-Id` header.
 
-- `GET /api/v1/reading/works/:workId/progress` → `200 { progress: ReadingProgress | null }`
-- `POST /api/v1/reading/works/:workId/progress` → `200 { progress: ReadingProgress }` → `400`
+- `GET /api/v1/reading/works/:workId/progress` → `200 { progress: ReadingProgress | null }` (`ReadingProgress` includes `epoch`)
+- `POST /api/v1/reading/works/:workId/progress` (body `{ percentage, observedEpoch, precisePosition, override? }`) → `200 { progress: ReadingProgress, outcome: "advanced" | "unchanged" | "rejected" | "overridden" }` → `400`
 - `GET /api/v1/reading/editions/:editionId/bookmarks` → `200 { bookmarks: Bookmark[] }`
 - `POST /api/v1/reading/editions/:editionId/bookmarks` → `201 { bookmark: Bookmark }` → `400`
 - `DELETE /api/v1/reading/bookmarks/:bookmarkId` → `204` → `404`
@@ -262,7 +276,9 @@ is the one already-specified transition this spec actually invokes.
 | Malformed/hostile CFI string | FR-4's shallow structural check | `400 InvalidInput` | No write |
 | `precisePosition.editionId` belongs to a different `Work` | FR-5's check | `400 InvalidInput` | No write |
 | `endCfi` sorts before `startCfi` | FR-7's ordering check | `400 InvalidInput` | No write |
-| Two devices submit progress concurrently for the same `Work` | `ReconcileProgress`'s own deterministic function, called serially per request | Each caller sees the reconciled canonical value at the time their own request completed | No lost update — `domain-reading.md` FR-6's commutative/associative guarantee holds regardless of arrival order |
+| Two devices submit progress concurrently for the same `Work` at the same epoch | `ReconcileProgress`, called under the FR-2 row lock, serialised per `Work` | Each caller sees the canonical value as of when their own request committed | No lost update — the row lock serialises the read-then-write, and `domain-reading.md` FR-6's `max`-over-`(epoch, percentage)` guarantee makes the outcome arrival-order-independent |
+| A device reports against a superseded epoch (it was offline across an override) | `ReconcileProgress` returns outcome `rejected` (`domain-reading.md` FR-6) | `200` with the unchanged canonical value and `outcome: "rejected"` | No write; the client re-syncs (its next `GET` returns the new `epoch`) and may re-report |
+| A client over-reports `observedEpoch` above the stored `epoch` | FR-3's clamp | Treated as a report at the stored epoch | The client cannot advance the epoch — only the server does, via an override |
 | Deleting a nonexistent bookmark/highlight | Row lookup miss | `404 NotFound` | No-op |
 
 ## Security considerations
@@ -291,20 +307,26 @@ is the one already-specified transition this spec actually invokes.
 | Unit | CFI shape validation against real and malformed fixture strings; `percentage`/ordering boundary checks |
 | Integration | Full progress-report → reconcile → persist round trip against a real PostgreSQL instance (`backend-test-harness.md`'s harness); a two-device-concurrent-report test proving `ReconcileProgress`'s order-independence holds through this spec's own persistence layer, not just in the pure domain function's own already-existing tests; bookmark/highlight/preferences CRUD |
 | Contract | `architecture-contracts.md` FR-3's `kin-openapi` tool, extended to `/api/v1/reading*` |
-| E2E | Report progress from one simulated device, then a "further" report from another → canonical progress reflects the furthest; create a bookmark and a highlight → both persist and are retrievable |
+| E2E | Report progress from one simulated device, then a "further" report from another → canonical progress reflects the furthest; an `override` report → canonical jumps to the target at `epoch + 1`; a stale old-epoch report afterward → `outcome: "rejected"`, canonical unchanged; create a bookmark and a highlight → both persist and are retrievable |
 | Accessibility | N/A at this layer — `frontend-reader.md`'s concern |
 
 Tests that must fail before implementation begins: a test asserting a
-"behind" progress report doesn't move the canonical value backward
-without an explicit override; a test asserting an obviously malformed/hostile CFI string
-is rejected before any write; a test asserting no reading-related
+"behind" or superseded-epoch progress report yields `outcome: "rejected"`
+and does not move the canonical value; a test asserting an `override`
+report bumps `epoch` and sets `percentage` unconditionally; a test
+asserting a client cannot advance `epoch` by over-reporting
+`observedEpoch`; a test asserting an obviously malformed/hostile CFI
+string is rejected before any write; a test asserting no reading-related
 content ever appears in captured log output across every endpoint in
 this spec.
 
 ## Acceptance criteria
 
-- [ ] Progress reporting correctly reconciles via `ReconcileProgress`,
-      proven under concurrent multi-device reports
+- [ ] Progress reporting correctly reconciles via `ReconcileProgress`
+      (`max` over `(epoch, percentage)`), proven under concurrent
+      same-epoch multi-device reports, and `override` via
+      `OverrideProgress`, proven to bump the epoch and reject subsequent
+      stale reports
 - [ ] `PrecisePosition`'s CFI value is validated at the boundary, not
       only trusted from the client
 - [ ] Bookmark/highlight CRUD works against a real PostgreSQL instance
