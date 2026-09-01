@@ -32,10 +32,10 @@ describe('SourceCandidateList (FR-6)', () => {
     render(<SourceCandidateList candidates={mockCandidates} />)
 
     expect(
-      screen.getByRole('heading', { name: 'The Left Hand of Darkness', level: 3 }),
+      screen.getByRole('heading', { name: 'The Left Hand of Darkness', level: 2 }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'A Wizard of Earthsea', level: 3 }),
+      screen.getByRole('heading', { name: 'A Wizard of Earthsea', level: 2 }),
     ).toBeInTheDocument()
     expect(screen.getByText('EPUB')).toBeInTheDocument()
     expect(screen.getByText('PDF')).toBeInTheDocument()

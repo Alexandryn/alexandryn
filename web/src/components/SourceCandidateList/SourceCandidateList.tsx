@@ -89,12 +89,12 @@ export function SourceCandidateList({
               </div>
 
               <div className="flex flex-col gap-4xs px-2xs pt-2xs">
-                <h3
+                <h2
                   className="text-sm font-medium text-text leading-tight line-clamp-2"
                   title={candidate.title}
                 >
                   {candidate.title}
-                </h3>
+                </h2>
                 <p className="text-xs text-text-2 truncate">
                   {candidate.author || 'Unknown author'}
                 </p>
