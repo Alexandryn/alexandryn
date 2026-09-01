@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pressly/goose/v3"
 
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
@@ -94,6 +95,110 @@ func TestSchema_SourceOfferingsUniqueBySourceEditionFormat(t *testing.T) {
 	}
 }
 
+// backend-source-adapter.md FR-1/FR-6/FR-13: migration 00005 adds
+// source config, encrypted-credential, and health-state columns to the
+// phase-02 `sources` table.
+func TestSchema_Phase08SourceColumnsExist(t *testing.T) {
+	pool := schemaTestPool(t)
+
+	// A full phase-08 opds source row round-trips through every new column.
+	mustExecPool(t, pool, `INSERT INTO sources
+		(id, label, can_list, can_search, can_download, kind,
+		 config_base_url, credential_ciphertext, credential_nonce,
+		 health_status, health_detail, health_checked_at, search_link_url)
+		VALUES ('src-p8', 'Personal OPDS', true, true, true, 'opds',
+		 'https://opds.example.org/catalog', '\xdeadbeef', '\xcafe',
+		 'unreachable', 'auth-rejected', now(), 'https://opds.example.org/search')`)
+
+	var status, detail, url string
+	var ct []byte
+	err := pool.QueryRow(context.Background(),
+		`SELECT health_status, health_detail, search_link_url, credential_ciphertext
+		 FROM sources WHERE id = 'src-p8'`).Scan(&status, &detail, &url, &ct)
+	if err != nil {
+		t.Fatalf("scan phase-08 columns: %v", err)
+	}
+	if status != "unreachable" || detail != "auth-rejected" {
+		t.Fatalf("health = %q/%q, want unreachable/auth-rejected", status, detail)
+	}
+	if url != "https://opds.example.org/search" || len(ct) != 4 {
+		t.Fatalf("search_link_url=%q ciphertext=%d bytes, unexpected", url, len(ct))
+	}
+}
+
+// domain-source.md FR-1: the schema does not constrain `kind` — an
+// empty string (pre-phase-08 rows) and any other string are both
+// accepted. The closed local-folder/opds vocabulary lives in the HTTP
+// handler, not here.
+func TestSchema_SourceKindNotConstrained(t *testing.T) {
+	pool := schemaTestPool(t)
+	mustExecPool(t, pool, "INSERT INTO sources (id, label, can_list, can_search, can_download, kind) VALUES ('s-lf', 'L', true, false, true, 'local-folder')")
+	mustExecPool(t, pool, "INSERT INTO sources (id, label, can_list, can_search, can_download) VALUES ('s-empty', 'L', true, false, true)")
+	mustExecPool(t, pool, "INSERT INTO sources (id, label, can_list, can_search, can_download, kind) VALUES ('s-legacy', 'L', true, false, true, 'kind-a')")
+}
+
+// FR-6: health_detail is a closed vocabulary; NULL is legal.
+func TestSchema_SourceHealthDetailConstrained(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	_, err := pool.Exec(ctx, `INSERT INTO sources (id, label, can_list, can_search, can_download, kind, health_status, health_detail)
+		VALUES ('s-hd', 'L', true, false, true, 'opds', 'unreachable', 'kaboom')`)
+	assertCheckViolation(t, err)
+}
+
+// FR-1: a credential belongs to an opds source only, and its two BYTEA
+// columns are written and cleared as a pair.
+func TestSchema_SourceCredentialConstraints(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	_, err := pool.Exec(ctx, `INSERT INTO sources (id, label, can_list, can_search, can_download, kind, credential_ciphertext, credential_nonce)
+		VALUES ('s-cred-lf', 'L', true, false, true, 'local-folder', '\xaa', '\xbb')`)
+	assertCheckViolation(t, err)
+
+	_, err = pool.Exec(ctx, `INSERT INTO sources (id, label, can_list, can_search, can_download, kind, credential_ciphertext)
+		VALUES ('s-cred-half', 'L', true, false, true, 'opds', '\xaa')`)
+	assertCheckViolation(t, err)
+}
+
+// backend-persistence.md acceptance criterion: a down migration is
+// reversible. Migrate to head, roll 00005 back via goose, and confirm
+// the phase-02 `sources` shape is restored (the new column is gone) and
+// then re-applies cleanly.
+func TestSchema_Phase08MigrationIsReversible(t *testing.T) {
+	db := testDB(t)
+	resetSchema(t, db)
+	if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL")); err != nil {
+		t.Fatalf("Migrate up: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "SELECT config_base_url FROM sources LIMIT 1"); err != nil {
+		t.Fatalf("config_base_url should exist after up: %v", err)
+	}
+
+	goose.SetBaseFS(os.DirFS("migrations"))
+	if err := goose.SetDialect("postgres"); err != nil {
+		t.Fatalf("SetDialect: %v", err)
+	}
+	if err := goose.DownContext(context.Background(), db, "."); err != nil {
+		t.Fatalf("goose down 00005: %v", err)
+	}
+
+	if _, err := db.ExecContext(context.Background(), "SELECT config_base_url FROM sources LIMIT 1"); err == nil {
+		t.Fatal("config_base_url still present after down migration 00005")
+	}
+	if _, err := db.ExecContext(context.Background(), "SELECT label, can_list FROM sources LIMIT 1"); err != nil {
+		t.Fatalf("phase-02 sources columns should survive the down migration: %v", err)
+	}
+
+	if err := goose.UpContext(context.Background(), db, "."); err != nil {
+		t.Fatalf("goose re-up 00005: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "SELECT config_base_url FROM sources LIMIT 1"); err != nil {
+		t.Fatalf("config_base_url should exist again after re-up: %v", err)
+	}
+}
+
 // domain-reading.md FR-1: at most one ReadingProgress per Work.
 func TestSchema_ReadingProgressUniqueByWork(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -154,6 +259,17 @@ func TestSchema_ReMigratingLeavesExistingRowsIntact(t *testing.T) {
 	}
 	if title != "Populated Before Re-Migrate" {
 		t.Fatalf("title = %q, want unchanged", title)
+	}
+}
+
+func assertCheckViolation(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected a check-constraint violation, got nil error")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
+		t.Fatalf("error = %v, want SQLSTATE 23514 (check_violation)", err)
 	}
 }
 
