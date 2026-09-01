@@ -66,8 +66,8 @@ func (r *ReadingProgress) ObservedAt() time.Time { return r.observedAt }
 // constructs or validates one beyond field assignment, since nothing
 // here consumes it yet.
 type ProgressReport struct {
-	WorkID          WorkID
-	Percentage      Percentage
+	WorkID     WorkID
+	Percentage Percentage
 	// ObservedEpoch is the Epoch the reporting device last received from
 	// the server for this Work (0 if it has never synced) —
 	// ReconcileProgress's ordering key is (ObservedEpoch, Percentage),
