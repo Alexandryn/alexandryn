@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01: FR-2/FR-4 add `columnWidth` to `ReadingPreferences` (the binding `atReader` canvas carries a Narrow/Default/Wide control); FR-5/FR-6 carry an `observedEpoch` echo per `backend-reading-api.md`'s 2026-09-01 amendment; Open questions corrected — a binding `atReader` canvas **does** exist (`.design-reference/ANALYSIS.md` scope pass, 2026-08-17). Maintainer re-confirmation pending. |
 | **Phase** | `11-reader` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -98,19 +98,22 @@ navigate a table of contents.
   scroll** — persisted per `DeviceID` alongside FR-4's typography
   preferences (`backend-reading-api.md`'s `ReadingPreferences`, this
   spec's own addition to that type's "opaque to this spec, phase 11
-  defines the actual set" field list). Paginated is the default,
-  matching the design reference's own book-reading visual intent where
-  captured (`frontend-discover-screen.md`'s and
-  `frontend-source-management.md`'s own precedent: when no reader
-  screen exists in `.design-reference/` — flagged in Open questions,
-  same gap those two specs already named for their own screens — a
-  reasoned default stands in, not a guess presented as certain).
+  defines the actual set" field list). Paginated is the default. The
+  binding `atReader` canvas (`.design-reference/Alexandryn-Web.dc.html`;
+  classified Binding in `ANALYSIS.md`'s 2026-08-17 scope pass) depicts a
+  single scrolling column with a page counter — read as one captured
+  state of this toggle, not a scope cut: both modes are built, paginated
+  default, and the canvas's own layout (chrome that hides on content
+  tap, bottom progress bar) is followed for both.
 - **FR-3** Table of contents (from the EPUB's own navigation document,
   parsed by `foliate-js`) renders as an accessible, keyboard-navigable
   list in a collapsible panel; selecting an entry navigates the
   `<iframe>`'s content to that position and reports it via FR-6.
 - **FR-4** Typography/theme preferences (`font`, `fontSize`,
-  `lineSpacing`, `theme`) are read from `GET /api/v1/reading/preferences`
+  `lineSpacing`, `theme`, `layoutMode` from FR-2, and `columnWidth` — a
+  Narrow/Default/Wide control the binding `atReader` canvas carries; the
+  three `theme` values are `light`/`sepia`/`dark`, matching the canvas's
+  own `RTHEMES`) are read from `GET /api/v1/reading/preferences`
   on mount and written via `PUT` on change (`backend-reading-api.md`
   FR-8), debounced 500ms (a slower debounce than
   `frontend-library-screens.md`'s 300ms search debounce, since a
@@ -135,16 +138,26 @@ navigate a table of contents.
   `Percentage`-derived position (an approximate location `foliate-js`
   can compute from a fractional value) when no `PrecisePosition`
   exists for this specific `Edition` — `domain-reading.md` FR-2's own
-  fallback rule, restated here as this screen's concrete behaviour.
+  fallback rule, restated here as this screen's concrete behaviour. The
+  `epoch` from that same `GET` response is retained in memory for FR-6's
+  `observedEpoch` echo.
 - **FR-6** Position reports are sent via `POST
   /api/v1/reading/works/:workId/progress` (`backend-reading-api.md`
-  FR-2), debounced **3 seconds** after navigation settles (not on
-  every intermediate scroll event) and additionally on page
-  unload/navigation-away (a synchronous best-effort report, accepting
-  it may not always land — `backend-reading-api.md`'s own reconcile
-  step means a missed final report simply isn't reflected until the
-  next successful one, not a correctness failure, since
-  `ReconcileProgress` never assumes every report arrives).
+  FR-2), carrying `percentage`, the current CFI, and the retained
+  `observedEpoch` (FR-5; `0` before the first `GET`), debounced **3
+  seconds** after navigation settles (not on every intermediate scroll
+  event) and additionally on page unload/navigation-away (a synchronous
+  best-effort report, accepting it may not always land —
+  `backend-reading-api.md`'s reconcile step means a missed final report
+  simply isn't reflected until the next successful one, not a
+  correctness failure, since `ReconcileProgress` never assumes every
+  report arrives). The response's `epoch` replaces the retained value,
+  so the next report echoes the current epoch; an `outcome` of
+  `"rejected"` is not surfaced to the user (a background report losing a
+  reconcile is normal), only logged via the correlation-ID slot. This
+  screen never sends `override: true` — a deliberate backward-move UI is
+  out of scope here (Non-goals), so re-reads are reported as ordinary
+  forward navigation and reconciled by percentage.
 - **FR-7** Bookmarks and highlights: a "Bookmark this page" action
   (`POST /api/v1/reading/editions/:editionId/bookmarks`, current CFI,
   FR-5's same generation mechanism) and a text-selection-triggered
@@ -323,11 +336,35 @@ reported CFI position, not merely an approximate one, when a
 
 ## Open questions
 
-- **No design-reference screen for the reader** — the same gap
-  `frontend-discover-screen.md` and `frontend-source-management.md`
-  already named for their own screens; FR-2's paginated-default choice
-  and this screen's overall layout are reasoned defaults, not derived
-  from a capture.
+- **Design-reference screen for the reader** — *corrected 2026-09-01*:
+  a binding `atReader` canvas **does** exist in
+  `.design-reference/Alexandryn-Web.dc.html` (chrome that hides on
+  content tap, top bar with ← Library / title·chapter / Contents·Aa·Marks
+  tools, left TOC panel, right Marks panel, Aa panel with
+  theme/type-size/column-width, bottom progress bar). It was classified
+  Binding in `ANALYSIS.md`'s scope pass dated 2026-08-17 — *after* this
+  spec's 2026-08-15 approval, which is why the original text here said no
+  capture existed. FR-1–FR-7 are checked against it in `implementation_plan.md`'s
+  design-conformance section. Two divergences are tracked there and not
+  reasoned around: the canvas has a `columnWidth` control the spec did
+  not (folded into FR-4 by the 2026-09-01 amendment) and a Marks-panel
+  "Export" action no FR covers (deferred — see below).
+- **Marks-panel "Export" action** — the `atReader` canvas shows an
+  Export control in the Marks panel header (unwired placeholder, single
+  occurrence, no backing state). It means exporting the user's own
+  annotations, not the book. Its read side is picked up this phase by
+  `reading-data-export.md` (`GET /api/v1/reading/export`, versioned
+  JSON); the file-download trigger in the web client is built here, the
+  Electron-native save dialog (§5 preload surface) and JSON *import* are
+  deferred to a later phase.
+- **Re-reading without an override UI** — this screen never sends
+  `override: true` (Non-goals). A deliberate backward move (re-reading an
+  earlier chapter) is therefore reported as ordinary navigation and
+  `Rejected` by `backend-reading-api.md` FR-2's `max`-over-`(epoch,
+  percentage)` reconcile, so the stored resume position stays at the
+  furthest-read point, not the re-read point. This matches ADR 0009's
+  furthest-wins default; a backward-move affordance is deferred with the
+  rest of the override UX.
 - **`foliate-js`'s own stated instability** — named honestly in the
   roadmap's Risks table and this spec's own dependency justification;
   no mitigation beyond "watch it closely" is proposed here, since a
