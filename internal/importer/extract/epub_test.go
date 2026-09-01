@@ -69,8 +69,8 @@ func TestExtractEPUB_Success(t *testing.T) {
 	if len(meta.Authors) != 1 || meta.Authors[0] != "Frank Herbert" {
 		t.Errorf("Authors = %+v, want [Frank Herbert]", meta.Authors)
 	}
-	if meta.ISBN == nil || *meta.ISBN != "9780441172719" {
-		t.Errorf("ISBN = %v, want 9780441172719", meta.ISBN)
+	if meta.ISBN == nil || *meta.ISBN != "978-0-441-17271-9" {
+		t.Errorf("ISBN = %v, want 978-0-441-17271-9", *meta.ISBN)
 	}
 	if meta.Language == nil || *meta.Language != "en" {
 		t.Errorf("Language = %v, want en", meta.Language)
