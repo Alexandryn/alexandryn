@@ -27,6 +27,7 @@ type PoolRef struct {
 	metadataCache atomic.Pointer[postgres.MetadataCacheRepository]
 	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
 	sources       sourceRefs // phase 08 — see sources_ref.go
+	imports       importRefs // phase 10 — see import_ref.go
 }
 
 // Set stores p as the current reference.
