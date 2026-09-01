@@ -1,6 +1,14 @@
 # Phase 09 — Async Jobs: Implementation Plan
 
-**Status:** Cleared to start. Spec `backend-job-queue.md` is `APPROVED`
+**Status (2026-09-01):** Implementation complete. All six tiers landed on
+`feat/phase09-async-jobs`. `go test -race` unit + integration suites,
+`golangci-lint`, `go vet`, the repo check scripts, and the web build/tests
+all pass. Security audit `0009` is Clear. Spec is `IMPLEMENTED`; PR open;
+awaiting maintainer review to close the phase (`VERIFIED` + approval).
+
+---
+
+**Original status:** Cleared to start. Spec `backend-job-queue.md` is `APPROVED`
 (independent review `0036`, findings fixed, maintainer signed off
 2026-08-15). ADR `0014` is `Accepted`. No stop-and-ask is owed before
 Tier 0: the scope is fixed by an approved spec and an accepted ADR, and
