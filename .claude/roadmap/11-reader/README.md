@@ -48,6 +48,12 @@ already exists as a pure domain function, but nothing calls it yet.
   file-content-parsing boundary this project has built (after phase
   10's metadata extraction), reusing that phase's zip-bomb/zip-slip
   defences rather than re-deriving them
+- A read-only, versioned JSON export of the user's reading data
+  (progress, bookmarks, highlights) with a web-client download — the
+  read side of the `atReader` canvas's Marks-panel "Export" control
+  (`reading-data-export.md`, added at Gate 1, 2026-09-01). Import, an
+  Electron-native save dialog, and preferences export are deliberately
+  out — see that spec's Non-goals.
 
 **Out**
 
@@ -75,8 +81,20 @@ already exists as a pure domain function, but nothing calls it yet.
 | `backend-reader-content.md` | EPUB content resolution, sanitisation, and serving; sandbox-supporting response headers; reused adversarial-file defences |
 | `backend-reading-api.md` | `ReadingProgress`/`Bookmark`/`Highlight`/`ReadingPreferences` persistence, `ReconcileProgress` wiring, `/api/v1/reading*` endpoints |
 | `frontend-reader.md` | Rendering engine integration, pagination/scrolling, typography/theme UI, TOC, bookmarks/highlights UI, position reporting |
+| `reading-data-export.md` | Versioned JSON export of reading progress/bookmarks/highlights; web-client download (added at Gate 1, 2026-09-01) |
 
 ## Architecture decisions expected
+
+> **Resolved 2026-09-01 (Gate 1):** the rendering engine is
+> [ADR 0023](../../decisions/0023-reader-rendering-engine.md)
+> (`foliate-js`, pinned through npm, `blob:` default not used); content
+> sanitisation is
+> [ADR 0024](../../decisions/0024-server-side-html-sanitization.md)
+> (`bluemonday` for HTML, hand-written CSS scan). `PrecisePosition`'s
+> concrete shape is the EPUB CFI string, carried in the domain's opaque
+> `PrecisePosition.Value` and validated shape-only at the API boundary
+> (`backend-reading-api.md` FR-4). The three bullets below are the
+> pre-decision research, kept for the record.
 
 - **Rendering engine**: researched against real options —
   `futurepress/epub.js` (6.9k stars, iframe-based, sandboxes content,
@@ -159,9 +177,17 @@ content.
 
 ## Exit criteria
 
-- [ ] All three specifications `APPROVED` with recorded reviews
+- [ ] All four specifications `APPROVED` with recorded reviews
+      (`backend-reader-content.md`, `backend-reading-api.md`,
+      `frontend-reader.md`, `reading-data-export.md`)
 - [ ] Renders real imported EPUBs correctly across screen sizes
-- [ ] Position reliably saved and restored, using EPUB CFI
+- [ ] Position reliably saved and restored, using EPUB CFI, with
+      reconciliation via `ReconcileProgress` (`max` over
+      `(epoch, percentage)`, `domain-reading.md` FR-6 as amended
+      2026-09-01) — this phase implements `ReconcileProgress`/
+      `OverrideProgress`, closing phase 02's deferred FR-6/FR-7
+- [ ] Reading data exports as a versioned JSON document and downloads
+      from the web client (`reading-data-export.md`)
 - [ ] EPUB sandbox verified against a script-injection test case
 - [ ] Full keyboard and screen-reader operability
 - [ ] Test coverage across unit, integration, and E2E for this slice
