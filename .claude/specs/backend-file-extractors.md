@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15; amended 2026-08-20 for [`0049`](../reviews/0049-real-world-edge-case-conformity-review.md) findings 3 and 4 — FR-2 excludes `__MACOSX/`/dotfile entries before classification and page ordering, FR-9/FR-10 name a defined outcome for a zip entry name that fails to decode as UTF-8, FR-8 treats an empty/whitespace-only title as absent; finding 2 recorded as an Open question, not fixed; needs re-confirmation) |
+| **Status** | `IMPLEMENTED` (audit `0010`) |
 | **Phase** | `10-import` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
