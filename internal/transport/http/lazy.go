@@ -9,7 +9,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-
 // LazyWorkRepository delegates to the domain.WorkRepository stored on
 // PoolRef once set, returning domain.Unavailable when not yet ready.
 type LazyWorkRepository struct {
@@ -252,3 +251,70 @@ func (l *LazyCoverCacheRepository) MarkMissing(ctx context.Context, coverID int6
 	return repo.MarkMissing(ctx, coverID)
 }
 
+// LazySourceRecordRepository delegates to postgres.SourceRecordRepository stored on PoolRef.
+type LazySourceRecordRepository struct {
+	ref *PoolRef
+}
+
+// NewLazySourceRecordRepository returns a SourceRecordRepository wrapping ref.
+func NewLazySourceRecordRepository(ref *PoolRef) SourceRecordRepository {
+	return &LazySourceRecordRepository{ref: ref}
+}
+
+var _ SourceRecordRepository = (*LazySourceRecordRepository)(nil)
+
+func (l *LazySourceRecordRepository) get() (*postgres.SourceRecordRepository, error) {
+	repo, ok := l.ref.GetSourceRecordRepository()
+	if !ok {
+		return nil, &domain.Error{Category: domain.Unavailable, Message: "database not ready"}
+	}
+	return repo, nil
+}
+
+func (l *LazySourceRecordRepository) Create(ctx context.Context, rec postgres.SourceRecord) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.Create(ctx, rec)
+}
+
+func (l *LazySourceRecordRepository) Get(ctx context.Context, id string) (postgres.SourceRecord, error) {
+	repo, err := l.get()
+	if err != nil {
+		return postgres.SourceRecord{}, err
+	}
+	return repo.Get(ctx, id)
+}
+
+func (l *LazySourceRecordRepository) List(ctx context.Context) ([]postgres.SourceRecord, error) {
+	repo, err := l.get()
+	if err != nil {
+		return nil, err
+	}
+	return repo.List(ctx)
+}
+
+func (l *LazySourceRecordRepository) UpdateConfig(ctx context.Context, id, label, basePath, baseURL string) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.UpdateConfig(ctx, id, label, basePath, baseURL)
+}
+
+func (l *LazySourceRecordRepository) SetCredential(ctx context.Context, id string, ciphertext, nonce []byte) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.SetCredential(ctx, id, ciphertext, nonce)
+}
+
+func (l *LazySourceRecordRepository) UpdateHealth(ctx context.Context, id, status, detail string, checkedAt time.Time, caps domain.SourceCapabilities, searchLinkURL string) error {
+	repo, err := l.get()
+	if err != nil {
+		return err
+	}
+	return repo.UpdateHealth(ctx, id, status, detail, checkedAt, caps, searchLinkURL)
+}

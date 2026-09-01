@@ -13,7 +13,6 @@ import (
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
-
 type mockCollectionRepository struct {
 	findAllFunc      func(ctx context.Context) ([]*domain.CollectionSummary, error)
 	findDetailFunc   func(ctx context.Context, id domain.CollectionID) (*domain.CollectionDetail, error)
@@ -415,4 +414,3 @@ func TestCollectionsHandler_Contract_RemoveWorkFromCollection(t *testing.T) {
 		t.Fatalf("status = %d, want 400", rr400.Code)
 	}
 }
-

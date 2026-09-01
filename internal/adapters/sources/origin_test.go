@@ -23,18 +23,18 @@ func TestSameOrigin(t *testing.T) {
 
 	different := []string{
 		"http://opds.example.org/catalog",       // scheme
-		"https://evil.example.org/catalog",       // host
-		"https://opds.example.org.evil.com/x",    // suffix trick
-		"https://opds.example.org:8443/catalog",  // port
-		"https://169.254.169.254/latest/meta",    // cloud metadata
-		"http://127.0.0.1/catalog",               // loopback
-		"http://10.0.0.5/catalog",                // private
-		"file:///etc/passwd",                     // non-http scheme
-		"ftp://opds.example.org/catalog",         // non-http scheme
-		"//opds.example.org/catalog",             // scheme-relative
-		"/catalog?page=2",                        // path-only
-		"",                                       // empty
-		"https://opds.example.org@evil.com/x",    // userinfo host confusion
+		"https://evil.example.org/catalog",      // host
+		"https://opds.example.org.evil.com/x",   // suffix trick
+		"https://opds.example.org:8443/catalog", // port
+		"https://169.254.169.254/latest/meta",   // cloud metadata
+		"http://127.0.0.1/catalog",              // loopback
+		"http://10.0.0.5/catalog",               // private
+		"file:///etc/passwd",                    // non-http scheme
+		"ftp://opds.example.org/catalog",        // non-http scheme
+		"//opds.example.org/catalog",            // scheme-relative
+		"/catalog?page=2",                       // path-only
+		"",                                      // empty
+		"https://opds.example.org@evil.com/x",   // userinfo host confusion
 	}
 	for _, c := range different {
 		if sources.SameOrigin(base, c) {

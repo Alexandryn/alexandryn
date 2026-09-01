@@ -26,6 +26,7 @@ type PoolRef struct {
 	collections   atomic.Pointer[domain.CollectionRepository]
 	metadataCache atomic.Pointer[postgres.MetadataCacheRepository]
 	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
+	sources       sourceRefs // phase 08 — see sources_ref.go
 }
 
 // Set stores p as the current reference.
@@ -97,8 +98,6 @@ func (r *PoolRef) GetCoverCacheRepository() (postgres.CoverCacheRepository, bool
 	}
 	return *stored, true
 }
-
-
 
 // Healthz answers "is the process alive" — 200 the instant the process
 // can accept HTTP connections, independent of PostgreSQL state. It takes

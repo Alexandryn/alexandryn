@@ -345,8 +345,6 @@ func RemoveWorkFromCollectionHandler(repo domain.CollectionRepository) http.Hand
 			return
 		}
 
-
-
 		w.WriteHeader(http.StatusNoContent)
 	})
 }

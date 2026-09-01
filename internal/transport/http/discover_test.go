@@ -42,9 +42,9 @@ func (f *fakeOpenLibraryClient) FetchCover(ctx context.Context, coverID int64) (
 }
 
 type fakeMetadataCacheRepo struct {
-	getWorkCalls int
+	getWorkCalls  int
 	saveWorkCalls int
-	workStore    map[string]*openlibrary.DiscoverWorkDetail
+	workStore     map[string]*openlibrary.DiscoverWorkDetail
 }
 
 func (f *fakeMetadataCacheRepo) GetWork(ctx context.Context, key string) (*openlibrary.DiscoverWorkDetail, bool, error) {

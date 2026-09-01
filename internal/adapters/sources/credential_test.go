@@ -82,13 +82,13 @@ func TestCredential_NeverAppearsInFmt(t *testing.T) {
 
 func TestNewCredential_Rejections(t *testing.T) {
 	cases := map[string][2]string{
-		"empty username":     {"", "p"},
-		"empty password":     {"u", ""},
-		"whitespace user":    {"   ", "p"},
-		"control char user":  {"u\x00", "p"},
-		"control char pass":  {"u", "p\nnewline"},
-		"overlong username":  {strings.Repeat("a", 256), "p"},
-		"overlong password":  {"u", strings.Repeat("a", 1025)},
+		"empty username":    {"", "p"},
+		"empty password":    {"u", ""},
+		"whitespace user":   {"   ", "p"},
+		"control char user": {"u\x00", "p"},
+		"control char pass": {"u", "p\nnewline"},
+		"overlong username": {strings.Repeat("a", 256), "p"},
+		"overlong password": {"u", strings.Repeat("a", 1025)},
 	}
 	for name, in := range cases {
 		if _, err := sources.NewCredential(in[0], in[1]); err == nil {

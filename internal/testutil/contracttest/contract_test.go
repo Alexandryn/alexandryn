@@ -1,12 +1,21 @@
 package contracttest_test
 
 import (
+	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
+	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
+	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/testutil/contracttest"
+	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
 // fakeT is a minimal testing.TB that records whether Error/Errorf/Fatal
@@ -19,14 +28,14 @@ type fakeT struct {
 	cleanup []func()
 }
 
-func (f *fakeT) Helper()                          {}
-func (f *fakeT) Log(args ...any)                  {}
-func (f *fakeT) Logf(format string, args ...any)  {}
-func (f *fakeT) Error(args ...any)                { f.failed = true }
-func (f *fakeT) Errorf(format string, _ ...any)   { f.failed = true }
-func (f *fakeT) Fatal(args ...any)                { f.failed = true; panic("fakeT.Fatal") }
-func (f *fakeT) Fatalf(format string, _ ...any)   { f.failed = true; panic("fakeT.Fatalf") }
-func (f *fakeT) Cleanup(fn func())                { f.cleanup = append(f.cleanup, fn) }
+func (f *fakeT) Helper()                         {}
+func (f *fakeT) Log(args ...any)                 {}
+func (f *fakeT) Logf(format string, args ...any) {}
+func (f *fakeT) Error(args ...any)               { f.failed = true }
+func (f *fakeT) Errorf(format string, _ ...any)  { f.failed = true }
+func (f *fakeT) Fatal(args ...any)               { f.failed = true; panic("fakeT.Fatal") }
+func (f *fakeT) Fatalf(format string, _ ...any)  { f.failed = true; panic("fakeT.Fatalf") }
+func (f *fakeT) Cleanup(fn func())               { f.cleanup = append(f.cleanup, fn) }
 
 // mustRequest builds an *http.Request, failing the test on error.
 func mustRequest(t *testing.T, method, path string, body io.Reader) *http.Request {
@@ -317,4 +326,124 @@ func TestBrokenSourceResponseFailsContractTest(t *testing.T) {
 	if !inner.failed {
 		t.Error("expected contract validation to reject a Source missing `capabilities`")
 	}
+}
+
+type contractMockSourceRecordRepo struct {
+	mu      sync.Mutex
+	records map[string]postgres.SourceRecord
+}
+
+func (m *contractMockSourceRecordRepo) Create(ctx context.Context, rec postgres.SourceRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.records[rec.ID] = rec
+	return nil
+}
+
+func (m *contractMockSourceRecordRepo) Get(ctx context.Context, id string) (postgres.SourceRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.records[id]
+	if !ok {
+		return postgres.SourceRecord{}, &domain.Error{Category: domain.NotFound, Message: "source not found"}
+	}
+	return rec, nil
+}
+
+func (m *contractMockSourceRecordRepo) List(ctx context.Context) ([]postgres.SourceRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]postgres.SourceRecord, 0, len(m.records))
+	for _, r := range m.records {
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+func (m *contractMockSourceRecordRepo) UpdateConfig(ctx context.Context, id, label, basePath, baseURL string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.records[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "source not found"}
+	}
+	rec.Label = label
+	rec.ConfigBasePath = basePath
+	rec.ConfigBaseURL = baseURL
+	m.records[id] = rec
+	return nil
+}
+
+func (m *contractMockSourceRecordRepo) SetCredential(ctx context.Context, id string, ct, nonce []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.records[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "source not found"}
+	}
+	rec.CredentialCiphertext = ct
+	rec.CredentialNonce = nonce
+	m.records[id] = rec
+	return nil
+}
+
+func (m *contractMockSourceRecordRepo) UpdateHealth(ctx context.Context, id, status, detail string, checkedAt time.Time, caps domain.SourceCapabilities, searchLinkURL string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.records[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "source not found"}
+	}
+	rec.HealthStatus = status
+	rec.HealthDetail = detail
+	rec.HealthCheckedAt = &checkedAt
+	rec.Capabilities = caps
+	rec.SearchLinkURL = searchLinkURL
+	m.records[id] = rec
+	return nil
+}
+
+func TestRealSourcesHandlersPassContractTest(t *testing.T) {
+	v := contracttest.New(t)
+
+	repo := &contractMockSourceRecordRepo{records: make(map[string]postgres.SourceRecord)}
+	poolRef := &transporthttp.PoolRef{}
+	key := bytes.Repeat([]byte{0x42}, 32)
+	svc, _ := crypto.NewService(key)
+	subkey, _ := svc.DeriveSubkey("source-cursor-hmac-v1")
+	poolRef.SetSourceCrypto(transporthttp.SourceCrypto{
+		Encryptor: svc,
+		Codec:     sources.NewCursorCodec(subkey),
+	})
+
+	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	_ = repo.Create(context.Background(), postgres.SourceRecord{
+		ID:              "01JXXXXXXXXXXXXXXXXXXXXXXZ",
+		Label:           "Personal OPDS",
+		Kind:            "opds",
+		ConfigBaseURL:   "https://opds.example.org/catalog",
+		HealthStatus:    "reachable",
+		HealthCheckedAt: &now,
+		Capabilities:    domain.SourceCapabilities{CanList: true, CanSearch: true, CanDownload: true},
+		CreatedAt:       now,
+	})
+
+	t.Run("GET /api/v1/sources", func(t *testing.T) {
+		h := transporthttp.ListSourcesHandler(repo)
+		req := mustRequest(t, "GET", "/api/v1/sources", nil)
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/sources/{id}", func(t *testing.T) {
+		h := transporthttp.GetSourceHandler(repo)
+		req := mustRequest(t, "GET", "/api/v1/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ", nil)
+		req.SetPathValue("id", "01JXXXXXXXXXXXXXXXXXXXXXXZ")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
 }
