@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/idgen"
+	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
@@ -39,6 +41,8 @@ type repositories struct {
 	coverCache         postgres.CoverCacheRepository
 	sourceRecords      *postgres.SourceRecordRepository
 	sourceRemoval      *domain.SourceRemovalService
+	importCandidates   *postgres.ImportCandidateRepository
+	importerService    *importer.Service
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -62,11 +66,31 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 	transactor := postgres.NewTransactor(pool)
 	sourceRemovalSvc := domain.NewSourceRemovalService(sourceRepo, sourceOfferingRepo, transactor)
 
+	workRepo := postgres.NewWorkRepository(pool)
+	authorRepo := postgres.NewAuthorRepository(pool)
+	editionRepo := postgres.NewEditionRepository(pool)
+	libraryEntryRepo := postgres.NewLibraryEntryRepository(pool)
+	candRepo := postgres.NewImportCandidateRepository(pool)
+	idGen := idgen.New()
+	librarySvc := domain.NewLibraryService(editionRepo, libraryEntryRepo)
+
+	importerSvc := importer.NewService(
+		workRepo,
+		editionRepo,
+		authorRepo,
+		sourceOfferingRepo,
+		libraryEntryRepo,
+		candRepo,
+		librarySvc,
+		transactor,
+		idGen,
+	)
+
 	return &repositories{
-		works:              postgres.NewWorkRepository(pool),
-		authors:            postgres.NewAuthorRepository(pool),
-		editions:           postgres.NewEditionRepository(pool),
-		libraryEntries:     postgres.NewLibraryEntryRepository(pool),
+		works:              workRepo,
+		authors:            authorRepo,
+		editions:           editionRepo,
+		libraryEntries:     libraryEntryRepo,
 		collections:        postgres.NewCollectionRepository(pool),
 		sources:            sourceRepo,
 		sourceOfferings:    sourceOfferingRepo,
@@ -79,5 +103,7 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		coverCache:         coverCacheRepo,
 		sourceRecords:      postgres.NewSourceRecordRepository(pool),
 		sourceRemoval:      sourceRemovalSvc,
+		importCandidates:   candRepo,
+		importerService:    importerSvc,
 	}
 }

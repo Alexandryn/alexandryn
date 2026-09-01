@@ -1195,6 +1195,138 @@ paths:
                 message: "source is unavailable right now"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  /api/v1/import/discover:
+    post:
+      operationId: discoverImport
+      summary: Enumerate files from a source and enqueue import jobs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportDiscoverRequest'
+      responses:
+        '202':
+          description: Import discovery accepted and jobs enqueued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportDiscoverResponse'
+        '400':
+          description: Source cannot list or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Source not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/import/candidates:
+    get:
+      operationId: listImportCandidates
+      summary: List import candidates
+      parameters:
+        - name: sourceId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [queued, pending, auto_imported, confirmed, rejected, failed]
+      responses:
+        '200':
+          description: List of import candidates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCandidateListResponse'
+        '400':
+          description: Invalid status query param.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/import/candidates/{id}/confirm:
+    post:
+      operationId: confirmImportCandidate
+      summary: Confirm an import candidate resolution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportConfirmRequest'
+      responses:
+        '200':
+          description: Candidate successfully confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCandidate'
+        '400':
+          description: Invalid action or payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Candidate not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Candidate not in pending status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/import/candidates/{id}/reject:
+    post:
+      operationId: rejectImportCandidate
+      summary: Reject an import candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Candidate rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCandidate'
+        '404':
+          description: Candidate not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Candidate not in pending status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -1843,6 +1975,117 @@ components:
             Opaque token for the next page, or null on the last page.
             Clients MUST treat it as opaque — the encoding is not part of
             the contract.
+
+    ImportDiscoverRequest:
+      type: object
+      additionalProperties: false
+      required: [sourceId]
+      properties:
+        sourceId:
+          type: string
+
+    ImportDiscoverResponse:
+      type: object
+      additionalProperties: false
+      required: [discoveredCount, skippedCount, jobIds]
+      properties:
+        discoveredCount:
+          type: integer
+        skippedCount:
+          type: integer
+        jobIds:
+          type: array
+          items:
+            type: string
+
+    ImportCandidateFileRef:
+      type: object
+      additionalProperties: false
+      required: [id, format]
+      properties:
+        id:
+          type: string
+        format:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+
+    ImportCandidate:
+      type: object
+      additionalProperties: false
+      required: [id, sourceId, fileReference, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        sourceId:
+          type: string
+        fileReference:
+          $ref: '#/components/schemas/ImportCandidateFileRef'
+        status:
+          type: string
+          enum: [queued, pending, auto_imported, confirmed, rejected, failed]
+        extractedMetadata:
+          type: object
+          nullable: true
+        matchCandidates:
+          type: array
+          items:
+            type: object
+          nullable: true
+        jobId:
+          type: string
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ImportCandidateListResponse:
+      type: object
+      additionalProperties: false
+      required: [candidates]
+      properties:
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportCandidate'
+
+    ImportConfirmRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [attach_existing, use_open_library_match, create_new]
+        editionId:
+          type: string
+        openLibraryWorkKey:
+          type: string
+        metadata:
+          type: object
+          properties:
+            title:
+              type: string
+            authors:
+              type: array
+              items:
+                type: string
+            isbn:
+              type: string
+            language:
+              type: string
+            publisher:
+              type: string
+            description:
+              type: string
 
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.

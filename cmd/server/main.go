@@ -196,6 +196,15 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("GET /api/v1/sources/{id}/browse", transporthttp.BrowseSourceHandler(sourceRepo, poolRef, sourceSem, logger))
 	mux.Handle("GET /api/v1/sources/{id}/search", transporthttp.SearchSourceHandler(sourceRepo, poolRef, sourceSem, logger))
 
+	candRepo := transporthttp.NewLazyImportCandidateRepository(poolRef)
+	discoveryRunner := transporthttp.NewLazyDiscoveryRunner(poolRef)
+	importerSvc := transporthttp.NewLazyImporterService(poolRef)
+
+	mux.Handle("POST /api/v1/import/discover", transporthttp.ImportDiscoverHandler(discoveryRunner))
+	mux.Handle("GET /api/v1/import/candidates", transporthttp.ImportCandidatesListHandler(candRepo))
+	mux.Handle("POST /api/v1/import/candidates/{id}/confirm", transporthttp.ImportCandidateConfirmHandler(importerSvc, candRepo, openLibraryClient))
+	mux.Handle("POST /api/v1/import/candidates/{id}/reject", transporthttp.ImportCandidateRejectHandler(importerSvc, candRepo))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
