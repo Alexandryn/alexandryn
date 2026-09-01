@@ -65,4 +65,46 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
 
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
+
+  test('Phase 08: non-existent source ID renders 404 error state safely', async ({
+    page,
+  }) => {
+    await page.goto('/sources/non-existent-source-id-999999')
+
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  })
+
+  test('Phase 08: malformed cursor or search params on source browse do not crash renderer', async ({
+    page,
+  }) => {
+    await page.goto('/sources/01JXXXXXXXXXXXXXXXXXXXXXXZ?cursor=forged_bad_cursor_payload_9999&q=' + encodeURIComponent('"><script>alert(1)</script>'))
+
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  })
+
+  test('Phase 08: source creation dialog handles client validation for malformed URLs', async ({
+    page,
+  }) => {
+    await page.goto('/sources')
+
+    const addBtn = page.getByRole('button', { name: '+ Add source' })
+    await addBtn.click()
+
+    const dialog = page.getByRole('dialog', { name: 'Add source' })
+    await expect(dialog).toBeVisible()
+
+    await dialog.getByRole('radio', { name: 'OPDS catalog' }).click()
+    const labelInput = dialog.getByLabel('Source label')
+    const urlInput = dialog.getByLabel('Catalog base URL')
+
+    await labelInput.fill('Hostile URL Test')
+    await urlInput.fill('javascript:alert(1)')
+    await dialog.getByRole('button', { name: 'Add source' }).click()
+
+    await expect(dialog.getByRole('alert')).toContainText(
+      'Catalog URL must start with http:// or https://',
+    )
+    await expect(dialog).toBeVisible()
+  })
 })
