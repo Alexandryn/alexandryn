@@ -72,6 +72,8 @@ deserves to know they were already weighed.
 | [0020](0020-graph-invariants-in-domain-services.md) | Invariants that depend on reading other records live in domain services holding domain-defined repository interfaces, never in value constructors | Accepted |
 | [0021](0021-transaction-contract-and-event-outbox.md) | Operations spanning repositories compose through a domain-declared `Transactor` carrying its handle in context; events are written to a transactional outbox | Accepted |
 | [0022](0022-pdf-metadata-extraction-library.md) | PDF metadata extraction uses `pdfcpu`, wrapped in bounded streams and panic recovery | Accepted |
+| [0023](0023-reader-rendering-engine.md) | The in-browser reader renders EPUB with `foliate-js`, pinned through npm; its insecure `blob:`-URL default is not used | Accepted |
+| [0024](0024-server-side-html-sanitization.md) | Served EPUB HTML/XHTML is sanitised server-side with `microcosm-cc/bluemonday`; CSS is scanned by a hand-written check | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -82,7 +84,7 @@ Things known to need deciding, with the phase that will force the question:
 | ~~Frontend data-fetching and state approach~~ — resolved without an ADR, see `frontend-shell-and-routing.md` FR-2 (TanStack Query, v5, pinned major) | Phase 01 |
 | ~~Where the API contract is defined, and who owns it~~ — format fixed as OpenAPI (ADR 0006); ownership/versioning/design resolved without an ADR, see `architecture-contracts.md` FR-4 (path-based versioning, `/api/v1/...`) | Phase 01 |
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
-| ~~How the reader renders EPUB, and in what sandbox~~ — resolved without an ADR, see `frontend-reader.md` FR-1 (`foliate-js` rendering engine; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`) and `backend-reader-content.md` FR-6/FR-9 (server-side HTML/CSS sanitisation, `Content-Security-Policy: default-src 'self'; script-src 'none'...`) | Phase 11 |
+| ~~How the reader renders EPUB, and in what sandbox~~ — resolved by ADR 0023 (`foliate-js` rendering engine, pinned through npm; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`; `blob:`-URL default not used) and ADR 0024 (server-side HTML sanitisation with `bluemonday`, hand-written CSS scan, `Content-Security-Policy: default-src 'self'; script-src 'none'...`), formalising `frontend-reader.md` FR-1 and `backend-reader-content.md` FR-6/FR-9 | Phase 11 |
 | Credential storage on the host | Phase 12 |
 | CSRF protection for state-changing requests, once sessions are cookie-based | Phase 12 |
 | Open-redirect protection for any post-authentication redirect target | Phase 12 |
