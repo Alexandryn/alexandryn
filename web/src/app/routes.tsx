@@ -6,6 +6,7 @@ import { Discover, DiscoverWorkDetail } from '../screens/Discover'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
+import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
 
 import { RequireCapability } from './capability'
@@ -47,8 +48,22 @@ const shellChildren: RouteObject[] = [
   { path: 'more', element: <ScreenPlaceholder title="More" /> },
 
   // Host-only.
-  { path: 'sources', element: hostOnly('sources', 'Sources') },
-  { path: 'sources/:id', element: hostOnly('sources', 'Source') },
+  {
+    path: 'sources',
+    element: (
+      <RequireCapability capability="sources">
+        <Sources />
+      </RequireCapability>
+    ),
+  },
+  {
+    path: 'sources/:id',
+    element: (
+      <RequireCapability capability="sources">
+        <SourceDetail />
+      </RequireCapability>
+    ),
+  },
   { path: 'import', element: hostOnly('import', 'Import') },
   { path: 'settings', element: hostOnly('settings', 'Settings') },
   { path: 'system', element: hostOnly('system', 'System') },

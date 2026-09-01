@@ -278,6 +278,36 @@ describe('sources data layer (FR-1 to FR-7)', () => {
     await waitFor(() => expect(createResult.current.isSuccess).toBe(true))
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sources', 'list'] })
+
+    server.use(
+      http.patch('*/api/v1/sources/:id', () =>
+        HttpResponse.json({
+          id: 's-1',
+          label: 'Updated Source 1',
+          kind: 'local-folder',
+          config: { basePath: '/srv/books' },
+          hasCredential: false,
+          health: { status: 'reachable', checkedAt: null, detail: null },
+          capabilities: { canList: true, canSearch: false, canDownload: true },
+        }),
+      ),
+      http.delete('*/api/v1/sources/:id', () => new HttpResponse(null, { status: 204 })),
+      http.post('*/api/v1/sources/:id/health-check', () =>
+        HttpResponse.json({ status: 'reachable', checkedAt: null, detail: null }),
+      ),
+    )
+
+    const { result: updateResult } = renderHook(() => useUpdateSource(), { wrapper })
+    updateResult.current.mutate({ id: 's-1', input: { label: 'Updated Source 1' } })
+    await waitFor(() => expect(updateResult.current.isSuccess).toBe(true))
+
+    const { result: deleteResult } = renderHook(() => useDeleteSource(), { wrapper })
+    deleteResult.current.mutate('s-1')
+    await waitFor(() => expect(deleteResult.current.isSuccess).toBe(true))
+
+    const { result: healthResult } = renderHook(() => useHealthCheckSource(), { wrapper })
+    healthResult.current.mutate('s-1')
+    await waitFor(() => expect(healthResult.current.isSuccess).toBe(true))
   })
 
   it('useSourceCandidates handles infinite query for browse and search', async () => {
