@@ -25,12 +25,12 @@ func TestValidateLocalFolderPath(t *testing.T) {
 	invalid := []string{
 		"",
 		"   ",
-		"books",              // relative
-		"./books",            // relative
-		"../../etc",          // relative traversal
-		"~/books",            // not absolute
-		"/srv/\x00books",     // NUL
-		"/srv/books\nx",      // control char
+		"books",                         // relative
+		"./books",                       // relative
+		"../../etc",                     // relative traversal
+		"~/books",                       // not absolute
+		"/srv/\x00books",                // NUL
+		"/srv/books\nx",                 // control char
 		"/" + strings.Repeat("a", 5000), // too long
 	}
 	for _, p := range invalid {

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
-	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 	"github.com/Alexandryn/alexandryn/internal/testutil/contracttest"
+	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
 type mockWorkRepository struct {

@@ -42,7 +42,7 @@ func TestProvider_ListsSupportedFilesSortedSkippingTheRest(t *testing.T) {
 	base := t.TempDir()
 	writeFile(t, filepath.Join(base, "zeta.epub"), 10)
 	writeFile(t, filepath.Join(base, "alpha.pdf"), 20)
-	writeFile(t, filepath.Join(base, "notes.txt"), 5)        // unsupported ext
+	writeFile(t, filepath.Join(base, "notes.txt"), 5)          // unsupported ext
 	writeFile(t, filepath.Join(base, "sub", "nested.epub"), 3) // subdirectory
 	writeFile(t, filepath.Join(base, "Mixed.EPUB"), 7)         // case-insensitive ext
 

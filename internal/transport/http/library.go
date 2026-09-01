@@ -11,7 +11,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-
 type wireCollectionRef struct {
 	ID      string     `json:"id"`
 	Name    string     `json:"name"`

@@ -116,7 +116,6 @@ func (v *Validator) ValidateResponse(t testing.TB, handler http.Handler, req *ht
 	return rr
 }
 
-
 // Doc returns the loaded OpenAPI document, for tests that need to
 // enumerate paths or inspect schemas directly (e.g. the route-completeness
 // check).
