@@ -347,6 +347,18 @@ func run(ctx context.Context, deps runDeps) int {
 			contentResolver := content.NewResolver(repos.libraryEntries, repos.sourceOfferings, contentSourceResolver)
 			poolRef.SetReaderContentCache(content.NewCache(contentResolver.Load))
 		}
+		if repos.readingProgress != nil && repos.transactor != nil {
+			poolRef.SetReadingAPI(transporthttp.ReadingAPI{
+				Progress:    repos.readingProgress,
+				Bookmarks:   repos.bookmarks,
+				Highlights:  repos.highlights,
+				Preferences: repos.readingPreferences,
+				Editions:    repos.editions,
+				Transactor:  repos.transactor,
+				IDs:         idgen.New(),
+				Export:      repos.readingExport,
+			})
+		}
 	}
 
 	appDataDir := ""

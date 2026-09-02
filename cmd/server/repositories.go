@@ -43,6 +43,7 @@ type repositories struct {
 	sourceRemoval      *domain.SourceRemovalService
 	importCandidates   *postgres.ImportCandidateRepository
 	importerService    *importer.Service
+	readingExport      *postgres.ReadingExportRepository
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -105,5 +106,6 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		sourceRemoval:      sourceRemovalSvc,
 		importCandidates:   candRepo,
 		importerService:    importerSvc,
+		readingExport:      postgres.NewReadingExportRepository(pool),
 	}
 }
