@@ -29,6 +29,7 @@ type PoolRef struct {
 	sources       sourceRefs // phase 08 — see sources_ref.go
 	imports       importRefs // phase 10 — see import_ref.go
 	reader        readerRefs // phase 11 — see reader_ref.go
+	auth          authRefs   // phase 12 — see auth_ref.go
 }
 
 // Set stores p as the current reference.

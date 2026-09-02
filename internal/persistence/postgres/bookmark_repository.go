@@ -45,10 +45,17 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 }
 
 func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.Bookmark, error) {
+	return r.FindByEditionAndUser(ctx, "", "", editionID)
+}
+
+func (r *BookmarkRepository) FindByEditionAndUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, editionID domain.EditionID) ([]*domain.Bookmark, error) {
 	exec := executorFrom(ctx, r.pool)
 
-	rows, err := exec.Query(ctx,
-		"SELECT id, position, label, created_at FROM bookmarks WHERE edition_id = $1 ORDER BY created_at, id", string(editionID))
+	query := `SELECT id, position, label, created_at
+		FROM bookmarks
+		WHERE edition_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '') AND COALESCE(library_id, '') = COALESCE($3, '')
+		ORDER BY created_at, id`
+	rows, err := exec.Query(ctx, query, string(editionID), string(userID), string(libraryID))
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -70,15 +77,31 @@ func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain
 }
 
 func (r *BookmarkRepository) Save(ctx context.Context, b *domain.Bookmark) error {
+	return r.SaveForUser(ctx, "", "", b)
+}
+
+func (r *BookmarkRepository) SaveForUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, b *domain.Bookmark) error {
 	exec := executorFrom(ctx, r.pool)
 
-	_, err := exec.Exec(ctx, `INSERT INTO bookmarks (id, edition_id, position, label, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+	var uid, lid *string
+	if string(userID) != "" {
+		u := string(userID)
+		uid = &u
+	}
+	if string(libraryID) != "" {
+		l := string(libraryID)
+		lid = &l
+	}
+
+	_, err := exec.Exec(ctx, `INSERT INTO bookmarks (id, edition_id, user_id, library_id, position, label, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (id) DO UPDATE SET
 			edition_id = EXCLUDED.edition_id,
+			user_id = EXCLUDED.user_id,
+			library_id = EXCLUDED.library_id,
 			position = EXCLUDED.position,
 			label = EXCLUDED.label`,
-		string(b.ID()), string(b.EditionID()), b.Position(), b.Label(), b.CreatedAt())
+		string(b.ID()), string(b.EditionID()), uid, lid, b.Position(), b.Label(), b.CreatedAt())
 	if err != nil {
 		return TranslateError(err)
 	}
@@ -93,3 +116,4 @@ func (r *BookmarkRepository) Delete(ctx context.Context, id domain.BookmarkID) e
 	}
 	return nil
 }
+

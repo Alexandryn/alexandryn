@@ -454,6 +454,18 @@ func (r *fakeReadingProgressRepository) Save(_ context.Context, p *domain.Readin
 	return nil
 }
 
+func (r *fakeReadingProgressRepository) FindByWorkAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.FindByWork(ctx, workID)
+}
+
+func (r *fakeReadingProgressRepository) FindByWorkAndUserForUpdate(ctx context.Context, _ domain.UserID, _ domain.LibraryID, workID domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.FindByWorkForUpdate(ctx, workID)
+}
+
+func (r *fakeReadingProgressRepository) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, p *domain.ReadingProgress) error {
+	return r.Save(ctx, p)
+}
+
 var _ domain.ReadingProgressRepository = (*fakeReadingProgressRepository)(nil)
 
 // fakeBookmarkRepository is the same pattern, for domain.BookmarkRepository.
@@ -492,11 +504,19 @@ func (r *fakeBookmarkRepository) FindByEdition(_ context.Context, editionID doma
 	return result, nil
 }
 
+func (r *fakeBookmarkRepository) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, editionID domain.EditionID) ([]*domain.Bookmark, error) {
+	return r.FindByEdition(ctx, editionID)
+}
+
 func (r *fakeBookmarkRepository) Save(_ context.Context, b *domain.Bookmark) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.bookmarks[b.ID()] = b
 	return nil
+}
+
+func (r *fakeBookmarkRepository) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, b *domain.Bookmark) error {
+	return r.Save(ctx, b)
 }
 
 func (r *fakeBookmarkRepository) Delete(_ context.Context, id domain.BookmarkID) error {
@@ -544,11 +564,19 @@ func (r *fakeHighlightRepository) FindByEdition(_ context.Context, editionID dom
 	return result, nil
 }
 
+func (r *fakeHighlightRepository) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, editionID domain.EditionID) ([]*domain.Highlight, error) {
+	return r.FindByEdition(ctx, editionID)
+}
+
 func (r *fakeHighlightRepository) Save(_ context.Context, h *domain.Highlight) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.highlights[h.ID()] = h
 	return nil
+}
+
+func (r *fakeHighlightRepository) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, h *domain.Highlight) error {
+	return r.Save(ctx, h)
 }
 
 func (r *fakeHighlightRepository) Delete(_ context.Context, id domain.HighlightID) error {
@@ -585,11 +613,19 @@ func (r *fakeReadingPreferencesRepository) FindByDevice(_ context.Context, devic
 	return p, nil
 }
 
+func (r *fakeReadingPreferencesRepository) FindByUserAndDevice(ctx context.Context, _ domain.UserID, deviceID domain.DeviceID) (*domain.ReadingPreferences, error) {
+	return r.FindByDevice(ctx, deviceID)
+}
+
 func (r *fakeReadingPreferencesRepository) Save(_ context.Context, p *domain.ReadingPreferences) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.prefs[p.DeviceID()] = p
 	return nil
+}
+
+func (r *fakeReadingPreferencesRepository) SaveForUser(ctx context.Context, _ domain.UserID, p *domain.ReadingPreferences) error {
+	return r.Save(ctx, p)
 }
 
 var _ domain.ReadingPreferencesRepository = (*fakeReadingPreferencesRepository)(nil)

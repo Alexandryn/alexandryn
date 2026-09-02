@@ -177,5 +177,23 @@ export const handlers = [
     HttpResponse.json(generatedFixtures.exportReadingData['200']),
   ),
 
+  http.get('*/api/v1/auth/setup/status', () =>
+    HttpResponse.json({ isSetup: true }),
+  ),
+  http.get('*/api/v1/libraries', () =>
+    HttpResponse.json({
+      libraries: [
+        {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Default Library',
+          description: 'Main library',
+          allowReaderUploads: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  ),
+
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]

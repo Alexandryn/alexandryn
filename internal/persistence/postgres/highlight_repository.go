@@ -45,10 +45,17 @@ func (r *HighlightRepository) FindByID(ctx context.Context, id domain.HighlightI
 }
 
 func (r *HighlightRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.Highlight, error) {
+	return r.FindByEditionAndUser(ctx, "", "", editionID)
+}
+
+func (r *HighlightRepository) FindByEditionAndUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, editionID domain.EditionID) ([]*domain.Highlight, error) {
 	exec := executorFrom(ctx, r.pool)
 
-	rows, err := exec.Query(ctx,
-		"SELECT id, start_position, end_position, note, category, created_at FROM highlights WHERE edition_id = $1 ORDER BY created_at, id", string(editionID))
+	query := `SELECT id, start_position, end_position, note, category, created_at
+		FROM highlights
+		WHERE edition_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '') AND COALESCE(library_id, '') = COALESCE($3, '')
+		ORDER BY created_at, id`
+	rows, err := exec.Query(ctx, query, string(editionID), string(userID), string(libraryID))
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -70,17 +77,33 @@ func (r *HighlightRepository) FindByEdition(ctx context.Context, editionID domai
 }
 
 func (r *HighlightRepository) Save(ctx context.Context, h *domain.Highlight) error {
+	return r.SaveForUser(ctx, "", "", h)
+}
+
+func (r *HighlightRepository) SaveForUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, h *domain.Highlight) error {
 	exec := executorFrom(ctx, r.pool)
 
-	_, err := exec.Exec(ctx, `INSERT INTO highlights (id, edition_id, start_position, end_position, note, category, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	var uid, lid *string
+	if string(userID) != "" {
+		u := string(userID)
+		uid = &u
+	}
+	if string(libraryID) != "" {
+		l := string(libraryID)
+		lid = &l
+	}
+
+	_, err := exec.Exec(ctx, `INSERT INTO highlights (id, edition_id, user_id, library_id, start_position, end_position, note, category, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (id) DO UPDATE SET
 			edition_id = EXCLUDED.edition_id,
+			user_id = EXCLUDED.user_id,
+			library_id = EXCLUDED.library_id,
 			start_position = EXCLUDED.start_position,
 			end_position = EXCLUDED.end_position,
 			note = EXCLUDED.note,
 			category = EXCLUDED.category`,
-		string(h.ID()), string(h.EditionID()), h.StartPosition(), h.EndPosition(), h.Note(), h.Category(), h.CreatedAt())
+		string(h.ID()), string(h.EditionID()), uid, lid, h.StartPosition(), h.EndPosition(), h.Note(), h.Category(), h.CreatedAt())
 	if err != nil {
 		return TranslateError(err)
 	}
@@ -95,3 +118,4 @@ func (r *HighlightRepository) Delete(ctx context.Context, id domain.HighlightID)
 	}
 	return nil
 }
+

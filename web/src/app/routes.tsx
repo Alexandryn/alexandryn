@@ -1,28 +1,24 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import type { Capability } from '../data/bootstrap'
-import { Collections } from '../screens/Collections'
+import { AcceptInviteScreen } from '../screens/Auth/AcceptInviteScreen'
+import { LoginScreen } from '../screens/Auth/LoginScreen'
+import { SetupScreen } from '../screens/Auth/SetupScreen'
 import { CollectionDetail } from '../screens/CollectionDetail'
+import { Collections } from '../screens/Collections'
 import { Discover, DiscoverWorkDetail } from '../screens/Discover'
 import { Import } from '../screens/Import'
 import { Library } from '../screens/Library'
+import { LibraryManagement } from '../screens/Libraries/LibraryManagement'
 import { NotFound } from '../screens/NotFound'
 import { Reader } from '../screens/Reader'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
 
+import { RequireAuth } from './auth/RequireAuth'
 import { RequireCapability } from './capability'
 import { RouteError } from './RouteError'
 import { AppShell } from './shell/AppShell'
-
-// Route views are placeholders this phase — phase 06 onward fills them in
-// inside the same shell (this spec's Non-goals). Only <NotFound> (FR-5),
-// /library, /book/:id, and /discover have real content.
-//
-// Host-only gating (architecture-frontend.md FR-3) is declared here, in
-// one place — the `hostOnly()` wrapper below. The sidebar shows every
-// link unconditionally for now (the mock grants all capabilities); phase
-// 12/13 is where a denied capability hides or disables its nav link.
 
 function hostOnly(capability: Capability, title: string, note?: string) {
   return (
@@ -48,6 +44,16 @@ const shellChildren: RouteObject[] = [
   { path: 'discover/works/:openLibraryId', element: <DiscoverWorkDetail /> },
   { path: 'activity', element: <ScreenPlaceholder title="Activity" /> },
   { path: 'more', element: <ScreenPlaceholder title="More" /> },
+
+  // Multi-library administration (Phase 12)
+  {
+    path: 'libraries',
+    element: (
+      <RequireCapability capability="settings">
+        <LibraryManagement />
+      </RequireCapability>
+    ),
+  },
 
   // Host-only.
   {
@@ -88,14 +94,22 @@ const shellChildren: RouteObject[] = [
 ]
 
 export const routes: RouteObject[] = [
+  // Public unauthenticated routes
+  { path: '/setup', element: <SetupScreen /> },
+  { path: '/login', element: <LoginScreen /> },
+  { path: '/invite/:token', element: <AcceptInviteScreen /> },
+
+  // Authenticated shell
   {
     path: '/',
-    element: <AppShell />,
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
     children: [
-      // A pathless layout child carries the errorElement, so a render
-      // error in any screen shows <RouteError> inside the shell (nav
-      // still reachable), not in place of it (code review finding 2).
       { errorElement: <RouteError />, children: shellChildren },
     ],
   },
 ]
+

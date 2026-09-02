@@ -16,6 +16,14 @@ type (
 	BookmarkID        string
 	HighlightID       string
 
+	// Phase 12 (Authentication, RBAC & Multi-Library Namespacing) IDs
+	UserID              string
+	LibraryID           string
+	LibraryMembershipID string
+	LibraryInvitationID string
+	RefreshTokenID      string
+	PasswordResetID     string
+
 	// DeviceID identifies a reading device (domain-reading.md's own
 	// Non-goals: "this spec assumes a DeviceID exists... without
 	// designing device management" — phase 14 owns the real thing).

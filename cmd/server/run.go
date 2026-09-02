@@ -15,12 +15,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
+	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"golang.org/x/time/rate"
 )
 
 // pgPool is the minimal interface run's step 6 needs from whatever
@@ -401,12 +403,47 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		return 1
 	}
+	jwtSubkey, err := cryptoSvc.DeriveSubkey("jwt-signing-secret-v1")
+	if err != nil {
+		logger.Error("failed to derive jwt subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	mfaSubkey, err := cryptoSvc.DeriveSubkey("mfa-totp-master-v1")
+	if err != nil {
+		logger.Error("failed to derive mfa subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+
 	poolRef.SetSourceCrypto(transporthttp.SourceCrypto{
 		Encryptor: cryptoSvc,
 		Codec:     sources.NewCursorCodec(cursorSubkey),
 	})
 
 	if repos != nil {
+		if repos.users != nil {
+			poolRef.SetAuthAPI(transporthttp.AuthAPI{
+				Users:              repos.users,
+				Credentials:        repos.credentials,
+				RefreshTokens:      repos.refreshTokens,
+				MFA:                repos.mfa,
+				PasswordResets:     repos.passwordResets,
+				Libraries:          repos.libraries,
+				LibraryMemberships: repos.libraryMemberships,
+				LibraryInvitations: repos.libraryInvitations,
+				Hasher:             auth.NewArgon2idPasswordHasher(auth.DefaultArgon2idParams()),
+				Signer:             auth.NewJWTSigner(jwtSubkey, "alexandryn"),
+				TOTPEngine:         auth.NewTOTPEngine("Alexandryn"),
+				Limiter:            auth.NewIPRateLimiter(rate.Every(time.Second/5), 10, 15*time.Minute),
+				MasterKey:          mfaSubkey,
+				IDs:                idgen.New(),
+			})
+		}
 		if repos.importCandidates != nil {
 			poolRef.SetImportCandidateRepository(repos.importCandidates)
 		}

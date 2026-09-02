@@ -44,6 +44,14 @@ type repositories struct {
 	importCandidates   *postgres.ImportCandidateRepository
 	importerService    *importer.Service
 	readingExport      *postgres.ReadingExportRepository
+	users              domain.UserRepository
+	credentials        domain.CredentialRepository
+	refreshTokens      domain.RefreshTokenRepository
+	mfa                domain.MFARepository
+	passwordResets     domain.PasswordResetRepository
+	libraries          domain.LibraryRepository
+	libraryMemberships domain.LibraryMembershipRepository
+	libraryInvitations domain.LibraryInvitationRepository
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -107,5 +115,13 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		importCandidates:   candRepo,
 		importerService:    importerSvc,
 		readingExport:      postgres.NewReadingExportRepository(pool),
+		users:              postgres.NewUserRepository(pool),
+		credentials:        postgres.NewCredentialRepository(pool),
+		refreshTokens:      postgres.NewRefreshTokenRepository(pool),
+		mfa:                postgres.NewMFARepository(pool),
+		passwordResets:     postgres.NewPasswordResetRepository(pool),
+		libraries:          postgres.NewLibraryRepository(pool),
+		libraryMemberships: postgres.NewLibraryMembershipRepository(pool),
+		libraryInvitations: postgres.NewLibraryInvitationRepository(pool),
 	}
 }
