@@ -36,7 +36,7 @@ func (r *ReadingPreferencesRepository) FindByUserAndDevice(ctx context.Context, 
 	exec := executorFrom(ctx, r.pool)
 
 	var raw []byte
-	query := `SELECT settings FROM reading_preferences WHERE device_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`
+	query := `SELECT settings FROM reading_preferences WHERE device_id = $1 AND user_id = $2`
 	err := exec.QueryRow(ctx, query, string(deviceID), string(userID)).Scan(&raw)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -69,25 +69,12 @@ func (r *ReadingPreferencesRepository) SaveForUser(ctx context.Context, userID d
 		return TranslateError(err)
 	}
 
-	var uid *string
-	if string(userID) != "" {
-		u := string(userID)
-		uid = &u
-	}
-
 	_, err = exec.Exec(ctx, `INSERT INTO reading_preferences (user_id, device_id, settings)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (COALESCE(user_id, ''), device_id) DO UPDATE SET settings = EXCLUDED.settings`,
-		uid, string(p.DeviceID()), raw)
+		ON CONFLICT (user_id, device_id) DO UPDATE SET settings = EXCLUDED.settings`,
+		string(userID), string(p.DeviceID()), raw)
 	if err != nil {
-		// Fallback for primary key conflict on device_id if migration not yet applied
-		_, err = exec.Exec(ctx, `INSERT INTO reading_preferences (device_id, settings)
-			VALUES ($1, $2)
-			ON CONFLICT (device_id) DO UPDATE SET settings = EXCLUDED.settings`,
-			string(p.DeviceID()), raw)
-		if err != nil {
-			return TranslateError(err)
-		}
+		return TranslateError(err)
 	}
 	return nil
 }
