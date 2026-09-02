@@ -54,7 +54,12 @@ func TestAdversarialHTML_NeutralisedPayloads(t *testing.T) {
 		{
 			name: "link prefetch external",
 			in:   `<link rel="prefetch" href="http://evil.example/track">`,
-			bad:  []string{"evil.example", "<link"},
+			bad:  []string{"evil.example", "prefetch"},
+		},
+		{
+			name: "link stylesheet relative kept but external stripped",
+			in:   `<link rel="stylesheet" href="styles/book.css"><link rel="stylesheet" href="https://evil.example/x.css">`,
+			bad:  []string{"evil.example"},
 		},
 		{
 			name: "protocol-relative image src",

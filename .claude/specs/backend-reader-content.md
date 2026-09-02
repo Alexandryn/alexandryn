@@ -196,9 +196,16 @@ enforce the rest.
   sanitisation, closing the external-resource-load privacy risk
   (Security considerations) at the content layer itself, not only via
   the CSP header (FR-9) a client might fail to enforce. `<iframe>`,
-  `<object>`, `<embed>`, and `<link rel="prefetch">`-style external-
-  fetch-triggering elements are stripped entirely, not merely
-  attribute-filtered. **`<svg>` (inline, embedded directly in HTML/
+  `<object>`, `<embed>`, and every `<link>` `rel` value **except
+  `stylesheet`** (`prefetch`, `preconnect`, `dns-prefetch`,
+  `modulepreload`, …) are stripped entirely, not merely
+  attribute-filtered. **A `<link rel="stylesheet">` whose `href` is a
+  relative path or `data:` URI is kept** (amended 2026-09-01) — it
+  fetches the *also-sanitised* CSS from this system's own API origin, so
+  it is not an external-fetch element in this FR's sense, and an EPUB's
+  separate stylesheet files (the common case) would otherwise be lost;
+  an `http(s)`/`//host` `href` on such a link is rejected by the same
+  relative-or-`data:` rule as an `<img src>`. **`<svg>` (inline, embedded directly in HTML/
   XHTML content) is stripped wholesale, element and all** — SVG's own
   distinct script-execution surface (`onload`, `xlink:href="javascript:..."`,
   `<animate>`/`<set>` event attributes, `<foreignObject>` reintroducing

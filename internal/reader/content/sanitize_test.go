@@ -93,10 +93,15 @@ func TestSanitizeHTML_StripsExternalFetchElements(t *testing.T) {
 	in := []byte(`<iframe src="http://evil"></iframe><object data="x"></object><embed src="y"><link rel="stylesheet" href="http://z">`)
 	out, _ := content.SanitizeHTML(in)
 	s := string(out)
-	for _, frag := range []string{"<iframe", "<object", "<embed", "<link"} {
+	for _, frag := range []string{"<iframe", "<object", "<embed"} {
 		if strings.Contains(s, frag) {
 			t.Fatalf("%s survived: %q", frag, s)
 		}
+	}
+	// A stylesheet <link> keeps only a relative/data: href; an http(s)
+	// one is stripped, leaving no external fetch.
+	if strings.Contains(s, "http://z") {
+		t.Fatalf("external stylesheet href survived: %q", s)
 	}
 }
 
