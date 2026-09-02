@@ -53,6 +53,9 @@ func TestTOTPGenerationAndVerification(t *testing.T) {
 
 		// Invalid code fails
 		valid, err = totpEngine.ValidateCode(secret, "000000", now)
+		if err != nil {
+			t.Errorf("unexpected error validating code: %v", err)
+		}
 		if valid {
 			// unless 000000 happened to be the code
 			if code != "000000" {
