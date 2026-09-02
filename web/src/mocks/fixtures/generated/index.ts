@@ -752,4 +752,170 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  getSetupStatus: {
+    '200': {
+      isSetup: false,
+    },
+  },
+  setupAdmin: {
+    '201': {
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        username: 'librarian',
+        email: 'admin@alexandryn.org',
+        role: 'admin',
+      },
+      accessToken: 'mock.jwt.token',
+      refreshToken: 'mock-refresh-token',
+    },
+    '409': {
+      code: 'conflict',
+      message: 'system is already initialized',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  login: {
+    '200': {
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        username: 'librarian',
+        email: 'admin@alexandryn.org',
+        role: 'admin',
+      },
+      accessToken: 'mock.jwt.token',
+      refreshToken: 'mock-refresh-token',
+    },
+    '401': {
+      code: 'unauthorized',
+      message: 'invalid username or password',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  refreshToken: {
+    '200': {
+      accessToken: 'mock.jwt.token2',
+      refreshToken: 'mock-refresh-token2',
+    },
+    '401': {
+      code: 'unauthorized',
+      message: 'invalid refresh token',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  requestPasswordReset: {
+    '200': {
+      message: 'if the email is registered, a password reset link has been dispatched',
+    },
+  },
+  confirmPasswordReset: {
+    '200': {
+      success: true,
+    },
+  },
+  setupTOTP: {
+    '200': {
+      secret: 'JBSWY3DPEHPK3PXP',
+      keyUri: 'otpauth://totp/Alexandryn:librarian?secret=JBSWY3DPEHPK3PXP&issuer=Alexandryn',
+      recoveryCodes: ['ABCD-1234-EF', '5678-GHIJ-90'],
+    },
+  },
+  confirmTOTP: {
+    '200': {
+      enabled: true,
+    },
+  },
+  verifyTOTP: {
+    '200': {
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        username: 'librarian',
+        email: 'admin@alexandryn.org',
+        role: 'admin',
+      },
+      accessToken: 'mock.jwt.token',
+      refreshToken: 'mock-refresh-token',
+    },
+  },
+  disableTOTP: {
+    '200': {
+      disabled: true,
+    },
+  },
+  listLibraries: {
+    '200': {
+      libraries: [
+        {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Default Library',
+          description: 'Main library namespace',
+          allowReaderUploads: false,
+          createdAt: '2026-09-01T12:00:00Z',
+          updatedAt: '2026-09-01T12:00:00Z',
+        },
+      ],
+    },
+  },
+  createLibrary: {
+    '201': {
+      library: {
+        id: '00000000-0000-0000-0000-000000000002',
+        name: 'Comics',
+        description: 'Comics and Manga',
+        allowReaderUploads: true,
+        createdAt: '2026-09-01T12:00:00Z',
+        updatedAt: '2026-09-01T12:00:00Z',
+      },
+    },
+  },
+  getLibrary: {
+    '200': {
+      library: {
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Default Library',
+        description: 'Main library namespace',
+        allowReaderUploads: false,
+        createdAt: '2026-09-01T12:00:00Z',
+        updatedAt: '2026-09-01T12:00:00Z',
+      },
+    },
+  },
+  updateLibrary: {
+    '200': {
+      library: {
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Default Library Updated',
+        description: 'Main library namespace',
+        allowReaderUploads: true,
+        createdAt: '2026-09-01T12:00:00Z',
+        updatedAt: '2026-09-01T12:00:00Z',
+      },
+    },
+  },
+  listLibraryMembers: {
+    '200': {
+      members: [
+        {
+          id: '00000000-0000-0000-0000-000000000001',
+          userId: '00000000-0000-0000-0000-000000000001',
+          username: 'librarian',
+          email: 'admin@alexandryn.org',
+          role: 'admin',
+          createdAt: '2026-09-01T12:00:00Z',
+        },
+      ],
+    },
+  },
+  createLibraryInvitation: {
+    '201': {
+      invitationToken: 'mock-invite-token',
+      invitationUrl: '/invite/mock-invite-token',
+      expiresAt: '2026-09-08T12:00:00Z',
+    },
+  },
+  acceptLibraryInvitation: {
+    '200': {
+      libraryId: '00000000-0000-0000-0000-000000000001',
+      role: 'reader',
+    },
+  },
 } as const
