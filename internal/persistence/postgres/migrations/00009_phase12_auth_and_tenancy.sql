@@ -107,9 +107,9 @@ ALTER TABLE highlights ADD COLUMN user_id TEXT;
 ALTER TABLE highlights ADD COLUMN library_id TEXT REFERENCES libraries(id) ON DELETE CASCADE;
 CREATE INDEX highlights_user_library_edition_idx ON highlights (user_id, library_id, edition_id);
 
-ALTER TABLE reading_preferences ADD COLUMN user_id TEXT;
+ALTER TABLE reading_preferences ADD COLUMN user_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE reading_preferences DROP CONSTRAINT IF EXISTS reading_preferences_pkey;
-ALTER TABLE reading_preferences ADD PRIMARY KEY (COALESCE(user_id, ''), device_id);
+ALTER TABLE reading_preferences ADD PRIMARY KEY (user_id, device_id);
 
 -- +goose Down
 
