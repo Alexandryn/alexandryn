@@ -77,6 +77,15 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/import/candidates",
 		"/api/v1/import/candidates/{id}/confirm",
 		"/api/v1/import/candidates/{id}/reject",
+		// Phase 11 — reader content + reading API + export.
+		"/api/v1/library/editions/{editionId}/reader/content/{path}",
+		"/api/v1/reading/works/{workId}/progress",
+		"/api/v1/reading/editions/{editionId}/bookmarks",
+		"/api/v1/reading/bookmarks/{bookmarkId}",
+		"/api/v1/reading/editions/{editionId}/highlights",
+		"/api/v1/reading/highlights/{highlightId}",
+		"/api/v1/reading/preferences",
+		"/api/v1/reading/export",
 	}
 	for _, p := range phasePaths {
 		if doc.Paths.Find(p) == nil {
@@ -591,6 +600,59 @@ func TestRealImportHandlersPassContractTest(t *testing.T) {
 		h := transporthttp.ImportCandidateRejectHandler(svc, candRepo)
 		req := mustRequest(t, "POST", "/api/v1/import/candidates/01JCANDIDATE1/reject", nil)
 		req.SetPathValue("id", "01JCANDIDATE1")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+}
+
+// --- Phase 11: reader content + reading API contract responses ---------
+
+type ctReadingProgress struct{ p *domain.ReadingProgress }
+
+func (r ctReadingProgress) FindByWork(context.Context, domain.WorkID) (*domain.ReadingProgress, error) {
+	if r.p == nil {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "none"}
+	}
+	return r.p, nil
+}
+func (r ctReadingProgress) FindByWorkForUpdate(ctx context.Context, w domain.WorkID) (*domain.ReadingProgress, error) {
+	return r.FindByWork(ctx, w)
+}
+func (r ctReadingProgress) Save(context.Context, *domain.ReadingProgress) error { return nil }
+
+type ctExport struct{}
+
+func (ctExport) WorkExists(context.Context, string) (bool, error) { return true, nil }
+func (ctExport) ListProgress(context.Context, string) ([]postgres.ExportProgress, error) {
+	return nil, nil
+}
+func (ctExport) ListMarks(context.Context, string) ([]postgres.ExportMark, error) { return nil, nil }
+
+func TestPhase11ContractResponses(t *testing.T) {
+	v := contracttest.New(t)
+	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+
+	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetReadingAPI(transporthttp.ReadingAPI{
+		Progress: ctReadingProgress{},
+		Export:   ctExport{},
+	})
+
+	t.Run("GET /api/v1/reading/works/{workId}/progress → null", func(t *testing.T) {
+		h := transporthttp.ReadingProgressGetHandler(poolRef)
+		req := mustRequest(t, "GET", "/api/v1/reading/works/work-1/progress", nil)
+		req.SetPathValue("workId", "work-1")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/reading/export → versioned document", func(t *testing.T) {
+		h := transporthttp.ReadingExportHandler(poolRef, nil, now)
+		req := mustRequest(t, "GET", "/api/v1/reading/export", nil)
 		rr := v.ValidateResponse(t, h, req)
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rr.Code)

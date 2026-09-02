@@ -69,7 +69,7 @@ func (r *Resolver) Load(ctx context.Context, editionID domain.EditionID) (*zip.R
 	if stream == nil {
 		return nil, nil, &domain.Error{Category: domain.Unavailable, Message: "this book's source isn't reachable right now"}
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	tmp, cleanup, err := extract.Materialize(ctx, stream)
 	if err != nil {

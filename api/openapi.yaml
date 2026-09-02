@@ -1407,6 +1407,301 @@ paths:
                 message: "candidate is not pending"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  /api/v1/library/editions/{editionId}/reader/content/{path}:
+    get:
+      operationId: getReaderContent
+      summary: Serve one sanitised resource from inside an owned Edition's EPUB
+      security: []
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Sanitised HTML/CSS or raw binary, with a strict Content-Security-Policy.
+          content:
+            application/xhtml+xml:
+              schema: { type: string }
+            text/css:
+              schema: { type: string }
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400':
+          description: Malformed path, or an unservable resource type (standalone SVG, executable).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "resource path must be relative", correlationId: 00000000-0000-0000-0000-000000000000 }
+        '404':
+          description: Edition not owned, or no such entry in the book.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "no such resource in this book", correlationId: 00000000-0000-0000-0000-000000000000 }
+        '503':
+          description: The book's source is unreachable, or the file cannot be opened.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: unavailable, message: "this book's source isn't reachable right now", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/works/{workId}/progress:
+    get:
+      operationId: getReadingProgress
+      summary: Get the canonical reading progress for a Work
+      security: []
+      parameters:
+        - { name: workId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The canonical progress, or null if none exists yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadingProgressResponse' }
+              example: { progress: null }
+    post:
+      operationId: reportReadingProgress
+      summary: Report reading progress, reconciled by max over (epoch, percentage)
+      security: []
+      parameters:
+        - { name: workId, in: path, required: true, schema: { type: string } }
+        - name: X-Device-Id
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProgressReportRequest' }
+      responses:
+        '200':
+          description: The reconciled canonical value and the outcome tag.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProgressReportResult' }
+              example:
+                progress: { percentage: 0.42, epoch: 0, precisePosition: null, observedAt: "2026-09-01T12:00:00Z" }
+                outcome: advanced
+        '400':
+          description: Missing or malformed X-Device-Id, percentage, observedEpoch, CFI, or editionId.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "X-Device-Id must be a version 4 UUID", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/editions/{editionId}/bookmarks:
+    get:
+      operationId: listBookmarks
+      summary: List bookmarks for an Edition
+      security: []
+      parameters:
+        - { name: editionId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The Edition's bookmarks.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkListResponse' }
+              example: { bookmarks: [] }
+    post:
+      operationId: createBookmark
+      summary: Create a bookmark at a CFI
+      security: []
+      parameters:
+        - { name: editionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkCreateRequest' }
+      responses:
+        '201':
+          description: The created bookmark.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkResponse' }
+              example: { bookmark: { id: "bmk_1", editionId: "edn_1", cfi: "epubcfi(/6/4!/10)", label: "the turn", createdAt: "2026-09-01T12:00:00Z" } }
+        '400':
+          description: Malformed CFI or label.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "position is not an epubcfi(...) value", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/bookmarks/{bookmarkId}:
+    delete:
+      operationId: deleteBookmark
+      summary: Delete a bookmark
+      security: []
+      parameters:
+        - { name: bookmarkId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted. }
+        '404':
+          description: No bookmark with that id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "bookmark not found", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/editions/{editionId}/highlights:
+    get:
+      operationId: listHighlights
+      summary: List highlights for an Edition
+      security: []
+      parameters:
+        - { name: editionId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The Edition's highlights.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HighlightListResponse' }
+              example: { highlights: [] }
+    post:
+      operationId: createHighlight
+      summary: Create a highlight over a CFI range
+      security: []
+      parameters:
+        - { name: editionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HighlightCreateRequest' }
+      responses:
+        '201':
+          description: The created highlight.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HighlightResponse' }
+              example: { highlight: { id: "hlt_1", editionId: "edn_1", startCfi: "epubcfi(/6/4!/10/1:0)", endCfi: "epubcfi(/6/4!/10/1:88)", note: "", category: "blue", createdAt: "2026-09-01T12:00:00Z" } }
+        '400':
+          description: Malformed CFI, or endCfi sorts before startCfi.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "endCfi must not sort before startCfi", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/highlights/{highlightId}:
+    patch:
+      operationId: patchHighlight
+      summary: Update a highlight's note or category (never its position)
+      security: []
+      parameters:
+        - { name: highlightId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HighlightPatchRequest' }
+      responses:
+        '200':
+          description: The updated highlight.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HighlightResponse' }
+              example: { highlight: { id: "hlt_1", editionId: "edn_1", startCfi: "epubcfi(/6/4!/10/1:0)", endCfi: "epubcfi(/6/4!/10/1:88)", note: "a thought", category: "blue", createdAt: "2026-09-01T12:00:00Z" } }
+        '400':
+          description: Malformed note or category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "note: too long", correlationId: 00000000-0000-0000-0000-000000000000 }
+        '404':
+          description: No highlight with that id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "highlight not found", correlationId: 00000000-0000-0000-0000-000000000000 }
+    delete:
+      operationId: deleteHighlight
+      summary: Delete a highlight
+      security: []
+      parameters:
+        - { name: highlightId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted. }
+        '404':
+          description: No highlight with that id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "highlight not found", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/preferences:
+    get:
+      operationId: getReadingPreferences
+      summary: Get this device's reading preferences (system defaults if none stored)
+      security: []
+      parameters:
+        - { name: X-Device-Id, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The device's preferences.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadingPreferencesResponse' }
+              example: { preferences: { font: "serif", fontSize: 19, lineSpacing: 1.5, theme: "light", layoutMode: "paginated", columnWidth: "default" } }
+    put:
+      operationId: putReadingPreferences
+      summary: Replace this device's reading preferences
+      security: []
+      parameters:
+        - { name: X-Device-Id, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReadingPreferences' }
+      responses:
+        '200':
+          description: The stored preferences.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadingPreferencesResponse' }
+              example: { preferences: { font: "Newsreader", fontSize: 22, lineSpacing: 1.7, theme: "sepia", layoutMode: "scroll", columnWidth: "wide" } }
+        '400':
+          description: An out-of-range or unrecognised preference value.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "theme must be light, sepia, or dark", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/reading/export:
+    get:
+      operationId: exportReadingData
+      summary: Download reading progress, bookmarks, and highlights as versioned JSON
+      security: []
+      parameters:
+        - name: workId
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: The versioned export document (Content-Disposition attachment).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadingExportDocument' }
+              example:
+                schemaVersion: 1
+                exportedAt: "2026-09-01T12:00:00Z"
+                works: []
+                editions: []
+        '404':
+          description: The scoped workId does not exist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "no work with that id", correlationId: 00000000-0000-0000-0000-000000000000 }
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -1416,6 +1711,157 @@ components:
       scheme: bearer
 
   schemas:
+    PrecisePosition:
+      type: object
+      required: [editionId, cfi]
+      properties:
+        editionId: { type: string }
+        cfi: { type: string }
+    ReadingProgress:
+      type: object
+      required: [percentage, epoch, observedAt]
+      properties:
+        percentage: { type: number, minimum: 0, maximum: 1 }
+        epoch: { type: integer, minimum: 0 }
+        precisePosition:
+          oneOf:
+            - $ref: '#/components/schemas/PrecisePosition'
+            - type: 'null'
+        observedAt: { type: string, format: date-time }
+    ReadingProgressResponse:
+      type: object
+      required: [progress]
+      properties:
+        progress:
+          oneOf:
+            - $ref: '#/components/schemas/ReadingProgress'
+            - type: 'null'
+    ProgressReportRequest:
+      type: object
+      required: [percentage, observedEpoch]
+      properties:
+        percentage: { type: number, minimum: 0, maximum: 1 }
+        observedEpoch: { type: integer, minimum: 0 }
+        precisePosition:
+          oneOf:
+            - $ref: '#/components/schemas/PrecisePosition'
+            - type: 'null'
+        override: { type: boolean }
+    ProgressReportResult:
+      type: object
+      required: [progress, outcome]
+      properties:
+        progress: { $ref: '#/components/schemas/ReadingProgress' }
+        outcome: { type: string, enum: [advanced, unchanged, rejected, overridden] }
+    Bookmark:
+      type: object
+      required: [id, editionId, cfi, label, createdAt]
+      properties:
+        id: { type: string }
+        editionId: { type: string }
+        cfi: { type: string }
+        label: { type: string }
+        createdAt: { type: string, format: date-time }
+    BookmarkResponse:
+      type: object
+      required: [bookmark]
+      properties:
+        bookmark: { $ref: '#/components/schemas/Bookmark' }
+    BookmarkListResponse:
+      type: object
+      required: [bookmarks]
+      properties:
+        bookmarks:
+          type: array
+          items: { $ref: '#/components/schemas/Bookmark' }
+    BookmarkCreateRequest:
+      type: object
+      required: [cfi]
+      properties:
+        cfi: { type: string }
+        label:
+          oneOf: [{ type: string }, { type: 'null' }]
+    Highlight:
+      type: object
+      required: [id, editionId, startCfi, endCfi, note, category, createdAt]
+      properties:
+        id: { type: string }
+        editionId: { type: string }
+        startCfi: { type: string }
+        endCfi: { type: string }
+        note: { type: string }
+        category: { type: string }
+        createdAt: { type: string, format: date-time }
+    HighlightResponse:
+      type: object
+      required: [highlight]
+      properties:
+        highlight: { $ref: '#/components/schemas/Highlight' }
+    HighlightListResponse:
+      type: object
+      required: [highlights]
+      properties:
+        highlights:
+          type: array
+          items: { $ref: '#/components/schemas/Highlight' }
+    HighlightCreateRequest:
+      type: object
+      required: [startCfi, endCfi]
+      properties:
+        startCfi: { type: string }
+        endCfi: { type: string }
+        note:
+          oneOf: [{ type: string }, { type: 'null' }]
+        category:
+          oneOf: [{ type: string }, { type: 'null' }]
+    HighlightPatchRequest:
+      type: object
+      properties:
+        note:
+          oneOf: [{ type: string }, { type: 'null' }]
+        category:
+          oneOf: [{ type: string }, { type: 'null' }]
+    ReadingPreferences:
+      type: object
+      required: [font, fontSize, lineSpacing, theme, layoutMode, columnWidth]
+      properties:
+        font: { type: string }
+        fontSize: { type: number }
+        lineSpacing: { type: number }
+        theme: { type: string, enum: [light, sepia, dark] }
+        layoutMode: { type: string, enum: [paginated, scroll] }
+        columnWidth: { type: string, enum: [narrow, default, wide] }
+    ReadingPreferencesResponse:
+      type: object
+      required: [preferences]
+      properties:
+        preferences: { $ref: '#/components/schemas/ReadingPreferences' }
+    ReadingExportDocument:
+      type: object
+      required: [schemaVersion, exportedAt, works, editions]
+      properties:
+        schemaVersion: { type: integer }
+        exportedAt: { type: string, format: date-time }
+        works:
+          type: array
+          items:
+            type: object
+            required: [workId, progress]
+            properties:
+              workId: { type: string }
+              progress:
+                oneOf:
+                  - type: object
+                  - type: 'null'
+        editions:
+          type: array
+          items:
+            type: object
+            required: [editionId, bookmarks, highlights]
+            properties:
+              editionId: { type: string }
+              bookmarks: { type: array, items: { $ref: '#/components/schemas/Bookmark' } }
+              highlights: { type: array, items: { $ref: '#/components/schemas/Highlight' } }
     Empty:
       type: object
       additionalProperties: false

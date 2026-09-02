@@ -61,7 +61,7 @@ func ReadEntry(f *zip.File) ([]byte, error) {
 	if err != nil {
 		return nil, &domain.Error{Category: domain.Unavailable, Message: "this resource could not be read from the book"}
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	data, err := io.ReadAll(io.LimitReader(rc, extract.MaxDecompressedReadBytes+1))
 	if err != nil {
