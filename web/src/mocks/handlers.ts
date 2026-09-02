@@ -152,5 +152,30 @@ export const handlers = [
     HttpResponse.json(generatedFixtures.rejectImportCandidate['200']),
   ),
 
+  // Reader — the content endpoint and reading API pass through to the real
+  // backend during dev; these stubs keep the frontend suite self-contained
+  // where a test does not install its own reader handlers.
+  http.get('*/api/v1/reading/works/:workId/progress', () =>
+    HttpResponse.json({ progress: null }),
+  ),
+  http.post('*/api/v1/reading/works/:workId/progress', () =>
+    HttpResponse.json({ progress: generatedFixtures.reportReadingProgress['200'].progress, outcome: 'advanced' }),
+  ),
+  http.get('*/api/v1/reading/preferences', () =>
+    HttpResponse.json(generatedFixtures.getReadingPreferences['200']),
+  ),
+  http.put('*/api/v1/reading/preferences', async ({ request }) =>
+    HttpResponse.json({ preferences: await request.json() }),
+  ),
+  http.get('*/api/v1/reading/editions/:editionId/bookmarks', () =>
+    HttpResponse.json({ bookmarks: [] }),
+  ),
+  http.get('*/api/v1/reading/editions/:editionId/highlights', () =>
+    HttpResponse.json({ highlights: [] }),
+  ),
+  http.get('*/api/v1/reading/export', () =>
+    HttpResponse.json(generatedFixtures.exportReadingData['200']),
+  ),
+
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]

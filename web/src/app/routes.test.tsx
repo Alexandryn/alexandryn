@@ -36,7 +36,6 @@ const SHARED: [string, string][] = [
   ['/access', 'Access'],
   ['/connect', 'Connect'],
   ['/reader/9', 'Reader'],
-  ['/read/book-1/ed-1', 'Reader'],
 ]
 
 const HOST_ONLY: [string, string][] = [
@@ -50,6 +49,15 @@ describe('route table (FR-1)', () => {
   it.each(SHARED)('%s resolves to the "%s" screen', async (path, heading) => {
     renderRoute(path)
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
+  })
+
+  it('/read/:workId/:editionId resolves to the Reader screen', async () => {
+    renderRoute('/read/book-1/ed-1')
+    // The real reader mounts here (no content mock in this suite, so it
+    // settles on its error state) rather than a placeholder.
+    expect(
+      await screen.findByText(/opening book|could not be opened/i),
+    ).toBeInTheDocument()
   })
 
   it('/book/:id resolves to WorkDetail screen', async () => {

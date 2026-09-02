@@ -6,6 +6,7 @@ import { Discover, DiscoverWorkDetail } from '../screens/Discover'
 import { Import } from '../screens/Import'
 import { Library } from '../screens/Library'
 import { NotFound } from '../screens/NotFound'
+import { Reader } from '../screens/Reader'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
@@ -81,7 +82,7 @@ const shellChildren: RouteObject[] = [
   { path: 'access', element: <ScreenPlaceholder title="Access" note={VIEWER_NOTE} /> },
   { path: 'connect', element: <ScreenPlaceholder title="Connect" note={VIEWER_NOTE} /> },
   { path: 'reader/:id', element: <ParamPlaceholder title="Reader" param="id" /> },
-  { path: 'read/:workId/:editionId', element: <ParamPlaceholder title="Reader" param="workId" /> },
+  { path: 'read/:workId/:editionId', element: <Reader /> },
 
   { path: '*', element: <NotFound /> },
 ]

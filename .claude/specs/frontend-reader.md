@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01: FR-2/FR-4 add `columnWidth` to `ReadingPreferences` (the binding `atReader` canvas carries a Narrow/Default/Wide control); FR-5/FR-6 carry an `observedEpoch` echo per `backend-reading-api.md`'s 2026-09-01 amendment; Open questions corrected — a binding `atReader` canvas **does** exist (`.design-reference/ANALYSIS.md` scope pass, 2026-08-17). Maintainer re-confirmation pending. |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01: FR-2/FR-4 add `columnWidth` to `ReadingPreferences` (the binding `atReader` canvas carries a Narrow/Default/Wide control); FR-5/FR-6 carry an `observedEpoch` echo per `backend-reading-api.md`'s 2026-09-01 amendment; Context records the first-cut rendering approach (vendored `epub.js`/`epubcfi.js` + per-spine `<iframe>` src, full `<foliate-view>` paginator deferred); Open questions corrected — a binding `atReader` canvas **does** exist (`.design-reference/ANALYSIS.md` scope pass, 2026-08-17). **Implemented in phase 11** (audit `0011`). Maintainer re-confirmation of the amendments pending. |
 | **Phase** | `11-reader` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -19,16 +19,33 @@ reader itself. `frontend-library-screens.md` FR-5 was amended to add
 the "Read" entry point this spec's own route is the target of.
 
 Grounded against real research (also informing the roadmap's own
-Architecture decisions expected): **`foliate-js`** is this spec's
-chosen rendering engine — pure JS, no hard dependencies, real EPUB CFI
-support (`epubcfi.js`), explicit reflowable (CSS-multi-column
-paginator) and fixed-layout renderers, and both paginated and scrolled
-modes built in. Its own documentation is explicit that its *default*
-approach (unzip client-side, serve via `blob:` URLs) "is currently
-impossible to do securely" — this project doesn't take that default:
-`backend-reader-content.md` serves already-sanitised content from this
-system's own API origin instead, so this spec's `<iframe>` points
-directly at real URLs, never a client-reconstructed `blob:` one.
+Architecture decisions expected): **`foliate-js`** (ADR 0023) is this
+spec's chosen rendering engine — pure JS, no hard dependencies, real
+EPUB CFI support (`epubcfi.js`), and an EPUB parser (`epub.js`) that
+reads `container.xml` / the OPF / the navigation document through a
+caller-supplied loader. Its own documentation is explicit that its
+*default* approach (unzip client-side, serve via `blob:` URLs) "is
+currently impossible to do securely" — this project doesn't take that
+default: `backend-reader-content.md` serves already-sanitised content
+from this system's own API origin instead, so this spec's `<iframe>`
+points directly at real URLs, never a client-reconstructed `blob:` one.
+
+**Implementation approach (amended 2026-09-01, first-cut).** foliate-js
+1.0.1's only npm package is an unofficial third-party republish, so
+`epub.js` + `epubcfi.js` are **vendored** from the official source
+(ADR 0023, amended). The reader uses `epub.js` for structure (spine
+order, table of contents, spine-step CFIs) and `epubcfi.js` for CFI
+generation and comparison; chapter documents render by pointing the
+sandboxed `<iframe>` `src` directly at the content endpoint per spine
+item, one section at a time, rather than driving foliate's full
+`<foliate-view>` CSS-multi-column paginator. This keeps the
+blob-avoidance and no-script guarantees intact and is enough for
+chapter navigation, position save/restore, typography, TOC, bookmarks,
+and highlights; wiring the full `<foliate-view>` paginator (true
+in-chapter pagination, `prefers-reduced-motion` page-turn animation,
+selection-range end CFIs) is deferred and flagged in Open questions as
+needing real-browser verification, consistent with the spec's own
+Open Question 3.
 
 ## Problem
 

@@ -9,8 +9,21 @@ const RULES: axe.RunOptions['rules'] = {
   'color-contrast': { enabled: false },
 }
 
-export async function runAxe(container: Element): Promise<axe.Result[]> {
-  const results = await axe.run(container, { rules: RULES })
+export async function runAxe(
+  container: Element,
+  options: { exclude?: string } = {},
+): Promise<axe.Result[]> {
+  // A sandboxed <iframe> can't be traversed under jsdom (no real frame
+  // window); a caller testing a screen that embeds one excludes it here
+  // and relies on the real-browser @axe-core/playwright stage for the
+  // frame's own content.
+  const excluded = options.exclude
+    ? Array.from(container.querySelectorAll(options.exclude))
+    : []
+  const context: axe.ElementContext = excluded.length
+    ? ({ include: [container], exclude: excluded } as unknown as axe.ElementContext)
+    : container
+  const results = await axe.run(context, { rules: RULES })
   return results.violations
 }
 
