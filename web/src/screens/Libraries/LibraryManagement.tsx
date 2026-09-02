@@ -189,7 +189,7 @@ export function LibraryManagement() {
                   <span className="font-medium text-text-primary">{m.username || m.userId}</span>
                   {m.email && <span className="text-text-muted ml-sm">({m.email})</span>}
                 </div>
-                <span className="px-sm py-0.5 rounded bg-bg-surface text-text-secondary uppercase font-semibold text-[10px]">
+                <span className="px-sm py-0.5 rounded bg-bg-surface text-text-secondary uppercase font-semibold text-2xs">
                   {m.role}
                 </span>
               </div>
