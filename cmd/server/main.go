@@ -207,6 +207,19 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
 
+	mux.Handle("GET /api/v1/reading/works/{workId}/progress", transporthttp.ReadingProgressGetHandler(poolRef))
+	mux.Handle("POST /api/v1/reading/works/{workId}/progress", transporthttp.ReadingProgressReportHandler(poolRef, time.Now))
+	mux.Handle("GET /api/v1/reading/editions/{editionId}/bookmarks", transporthttp.ReadingBookmarksListHandler(poolRef))
+	mux.Handle("POST /api/v1/reading/editions/{editionId}/bookmarks", transporthttp.ReadingBookmarkCreateHandler(poolRef, time.Now))
+	mux.Handle("DELETE /api/v1/reading/bookmarks/{bookmarkId}", transporthttp.ReadingBookmarkDeleteHandler(poolRef))
+	mux.Handle("GET /api/v1/reading/editions/{editionId}/highlights", transporthttp.ReadingHighlightsListHandler(poolRef))
+	mux.Handle("POST /api/v1/reading/editions/{editionId}/highlights", transporthttp.ReadingHighlightCreateHandler(poolRef, time.Now))
+	mux.Handle("PATCH /api/v1/reading/highlights/{highlightId}", transporthttp.ReadingHighlightPatchHandler(poolRef))
+	mux.Handle("DELETE /api/v1/reading/highlights/{highlightId}", transporthttp.ReadingHighlightDeleteHandler(poolRef))
+	mux.Handle("GET /api/v1/reading/preferences", transporthttp.ReadingPreferencesGetHandler(poolRef))
+	mux.Handle("PUT /api/v1/reading/preferences", transporthttp.ReadingPreferencesPutHandler(poolRef))
+	mux.Handle("GET /api/v1/reading/export", transporthttp.ReadingExportHandler(poolRef, logger, time.Now))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
