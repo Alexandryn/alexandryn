@@ -92,6 +92,17 @@ export interface ReadingPreferences {
   columnWidth: ColumnWidth
 }
 
+/** System defaults, matching the backend's `defaultPreferences` and the
+ * design reference's atReader canvas. */
+export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
+  font: 'serif',
+  fontSize: 19,
+  lineSpacing: 1.5,
+  theme: 'light',
+  layoutMode: 'paginated',
+  columnWidth: 'default',
+}
+
 // --- query keys -----------------------------------------------------
 
 export const readingKeys = {
