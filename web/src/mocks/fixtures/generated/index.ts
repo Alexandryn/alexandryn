@@ -591,4 +591,165 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  getReaderContent: {
+    '400': {
+      code: 'invalid_input',
+      message: 'resource path must be relative',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no such resource in this book',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: "this book's source isn't reachable right now",
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getReadingProgress: {
+    '200': {
+      progress: null,
+    },
+  },
+  reportReadingProgress: {
+    '200': {
+      progress: {
+        percentage: 0.42,
+        epoch: 0,
+        precisePosition: null,
+        observedAt: '2026-09-01T12:00:00Z',
+      },
+      outcome: 'advanced',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'X-Device-Id must be a version 4 UUID',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  listBookmarks: {
+    '200': {
+      bookmarks: [],
+    },
+  },
+  createBookmark: {
+    '201': {
+      bookmark: {
+        id: 'bmk_1',
+        editionId: 'edn_1',
+        cfi: 'epubcfi(/6/4!/10)',
+        label: 'the turn',
+        createdAt: '2026-09-01T12:00:00Z',
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'position is not an epubcfi(...) value',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  deleteBookmark: {
+    '404': {
+      code: 'not_found',
+      message: 'bookmark not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  listHighlights: {
+    '200': {
+      highlights: [],
+    },
+  },
+  createHighlight: {
+    '201': {
+      highlight: {
+        id: 'hlt_1',
+        editionId: 'edn_1',
+        startCfi: 'epubcfi(/6/4!/10/1:0)',
+        endCfi: 'epubcfi(/6/4!/10/1:88)',
+        note: '',
+        category: 'blue',
+        createdAt: '2026-09-01T12:00:00Z',
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'endCfi must not sort before startCfi',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  deleteHighlight: {
+    '404': {
+      code: 'not_found',
+      message: 'highlight not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  patchHighlight: {
+    '200': {
+      highlight: {
+        id: 'hlt_1',
+        editionId: 'edn_1',
+        startCfi: 'epubcfi(/6/4!/10/1:0)',
+        endCfi: 'epubcfi(/6/4!/10/1:88)',
+        note: 'a thought',
+        category: 'blue',
+        createdAt: '2026-09-01T12:00:00Z',
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'note: too long',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'highlight not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getReadingPreferences: {
+    '200': {
+      preferences: {
+        font: 'serif',
+        fontSize: 19,
+        lineSpacing: 1.5,
+        theme: 'light',
+        layoutMode: 'paginated',
+        columnWidth: 'default',
+      },
+    },
+  },
+  putReadingPreferences: {
+    '200': {
+      preferences: {
+        font: 'Newsreader',
+        fontSize: 22,
+        lineSpacing: 1.7,
+        theme: 'sepia',
+        layoutMode: 'scroll',
+        columnWidth: 'wide',
+      },
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'theme must be light, sepia, or dark',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  exportReadingData: {
+    '200': {
+      schemaVersion: 1,
+      exportedAt: '2026-09-01T12:00:00Z',
+      works: [],
+      editions: [],
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no work with that id',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const

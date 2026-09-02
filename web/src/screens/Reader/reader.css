@@ -1,0 +1,135 @@
+/*
+ * Reader chrome + content theming (frontend-reader.md). The three
+ * reading themes match the design reference's own RTHEMES palette
+ * (Alexandryn-Web.dc.html); they live here rather than in a .tsx file
+ * because they are literal colour values, not design tokens.
+ */
+
+.reader-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--reader-bg);
+  color: var(--reader-fg);
+}
+
+.reader-root[data-theme='light'] {
+  --reader-bg: #fbfaf7;
+  --reader-fg: #1a1917;
+  --reader-line: rgba(26, 25, 23, 0.12);
+  --reader-panel: #ffffff;
+}
+.reader-root[data-theme='sepia'] {
+  --reader-bg: #f2e8d8;
+  --reader-fg: #3a2e20;
+  --reader-line: rgba(58, 46, 32, 0.16);
+  --reader-panel: #f7efe2;
+}
+.reader-root[data-theme='dark'] {
+  --reader-bg: #121214;
+  --reader-fg: #dedbd5;
+  --reader-line: rgba(222, 219, 213, 0.14);
+  --reader-panel: #191919;
+}
+
+.reader-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  height: 3.375rem;
+  padding: 0 clamp(0.875rem, 2.4vw, 1.625rem);
+  border-bottom: 1px solid var(--reader-line);
+}
+
+.reader-content-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: var(--reader-bg);
+}
+
+.reader-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  height: 2.75rem;
+  padding: 0 clamp(0.875rem, 2.4vw, 1.625rem);
+  border-top: 1px solid var(--reader-line);
+  background: var(--reader-panel);
+}
+
+.reader-progress-track {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--reader-line);
+  overflow: hidden;
+}
+.reader-progress-fill {
+  height: 100%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.reader-panel {
+  position: absolute;
+  top: 3.375rem;
+  bottom: 2.75rem;
+  width: min(20rem, 82vw);
+  background: var(--reader-panel);
+  overflow-y: auto;
+  padding: 1.25rem 1.125rem;
+}
+.reader-panel--toc {
+  left: 0;
+  border-right: 1px solid var(--reader-line);
+}
+.reader-panel--marks {
+  right: 0;
+  width: min(21rem, 86vw);
+  border-left: 1px solid var(--reader-line);
+}
+.reader-panel--settings {
+  right: clamp(0.875rem, 2.4vw, 1.625rem);
+  top: 3.875rem;
+  bottom: auto;
+  width: min(19rem, 88vw);
+  border: 1px solid var(--reader-line);
+  border-radius: 14px;
+}
+
+.reader-toc-entry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.625rem;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  border: 0;
+}
+.reader-toc-entry[aria-current='true'] {
+  background: rgba(127, 127, 127, 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reader-panel {
+    animation: reader-fade-up 0.18s ease;
+  }
+}
+@keyframes reader-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
