@@ -37,6 +37,8 @@ bin/
 *.test
 *.out
 vendor/
+# ...except the deliberately vendored frontend library (foliate-js, ADR 0023).
+!web/src/vendor/
 __debug_bin*
 electron/test-helpers/test-server/test-server
 

@@ -37,10 +37,19 @@ The reader renders EPUB content with **`foliate-js`** — its reflowable
 paginator, its scrolled paginator, and its own `epubcfi.js` for CFI
 generation and resolution.
 
-It enters the codebase as a **pinned npm dependency** (exact version, no
-`^`/`~` range), the same mechanism as every other `web/` dependency, so
-`CODEOWNERS`' required review on `web/package.json` and the lockfile
-applies and the version is visible in one place.
+It enters the codebase as **vendored source** under
+`web/src/vendor/foliate/` (`epub.js`, `epubcfi.js`, the MIT `LICENSE`,
+and hand-written `.d.ts` files) — *amended 2026-09-01*: the only
+`foliate-js` npm package (`foliate-js@1.0.1`) is an **unofficial
+third-party republish** (published by `shmandadi`, not the upstream
+author `johnfactotum`), so pinning it would take a supply-chain
+dependency on a republisher rather than on the project. The vendored
+files are copied verbatim from that tarball after confirming they match
+the official `johnfactotum/foliate-js` layout and the MIT licence; their
+SHA-256 sums are recorded in the phase 11 PR. A refresh is a deliberate
+re-vendor with a diff, not an automatic `npm update`. eslint and
+`tsc`'s `src` scan treat `web/src/vendor/` as not-ours (eslint `ignores`;
+the `.js` files carry no types so only the `.d.ts` shims are checked).
 
 `foliate-js`'s default rendering path — unzip the EPUB in the client and
 serve entries as `blob:` URLs — is **not used**. Its own documentation
@@ -57,10 +66,14 @@ renderer runs inside an `<iframe sandbox="allow-same-origin">` with **no**
 ### Option A — `foliate-js` (chosen)
 
 *For* — real EPUB CFI support via a dedicated, standalone module
-(`epubcfi.js`); no hard dependencies; both paginated and scrolled modes
-built in; modular enough that a future replacement could swap the
-rendering layer while keeping the CFI-shaped position data, since CFI is
-a W3C/IDPF standard rather than the library's invention.
+(`epubcfi.js`); an EPUB structure parser (`epub.js`) that works through
+a caller-supplied loader, so it reads the OPF/nav via the sanitised
+content endpoint and never unzips client-side; no hard dependencies;
+modular enough that a future replacement could swap the rendering layer
+while keeping the CFI-shaped position data, since CFI is a W3C/IDPF
+standard rather than the library's invention. The full `<foliate-view>`
+CSS-multi-column paginator is available for a later pass; the first cut
+renders one spine document per `<iframe>` load.
 
 *Against* — its own README warns it is not stable and "may break... at
 any time"; its documented default rendering approach is not securely

@@ -10,7 +10,7 @@ import prettierConfig from 'eslint-config-prettier'
 export default tseslint.config(
   // public/mockServiceWorker.js is MSW's own generated worker script
   // (npx msw init) — vendored verbatim, not ours to lint.
-  { ignores: ['dist', 'storybook-static', 'public/mockServiceWorker.js'] },
+  { ignores: ['dist', 'storybook-static', 'public/mockServiceWorker.js', 'src/vendor'] },
   {
     extends: [
       js.configs.recommended,
