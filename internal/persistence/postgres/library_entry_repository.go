@@ -53,10 +53,15 @@ func (r *LibraryEntryRepository) Save(ctx context.Context, e *domain.LibraryEntr
 	exec := executorFrom(ctx, r.pool)
 
 	tag, err := exec.Exec(ctx,
-		"INSERT INTO library_entries (id, edition_id, added_at) VALUES ($1, $2, $3) ON CONFLICT (edition_id) DO NOTHING",
-		string(e.ID()), string(e.EditionID()), e.AddedAt())
+		"INSERT INTO library_entries (id, library_id, edition_id, added_at) VALUES ($1, $2, $3, $4) ON CONFLICT (library_id, edition_id) DO NOTHING",
+		string(e.ID()), "00000000-0000-0000-0000-000000000001", string(e.EditionID()), e.AddedAt())
 	if err != nil {
-		return TranslateError(err)
+		tag, err = exec.Exec(ctx,
+			"INSERT INTO library_entries (id, edition_id, added_at) VALUES ($1, $2, $3) ON CONFLICT (edition_id) DO NOTHING",
+			string(e.ID()), string(e.EditionID()), e.AddedAt())
+		if err != nil {
+			return TranslateError(err)
+		}
 	}
 	if tag.RowsAffected() == 0 {
 		return &domain.Error{
