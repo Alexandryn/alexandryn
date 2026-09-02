@@ -43,17 +43,52 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return (await res.json()) as T
 }
 
-export async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { headers: { Accept: 'application/json' } })
+/** Extra request headers — used by the reader for `X-Device-Id`. */
+export type ExtraHeaders = Record<string, string>
+
+export async function getJson<T>(path: string, headers: ExtraHeaders = {}): Promise<T> {
+  const res = await fetch(apiUrl(path), { headers: { Accept: 'application/json', ...headers } })
   return handleResponse<T>(res)
 }
 
-export async function postJson<T>(path: string, body?: unknown): Promise<T> {
+/** Fetches a resource as text — the reader's sanitised chapter content. */
+export async function getText(path: string): Promise<string> {
+  const res = await fetch(apiUrl(path))
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
+    throw new ApiError(res.status, body)
+  }
+  return res.text()
+}
+
+export async function postJson<T>(
+  path: string,
+  body?: unknown,
+  headers: ExtraHeaders = {},
+): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  return handleResponse<T>(res)
+}
+
+export async function putJson<T>(
+  path: string,
+  body?: unknown,
+  headers: ExtraHeaders = {},
+): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })

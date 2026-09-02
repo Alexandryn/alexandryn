@@ -66,6 +66,11 @@ var htmlContentElements = []string{
 	"section", "article", "aside", "nav", "header", "footer", "main", "address",
 	"table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
 	"ruby", "rt", "rp", "bdi", "bdo", "del", "ins",
+	// A stylesheet link whose href is relative or data: only — it fetches
+	// the (also-sanitised) CSS from this system's own origin, so it is not
+	// an external-fetch element in FR-6's sense. An http(s) or //host href
+	// is rejected by reRelativeOrData below, same as an <img src>.
+	"link",
 }
 
 // htmlPolicy builds the sanitisation policy (ADR 0024). A fresh
@@ -87,6 +92,12 @@ func htmlPolicy() *bluemonday.Policy {
 	p.AllowAttrs("href").Matching(reRelativeOrData).OnElements("a")
 	p.AllowAttrs("src").Matching(reRelativeOrData).OnElements("img")
 	p.AllowAttrs("alt", "width", "height").OnElements("img")
+	// <link rel="stylesheet" href="relative.css"> only — no preconnect,
+	// prefetch, dns-prefetch, modulepreload, or any other rel value, and
+	// the href must be relative/data: (reRelativeOrData).
+	p.AllowAttrs("rel").Matching(regexp.MustCompile(`(?i)^stylesheet$`)).OnElements("link")
+	p.AllowAttrs("type").OnElements("link")
+	p.AllowAttrs("href").Matching(reRelativeOrData).OnElements("link")
 	p.AllowAttrs("colspan", "rowspan", "scope").OnElements("td", "th")
 	p.AllowAttrs("span").OnElements("col", "colgroup")
 
