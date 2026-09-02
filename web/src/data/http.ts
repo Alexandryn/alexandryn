@@ -43,17 +43,30 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return (await res.json()) as T
 }
 
-/** Extra request headers — used by the reader for `X-Device-Id`. */
+/** Extra request headers — used by the reader for `X-Device-Id`, etc. */
 export type ExtraHeaders = Record<string, string>
 
+function defaultHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  const token = typeof window !== 'undefined' ? localStorage.getItem('alexandryn_access_token') : null
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const activeLib = typeof window !== 'undefined' ? localStorage.getItem('alexandryn_active_library') : null
+  if (activeLib) {
+    headers['X-Library-Id'] = activeLib
+  }
+  return headers
+}
+
 export async function getJson<T>(path: string, headers: ExtraHeaders = {}): Promise<T> {
-  const res = await fetch(apiUrl(path), { headers: { Accept: 'application/json', ...headers } })
+  const res = await fetch(apiUrl(path), { headers: { ...defaultHeaders(), ...headers } })
   return handleResponse<T>(res)
 }
 
 /** Fetches a resource as text — the reader's sanitised chapter content. */
 export async function getText(path: string): Promise<string> {
-  const res = await fetch(apiUrl(path))
+  const res = await fetch(apiUrl(path), { headers: defaultHeaders() })
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
     throw new ApiError(res.status, body)
@@ -69,7 +82,7 @@ export async function postJson<T>(
   const res = await fetch(apiUrl(path), {
     method: 'POST',
     headers: {
-      Accept: 'application/json',
+      ...defaultHeaders(),
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
@@ -86,7 +99,7 @@ export async function putJson<T>(
   const res = await fetch(apiUrl(path), {
     method: 'PUT',
     headers: {
-      Accept: 'application/json',
+      ...defaultHeaders(),
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
@@ -95,22 +108,24 @@ export async function putJson<T>(
   return handleResponse<T>(res)
 }
 
-export async function patchJson<T>(path: string, body?: unknown): Promise<T> {
+export async function patchJson<T>(path: string, body?: unknown, headers: ExtraHeaders = {}): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: 'PATCH',
     headers: {
-      Accept: 'application/json',
+      ...defaultHeaders(),
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   return handleResponse<T>(res)
 }
 
-export async function deleteRequest(path: string): Promise<void> {
+export async function deleteRequest(path: string, headers: ExtraHeaders = {}): Promise<void> {
   const res = await fetch(apiUrl(path), {
     method: 'DELETE',
-    headers: { Accept: 'application/json' },
+    headers: { ...defaultHeaders(), ...headers },
   })
   return handleResponse<void>(res)
 }
+

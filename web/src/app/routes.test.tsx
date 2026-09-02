@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/node'
 import { ApiError } from '../data/http'
@@ -12,7 +12,13 @@ import { AppShell } from './shell/AppShell'
 import { routes } from './routes'
 
 let media: ReturnType<typeof mockMatchMedia> | undefined
-afterEach(() => media?.restore())
+beforeEach(() => {
+  localStorage.setItem('alexandryn_access_token', 'mock-access-token')
+})
+afterEach(() => {
+  media?.restore()
+  localStorage.clear()
+})
 
 function renderRoute(path: string) {
   media = mockMatchMedia(true)

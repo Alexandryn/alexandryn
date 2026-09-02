@@ -1702,6 +1702,438 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
               example: { code: not_found, message: "no work with that id", correlationId: 00000000-0000-0000-0000-000000000000 }
 
+  # ── Phase 12: Authentication, RBAC & Multi-Library Namespacing ───────
+
+  /api/v1/auth/setup/status:
+    get:
+      operationId: getSetupStatus
+      summary: Check if initial admin account setup is required
+      security: []
+      responses:
+        '200':
+          description: System initialization status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [isSetup]
+                properties:
+                  isSetup: { type: boolean }
+
+  /api/v1/auth/setup:
+    post:
+      operationId: setupAdmin
+      summary: Initialize system with master admin account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '201':
+          description: Master admin registered successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '409':
+          description: System is already initialized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Authenticate user with credentials
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emailOrUsername, password]
+              properties:
+                emailOrUsername: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authentication successful or MFA required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Rotate refresh token and issue new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Fresh access token and rotated refresh token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Revoke refresh token and end session
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /api/v1/auth/password-reset/request:
+    post:
+      operationId: requestPasswordReset
+      summary: Request a password reset link
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Password reset link dispatched if account exists
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+
+  /api/v1/auth/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      summary: Confirm password reset and set new password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: Password reset completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+
+  /api/v1/auth/mfa/totp/setup:
+    post:
+      operationId: setupTOTP
+      summary: Generate TOTP secret and recovery codes for 2FA enrollment
+      responses:
+        '200':
+          description: TOTP configuration payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, keyUri, recoveryCodes]
+                properties:
+                  secret: { type: string }
+                  keyUri: { type: string }
+                  recoveryCodes:
+                    type: array
+                    items: { type: string }
+
+  /api/v1/auth/mfa/totp/confirm:
+    post:
+      operationId: confirmTOTP
+      summary: Verify first TOTP code to activate 2FA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200':
+          description: 2FA activated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean }
+
+  /api/v1/auth/mfa/totp/verify:
+    post:
+      operationId: verifyTOTP
+      summary: Verify 2FA challenge code during login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaTicket]
+              properties:
+                mfaTicket: { type: string }
+                code: { type: string }
+                recoveryCode: { type: string }
+      responses:
+        '200':
+          description: 2FA verification successful, tokens issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+
+  /api/v1/auth/mfa/totp/disable:
+    post:
+      operationId: disableTOTP
+      summary: Disable 2FA with password confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        '200':
+          description: 2FA disabled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [disabled]
+                properties:
+                  disabled: { type: boolean }
+
+  /api/v1/libraries:
+    get:
+      operationId: listLibraries
+      summary: List libraries accessible to current user
+      responses:
+        '200':
+          description: Accessible libraries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [libraries]
+                properties:
+                  libraries:
+                    type: array
+                    items: { $ref: '#/components/schemas/Library' }
+    post:
+      operationId: createLibrary
+      summary: Create a new library namespace (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                allowReaderUploads: { type: boolean }
+      responses:
+        '201':
+          description: Library created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [library]
+                properties:
+                  library: { $ref: '#/components/schemas/Library' }
+
+  /api/v1/libraries/{id}:
+    get:
+      operationId: getLibrary
+      summary: Get details of a library namespace
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Library details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [library]
+                properties:
+                  library: { $ref: '#/components/schemas/Library' }
+    patch:
+      operationId: updateLibrary
+      summary: Update library metadata or settings (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                allowReaderUploads: { type: boolean }
+      responses:
+        '200':
+          description: Library updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [library]
+                properties:
+                  library: { $ref: '#/components/schemas/Library' }
+    delete:
+      operationId: deleteLibrary
+      summary: Delete a custom library namespace (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Library deleted successfully
+
+  /api/v1/libraries/{id}/members:
+    get:
+      operationId: listLibraryMembers
+      summary: List members belonging to a library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Library members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members]
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: '#/components/schemas/LibraryMember' }
+
+  /api/v1/libraries/{id}/invitations:
+    post:
+      operationId: createLibraryInvitation
+      summary: Create an invitation token for a library (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [admin, reader] }
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invitationToken, invitationUrl, expiresAt]
+                properties:
+                  invitationToken: { type: string }
+                  invitationUrl: { type: string }
+                  expiresAt: { type: string, format: date-time }
+
+  /api/v1/invitations/{token}/accept:
+    post:
+      operationId: acceptLibraryInvitation
+      summary: Accept library invitation
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [libraryId, role]
+                properties:
+                  libraryId: { type: string }
+                  role: { type: string }
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -2613,8 +3045,53 @@ components:
             description:
               type: string
 
+    UserSummary:
+      type: object
+      additionalProperties: false
+      required: [id, username, email, role]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, reader] }
+
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        user: { $ref: '#/components/schemas/UserSummary' }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        mfaRequired: { type: boolean }
+        mfaTicket: { type: string }
+
+    Library:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, allowReaderUploads, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        allowReaderUploads: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    LibraryMember:
+      type: object
+      additionalProperties: false
+      required: [id, userId, role, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        username: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, reader] }
+        createdAt: { type: string, format: date-time }
+
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.
 security:
   - bearerAuth: []
+
 

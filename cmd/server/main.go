@@ -220,6 +220,29 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("PUT /api/v1/reading/preferences", transporthttp.ReadingPreferencesPutHandler(poolRef))
 	mux.Handle("GET /api/v1/reading/export", transporthttp.ReadingExportHandler(poolRef, logger, time.Now))
 
+	// Auth routes (Phase 12)
+	mux.Handle("GET /api/v1/auth/setup/status", transporthttp.LazySetupStatusHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/setup", transporthttp.LazySetupHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/login", transporthttp.LazyLoginHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/refresh", transporthttp.LazyRefreshHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/logout", transporthttp.LazyLogoutHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/password-reset/request", transporthttp.LazyPasswordResetRequestHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/password-reset/confirm", transporthttp.LazyPasswordResetConfirmHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/mfa/totp/setup", transporthttp.LazyTOTPSetupHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/mfa/totp/confirm", transporthttp.LazyTOTPConfirmHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/mfa/totp/verify", transporthttp.LazyTOTPVerifyHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/mfa/totp/disable", transporthttp.LazyTOTPDisableHandler(poolRef))
+
+	// Multi-Library routes (Phase 12)
+	mux.Handle("GET /api/v1/libraries", transporthttp.LazyListLibrariesHandler(poolRef))
+	mux.Handle("POST /api/v1/libraries", transporthttp.LazyCreateLibraryHandler(poolRef))
+	mux.Handle("GET /api/v1/libraries/{id}", transporthttp.LazyGetLibraryHandler(poolRef))
+	mux.Handle("PATCH /api/v1/libraries/{id}", transporthttp.LazyUpdateLibraryHandler(poolRef))
+	mux.Handle("DELETE /api/v1/libraries/{id}", transporthttp.LazyDeleteLibraryHandler(poolRef))
+	mux.Handle("GET /api/v1/libraries/{id}/members", transporthttp.LazyListMembersHandler(poolRef))
+	mux.Handle("POST /api/v1/libraries/{id}/invitations", transporthttp.LazyCreateInvitationHandler(poolRef))
+	mux.Handle("POST /api/v1/invitations/{token}/accept", transporthttp.LazyAcceptInvitationHandler(poolRef))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
@@ -228,6 +251,7 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
+		transporthttp.LazyAuthMiddleware(poolRef),
 	)
 }
 

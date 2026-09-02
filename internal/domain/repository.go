@@ -136,20 +136,28 @@ type ReadingProgressRepository interface {
 	// none exists yet (the caller then inserts the first canonical row,
 	// racing on the work_id UNIQUE constraint).
 	FindByWorkForUpdate(ctx context.Context, workID WorkID) (*ReadingProgress, error)
+	// FindByWorkAndUser supports Phase 12 user- and library-scoped reading progress.
+	FindByWorkAndUser(ctx context.Context, userID UserID, libraryID LibraryID, workID WorkID) (*ReadingProgress, error)
+	FindByWorkAndUserForUpdate(ctx context.Context, userID UserID, libraryID LibraryID, workID WorkID) (*ReadingProgress, error)
 	Save(ctx context.Context, p *ReadingProgress) error
+	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, p *ReadingProgress) error
 }
 
 type BookmarkRepository interface {
 	FindByID(ctx context.Context, id BookmarkID) (*Bookmark, error)
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*Bookmark, error)
+	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Bookmark, error)
 	Save(ctx context.Context, b *Bookmark) error
+	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, b *Bookmark) error
 	Delete(ctx context.Context, id BookmarkID) error
 }
 
 type HighlightRepository interface {
 	FindByID(ctx context.Context, id HighlightID) (*Highlight, error)
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*Highlight, error)
+	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Highlight, error)
 	Save(ctx context.Context, h *Highlight) error
+	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, h *Highlight) error
 	Delete(ctx context.Context, id HighlightID) error
 }
 
@@ -160,5 +168,64 @@ type ReadingPreferencesRepository interface {
 	// defaults" is the caller's job (construct via NewReadingPreferences
 	// on a NotFound), not this repository's.
 	FindByDevice(ctx context.Context, deviceID DeviceID) (*ReadingPreferences, error)
+	FindByUserAndDevice(ctx context.Context, userID UserID, deviceID DeviceID) (*ReadingPreferences, error)
 	Save(ctx context.Context, p *ReadingPreferences) error
+	SaveForUser(ctx context.Context, userID UserID, p *ReadingPreferences) error
 }
+
+// Phase 12 Authentication & Tenancy Repositories
+
+type UserRepository interface {
+	FindByID(ctx context.Context, id UserID) (*User, error)
+	FindByEmail(ctx context.Context, email string) (*User, error)
+	FindByUsername(ctx context.Context, username string) (*User, error)
+	CountUsers(ctx context.Context) (int, error)
+	Save(ctx context.Context, u *User) error
+}
+
+type CredentialRepository interface {
+	FindByUserID(ctx context.Context, userID UserID) (*UserCredentials, error)
+	Save(ctx context.Context, creds *UserCredentials) error
+}
+
+type RefreshTokenRepository interface {
+	FindByTokenHash(ctx context.Context, hash string) (*RefreshToken, error)
+	Save(ctx context.Context, rt *RefreshToken) error
+	RevokeAllForUser(ctx context.Context, userID UserID, now time.Time) error
+}
+
+type MFARepository interface {
+	FindByUserID(ctx context.Context, userID UserID) (*TOTPSettings, error)
+	Save(ctx context.Context, s *TOTPSettings) error
+	Delete(ctx context.Context, userID UserID) error
+}
+
+type PasswordResetRepository interface {
+	FindByTokenHash(ctx context.Context, hash string) (*PasswordResetToken, error)
+	Save(ctx context.Context, prt *PasswordResetToken) error
+}
+
+type LibraryRepository interface {
+	FindByID(ctx context.Context, id LibraryID) (*Library, error)
+	FindAll(ctx context.Context) ([]*Library, error)
+	FindByUser(ctx context.Context, userID UserID) ([]*Library, error)
+	Save(ctx context.Context, l *Library) error
+	Delete(ctx context.Context, id LibraryID) error
+}
+
+type LibraryMembershipRepository interface {
+	FindMembership(ctx context.Context, libraryID LibraryID, userID UserID) (*LibraryMembership, error)
+	FindByLibrary(ctx context.Context, libraryID LibraryID) ([]*LibraryMembership, error)
+	FindByUser(ctx context.Context, userID UserID) ([]*LibraryMembership, error)
+	Save(ctx context.Context, m *LibraryMembership) error
+	Delete(ctx context.Context, libraryID LibraryID, userID UserID) error
+}
+
+type LibraryInvitationRepository interface {
+	FindByID(ctx context.Context, id LibraryInvitationID) (*LibraryInvitation, error)
+	FindByTokenHash(ctx context.Context, hash string) (*LibraryInvitation, error)
+	FindByLibrary(ctx context.Context, libraryID LibraryID) ([]*LibraryInvitation, error)
+	Save(ctx context.Context, inv *LibraryInvitation) error
+	Delete(ctx context.Context, id LibraryInvitationID) error
+}
+

@@ -31,9 +31,18 @@ func (m *memReadingProgress) FindByWork(_ context.Context, w domain.WorkID) (*do
 func (m *memReadingProgress) FindByWorkForUpdate(ctx context.Context, w domain.WorkID) (*domain.ReadingProgress, error) {
 	return m.FindByWork(ctx, w)
 }
+func (m *memReadingProgress) FindByWorkAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, w domain.WorkID) (*domain.ReadingProgress, error) {
+	return m.FindByWork(ctx, w)
+}
+func (m *memReadingProgress) FindByWorkAndUserForUpdate(ctx context.Context, _ domain.UserID, _ domain.LibraryID, w domain.WorkID) (*domain.ReadingProgress, error) {
+	return m.FindByWork(ctx, w)
+}
 func (m *memReadingProgress) Save(_ context.Context, p *domain.ReadingProgress) error {
 	m.byWork[p.WorkID()] = p
 	return nil
+}
+func (m *memReadingProgress) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, p *domain.ReadingProgress) error {
+	return m.Save(ctx, p)
 }
 
 type memBookmarks struct {
@@ -55,9 +64,15 @@ func (m *memBookmarks) FindByEdition(_ context.Context, e domain.EditionID) ([]*
 	}
 	return out, nil
 }
+func (m *memBookmarks) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Bookmark, error) {
+	return m.FindByEdition(ctx, e)
+}
 func (m *memBookmarks) Save(_ context.Context, b *domain.Bookmark) error {
 	m.byID[b.ID()] = b
 	return nil
+}
+func (m *memBookmarks) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, b *domain.Bookmark) error {
+	return m.Save(ctx, b)
 }
 func (m *memBookmarks) Delete(_ context.Context, id domain.BookmarkID) error {
 	delete(m.byID, id)
@@ -83,9 +98,15 @@ func (m *memHighlights) FindByEdition(_ context.Context, e domain.EditionID) ([]
 	}
 	return out, nil
 }
+func (m *memHighlights) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Highlight, error) {
+	return m.FindByEdition(ctx, e)
+}
 func (m *memHighlights) Save(_ context.Context, h *domain.Highlight) error {
 	m.byID[h.ID()] = h
 	return nil
+}
+func (m *memHighlights) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, h *domain.Highlight) error {
+	return m.Save(ctx, h)
 }
 func (m *memHighlights) Delete(_ context.Context, id domain.HighlightID) error {
 	delete(m.byID, id)
@@ -102,9 +123,15 @@ func (m *memPrefs) FindByDevice(_ context.Context, d domain.DeviceID) (*domain.R
 	}
 	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
 }
+func (m *memPrefs) FindByUserAndDevice(ctx context.Context, _ domain.UserID, d domain.DeviceID) (*domain.ReadingPreferences, error) {
+	return m.FindByDevice(ctx, d)
+}
 func (m *memPrefs) Save(_ context.Context, p *domain.ReadingPreferences) error {
 	m.byDevice[p.DeviceID()] = p
 	return nil
+}
+func (m *memPrefs) SaveForUser(ctx context.Context, _ domain.UserID, p *domain.ReadingPreferences) error {
+	return m.Save(ctx, p)
 }
 
 type memEditions struct {
