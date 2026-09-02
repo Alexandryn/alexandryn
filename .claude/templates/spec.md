@@ -111,6 +111,18 @@ Threats and concrete mitigations. Walk the checklist that applies:
 "Validated" is not a mitigation. Say what is checked and what happens when the
 check fails.
 
+For each authentication or authorization requirement, name the **exact
+enforcement point** — the query predicate, the middleware check, the
+constant-time comparison — and the **test that proves a
+cross-user / cross-library / cross-tenant / wrong-token-type access is
+refused**, not just that the happy path works. "The repository has a
+user-scoped method" is not an enforcement point; "the handler calls
+`FindByWorkAndUser` with the context user and the validated active
+library, and query X carries `WHERE user_id = $n AND library_id = $m`" is.
+(Directive from review 0050 / audit 0012 — a control described in a spec
+but not traced to its wired call path is how a whole-API horizontal IDOR
+shipped and was certified Clear.)
+
 The checklist above already covers STRIDE's six categories, under different
 names: authentication (Spoofing), input validation and injection (Tampering),
 observability's request IDs and structured logs (Repudiation), secret

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15). **Amended 2026-09-02 (`DRAFT`, pending re-confirmation) for phase-13 review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) AUDIT-0012-C1:** FR-1's ownership check MUST be scoped to the caller's validated active library and library membership — an edition's bytes are not streamable cross-library by `editionId` alone. Phase-13 close gate. |
 | **Phase** | `11-reader` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -97,7 +97,21 @@ enforce the rest.
   question than "is this exact Edition owned," the one this FR
   actually needs answered);
   an `Edition` that merely exists without being owned returns `404
-  NotFound`, never served. `*path` is validated against `..`-shaped or
+  NotFound`, never served.
+  - **Amended 2026-09-02 (`DRAFT`) for phase-13 review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md)
+    AUDIT-0012-C1:** "owned" MUST mean owned **in the caller's validated
+    active library** — the `LibraryEntry` check MUST carry
+    `AND library_id = <ActiveLibraryFromContext>`, and the caller MUST be
+    an authenticated member of that library (the auth middleware's
+    `X-Library-Id`-vs-`claims.Libraries` check,
+    `backend-library-namespaces.md` FR-3). A `reader` in library X MUST
+    NOT be able to stream the bytes of an edition owned only in library Y
+    by knowing its `editionId`. Same not-found response for
+    "doesn't exist" and "not in your library" — no cross-library
+    existence oracle. This is part of the phase-13 close gate; the
+    shipped handler does an ownership check with no library or membership
+    scoping.
+  `*path` is validated against `..`-shaped or
   absolute-path segments before ever being used to look up a zip entry
   (`InvalidInput` otherwise) — the same zip-slip discipline
   `backend-file-extractors.md` FR-6 established, restated here since

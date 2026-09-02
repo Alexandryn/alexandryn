@@ -74,6 +74,10 @@ deserves to know they were already weighed.
 | [0022](0022-pdf-metadata-extraction-library.md) | PDF metadata extraction uses `pdfcpu`, wrapped in bounded streams and panic recovery | Accepted |
 | [0023](0023-reader-rendering-engine.md) | The in-browser reader renders EPUB with `foliate-js`, pinned through npm; its insecure `blob:`-URL default is not used | Accepted |
 | [0024](0024-server-side-html-sanitization.md) | Served EPUB HTML/XHTML is sanitised server-side with `microcosm-cc/bluemonday`; CSS is scanned by a hand-written check | Accepted |
+| [0025](0025-jwt-session-mechanism.md) | Sessions are hand-rolled HS256 JWT access tokens (Bearer, `localStorage`) with DB-backed refresh-token rotation; passwords hashed with Argon2id | Accepted |
+| [0026](0026-multi-library-tenancy-model.md) | Multi-library tenancy model | Accepted |
+| [0027](0027-totp-mfa-implementation.md) | TOTP MFA implementation | Accepted |
+| [0028](0028-phase13-network-transport-and-pairing.md) | Phase 13 transport: bind mode derived from the resolved address + cert state (not a flag); ACME via `autocert` (no new module); app-origin CSP + security headers on every bind; CORS deny-by-default; no CSRF tokens under Bearer auth (`Origin` check on pairing routes); pairing as a thin bootstrap over phase-12 accounts with encrypted-at-rest codes and a distinct signing subkey per token purpose; authentication never disable-able; `rememberDeviceDays` the one operator-tunable token lifetime | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -86,7 +90,7 @@ Things known to need deciding, with the phase that will force the question:
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
 | ~~How the reader renders EPUB, and in what sandbox~~ — resolved by ADR 0023 (`foliate-js` rendering engine, pinned through npm; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`; `blob:`-URL default not used) and ADR 0024 (server-side HTML sanitisation with `bluemonday`, hand-written CSS scan, `Content-Security-Policy: default-src 'self'; script-src 'none'...`), formalising `frontend-reader.md` FR-1 and `backend-reader-content.md` FR-6/FR-9 | Phase 11 |
 | Credential storage on the host | Phase 12 |
-| CSRF protection for state-changing requests, once sessions are cookie-based | Phase 12 |
-| Open-redirect protection for any post-authentication redirect target | Phase 12 |
-| Transport security on the LAN | Phase 13 |
+| ~~CSRF protection for state-changing requests, once sessions are cookie-based~~ — moot: phase 12 chose Bearer-token sessions (ADR 0025), not cookies, so there is no ambient credential to forge. ADR 0028 §5 records no CSRF token machinery, `Origin`/`Referer` validation on the unauthenticated pairing routes only, and the rationale | Phase 12/13 |
+| ~~Open-redirect protection for any post-authentication redirect target~~ — resolved in phase 12 (`backend-authentication.md` FR-9: `redirect`/`returnTo` must be a relative path starting with a single `/`) | Phase 12 |
+| ~~Transport security on the LAN~~ — resolved by ADR 0028: TLS mode derived from the resolved bind address + certificate/ACME state (never a flag), in-process TLS 1.2+/1.3 with a fixed AEAD cipher list for a public bind, ACME via `autocert` (no new module), fail-closed at bind. `backend-network-transport.md` implements it | Phase 13 |
 | ~~Non-loopback bind for the container-hosted target (ADR 0015)~~ — the *rule* is resolved: ADR 0017 replaces the phase-gate with a two-mode condition (in-process TLS on a public bind, or upstream TLS with the process bound private-only), both authentication-gated and fail-closed. `backend-configuration.md` FR-8 and `deployment-container-packaging.md` FR-6 are amended to match. What's still Phase 12/13's: actually building authentication and the certificate/reverse-proxy configuration surface the rule depends on | Phase 12/13 (implementation only — the rule itself is decided) |

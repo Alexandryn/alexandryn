@@ -7,7 +7,7 @@
 | **Threat model** | Four-Attacker (Constitution §10) + STRIDE over each trust boundary |
 | **Date** | 2026-09-02 |
 | **Commit** | Branch `feat/phase12-auth-and-tenancy` |
-| **Verdict** | **Clear** — no open Critical, High, or Medium vulnerabilities. Full `go test -race ./internal/... ./cmd/...` (all packages passing), contract tests suite passing, Vitest frontend suite (75 files, 379 tests passing), TypeScript compile clean (`tsc -b`), ESLint clean (0 errors), and all four check scripts (`check-import-boundaries.sh`, `check-parameterized-queries.sh`, `check-integration-test-parallelism.sh`, `check-compose-published-port.sh`) pass with clean status. |
+| **Verdict** | ~~**Clear** — no open Critical, High, or Medium vulnerabilities.~~ **SUPERSEDED — see "Post-audit correction (2026-09-02)" at the foot of this document.** This audit certified two authorization controls that are not present in the wired code (per-user/per-library scoping of the reading API; access-token type checking). Two **High**-severity findings are open. The test/lint/check-script results below still hold — the tests do not cover the missed cases, which is itself a finding. |
 
 ---
 
@@ -126,3 +126,147 @@ Phase 12 delivers the complete identity, authentication, role-based access contr
    - `scripts/check-parameterized-queries.sh`: **clean**
    - `scripts/check-integration-test-parallelism.sh`: **clean**
    - `scripts/check-compose-published-port.sh`: **clean**
+
+---
+
+## Post-audit correction (2026-09-02)
+
+This section is added by the phase-13 spec-package review
+([`../reviews/0050-phase13-spec-package-and-phase12-authz-review.md`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md)),
+which independently threat-modelled the phase-12 surface phase 13 builds
+on and found two authorization controls this audit certified that the
+wired code does not implement. The findings were re-verified against the
+code before this section was written. Per constitution §12, the record is
+corrected in place rather than rewritten to hide the miss; per §10 the
+severity is stated honestly.
+
+### AUDIT-0012-C1 — reading API is not user- or library-scoped (**High**; **Critical** for a Mode-A public bind)
+
+**What this audit said** — Trust Boundaries table: *"Reading progress,
+bookmarks, highlights scoped by `user_id`."* Four-Attacker §1,
+Cross-User Data Exfiltration: *"Handlers query
+`FindByWorkAndUser(ctx, workID, user.ID)` … User can only inspect their
+own bookmarks, highlights, progress, and preferences."* Verification
+Results implied the test suite covers this.
+
+**What the code does** — `internal/transport/http/reading.go` and
+`reading_export.go` call the **bare** repository methods, never the
+`…AndUser` variants that exist beside them:
+- `reading.go:106` — `deps.Progress.FindByWork(ctx, workID)` → resolves to
+  `WHERE work_id = $1 AND COALESCE(user_id,'') = COALESCE('','')` — every
+  user's progress collapses onto one `NULL`-user row.
+- `reading.go:234, 302, 343, 431, 483` — `deps.Bookmarks.FindByEdition`,
+  `Bookmarks.FindByID`, `Highlights.FindByEdition`, `Highlights.FindByID`
+  — `SELECT … WHERE id = $1` / `WHERE edition_id = $1` with **no user
+  predicate**. `bookmark_repository.go:114` — `DELETE FROM bookmarks
+  WHERE id = $1`.
+- `reading_export_repository.go:55` — `ListProgress` filters
+  `WHERE work_id = $1` only. `GET /api/v1/reading/export` returns the
+  entire instance's progress, bookmarks, and highlight notes.
+- `UserFromContext` is never called anywhere in `reading.go`.
+
+**Impact** — any authenticated account (including a `reader` invited to a
+single library) can read, overwrite, and delete every other account's
+private reading position, bookmarks, and highlight notes by object ID,
+and can dump all users' annotations via one export call. Constitution §8
+("what a person reads is private, including from their own log files")
+is defeated. Phase 13 makes this LAN- and, in Mode A,
+internet-reachable — which is exactly the exposure phase 13 exists to
+gate.
+
+**Why the audit missed it** — the audit inspected the *repositories*
+(which do have `…AndUser` methods) and the *migration* (which does add
+`user_id` columns and compound indexes) and inferred the handlers use
+them. It did not trace a single reading request from handler to SQL. The
+test suite asserts the happy path per endpoint but has no cross-user
+IDOR test, so "all tests pass" is consistent with the defect.
+
+**Corrective directives** (forward-looking; the fix lands on
+`feat/phase13-network-access` as a phase-12 hardening prelude):
+1. Every reading/reader handler resolves `UserFromContext` +
+   `ActiveLibraryFromContext` and calls a user+library-scoped repository
+   method. Bookmark/highlight `FindByID`/`Delete` verify row ownership.
+2. A CI guard (`scripts/check-user-scoped-reading.sh` or a lint rule)
+   fails the build if a handler under the reading/reader surface calls a
+   bare-ID repository method.
+3. Per-endpoint IDOR tests (user A cannot read/write/delete user B's row
+   by ID) and an `export` isolation integration test — added to the
+   phase-13 **close gate** (`roadmap/13-network-access/README.md`).
+4. Spec directive in `backend-reading-api.md` and
+   `backend-reader-content.md`: name the exact query predicate that
+   enforces per-user + per-library scoping, and the test that proves a
+   cross-user access is refused.
+5. `CLAUDE.md` Reflex added: a handler serving user-owned data always
+   calls the user+library-scoped repository method, never a bare-ID
+   variant.
+
+### AUDIT-0012-C2 — access-token verification does not check token type (**High**)
+
+**What this audit said** — Trust Boundaries table: *"Header must be
+exactly `{"alg":"HS256","typ":"JWT"}`. … Verifies `exp`, `nbf`."*
+Four-Attacker §2, JWT Header Forgery: *"`JWTSigner.Verify` strictly
+checks that the decoded header matches `{"alg":"HS256","typ":"JWT"}`."*
+
+**What the code does** — `internal/auth/jwt.go:83` `JWTSigner.Verify`
+(called by `AuthMiddleware` via `LazyAuthMiddleware`) checks
+`header.Algorithm == "HS256"`, the HMAC signature, `claims.ExpiresAt`,
+and `claims.Issuer`. It does **not** check the header `typ`, and it does
+**not** check `claims.Type`. There is **no `nbf` field** on the `Claims`
+struct and no not-before check. `VerifyMFATicket` checks
+`claims.Type == "mfa_ticket"` only inside its own wrapper, which
+`AuthMiddleware` never calls.
+
+**Impact** — an MFA ticket (issued by the login handler when TOTP is
+enabled: `Type:"mfa_ticket"`, real `Subject`, signed with the same
+`jwt-signing-secret-v1` subkey, ~5-minute TTL) is a signature-valid
+token that `AuthMiddleware` accepts as an access token on every route
+that is authenticated-but-not-role-gated (`GET /api/v1/libraries`, the
+whole reading API, and — in phase 13 — `GET /api/v1/network/status`). A
+user who completed password authentication but not the second factor
+has full read access to their account's data. The phase-13 enrolment
+grant would inherit the same weakness (same key, different `typ`, no
+check).
+
+**Corrective directives**:
+1. The access-token verification path used by `AuthMiddleware` positively
+   requires the token to be an access token (`typ` empty or `"access"`)
+   and rejects any other type.
+2. The phase-13 enrolment grant is signed with a **separate HKDF
+   subkey** (`DeriveSubkey("enrolment-grant-v1")`), so cross-type
+   acceptance is structurally impossible, not merely claim-checked.
+   Evaluate doing the same for the MFA ticket.
+3. Middleware test per token type (access ✓, mfa_ticket ✗, enrol ✗,
+   garbage ✗).
+4. Spec directive in `backend-authentication.md`: distinct token
+   purposes use distinct signing subkeys; the auth path asserts the
+   token type.
+5. `CLAUDE.md` Reflex added: token verification on the auth path always
+   asserts the token type; a signature-valid token of the wrong purpose
+   is a rejected token.
+
+### AUDIT-0012-C3 — audit method: authorization controls were certified from spec intent, not from the wired call path
+
+**Finding about the audit itself.** C1 and C2 both stem from the same
+method gap: the audit read the repositories, the migration, and the spec,
+and inferred the handler behaviour. `.claude/templates/audit.md` is
+amended (2026-09-02) with a mandatory checklist item — *for every
+data-read/-write endpoint, trace the wired handler → repository → SQL and
+confirm the tenant/user predicate is in the query text; do not certify an
+authorization control from the existence of a scoped method, only from
+the call the handler actually makes.*
+
+### Status of the rest of the audit
+
+`X-Library-Id` is also not validated against `claims.Libraries`
+(`auth_middleware.go:104` copies it to context unchecked; the audit's
+"Cross-Library Partition Crossing" mitigation describing a
+`membershipRepo.FindMembership` call in the middleware is not in the
+code) — folded into the C1 fix as finding P12-4 in review `0050`. The
+remaining phase-12 surface (Argon2id parameters, refresh-token rotation
+and revocation, TOTP encryption-at-rest, rate limiting, log redaction,
+parameterised SQL, the `alg: none` rejection) was spot-checked against
+this audit's claims and holds — **but given C1–C3, a fuller independent
+re-audit of the phase-12 authorization surface is required before phase
+12 is marked `Closed`**, recorded as a directive in
+`roadmap/12-authentication/README.md`. Phase 13's own security audit
+(`0013`) will re-verify C1 and C2 as fixed as part of its scope.

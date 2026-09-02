@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (Maintainer Gate 1 sign-off 2026-09-02) |
+| **Status** | `APPROVED` (Maintainer Gate 1 sign-off 2026-09-02). **Amended 2026-09-02 (`DRAFT` amendments, pending re-confirmation) for phase-13 review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md):** FR-3 now requires the auth middleware to validate the resolved library against `claims.Libraries` (P12-4); FR-4 spells out that per-user scoping applies to by-id reads/deletes and to `export`, and that the enforcement point is the handler's call not the repository's capability (AUDIT-0012-C1). The **implementation** on `feat/phase12-auth` does neither — that is the phase-13 hardening prelude and close gate. |
 | **Phase** | `12-auth` |
 | **Author** | Claude (Sonnet 4.6), approved by Luann Moreira |
 | **Created** | 2026-09-02 |
 | **Last updated** | 2026-09-02 |
 | **Supersedes** | — |
-| **Reviewed in** | Gate 1 Review Batch |
+| **Reviewed in** | Gate 1 Review Batch; phase-13 amendments in [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) |
 
 ## Context
 
@@ -49,12 +49,35 @@ Personal reading data (`ReadingProgress`, `Bookmark`, `Highlight`, `ReadingPrefe
     1. Route parameter (e.g., `/api/v1/libraries/:libraryId/...`).
     2. Header: `X-Library-Id: <uuid>`.
     3. User default library: First library in user's memberships.
-  - If the user does not have active membership in the target library, the request fails with `403 Forbidden` or `404 NotFound`.
+  - **The resolved library MUST be validated against the authenticated
+    token's `libraries` claim in the auth middleware, before any handler
+    runs.** A route parameter or `X-Library-Id` header naming a library
+    not in `claims.Libraries` → `403 Forbidden`. (Amended 2026-09-02 for
+    review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md)
+    P12-4: the shipped `AuthMiddleware` copies `X-Library-Id` into the
+    request context **without this check** — `auth_middleware.go:104`.
+    Low impact at loopback, **High** once phase 13 opens the bind. The
+    phase-13 hardening prelude adds the check + a handler test;
+    `backend-network-transport.md` FR-13 carries the middleware change.)
 - **FR-4: User-Scoped Reading Data Retrofit**:
   - `GET /api/v1/reading/works/:workId/progress` queries `reading_progress` filtered by `user_id = $1 AND library_id = $2 AND work_id = $3`.
   - `POST /api/v1/reading/works/:workId/progress` upserts with row lock on `(user_id, library_id, work_id)`.
-  - `Bookmark` and `Highlight` queries filter strictly by `user_id` and `library_id`.
+  - `Bookmark` and `Highlight` queries filter strictly by `user_id` and `library_id` — **including `FindByID` and `Delete` by a single row id**, which MUST additionally carry `AND user_id = $2` so a row cannot be read or deleted by id alone.
   - `ReadingPreferences` queries filter by `user_id` and `device_id`.
+  - `GET /api/v1/reading/export` filters every underlying query by `user_id` (and `library_id`) — it returns only the caller's data, never the instance's.
+  - **The enforcement point is the handler's call, not the repository's
+    capability.** Every reading/reader handler MUST resolve the
+    authenticated user + active library and call the `…AndUser`
+    repository method; `scripts/check-user-scoped-reading.sh` fails CI on
+    a bare-ID call. (Amended 2026-09-02 for review `0050` AUDIT-0012-C1:
+    the shipped handlers call the bare methods — `reading.go` never calls
+    `UserFromContext` — so `GET /api/v1/reading/export` currently returns
+    every user's progress, bookmarks, and highlight notes, and any
+    account can read/edit/delete any other account's bookmark by id.
+    This is the phase-13 **close gate**: the phase does not close until
+    per-endpoint IDOR tests and an `export` isolation test pass. The
+    detailed handler-level FRs live in `backend-reading-api.md` /
+    `backend-reader-content.md`.)
 - **FR-5: Future Cloud Connector Isolation**:
   - All `sources` and `source_offerings` are constrained to `library_id`. Future remote cloud drives (e.g. Nextcloud, Google Drive) connect per-library, isolating file access across namespaces.
 

@@ -1,12 +1,47 @@
 # Phase 12 — Authentication
 
-*Outline — expanded to a full phase document when phase 05 closes.*
-
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Implemented on `feat/phase12-auth`, **not closed** — see "Correction (2026-09-02)" below. Specs `APPROVED` (Gate 1 maintainer sign-off 2026-09-02): `backend-authentication.md`, `backend-authorization-rbac.md`, `backend-library-namespaces.md`, `frontend-auth-and-tenancy.md`. ADRs 0025 (JWT sessions), 0026 (multi-library tenancy), 0027 (TOTP MFA). Security audit `0012` — **superseded** (see below). |
 | **Depends on** | Phase 05 |
 | **Blocks** | 13 |
+
+## Correction (2026-09-02)
+
+The phase-13 spec-package review
+([`../../reviews/0050-phase13-spec-package-and-phase12-authz-review.md`](../../reviews/0050-phase13-spec-package-and-phase12-authz-review.md))
+independently threat-modelled the phase-12 surface and found **two
+High-severity authorization defects** in the wired code that security
+audit `0012` had certified as controls-present:
+
+- **AUDIT-0012-C1** — the reading API (`progress`, `bookmarks`,
+  `highlights`, `preferences`, `export`, `reader/content`) is not user-
+  or library-scoped; handlers call bare-ID repository methods.
+  `GET /api/v1/reading/export` returns every user's private data.
+  Horizontal IDOR.
+- **AUDIT-0012-C2** — `AuthMiddleware`'s token verification does not
+  check the token type; an MFA ticket is accepted as an access token.
+
+Audit `0012` carries a "Post-audit correction" section with the honest
+severity, the corrective directives, and where each is enforced.
+
+**Phase 12 cannot be marked `Closed` until:**
+1. C1 and C2 are fixed and re-verified (the fix lands on
+   `feat/phase13-network-access` as a phase-12 hardening prelude; phase
+   13's audit `0013` re-verifies both).
+2. `X-Library-Id` is validated against the JWT `libraries` claim
+   (review `0050` finding P12-4).
+3. A **fuller independent re-audit of the phase-12 authorization
+   surface** is run — C1–C3 showed the original audit inferred handler
+   behaviour from the repository and migration layers rather than
+   tracing the wired call path, so the rest of the RBAC / membership /
+   refresh-rotation surface warrants a real second look, not a
+   spot-check.
+
+The forward directives from this correction now live in `CLAUDE.md`
+(Reflexes + "easy to get wrong"), `.claude/templates/audit.md` (mandatory
+call-path-tracing checklist item), and `.claude/templates/spec.md`
+(name the enforcement point and the cross-tenant refusal test).
 
 ## Objective
 

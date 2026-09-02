@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01 to realign FR-2/FR-3, the API contract, failure modes, and acceptance criteria with `domain-reading.md`'s own 2026-09-01 amendment ([`0048`](../reviews/0048-phase02-correctness-review.md) finding 1): reconciliation is `max` over `(epoch, percentage)`, the `POST` body gains `observedEpoch` and an optional `override`, the response gains `epoch` and an outcome tag. Maintainer re-confirmation pending. |
+| **Status** | `APPROVED` (independent review, findings fixed, maintainer signed off 2026-08-15) — amended 2026-09-01 to realign FR-2/FR-3, the API contract, failure modes, and acceptance criteria with `domain-reading.md`'s own 2026-09-01 amendment ([`0048`](../reviews/0048-phase02-correctness-review.md) finding 1). **Amended again 2026-09-02 (`DRAFT`, pending re-confirmation) for phase-13 review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) AUDIT-0012-C1:** new FR-9 makes per-user + per-library scoping a hard, handler-level, CI-guarded requirement on every reading endpoint and `export` — the phase-13 **close gate**, because the shipped phase-12 implementation left the whole surface a horizontal IDOR. Non-goals updated (per-user authz is now required; the library-visible "finished / leaderboard" view is deferred to phase 15). Maintainer re-confirmation pending. |
 | **Phase** | `11-reader` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-15 |
@@ -53,10 +53,23 @@ Nothing exists yet to store or serve a `ReadingProgress`,
 - Real multi-device sync transport (push notifications, WebSockets) —
   phase 14; this spec's endpoints are request/response only, the same
   pattern every other API in this project already uses
-- Any authentication/authorization on `DeviceID` — phase 12; a
-  `DeviceID` here is a self-reported, unauthenticated client value,
-  same loopback-trust model every phase through 11 shares
+- Any authentication/authorization on `DeviceID` — a `DeviceID` here is
+  a self-reported client value. **But per-user + per-library
+  authorization on the reading *data* is NOT a non-goal** — it is
+  required (FR-9, added for phase 13). The loopback-trust framing above
+  described the phase-11 state; phase 12 added accounts and phase 13
+  opens the bind, so every reading row is now scoped to its owner.
 - EPUB content itself — `backend-reader-content.md`'s job
+- **A library-visible "who has read this" / most-read view** — after a
+  user *finishes* a book, other members of the same library seeing it
+  marked read, and a per-library most-read leaderboard. Raised by the
+  maintainer during phase 13. It is a **separate read model** (a
+  library-scoped aggregate over `percentage >= 1.0`, exposing only the
+  binary "finished" fact and never anyone's position or progress
+  percentage) and belongs in **phase 15 (Observability / Activity)** or
+  its own spec — `roadmap/15-observability/README.md` records it. FR-9's
+  per-user scoping deliberately keeps `user_id` + `library_id` on every
+  row so that aggregate is a straightforward later addition.
 
 ## User stories
 
@@ -200,6 +213,13 @@ Nothing exists yet to store or serve a `ReadingProgress`,
   preferences yet returns system defaults (`domain-reading.md` FR-5's
   own "new device starts from system defaults" rule) rather than
   `404` — a missing preferences row is not an error state.
+- **FR-9** *(added 2026-09-02 for phase-13 review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) AUDIT-0012-C1 — the phase-13 close gate.)* Every endpoint in this spec, plus `GET /api/v1/reading/export`, MUST be scoped to **both** the authenticated user and the validated active library, enforced **in the query the wired handler runs**:
+  - The handler MUST call `UserFromContext` and `ActiveLibraryFromContext` and pass both to a `…AndUser` repository method — `FindByWorkAndUser`, `FindByEditionAndUser`, `SaveForUser`, and equivalents. It MUST NOT call `FindByWork`, `FindByEdition`, `FindByID`, `Save`, or `Delete` in their bare forms.
+  - **By-id operations** (`GET`/`PATCH`/`DELETE` a bookmark or highlight by its own id) MUST carry `AND user_id = $n` in the SQL, so a row cannot be read, modified, or deleted by knowing its id alone.
+  - `GET /api/v1/reading/export` MUST filter every underlying query by `user_id` (and `library_id`); it returns only the caller's rows.
+  - A request for a `workId`/`editionId`/`bookmarkId`/`highlightId` that exists but belongs to another user returns the same response as one that does not exist (`{ progress: null }` / empty list / `404`) — no cross-user existence oracle.
+  - **CI guard:** `scripts/check-user-scoped-reading.sh` (new) fails the build if any handler file under the reading/reader transport surface references a bare repository method from an allow-list of user-owned types. The guard is part of the phase-13 exit criteria.
+  - This FR restates, at the handler level, what `backend-library-namespaces.md` FR-4 already required and the phase-12 implementation did not do (`reading.go` never calls `UserFromContext`). It is the enforcement-point-and-test directive `.claude/templates/spec.md` now mandates.
 
 ## Non-functional requirements
 
@@ -297,15 +317,24 @@ is the one already-specified transition this spec actually invokes.
   `domain-reading.md`'s own Security considerations already named
   this; this spec is where a real HTTP boundary actually receives one,
   validated per `domain-bibliographic.md` FR-5's existing discipline.
-- **No new trust boundary** — still loopback-only, still no
-  authentication between the LAN client and this host.
+- **Trust boundary (amended 2026-09-02, FR-9)** — the phase-11 draft said
+  "still loopback-only, no authentication between the LAN client and this
+  host." Phase 12 changed that (accounts, `Authorization: Bearer`) and
+  phase 13 opens the bind. Every endpoint here is now behind
+  authentication, and every row is scoped to its owning user + library
+  **at the query layer, in the handler's call** (FR-9). The horizontal
+  IDOR the phase-12 implementation shipped (any account reads/edits/
+  deletes any other account's bookmarks and highlight notes by id;
+  `export` dumps the instance) is closed as the phase-13 close gate,
+  with per-endpoint IDOR tests. `scripts/check-user-scoped-reading.sh`
+  keeps it closed.
 
 ## Test strategy
 
 | Layer | What it covers |
 |---|---|
-| Unit | CFI shape validation against real and malformed fixture strings; `percentage`/ordering boundary checks |
-| Integration | Full progress-report → reconcile → persist round trip against a real PostgreSQL instance (`backend-test-harness.md`'s harness); a two-device-concurrent-report test proving `ReconcileProgress`'s order-independence holds through this spec's own persistence layer, not just in the pure domain function's own already-existing tests; bookmark/highlight/preferences CRUD |
+| Unit | CFI shape validation against real and malformed fixture strings; `percentage`/ordering boundary checks; a handler-level test per endpoint that the wired call passes the context user + active library to a `…AndUser` repository method (FR-9) |
+| Integration | Full progress-report → reconcile → persist round trip against a real PostgreSQL instance (`backend-test-harness.md`'s harness); a two-device-concurrent-report test proving `ReconcileProgress`'s order-independence holds through this spec's own persistence layer; bookmark/highlight/preferences CRUD. **Per-user IDOR (FR-9, close gate):** as user A, create progress + a bookmark + a highlight; as user B, attempt to read/update/delete each by work-id and by row-id → all return not-found/empty, none mutate A's rows; `GET /api/v1/reading/export` as B returns only B's data even when A has data for the same works |
 | Contract | `architecture-contracts.md` FR-3's `kin-openapi` tool, extended to `/api/v1/reading*` |
 | E2E | Report progress from one simulated device, then a "further" report from another → canonical progress reflects the furthest; an `override` report → canonical jumps to the target at `epoch + 1`; a stale old-epoch report afterward → `outcome: "rejected"`, canonical unchanged; create a bookmark and a highlight → both persist and are retrievable |
 | Accessibility | N/A at this layer — `frontend-reader.md`'s concern |

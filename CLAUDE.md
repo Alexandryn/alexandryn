@@ -225,6 +225,21 @@ list.
   behalf, under either mode. §6.
 - Never log source credentials, session tokens, home-directory paths, or what
   someone is reading. §8.
+- A handler serving data a user owns — reading progress, bookmarks,
+  highlights, preferences, device list — resolves the authenticated user
+  and active library from the request context and calls the
+  user-and-library-scoped repository method. Never a bare-ID or bare-work
+  variant. The scoped method existing is not the control; the handler
+  calling it is. CI enforces this for the reading/reader surface
+  (`scripts/check-user-scoped-reading.sh`). §3, §6.
+  (Directive from review 0050 / audit 0012-C1 — a security audit certified
+  this control from the repository layer without tracing a single request
+  to its SQL.)
+- Token verification on the authentication path always asserts the token
+  *type*, not only the signature. A signature-valid token minted for a
+  different purpose (an MFA ticket, a pairing enrolment grant) is a
+  rejected token on the access path. Distinct token purposes use distinct
+  HKDF signing subkeys. §6. (Directive from review 0050 / audit 0012-C2.)
 - New dependency? Justify it in the PR: what it does, why not stdlib, what
   breaks if it's abandoned. §9.
 - Interface copy is plain and specific. Name what failed and what to do next.
@@ -240,6 +255,13 @@ list.
 - Assuming a filename from a source is safe. It is a string an attacker chose.
 - Marking a phase closed because the happy path works. Check the definition of
   done in the phase's exit criteria.
+- Certifying an authorization control (a security audit, a review) from the
+  layer where the control *could* live — a scoped repository method, a
+  migration adding a `user_id` column — instead of the wired call path.
+  Trace handler → repository → SQL and read the predicate in the query.
+  The happy-path test passing tells you nothing about cross-user access;
+  only a test that attempts it does. (Audit 0012 missed a horizontal IDOR
+  across the whole reading API this way — see review 0050.)
 
 ## Reporting back
 
