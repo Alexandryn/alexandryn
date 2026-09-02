@@ -1719,6 +1719,8 @@ paths:
                 required: [isSetup]
                 properties:
                   isSetup: { type: boolean }
+              example:
+                isSetup: false
 
   /api/v1/auth/setup:
     post:
@@ -1742,11 +1744,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
+              example:
+                user:
+                  id: "00000000-0000-0000-0000-000000000001"
+                  username: "librarian"
+                  email: "admin@alexandryn.org"
+                  role: "admin"
+                accessToken: "mock.jwt.token"
+                refreshToken: "mock-refresh-token"
         '409':
           description: System is already initialized
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: conflict
+                message: "system is already initialized"
+                correlationId: "00000000-0000-0000-0000-000000000000"
 
   /api/v1/auth/login:
     post:
@@ -1769,11 +1783,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
+              example:
+                user:
+                  id: "00000000-0000-0000-0000-000000000001"
+                  username: "librarian"
+                  email: "admin@alexandryn.org"
+                  role: "admin"
+                accessToken: "mock.jwt.token"
+                refreshToken: "mock-refresh-token"
         '401':
           description: Invalid credentials
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unauthorized
+                message: "invalid username or password"
+                correlationId: "00000000-0000-0000-0000-000000000000"
 
   /api/v1/auth/refresh:
     post:
@@ -1795,11 +1821,18 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
+              example:
+                accessToken: "mock.jwt.token2"
+                refreshToken: "mock-refresh-token2"
         '401':
           description: Invalid or expired refresh token
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unauthorized
+                message: "invalid refresh token"
+                correlationId: "00000000-0000-0000-0000-000000000000"
 
   /api/v1/auth/logout:
     post:
@@ -1842,6 +1875,8 @@ paths:
                 required: [message]
                 properties:
                   message: { type: string }
+              example:
+                message: "if the email is registered, a password reset link has been dispatched"
 
   /api/v1/auth/password-reset/confirm:
     post:
@@ -1868,6 +1903,8 @@ paths:
                 required: [success]
                 properties:
                   success: { type: boolean }
+              example:
+                success: true
 
   /api/v1/auth/mfa/totp/setup:
     post:
@@ -1887,6 +1924,12 @@ paths:
                   recoveryCodes:
                     type: array
                     items: { type: string }
+              example:
+                secret: "JBSWY3DPEHPK3PXP"
+                keyUri: "otpauth://totp/Alexandryn:librarian?secret=JBSWY3DPEHPK3PXP&issuer=Alexandryn"
+                recoveryCodes:
+                  - "ABCD-1234-EF"
+                  - "5678-GHIJ-90"
 
   /api/v1/auth/mfa/totp/confirm:
     post:
@@ -1911,6 +1954,8 @@ paths:
                 required: [enabled]
                 properties:
                   enabled: { type: boolean }
+              example:
+                enabled: true
 
   /api/v1/auth/mfa/totp/verify:
     post:
@@ -1934,6 +1979,14 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
+              example:
+                user:
+                  id: "00000000-0000-0000-0000-000000000001"
+                  username: "librarian"
+                  email: "admin@alexandryn.org"
+                  role: "admin"
+                accessToken: "mock.jwt.token"
+                refreshToken: "mock-refresh-token"
 
   /api/v1/auth/mfa/totp/disable:
     post:
@@ -1958,6 +2011,8 @@ paths:
                 required: [disabled]
                 properties:
                   disabled: { type: boolean }
+              example:
+                disabled: true
 
   /api/v1/libraries:
     get:
@@ -1975,6 +2030,14 @@ paths:
                   libraries:
                     type: array
                     items: { $ref: '#/components/schemas/Library' }
+              example:
+                libraries:
+                  - id: "00000000-0000-0000-0000-000000000001"
+                    name: "Default Library"
+                    description: "Main library namespace"
+                    allowReaderUploads: false
+                    createdAt: "2026-09-01T12:00:00Z"
+                    updatedAt: "2026-09-01T12:00:00Z"
     post:
       operationId: createLibrary
       summary: Create a new library namespace (Admin only)
@@ -1999,6 +2062,14 @@ paths:
                 required: [library]
                 properties:
                   library: { $ref: '#/components/schemas/Library' }
+              example:
+                library:
+                  id: "00000000-0000-0000-0000-000000000002"
+                  name: "Comics"
+                  description: "Comics and Manga"
+                  allowReaderUploads: true
+                  createdAt: "2026-09-01T12:00:00Z"
+                  updatedAt: "2026-09-01T12:00:00Z"
 
   /api/v1/libraries/{id}:
     get:
@@ -2019,6 +2090,14 @@ paths:
                 required: [library]
                 properties:
                   library: { $ref: '#/components/schemas/Library' }
+              example:
+                library:
+                  id: "00000000-0000-0000-0000-000000000001"
+                  name: "Default Library"
+                  description: "Main library namespace"
+                  allowReaderUploads: false
+                  createdAt: "2026-09-01T12:00:00Z"
+                  updatedAt: "2026-09-01T12:00:00Z"
     patch:
       operationId: updateLibrary
       summary: Update library metadata or settings (Admin only)
@@ -2047,6 +2126,14 @@ paths:
                 required: [library]
                 properties:
                   library: { $ref: '#/components/schemas/Library' }
+              example:
+                library:
+                  id: "00000000-0000-0000-0000-000000000001"
+                  name: "Default Library Updated"
+                  description: "Main library namespace"
+                  allowReaderUploads: true
+                  createdAt: "2026-09-01T12:00:00Z"
+                  updatedAt: "2026-09-01T12:00:00Z"
     delete:
       operationId: deleteLibrary
       summary: Delete a custom library namespace (Admin only)
@@ -2080,6 +2167,14 @@ paths:
                   members:
                     type: array
                     items: { $ref: '#/components/schemas/LibraryMember' }
+              example:
+                members:
+                  - id: "00000000-0000-0000-0000-000000000001"
+                    userId: "00000000-0000-0000-0000-000000000001"
+                    username: "librarian"
+                    email: "admin@alexandryn.org"
+                    role: "admin"
+                    createdAt: "2026-09-01T12:00:00Z"
 
   /api/v1/libraries/{id}/invitations:
     post:
@@ -2112,6 +2207,10 @@ paths:
                   invitationToken: { type: string }
                   invitationUrl: { type: string }
                   expiresAt: { type: string, format: date-time }
+              example:
+                invitationToken: "mock-invite-token"
+                invitationUrl: "/invite/mock-invite-token"
+                expiresAt: "2026-09-08T12:00:00Z"
 
   /api/v1/invitations/{token}/accept:
     post:
@@ -2133,6 +2232,9 @@ paths:
                 properties:
                   libraryId: { type: string }
                   role: { type: string }
+              example:
+                libraryId: "00000000-0000-0000-0000-000000000001"
+                role: "reader"
 
 components:
   securitySchemes:
