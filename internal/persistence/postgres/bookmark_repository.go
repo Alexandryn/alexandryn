@@ -44,6 +44,28 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 	return domain.NewBookmark(id, domain.EditionID(editionID), position, label, createdAt), nil
 }
 
+// FindByIDAndUser returns the bookmark only when it belongs to userID.
+// A missing row and a foreign row are both NotFound — no cross-user
+// existence oracle (AUDIT-0012-C1).
+func (r *BookmarkRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) (*domain.Bookmark, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	var editionID, position, label string
+	var createdAt time.Time
+	err := exec.QueryRow(ctx,
+		`SELECT edition_id, position, label, created_at FROM bookmarks
+			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
+		string(id), string(userID),
+	).Scan(&editionID, &position, &label, &createdAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &domain.Error{Category: domain.NotFound, Message: "bookmark not found"}
+		}
+		return nil, TranslateError(err)
+	}
+	return domain.NewBookmark(id, domain.EditionID(editionID), position, label, createdAt), nil
+}
+
 func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.Bookmark, error) {
 	return r.FindByEditionAndUser(ctx, "", "", editionID)
 }
@@ -117,3 +139,19 @@ func (r *BookmarkRepository) Delete(ctx context.Context, id domain.BookmarkID) e
 	return nil
 }
 
+// DeleteAndUser deletes only a row owned by userID. A foreign or missing
+// id affects no rows and returns NotFound (AUDIT-0012-C1).
+func (r *BookmarkRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) error {
+	exec := executorFrom(ctx, r.pool)
+
+	tag, err := exec.Exec(ctx,
+		`DELETE FROM bookmarks WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
+		string(id), string(userID))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "bookmark not found"}
+	}
+	return nil
+}

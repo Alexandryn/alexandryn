@@ -30,6 +30,21 @@ func readingDeps(poolRef *PoolRef, w http.ResponseWriter, correlationID string) 
 	return deps, true
 }
 
+// readingScope resolves the authenticated user and validated active
+// library for a reading request. Every reading handler scopes its
+// repository calls to both (AUDIT-0012-C1, backend-reading-api.md FR-9):
+// reading data — position, bookmarks, highlight notes — is private to its
+// owner (constitution §8). The auth middleware populates the context; a
+// missing user is a 401.
+func readingScope(r *http.Request, w http.ResponseWriter, correlationID string) (domain.UserID, domain.LibraryID, bool) {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		WriteError(w, domain.Unauthorized, "authentication is required", correlationID)
+		return "", "", false
+	}
+	return user.UserID, ActiveLibraryFromContext(r.Context()), true
+}
+
 func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -102,8 +117,12 @@ func ReadingProgressGetHandler(poolRef *PoolRef) http.Handler {
 			WriteError(w, domain.InvalidInput, "workId is required", correlationID)
 			return
 		}
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
 
-		p, err := deps.Progress.FindByWork(r.Context(), domain.WorkID(workID))
+		p, err := deps.Progress.FindByWorkAndUser(r.Context(), userID, libID, domain.WorkID(workID))
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
 				writeJSON(w, http.StatusOK, map[string]any{"progress": nil})
@@ -128,6 +147,10 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 		workID := r.PathValue("workId")
 		if workID == "" {
 			WriteError(w, domain.InvalidInput, "workId is required", correlationID)
+			return
+		}
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
 			return
 		}
 
@@ -178,7 +201,7 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 			ReportedAt:      now().UTC(),
 		}
 
-		result, outcome, err := readerapi.ReportProgress(r.Context(), deps.Transactor, progressStore{deps.Progress}, idsAdapter{deps.IDs}, report, req.Override)
+		result, outcome, err := readerapi.ReportProgress(r.Context(), deps.Transactor, progressStore{repo: deps.Progress, userID: userID, libraryID: libID}, idsAdapter{deps.IDs}, report, req.Override)
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return
@@ -190,15 +213,22 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 	})
 }
 
+// progressStore adapts a ReadingProgressRepository to readerapi's
+// ProgressStore, closing over the authenticated user and active library so
+// the row-lock read and the write are both scoped (AUDIT-0012-C1). The
+// ProgressStore interface signature is unchanged — the scope is carried
+// by the adapter, not threaded through readerapi.
 type progressStore struct {
-	repo domain.ReadingProgressRepository
+	repo      domain.ReadingProgressRepository
+	userID    domain.UserID
+	libraryID domain.LibraryID
 }
 
 func (s progressStore) FindByWorkForUpdate(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
-	return s.repo.FindByWorkForUpdate(ctx, workID)
+	return s.repo.FindByWorkAndUserForUpdate(ctx, s.userID, s.libraryID, workID)
 }
 func (s progressStore) Save(ctx context.Context, p *domain.ReadingProgress) error {
-	return s.repo.Save(ctx, p)
+	return s.repo.SaveForUser(ctx, s.userID, s.libraryID, p)
 }
 
 type idsAdapter struct{ g domain.IDGenerator }
@@ -231,7 +261,11 @@ func ReadingBookmarksListHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		editionID := r.PathValue("editionId")
-		list, err := deps.Bookmarks.FindByEdition(r.Context(), domain.EditionID(editionID))
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
+		list, err := deps.Bookmarks.FindByEditionAndUser(r.Context(), userID, libID, domain.EditionID(editionID))
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return
@@ -255,6 +289,10 @@ func ReadingBookmarkCreateHandler(poolRef *PoolRef, now func() time.Time) http.H
 		editionID := r.PathValue("editionId")
 		if editionID == "" {
 			WriteError(w, domain.InvalidInput, "editionId is required", correlationID)
+			return
+		}
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
 			return
 		}
 
@@ -282,7 +320,7 @@ func ReadingBookmarkCreateHandler(poolRef *PoolRef, now func() time.Time) http.H
 		}
 
 		b := domain.NewBookmark(domain.BookmarkID(deps.IDs.NewID()), domain.EditionID(editionID), req.CFI, label, now().UTC())
-		if err := deps.Bookmarks.Save(r.Context(), b); err != nil {
+		if err := deps.Bookmarks.SaveForUser(r.Context(), userID, libID, b); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
@@ -299,11 +337,11 @@ func ReadingBookmarkDeleteHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		id := domain.BookmarkID(r.PathValue("bookmarkId"))
-		if _, err := deps.Bookmarks.FindByID(r.Context(), id); err != nil {
-			writeDomainError(w, err, correlationID)
+		userID, _, ok := readingScope(r, w, correlationID)
+		if !ok {
 			return
 		}
-		if err := deps.Bookmarks.Delete(r.Context(), id); err != nil {
+		if err := deps.Bookmarks.DeleteAndUser(r.Context(), userID, id); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
@@ -340,7 +378,11 @@ func ReadingHighlightsListHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		editionID := r.PathValue("editionId")
-		list, err := deps.Highlights.FindByEdition(r.Context(), domain.EditionID(editionID))
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
+		list, err := deps.Highlights.FindByEditionAndUser(r.Context(), userID, libID, domain.EditionID(editionID))
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return
@@ -364,6 +406,10 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 		editionID := r.PathValue("editionId")
 		if editionID == "" {
 			WriteError(w, domain.InvalidInput, "editionId is required", correlationID)
+			return
+		}
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
 			return
 		}
 
@@ -410,7 +456,7 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 		}
 
 		h := domain.NewHighlight(domain.HighlightID(deps.IDs.NewID()), domain.EditionID(editionID), req.StartCFI, req.EndCFI, note, category, now().UTC())
-		if err := deps.Highlights.Save(r.Context(), h); err != nil {
+		if err := deps.Highlights.SaveForUser(r.Context(), userID, libID, h); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
@@ -428,7 +474,11 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		id := domain.HighlightID(r.PathValue("highlightId"))
-		existing, err := deps.Highlights.FindByID(r.Context(), id)
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
+		existing, err := deps.Highlights.FindByIDAndUser(r.Context(), userID, id)
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return
@@ -463,7 +513,7 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 		}
 
 		updated := domain.NewHighlight(existing.ID(), existing.EditionID(), existing.StartPosition(), existing.EndPosition(), note, category, existing.CreatedAt())
-		if err := deps.Highlights.Save(r.Context(), updated); err != nil {
+		if err := deps.Highlights.SaveForUser(r.Context(), userID, libID, updated); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
@@ -480,11 +530,11 @@ func ReadingHighlightDeleteHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		id := domain.HighlightID(r.PathValue("highlightId"))
-		if _, err := deps.Highlights.FindByID(r.Context(), id); err != nil {
-			writeDomainError(w, err, correlationID)
+		userID, _, ok := readingScope(r, w, correlationID)
+		if !ok {
 			return
 		}
-		if err := deps.Highlights.Delete(r.Context(), id); err != nil {
+		if err := deps.Highlights.DeleteAndUser(r.Context(), userID, id); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
@@ -553,7 +603,11 @@ func ReadingPreferencesGetHandler(poolRef *PoolRef) http.Handler {
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		p, err := deps.Preferences.FindByDevice(r.Context(), domain.DeviceID(deviceID))
+		userID, _, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
+		p, err := deps.Preferences.FindByUserAndDevice(r.Context(), userID, domain.DeviceID(deviceID))
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
 				writeJSON(w, http.StatusOK, map[string]any{"preferences": defaultPreferences()})
@@ -579,6 +633,10 @@ func ReadingPreferencesPutHandler(poolRef *PoolRef) http.Handler {
 			writeDomainError(w, err, correlationID)
 			return
 		}
+		userID, _, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
 		var req wirePreferences
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, domain.InvalidInput, "request body must be a valid JSON object", correlationID)
@@ -597,7 +655,7 @@ func ReadingPreferencesPutHandler(poolRef *PoolRef) http.Handler {
 		p.Set("fontSize", formatFloat(req.FontSize))
 		p.Set("lineSpacing", formatFloat(req.LineSpacing))
 
-		if err := deps.Preferences.Save(r.Context(), p); err != nil {
+		if err := deps.Preferences.SaveForUser(r.Context(), userID, p); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}

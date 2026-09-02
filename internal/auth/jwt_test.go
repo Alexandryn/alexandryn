@@ -110,6 +110,69 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 		}
 	})
 
+	t.Run("VerifyAccessToken accepts an access token", func(t *testing.T) {
+		// A token with no explicit type (the phase-12 shape) is an access token.
+		tokenStr, err := signer.Sign(claims)
+		if err != nil {
+			t.Fatalf("sign error: %v", err)
+		}
+		if _, err := signer.VerifyAccessToken(tokenStr, now); err != nil {
+			t.Errorf("expected access token to verify, got %v", err)
+		}
+
+		// An explicit typ:"access" also verifies.
+		explicit := claims
+		explicit.Type = auth.TokenTypeAccess
+		tokenStr, err = signer.Sign(explicit)
+		if err != nil {
+			t.Fatalf("sign error: %v", err)
+		}
+		if _, err := signer.VerifyAccessToken(tokenStr, now); err != nil {
+			t.Errorf("expected typ:access token to verify, got %v", err)
+		}
+	})
+
+	t.Run("VerifyAccessToken rejects a signature-valid MFA ticket", func(t *testing.T) {
+		// AUDIT-0012-C2: an MFA ticket is signed with the same key and a
+		// real Subject; the access path must not accept it.
+		ticket, err := signer.SignMFATicket("u-12345", now.Add(5*time.Minute))
+		if err != nil {
+			t.Fatalf("sign error: %v", err)
+		}
+		// It still verifies as a raw JWT...
+		if _, err := signer.Verify(ticket, now); err != nil {
+			t.Fatalf("MFA ticket should be a valid JWT: %v", err)
+		}
+		// ...but not as an access token.
+		if _, err := signer.VerifyAccessToken(ticket, now); err == nil {
+			t.Error("expected VerifyAccessToken to reject an MFA ticket, got nil")
+		}
+	})
+
+	t.Run("VerifyAccessToken rejects an unknown token type", func(t *testing.T) {
+		enrol := claims
+		enrol.Type = "enrol"
+		tokenStr, err := signer.Sign(enrol)
+		if err != nil {
+			t.Fatalf("sign error: %v", err)
+		}
+		if _, err := signer.VerifyAccessToken(tokenStr, now); err == nil {
+			t.Error("expected VerifyAccessToken to reject typ:enrol, got nil")
+		}
+	})
+
+	t.Run("VerifyAccessToken rejects an expired token", func(t *testing.T) {
+		expired := claims
+		expired.ExpiresAt = now.Add(-time.Minute).Unix()
+		tokenStr, err := signer.Sign(expired)
+		if err != nil {
+			t.Fatalf("sign error: %v", err)
+		}
+		if _, err := signer.VerifyAccessToken(tokenStr, now); err == nil {
+			t.Error("expected VerifyAccessToken to reject an expired token, got nil")
+		}
+	})
+
 	t.Run("MFATicket signing and verification", func(t *testing.T) {
 		ticket, err := signer.SignMFATicket("u-12345", now.Add(5*time.Minute))
 		if err != nil {

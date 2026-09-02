@@ -15,8 +15,8 @@ import (
 // row shape reaches the handler and the handler is unit-testable.
 type ReadingExportStore interface {
 	WorkExists(ctx context.Context, workID string) (bool, error)
-	ListProgress(ctx context.Context, workID string) ([]postgres.ExportProgress, error)
-	ListMarks(ctx context.Context, workID string) ([]postgres.ExportMark, error)
+	ListProgress(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]postgres.ExportProgress, error)
+	ListMarks(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]postgres.ExportMark, error)
 }
 
 // readerRefs holds the phase-11 reader singletons populated once
@@ -30,14 +30,15 @@ type readerRefs struct {
 // (backend-reading-api.md, reading-data-export.md) — set once when
 // persistence is ready, never a package global.
 type ReadingAPI struct {
-	Progress    domain.ReadingProgressRepository
-	Bookmarks   domain.BookmarkRepository
-	Highlights  domain.HighlightRepository
-	Preferences domain.ReadingPreferencesRepository
-	Editions    domain.EditionRepository
-	Transactor  domain.Transactor
-	IDs         domain.IDGenerator
-	Export      ReadingExportStore
+	Progress       domain.ReadingProgressRepository
+	Bookmarks      domain.BookmarkRepository
+	Highlights     domain.HighlightRepository
+	Preferences    domain.ReadingPreferencesRepository
+	Editions       domain.EditionRepository
+	LibraryEntries domain.LibraryEntryRepository
+	Transactor     domain.Transactor
+	IDs            domain.IDGenerator
+	Export         ReadingExportStore
 }
 
 // SetReaderContentCache stores the content cache once its resolver's

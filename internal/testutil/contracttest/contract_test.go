@@ -634,10 +634,12 @@ func (r ctReadingProgress) SaveForUser(context.Context, domain.UserID, domain.Li
 type ctExport struct{}
 
 func (ctExport) WorkExists(context.Context, string) (bool, error) { return true, nil }
-func (ctExport) ListProgress(context.Context, string) ([]postgres.ExportProgress, error) {
+func (ctExport) ListProgress(context.Context, domain.UserID, domain.LibraryID, string) ([]postgres.ExportProgress, error) {
 	return nil, nil
 }
-func (ctExport) ListMarks(context.Context, string) ([]postgres.ExportMark, error) { return nil, nil }
+func (ctExport) ListMarks(context.Context, domain.UserID, domain.LibraryID, string) ([]postgres.ExportMark, error) {
+	return nil, nil
+}
 
 func TestPhase11ContractResponses(t *testing.T) {
 	v := contracttest.New(t)
@@ -649,9 +651,18 @@ func TestPhase11ContractResponses(t *testing.T) {
 		Export:   ctExport{},
 	})
 
+	// The reading handlers now require an authenticated user + active
+	// library in context (AUDIT-0012-C1). The auth middleware supplies it
+	// in production; here it is injected directly.
+	withReadingScope := func(req *http.Request) *http.Request {
+		ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: "ct-user"})
+		ctx = transporthttp.WithActiveLibrary(ctx, domain.DefaultLibraryID)
+		return req.WithContext(ctx)
+	}
+
 	t.Run("GET /api/v1/reading/works/{workId}/progress → null", func(t *testing.T) {
 		h := transporthttp.ReadingProgressGetHandler(poolRef)
-		req := mustRequest(t, "GET", "/api/v1/reading/works/work-1/progress", nil)
+		req := withReadingScope(mustRequest(t, "GET", "/api/v1/reading/works/work-1/progress", nil))
 		req.SetPathValue("workId", "work-1")
 		rr := v.ValidateResponse(t, h, req)
 		if rr.Code != http.StatusOK {
@@ -661,7 +672,7 @@ func TestPhase11ContractResponses(t *testing.T) {
 
 	t.Run("GET /api/v1/reading/export → versioned document", func(t *testing.T) {
 		h := transporthttp.ReadingExportHandler(poolRef, nil, now)
-		req := mustRequest(t, "GET", "/api/v1/reading/export", nil)
+		req := withReadingScope(mustRequest(t, "GET", "/api/v1/reading/export", nil))
 		rr := v.ValidateResponse(t, h, req)
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rr.Code)
@@ -671,15 +682,17 @@ func TestPhase11ContractResponses(t *testing.T) {
 
 type ctUsers struct{}
 
-func (ctUsers) FindByID(context.Context, domain.UserID) (*domain.User, error)     { return nil, nil }
-func (ctUsers) FindByEmail(context.Context, string) (*domain.User, error)          { return nil, nil }
-func (ctUsers) FindByUsername(context.Context, string) (*domain.User, error)       { return nil, nil }
-func (ctUsers) CountUsers(context.Context) (int, error)                           { return 0, nil }
-func (ctUsers) Save(context.Context, *domain.User) error                           { return nil }
+func (ctUsers) FindByID(context.Context, domain.UserID) (*domain.User, error) { return nil, nil }
+func (ctUsers) FindByEmail(context.Context, string) (*domain.User, error)     { return nil, nil }
+func (ctUsers) FindByUsername(context.Context, string) (*domain.User, error)  { return nil, nil }
+func (ctUsers) CountUsers(context.Context) (int, error)                       { return 0, nil }
+func (ctUsers) Save(context.Context, *domain.User) error                      { return nil }
 
 type ctLibraries struct{}
 
-func (ctLibraries) FindByID(context.Context, domain.LibraryID) (*domain.Library, error) { return nil, nil }
+func (ctLibraries) FindByID(context.Context, domain.LibraryID) (*domain.Library, error) {
+	return nil, nil
+}
 func (ctLibraries) FindAll(context.Context) ([]*domain.Library, error) {
 	lib, _ := domain.NewLibrary(domain.DefaultLibraryID, "Default Library", "Main", false, time.Now(), time.Now())
 	return []*domain.Library{lib}, nil
@@ -688,7 +701,7 @@ func (ctLibraries) FindByUser(context.Context, domain.UserID) ([]*domain.Library
 	lib, _ := domain.NewLibrary(domain.DefaultLibraryID, "Default Library", "Main", false, time.Now(), time.Now())
 	return []*domain.Library{lib}, nil
 }
-func (ctLibraries) Save(context.Context, *domain.Library) error { return nil }
+func (ctLibraries) Save(context.Context, *domain.Library) error    { return nil }
 func (ctLibraries) Delete(context.Context, domain.LibraryID) error { return nil }
 
 type ctMemberships struct{}
@@ -702,7 +715,7 @@ func (ctMemberships) FindByLibrary(context.Context, domain.LibraryID) ([]*domain
 func (ctMemberships) FindByUser(context.Context, domain.UserID) ([]*domain.LibraryMembership, error) {
 	return nil, nil
 }
-func (ctMemberships) Save(context.Context, *domain.LibraryMembership) error { return nil }
+func (ctMemberships) Save(context.Context, *domain.LibraryMembership) error         { return nil }
 func (ctMemberships) Delete(context.Context, domain.LibraryID, domain.UserID) error { return nil }
 
 func TestPhase12ContractResponses(t *testing.T) {
@@ -731,4 +744,3 @@ func TestPhase12ContractResponses(t *testing.T) {
 		}
 	})
 }
-

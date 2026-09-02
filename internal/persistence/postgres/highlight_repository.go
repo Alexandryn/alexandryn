@@ -44,6 +44,27 @@ func (r *HighlightRepository) FindByID(ctx context.Context, id domain.HighlightI
 	return domain.NewHighlight(id, domain.EditionID(editionID), startPosition, endPosition, note, category, createdAt), nil
 }
 
+// FindByIDAndUser returns the highlight only when it belongs to userID.
+// A missing and a foreign row are both NotFound (AUDIT-0012-C1).
+func (r *HighlightRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) (*domain.Highlight, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	var editionID, startPosition, endPosition, note, category string
+	var createdAt time.Time
+	err := exec.QueryRow(ctx,
+		`SELECT edition_id, start_position, end_position, note, category, created_at FROM highlights
+			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
+		string(id), string(userID),
+	).Scan(&editionID, &startPosition, &endPosition, &note, &category, &createdAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &domain.Error{Category: domain.NotFound, Message: "highlight not found"}
+		}
+		return nil, TranslateError(err)
+	}
+	return domain.NewHighlight(id, domain.EditionID(editionID), startPosition, endPosition, note, category, createdAt), nil
+}
+
 func (r *HighlightRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.Highlight, error) {
 	return r.FindByEditionAndUser(ctx, "", "", editionID)
 }
@@ -119,3 +140,18 @@ func (r *HighlightRepository) Delete(ctx context.Context, id domain.HighlightID)
 	return nil
 }
 
+// DeleteAndUser deletes only a row owned by userID (AUDIT-0012-C1).
+func (r *HighlightRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) error {
+	exec := executorFrom(ctx, r.pool)
+
+	tag, err := exec.Exec(ctx,
+		`DELETE FROM highlights WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
+		string(id), string(userID))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "highlight not found"}
+	}
+	return nil
+}

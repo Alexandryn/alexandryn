@@ -48,10 +48,23 @@ func contentServer(t *testing.T, files map[string]string) http.Handler {
 		return zipWith(t, files), func() {}, nil
 	})
 	poolRef.SetReaderContentCache(cache)
+	// "edition-owned" is in the caller's active library; "edition-not-mine"
+	// is not — mirrors the cache's own ownership fixture.
+	poolRef.SetReadingAPI(transporthttp.ReadingAPI{
+		LibraryEntries: &memLibraryEntries{inLib: map[domain.EditionID]domain.LibraryID{
+			"edition-owned": domain.DefaultLibraryID,
+		}},
+	})
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, nil))
-	return transporthttp.Chain(mux, transporthttp.Recovery(nil, func() string { return "test" }))
+	return transporthttp.Chain(mux, transporthttp.Recovery(nil, func() string { return "test" }), func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := transporthttp.WithUser(r.Context(), &transporthttp.AuthenticatedUser{UserID: "u-1"})
+			ctx = transporthttp.WithActiveLibrary(ctx, domain.DefaultLibraryID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 }
 
 func TestReaderContent_ServesSanitisedHTMLWithCSP(t *testing.T) {
@@ -83,6 +96,40 @@ func TestReaderContent_UnownedEditionIs404(t *testing.T) {
 	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-not-mine/reader/content/OEBPS/c1.xhtml", nil))
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rr.Code)
+	}
+}
+
+// TestReaderContent_CrossLibraryIs404 is the AUDIT-0012-C1 close-gate
+// test for the reader-content path: a member of library X cannot stream
+// the bytes of an edition owned only in library Y.
+func TestReaderContent_CrossLibraryIs404(t *testing.T) {
+	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetReaderContentCache(content.NewCache(func(_ context.Context, _ domain.EditionID) (*zip.Reader, func(), error) {
+		return zipWith(t, map[string]string{"OEBPS/c1.xhtml": "<p>library Y content</p>"}), func() {}, nil
+	}))
+	poolRef.SetReadingAPI(transporthttp.ReadingAPI{
+		LibraryEntries: &memLibraryEntries{inLib: map[domain.EditionID]domain.LibraryID{
+			"edition-owned": "library-Y",
+		}},
+	})
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, nil))
+	srv := transporthttp.Chain(mux, transporthttp.Recovery(nil, func() string { return "test" }), func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := transporthttp.WithUser(r.Context(), &transporthttp.AuthenticatedUser{UserID: "u-x"})
+			ctx = transporthttp.WithActiveLibrary(ctx, "library-X")
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+
+	rr := httptest.NewRecorder()
+	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/OEBPS/c1.xhtml", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("cross-library content request: status = %d, want 404; body %s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "library Y content") {
+		t.Fatalf("leaked another library's book content: %s", rr.Body.String())
 	}
 }
 

@@ -351,14 +351,15 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		if repos.readingProgress != nil && repos.transactor != nil {
 			poolRef.SetReadingAPI(transporthttp.ReadingAPI{
-				Progress:    repos.readingProgress,
-				Bookmarks:   repos.bookmarks,
-				Highlights:  repos.highlights,
-				Preferences: repos.readingPreferences,
-				Editions:    repos.editions,
-				Transactor:  repos.transactor,
-				IDs:         idgen.New(),
-				Export:      repos.readingExport,
+				Progress:       repos.readingProgress,
+				Bookmarks:      repos.bookmarks,
+				Highlights:     repos.highlights,
+				Preferences:    repos.readingPreferences,
+				Editions:       repos.editions,
+				LibraryEntries: repos.libraryEntries,
+				Transactor:     repos.transactor,
+				IDs:            idgen.New(),
+				Export:         repos.readingExport,
 			})
 		}
 	}

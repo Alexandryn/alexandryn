@@ -143,6 +143,7 @@ func SetupHandler(
 		// Create Access Token
 		accessToken, _ := signer.Sign(auth.Claims{
 			Subject:   userID,
+			Type:      auth.TokenTypeAccess,
 			Username:  user.Username(),
 			Role:      domain.RoleAdmin,
 			Libraries: []domain.LibraryID{domain.DefaultLibraryID},
@@ -258,6 +259,7 @@ func LoginHandler(
 
 		accessToken, _ := signer.Sign(auth.Claims{
 			Subject:   user.ID(),
+			Type:      auth.TokenTypeAccess,
 			Username:  user.Username(),
 			Role:      user.Role(),
 			Libraries: libIDs,
@@ -347,6 +349,7 @@ func RefreshHandler(
 
 		accessToken, _ := signer.Sign(auth.Claims{
 			Subject:   user.ID(),
+			Type:      auth.TokenTypeAccess,
 			Username:  user.Username(),
 			Role:      user.Role(),
 			Libraries: libIDs,
@@ -680,6 +683,7 @@ func TOTPVerifyHandler(
 
 		accessToken, _ := signer.Sign(auth.Claims{
 			Subject:   user.ID(),
+			Type:      auth.TokenTypeAccess,
 			Username:  user.Username(),
 			Role:      user.Role(),
 			Libraries: libIDs,

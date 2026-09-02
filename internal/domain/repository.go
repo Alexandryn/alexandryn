@@ -69,6 +69,11 @@ type LibraryEntryRepository interface {
 	// FindByEdition returns a *Error with category NotFound when no
 	// entry exists for editionID — never a sentinel error value.
 	FindByEdition(ctx context.Context, editionID EditionID) (*LibraryEntry, error)
+	// EditionInLibrary reports whether editionID is owned in libraryID.
+	// The reader-content path gates on this so a member of library X
+	// cannot stream the bytes of an edition owned only in library Y
+	// (AUDIT-0012-C1).
+	EditionInLibrary(ctx context.Context, editionID EditionID, libraryID LibraryID) (bool, error)
 	Save(ctx context.Context, e *LibraryEntry) error
 	DeleteByEdition(ctx context.Context, editionID EditionID) error
 }
@@ -145,20 +150,29 @@ type ReadingProgressRepository interface {
 
 type BookmarkRepository interface {
 	FindByID(ctx context.Context, id BookmarkID) (*Bookmark, error)
+	// FindByIDAndUser returns a *Error with category NotFound when the
+	// bookmark does not exist OR belongs to another user — a caller must
+	// not be able to tell the two apart (AUDIT-0012-C1).
+	FindByIDAndUser(ctx context.Context, userID UserID, id BookmarkID) (*Bookmark, error)
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*Bookmark, error)
 	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Bookmark, error)
 	Save(ctx context.Context, b *Bookmark) error
 	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, b *Bookmark) error
 	Delete(ctx context.Context, id BookmarkID) error
+	// DeleteAndUser deletes only when the row belongs to userID; a foreign
+	// or missing id is a NotFound, not a silent success.
+	DeleteAndUser(ctx context.Context, userID UserID, id BookmarkID) error
 }
 
 type HighlightRepository interface {
 	FindByID(ctx context.Context, id HighlightID) (*Highlight, error)
+	FindByIDAndUser(ctx context.Context, userID UserID, id HighlightID) (*Highlight, error)
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*Highlight, error)
 	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Highlight, error)
 	Save(ctx context.Context, h *Highlight) error
 	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, h *Highlight) error
 	Delete(ctx context.Context, id HighlightID) error
+	DeleteAndUser(ctx context.Context, userID UserID, id HighlightID) error
 }
 
 type ReadingPreferencesRepository interface {
@@ -228,4 +242,3 @@ type LibraryInvitationRepository interface {
 	Save(ctx context.Context, inv *LibraryInvitation) error
 	Delete(ctx context.Context, id LibraryInvitationID) error
 }
-
