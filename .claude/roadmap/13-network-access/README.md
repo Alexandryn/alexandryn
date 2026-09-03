@@ -91,6 +91,16 @@ in-process TLS with a validated certificate on a public bind).
 - Any Alexandryn-operated relay, tunnel, or traffic-mediating
   infrastructure. Alexandryn operates no infrastructure and mediates no
   user's traffic, under any bind mode — this does not change.
+- **A first-run / setup-wizard network step.** The design prototype's
+  `fr4` ("Network access" step inside the first-run flow) is
+  **deliberately out of scope for phase 13** (maintainer decision,
+  2026-09-03). Phase 13 builds the standing **Settings → Network** panel
+  and the pairing flow. First run is its own flow with its own scope; a
+  network step there — if one is wanted — is designed and specified with
+  the rest of the first-run experience, reusing this phase's
+  `NetworkSettings` component rather than duplicating it. `.design-reference/ANALYSIS.md`
+  classifies `atFirstRun` as **Unclassified**; this decision does not
+  promote it — it defers the whole first-run surface.
 
 Previously this section also excluded "any WAN/cloud relay" under the
 single claim "this project is LAN-only self-hosting." That conflated two

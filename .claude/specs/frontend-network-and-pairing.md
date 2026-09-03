@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 8/9/S-H4 + the `qrcode` §9 record reworked and self-reviewed 2026-09-02. Implementation may begin. **One open item held for the maintainer** (not blocking backend work): `fr4`/first-run is Unclassified — see Open questions. |
+| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 8/9/S-H4 + the `qrcode` §9 record reworked and self-reviewed 2026-09-02. **`fr4` / first-run resolved 2026-09-03: a first-run network step is out of scope for phase 13** (`roadmap/13-network-access/README.md` Scope Out) — this spec builds the standing Settings → Network panel and the pairing flow only. |
 | **Phase** | `13-network-access` |
 | **Author** | Claude (Sonnet 5) |
 | **Created** | 2026-09-02 |
@@ -386,16 +386,15 @@ test, the Playwright pairing happy-path.
 
 ## Open questions
 
-- **`fr4` (first-run Network step) is Unclassified — stop-and-ask (not
-  resolved here).** `.design-reference/ANALYSIS.md` classifies
-  `atFirstRun` **Unclassified**, and CLAUDE.md says an unclassified
-  surface "must itself be flagged as a stop-and-ask, not silently treated
-  as either state." Phase 13 builds the Settings → Network panel; it does
-  **not** build a first-run Network step. Whether the first-run wizard
-  should embed `NetworkSettings` (or a subset), and whether `atFirstRun`
-  should be promoted to Binding or left out of phase 13 entirely, is a
-  question for the maintainer — this spec does not decide it and does not
-  treat `fr4` as design authority for anything it does build.
+- ~~**`fr4` (first-run Network step) is Unclassified — stop-and-ask.**~~
+  **Resolved 2026-09-03 (maintainer): out of scope for phase 13.** Phase
+  13 builds the standing Settings → Network panel and the pairing flow;
+  the first-run flow is a separate surface with its own scope, and a
+  network step there — if wanted — is designed and specified with the
+  rest of first run, reusing this phase's `NetworkSettings` component. The
+  decision does not promote `atFirstRun` from Unclassified; it defers the
+  whole first-run surface. Recorded in
+  `roadmap/13-network-access/README.md` Scope Out.
 - **`sgDevices` has no ledger row.** The device-list/revoke screen the
   design draws is not classified anywhere. Phase 13 ships only "revoke
   this pairing" inside the pairing modal (D-4); the standing device
