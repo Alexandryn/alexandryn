@@ -13,6 +13,22 @@
 What was examined, and how — code reading, dependency review, manual probing,
 fuzzing, automated scanning. Say which, so a later reader knows the depth.
 
+**Mandatory — authorization controls are certified from the wired call
+path, never from where the control could live.** For every endpoint that
+reads or writes data scoped to a user, a library, a device, or any other
+tenant boundary: trace the *actual wired* handler → repository → SQL (or
+handler → middleware) and confirm the tenant/user predicate is present in
+the query text or the middleware check. A scoped repository method
+existing, a migration adding a `user_id` column, or the spec saying
+"scoped by user" is **not** evidence the control is enforced — only the
+call the handler actually makes is. A passing happy-path test proves
+nothing about cross-tenant access; only a test that attempts a cross-user
+or cross-library read/write/delete does — note whether one exists.
+(Directive from audit 0012's post-audit correction, 2026-09-02: this
+audit certified per-user reading-data scoping and token-type checking
+that the wired code did not implement, because it inspected the
+repository and migration layers and inferred the handler behaviour.)
+
 ## Trust boundaries examined
 
 | Boundary | Untrusted side | Assumption being made |

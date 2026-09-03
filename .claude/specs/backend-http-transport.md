@@ -48,7 +48,11 @@ stdlib `ServeMux`.
   placed
 - CORS — no LAN-serving-to-a-different-origin scenario exists yet
   (`architecture-system.md` FR-6: same origin, same build, served
-  fresh); revisit if phase 13's LAN story ever needs it
+  fresh); revisit if phase 13's LAN story ever needs it. **Un-deferred
+  by phase 13 (2026-09-02, `DRAFT`): `backend-network-transport.md` FR-6
+  adds a deny-by-default CORS middleware (empty allowlist ⇒ no CORS
+  headers, same-origin SPA unaffected), per ADR 0028 §4. This spec's
+  middleware chain (FR-1) is extended there, not rewritten.**
 - WebSocket/SSE transport — `architecture-contracts.md`'s own Non-goals
   already deferred this to phase 14
 
@@ -67,11 +71,35 @@ stdlib `ServeMux`.
 
 ## Functional requirements
 
-- **FR-1** The middleware chain, composed in the fixed order
-  `architecture-backend.md` FR-6 requires, is: panic recovery (outermost)
+- **FR-1** The middleware chain, composed in the order
+  `architecture-backend.md` FR-6 constrains (recovery outermost, routing
+  innermost, auth before routing), is: panic recovery (outermost)
   → request limits → structured logging → \[auth, reserved, phase 12\] →
   routing (`ServeMux`, ADR 0011). Implemented as direct function
   composition (ADR 0011), each layer a `func(http.Handler) http.Handler`.
+
+  **Amended by phase 13 (2026-09-02, `DRAFT` — `backend-network-transport.md`
+  FR-5/FR-5a/FR-6/FR-7/FR-8/FR-13, ADR 0028):** the single reserved
+  "between logging and routing" slot expands into an ordered group. Full
+  order, outermost-in:
+  `panic recovery → request limits → structured logging →
+  security headers (CSP, X-Frame-Options, nosniff, Referrer-Policy —
+  every response, every bind) → HSTS (TLS binds only) →
+  CORS (deny-by-default) → global rate limit (unauthenticated public
+  paths) → auth (now also asserting the access-token type and validating
+  X-Library-Id against the token's libraries claim) →
+  Origin validation (pairing route group only) → routing`.
+  Recovery stays strictly outermost, limits and logging keep their
+  phase-03 positions, routing stays innermost — only the auth slot grows.
+  Rationale: CORS sits before auth so a preflight (no credentials) is
+  answered without an auth rejection; the rate limiter sits before auth so
+  an unauthenticated flood is shed before token verification work; Origin
+  validation is a route-group wrapper, not a global layer, because every
+  other state-changing route is already `Authorization`-gated and
+  CSRF-safe by construction (ADR 0028 §5). A request rejected by the
+  limits layer (oversized body) is a JSON error, not a framed HTML
+  document, so it not carrying the security headers is acceptable.
+  Original text above stands as the phase-03 baseline this extends.
 - **FR-2** Request limits, applied by the limits middleware before a
   handler sees the request:
   - Maximum request body size: 10 MiB, enforced via

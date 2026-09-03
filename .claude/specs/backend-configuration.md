@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` (amended post-approval six times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation; FR-8's `BIND_ADDRESS` classification rewritten for ADR 0017 (2026-08-18), maintainer-directed, self-reviewed; FR-8's interim note added 2026-08-26 closing out audit A-03-05 (code was already stricter than spec text; spec now says so), self-reviewed, needs maintainer re-confirmation) |
+| **Status** | `APPROVED` (amended post-approval six times — `LOG_LEVEL` case-sensitivity ([`0025`](../reviews/0025-spec-amendment-backend-configuration-log-level.md)), DSN redaction in TOML parse errors ([`0028`](../reviews/0028-spec-amendment-dsn-redaction.md)), needs re-confirmation; `OPEN_LIBRARY_USER_AGENT` key added for phase 07 ([`0034`](../reviews/0034-phase07-cross-spec-review.md)), re-confirmed 2026-08-15; `DATABASE_URL`'s target-dependent meaning for the container topology ([`0042`](../reviews/0042-spec-backend-configuration-container-topology.md)), needs maintainer re-confirmation; FR-8's `BIND_ADDRESS` classification rewritten for ADR 0017 (2026-08-18), maintainer-directed, self-reviewed; FR-8's interim note added 2026-08-26 closing out audit A-03-05 (code was already stricter than spec text; spec now says so), self-reviewed, needs maintainer re-confirmation; **phase 13 (2026-09-02, `DRAFT`) — FR-4 gains six keys (`ACME_ENABLED`/`ACME_DOMAIN`/`ACME_EMAIL`/`ACME_CACHE_DIR`, `CORS_ALLOWED_ORIGINS`, `DEVICE_PAIRING_SECRET`) per ADR 0028; FR-8's interim note gains a phase-13 update pointer — pending spec review, not yet maintainer-confirmed**) |
 | **Phase** | `03-backend-foundation` |
 | **Author** | Claude (Sonnet 5), approved by Luann Moreira |
 | **Created** | 2026-08-14 |
@@ -116,6 +116,12 @@ file format, where it lives, or the actual validation each key needs.
   | `HTTP_WRITE_TIMEOUT` | duration | Optional | a duration `backend-http-transport.md` FR-2 fixes | constitution §4 |
   | `HTTP_IDLE_TIMEOUT` | duration | Optional | a duration `backend-http-transport.md` FR-2 fixes | constitution §4 |
   | `OPEN_LIBRARY_USER_AGENT` | string, non-empty | Required, no default — a placeholder default would misidentify this client to Open Library, which FR-3's "required" category exists to prevent | — | `backend-metadata-adapter.md` FR-6, Open Library usage policy |
+  | `ACME_ENABLED` | boolean | Optional | `false` | ADR 0028 §1–2, `backend-network-transport.md` FR-1. Selects a certificate *source* (ACME issuance vs. static file) for a public bind; not a security toggle — both Mode A branches fail closed identically. |
+  | `ACME_DOMAIN` | DNS name | Required only when `ACME_ENABLED` is `true` (and, if `BIND_ADDRESS`'s host is a name, must equal it); otherwise unread | — | ADR 0028 §2, `backend-network-transport.md` FR-2. Pins `autocert` `HostPolicy` to exactly this name. |
+  | `ACME_EMAIL` | string (email) | Optional | — (empty) | ADR 0028 §2. Passed to `autocert` for CA expiry notifications; issuance works without it. |
+  | `ACME_CACHE_DIR` | filesystem path | Optional | `acme/` under the per-user data directory (`architecture-persistence.md` FR-1) | ADR 0028 §2. `autocert.DirCache`, created `0700` — holds the ACME account key and issued certificate keys. |
+  | `CORS_ALLOWED_ORIGINS` | comma-separated list of `scheme://host[:port]` | Optional | — (empty ⇒ no cross-origin request is ever honoured; the same-origin SPA is unaffected) | ADR 0028 §4, `backend-network-transport.md` FR-6. A malformed entry (path present, no scheme) is a validation error. |
+  | `DEVICE_PAIRING_SECRET` | string, redacted type (FR-7) | Optional | — (empty ⇒ `pair/initiate` requires only an admin token) | ADR 0028 §6, `backend-network-api.md` FR-1. An *additional* factor on `pair/initiate`; never a login credential and never accepted in place of one. |
 
   This table is the authoritative key list at the time this spec is
   written; a later phase adding a key extends this table rather than
@@ -244,6 +250,15 @@ file format, where it lives, or the actual validation each key needs.
   accurate without qualification, once phase 13 wires `ServeTLS` and
   `validatePublicBindCertificate` becomes the deciding check again on
   its own terms.
+
+  **Phase 13 update (2026-09-02, `DRAFT` — pending review):**
+  `backend-network-transport.md` FR-2 wires `ServeTLS` and re-enables
+  `validatePublicBindCertificate` (plus an ACME path) as the deciding
+  check, and adds a DNS-SAN check for a named public host and an
+  `ACME_ENABLED`/`ACME_DOMAIN` acceptance branch (ADR 0028 §1). When that
+  spec is `IMPLEMENTED`, this interim note is deleted and the middle
+  bullet stands unqualified. Until then it still describes the running
+  code.
 
 ## Non-functional requirements
 

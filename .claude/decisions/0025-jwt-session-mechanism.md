@@ -47,7 +47,16 @@ Authentication must support both the packaged Electron desktop app (single local
      - Implementation: Implemented with Go standard library cryptographic primitives (`crypto/hmac`, `crypto/sha256`, `encoding/base64`, `encoding/json`, `crypto/subtle`) inside `internal/auth/jwt` to minimize third-party dependency vulnerabilities (Constitution §9).
    - **Refresh Tokens & Sessions**:
      - Refresh tokens are cryptographically random 32-byte tokens (hex/base64url encoded).
-     - Stored in the database (`user_refresh_tokens`) as a SHA-256 hash (`token_hash`) with metadata: `user_id`, `expires_at` (e.g., 30 days), `revoked_at` (nullable), `user_agent`, `ip_address`, `created_at`.
+     - Stored in the database (`user_refresh_tokens`) as a SHA-256 hash (`token_hash`) with metadata: `user_id`, `expires_at`, `revoked_at` (nullable), `user_agent`, `ip_address`, `created_at`.
+     - **Lifetime (amended 2026-09-02, ADR 0028 §10):** `expires_at` is
+       `now + rememberDeviceDays`, where `rememberDeviceDays` is
+       `network_settings.remember_device_days` — an operator-configurable
+       value, **default 30 days**, settable to `[1, 90]` via
+       `PATCH /api/v1/network/settings` (phase 13). Originally fixed at
+       30. A shorter value only tightens security; the `[1, 90]` bound
+       caps how long a stolen refresh token stays useful. Changing the
+       setting affects tokens issued after the change; existing tokens
+       keep their `expires_at`.
      - Token rotation is enforced: Every call to `POST /api/v1/auth/refresh` revokes the used refresh token and issues a new refresh token + access token pair.
      - Revocation on logout (`POST /api/v1/auth/logout`) sets `revoked_at = now()` on the active refresh token.
 
@@ -86,6 +95,19 @@ Authentication must support both the packaged Electron desktop app (single local
 **Bad / Trade-offs**:
 - In-memory rate limiting is per-process (sufficient for single-node Alexandryn instances).
 - Revocation of access tokens takes up to 15 minutes unless an in-memory blocklist or refresh token check is performed.
+- Multiple token types (access token, MFA ticket, and — from phase 13 —
+  the pairing enrolment grant) are HS256 JWTs. The verification path
+  **must assert the token type**, not only the signature; the first
+  implementation did not, and an MFA ticket was accepted as a bearer
+  token (audit `0012`-C2, fixed in the phase-13 hardening prelude).
+  Distinct types are now signed with distinct HKDF subkeys
+  (`jwt-signing-secret-v1`, `enrolment-grant-v1`) so cross-type
+  acceptance is a structural impossibility, with the `typ` check as
+  defence in depth. `CLAUDE.md` carries the Reflex.
+- Access tokens live in the browser's `localStorage` (attached by
+  `web/src/data/http.ts`), which is XSS-reachable. Phase 13 (ADR 0028 §9)
+  adds an app-origin `Content-Security-Policy` as a backstop; a move off
+  `localStorage` remains a phase-16 hardening question.
 
 ## Reversal Cost
 Low. The authentication middleware interfaces abstract token validation. Swapping signature algorithms (e.g. Ed25519) or session mechanisms requires updating `internal/auth/jwt` without changing route handlers or frontend contracts.

@@ -133,6 +133,19 @@ precedence, or the transport middleware ordering.
   section), then routing. Authentication inserts once phase 12 exists,
   between logging and routing — this spec reserves the slot, phase 12
   designs what fills it.
+
+  **Amended by phase 13 (2026-09-02, `DRAFT` — `backend-network-transport.md`,
+  ADR 0028):** the "between logging and routing" region — reserved above
+  for authentication alone — holds, once the host can bind beyond
+  loopback: security-response headers (CSP / `X-Frame-Options` /
+  `nosniff` / `Referrer-Policy`), HSTS (TLS binds only), CORS
+  (deny-by-default), a global rate limiter for unauthenticated public
+  paths, then authentication (which now also asserts the access-token
+  type and validates the active-library header against the token claims),
+  then `Origin` validation scoped to the unauthenticated pairing route
+  group. Recovery stays strictly outermost and routing strictly
+  innermost; only the single reserved slot expands into an ordered group.
+  `backend-http-transport.md` FR-1 carries the concrete order.
 - **FR-7** (Added 2026-08-18, ADR 0018) General Go static analysis in CI
   MUST run through `golangci-lint`, configured by a project-root
   `.golangci.yml`. This is separate from FR-2/FR-3's import-boundary
