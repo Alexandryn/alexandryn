@@ -216,6 +216,26 @@ func TestPairingSession_IllegalTransitions(t *testing.T) {
 			t.Fatal("state mutated on a bad-argument call")
 		}
 	})
+
+	t.Run("a terminal session past its TTL is not silently re-expired", func(t *testing.T) {
+		// Regression: Verify/Consume must check terminal state before
+		// expiry, so a consumed session called again after the deadline
+		// returns ErrPairingWrongState (no mutation), not ErrPairingExpired.
+		s := mustSession(t, now)
+		_ = s.Verify(now.Add(time.Minute), code, "dev-1")
+		_ = s.Consume(now.Add(2 * time.Minute))
+		past := s.ExpiresAt().Add(time.Hour)
+
+		if err := s.Verify(past, code, "dev-2"); !errors.Is(err, domain.ErrPairingWrongState) {
+			t.Fatalf("Verify on a consumed+stale session: err = %v, want ErrPairingWrongState", err)
+		}
+		if err := s.Consume(past); !errors.Is(err, domain.ErrPairingWrongState) {
+			t.Fatalf("Consume on a consumed+stale session: err = %v, want ErrPairingWrongState", err)
+		}
+		if s.State() != domain.PairingConsumed {
+			t.Fatalf("state = %v, want still consumed", s.State())
+		}
+	})
 }
 
 func TestPairingSession_Expiry(t *testing.T) {
@@ -351,6 +371,24 @@ func TestRehydratePairingSession_RevalidatesInvariants(t *testing.T) {
 	// unknown state string
 	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingState("weird"), now, now.Add(testTTL), nil); err == nil {
 		t.Fatal("an unknown state must fail rehydration")
+	}
+	// state and deviceID must agree
+	dev := domain.DeviceID("dev-1")
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingPending, now, now.Add(testTTL), &dev); err == nil {
+		t.Fatal("a pending session with a device ID must fail rehydration")
+	}
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingVerified, now, now.Add(testTTL), nil); err == nil {
+		t.Fatal("a verified session with no device ID must fail rehydration")
+	}
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingConsumed, now, now.Add(testTTL), nil); err == nil {
+		t.Fatal("a consumed session with no device ID must fail rehydration")
+	}
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingVerified, now, now.Add(testTTL), &dev); err != nil {
+		t.Fatalf("a verified session with a device ID is valid: %v", err)
+	}
+	// expired is unconstrained
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingExpired, now, now.Add(testTTL), nil); err != nil {
+		t.Fatalf("an expired session with no device ID is valid: %v", err)
 	}
 }
 

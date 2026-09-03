@@ -191,6 +191,21 @@ func RehydratePairingSession(
 	if deviceID != nil && strings.TrimSpace(string(*deviceID)) == "" {
 		return nil, &Error{Category: Internal, Message: "persisted pairing session has a blank device ID"}
 	}
+	// state and deviceID must agree: Verify sets a non-nil DeviceID
+	// exactly when it advances to verified, and consumed comes only from
+	// verified. A row where they disagree is a malformed aggregate
+	// (Reliability NFR). expired is unconstrained — a session can expire
+	// from pending (no device) or verified (a device).
+	switch state {
+	case PairingPending:
+		if deviceID != nil {
+			return nil, &Error{Category: Internal, Message: "persisted pending pairing session has a device ID"}
+		}
+	case PairingVerified, PairingConsumed:
+		if deviceID == nil {
+			return nil, &Error{Category: Internal, Message: fmt.Sprintf("persisted %s pairing session has no device ID", state)}
+		}
+	}
 	return &PairingSession{
 		id:          id,
 		initiatedBy: initiatedBy,
@@ -216,6 +231,13 @@ func (s *PairingSession) isExpired(now time.Time) bool {
 	return !now.Before(s.expiresAt)
 }
 
+// terminal reports whether the session can never change state again.
+// consumed and expired are terminal (FR-4); no method, expiry included,
+// touches a terminal session.
+func (s *PairingSession) terminal() bool {
+	return s.state == PairingConsumed || s.state == PairingExpired
+}
+
 // ExpireAt moves a pending or verified session to expired when now is at
 // or after ExpiresAt (FR-5). It is a no-op — no error, no mutation —
 // otherwise or when the session is already terminal.
@@ -228,12 +250,22 @@ func (s *PairingSession) ExpireAt(now time.Time) {
 	}
 }
 
-// Verify checks expiry, then state, then the submitted code in constant
-// time (FR-6). A wrong code returns ErrPairingCodeMismatch and does NOT
-// change state — burning the session on a wrong guess would let an
-// unauthenticated LAN client grief a real pairing. On a match it sets
-// the DeviceID and moves to verified.
+// Verify checks, in order: terminal state (no mutation — a consumed or
+// already-expired session is never re-touched, FR-4), then expiry (a
+// pending/verified session past its TTL moves to expired, FR-5), then
+// the non-pending case, then the caller's device ID, then the submitted
+// code in constant time (FR-6). A wrong code returns ErrPairingCodeMismatch
+// and does NOT change state — burning the session on a wrong guess would
+// let an unauthenticated LAN client grief a real pairing. On a match it
+// sets the DeviceID and moves to verified.
 func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID DeviceID) error {
+	if s.terminal() {
+		return &Error{
+			Category: Conflict,
+			Message:  fmt.Sprintf("pairing session in state %q cannot be verified", s.state),
+			Err:      ErrPairingWrongState,
+		}
+	}
 	if s.isExpired(now) {
 		s.state = PairingExpired
 		return &Error{Category: Conflict, Message: "pairing code not recognised", Err: ErrPairingExpired}
@@ -245,11 +277,14 @@ func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID D
 			Err:      ErrPairingWrongState,
 		}
 	}
-	if !s.code.Equal(submitted) {
-		return &Error{Category: Conflict, Message: "pairing code not recognised", Err: ErrPairingCodeMismatch}
-	}
+	// The device ID is the caller's (a fresh server-generated value), not
+	// the attacker's — check it before the code compare so a bad-argument
+	// call never runs the comparison at all.
 	if strings.TrimSpace(string(deviceID)) == "" {
 		return &Error{Category: Internal, Message: "Verify requires a non-empty device ID"}
+	}
+	if !s.code.Equal(submitted) {
+		return &Error{Category: Conflict, Message: "pairing code not recognised", Err: ErrPairingCodeMismatch}
 	}
 	d := deviceID
 	s.deviceID = &d
@@ -262,6 +297,13 @@ func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID D
 // as a single call so the repository can run it inside the same
 // transaction that writes the PairedDevice row (ADR 0021).
 func (s *PairingSession) Consume(now time.Time) error {
+	if s.terminal() {
+		return &Error{
+			Category: Conflict,
+			Message:  fmt.Sprintf("pairing session in state %q cannot be consumed", s.state),
+			Err:      ErrPairingWrongState,
+		}
+	}
 	if s.isExpired(now) {
 		s.state = PairingExpired
 		return &Error{Category: Conflict, Message: "pairing session has expired", Err: ErrPairingExpired}
