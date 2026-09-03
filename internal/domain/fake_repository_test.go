@@ -184,6 +184,12 @@ func (r *fakeLibraryEntryRepository) EditionInLibrary(_ context.Context, edition
 	return ok, nil
 }
 
+func (r *fakeLibraryEntryRepository) WorkInLibrary(_ context.Context, _ domain.WorkID, _ domain.LibraryID) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.entries) > 0, nil
+}
+
 func (r *fakeLibraryEntryRepository) Save(_ context.Context, e *domain.LibraryEntry) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -600,6 +606,17 @@ func (r *fakeHighlightRepository) Save(_ context.Context, h *domain.Highlight) e
 
 func (r *fakeHighlightRepository) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, h *domain.Highlight) error {
 	return r.Save(ctx, h)
+}
+
+func (r *fakeHighlightRepository) UpdateNoteCategoryAndUser(_ context.Context, _ domain.UserID, id domain.HighlightID, note, category string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	h, ok := r.highlights[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "highlight not found"}
+	}
+	r.highlights[id] = domain.NewHighlight(h.ID(), h.EditionID(), h.StartPosition(), h.EndPosition(), note, category, h.CreatedAt())
+	return nil
 }
 
 func (r *fakeHighlightRepository) Delete(_ context.Context, id domain.HighlightID) error {

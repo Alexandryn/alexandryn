@@ -50,18 +50,33 @@ func (r *LibraryEntryRepository) FindByEdition(ctx context.Context, editionID do
 }
 
 // EditionInLibrary reports whether editionID is owned in libraryID
-// (AUDIT-0012-C1). A COALESCE keeps a legacy NULL library_id row
-// (pre-multi-library) matching the default library.
+// (AUDIT-0012-C1). library_entries.library_id is NOT NULL (migration
+// 00009 backfilled it), so a plain equality is enough.
 func (r *LibraryEntryRepository) EditionInLibrary(ctx context.Context, editionID domain.EditionID, libraryID domain.LibraryID) (bool, error) {
 	exec := executorFrom(ctx, r.pool)
 	var exists bool
 	err := exec.QueryRow(ctx,
-		`SELECT EXISTS(
-			SELECT 1 FROM library_entries
-			WHERE edition_id = $1
-			AND COALESCE(library_id::text, '00000000-0000-0000-0000-000000000001') = $2
-		)`,
+		`SELECT EXISTS(SELECT 1 FROM library_entries WHERE edition_id = $1 AND library_id = $2)`,
 		string(editionID), string(libraryID),
+	).Scan(&exists)
+	if err != nil {
+		return false, TranslateError(err)
+	}
+	return exists, nil
+}
+
+// WorkInLibrary reports whether libraryID owns at least one edition of
+// workID.
+func (r *LibraryEntryRepository) WorkInLibrary(ctx context.Context, workID domain.WorkID, libraryID domain.LibraryID) (bool, error) {
+	exec := executorFrom(ctx, r.pool)
+	var exists bool
+	err := exec.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM library_entries le
+			JOIN editions e ON e.id = le.edition_id
+			WHERE e.work_id = $1 AND le.library_id = $2
+		)`,
+		string(workID), string(libraryID),
 	).Scan(&exists)
 	if err != nil {
 		return false, TranslateError(err)

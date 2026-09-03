@@ -74,6 +74,10 @@ type LibraryEntryRepository interface {
 	// cannot stream the bytes of an edition owned only in library Y
 	// (AUDIT-0012-C1).
 	EditionInLibrary(ctx context.Context, editionID EditionID, libraryID LibraryID) (bool, error)
+	// WorkInLibrary reports whether libraryID owns at least one edition of
+	// workID — the Work-keyed equivalent of EditionInLibrary, for gating
+	// progress writes.
+	WorkInLibrary(ctx context.Context, workID WorkID, libraryID LibraryID) (bool, error)
 	Save(ctx context.Context, e *LibraryEntry) error
 	DeleteByEdition(ctx context.Context, editionID EditionID) error
 }
@@ -171,6 +175,12 @@ type HighlightRepository interface {
 	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Highlight, error)
 	Save(ctx context.Context, h *Highlight) error
 	SaveForUser(ctx context.Context, userID UserID, libraryID LibraryID, h *Highlight) error
+	// UpdateNoteCategoryAndUser updates only the note and category of a
+	// highlight the user owns, leaving edition_id and library_id
+	// untouched — a PATCH must not relocate the highlight into whatever
+	// library the request's active-library header names (PR #78 review).
+	// A foreign or missing id is a NotFound.
+	UpdateNoteCategoryAndUser(ctx context.Context, userID UserID, id HighlightID, note, category string) error
 	Delete(ctx context.Context, id HighlightID) error
 	DeleteAndUser(ctx context.Context, userID UserID, id HighlightID) error
 }

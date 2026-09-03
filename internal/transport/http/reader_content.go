@@ -52,12 +52,10 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		// of a library that owns this edition (AUDIT-0012-C1,
 		// backend-reader-content.md FR-1 amendment). The auth middleware
 		// has already validated X-Library-Id against the token; here we
-		// confirm the edition is in that library. "Not in your library"
-		// and "does not exist" return the same NotFound — no
-		// cross-library existence oracle. This gate fails closed: if the
-		// ownership checker is not wired, the content is not served.
+		// confirm the edition is in that library. This gate fails closed:
+		// if the ownership checker is not wired, the content is not served.
 		deps, ready := poolRef.GetReadingAPI()
-		if !ready || deps.LibraryEntries == nil {
+		if !ready {
 			WriteError(w, domain.Unavailable, "the reader is not ready yet", correlationID)
 			return
 		}
@@ -65,13 +63,7 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 			WriteError(w, domain.Unauthorized, "authentication is required", correlationID)
 			return
 		}
-		inLib, err := deps.LibraryEntries.EditionInLibrary(r.Context(), domain.EditionID(editionID), ActiveLibraryFromContext(r.Context()))
-		if err != nil {
-			writeDomainError(w, err, correlationID)
-			return
-		}
-		if !inLib {
-			WriteError(w, domain.NotFound, "no such edition in your library", correlationID)
+		if !assertEditionInLibrary(deps, r, w, domain.EditionID(editionID), ActiveLibraryFromContext(r.Context()), correlationID) {
 			return
 		}
 

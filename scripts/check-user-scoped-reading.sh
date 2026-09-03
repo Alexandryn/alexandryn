@@ -15,7 +15,10 @@ set -euo pipefail
 
 ROOT="${1:-.}"
 DIR="$ROOT/internal/transport/http"
-FILES=(reading.go reading_export.go reader_content.go)
+# Every non-test handler file on the reading/reader transport surface —
+# a glob, not a fixed list, so a new handler file is covered
+# automatically. Excludes the *_ref.go / *_test.go plumbing.
+mapfile -t FILES < <(cd "$DIR" 2>/dev/null && ls reading*.go reader_content*.go 2>/dev/null | grep -Ev '_test\.go$|_ref\.go$' || true)
 
 # Forbidden: `<recv>.<method>(` where recv is a reading-data deps field
 # and method is a non-user-scoped variant. The user-scoped forms
@@ -35,7 +38,14 @@ forbidden=(
 	'deps\.Highlights\.Delete\('
 	'deps\.Preferences\.FindByDevice\('
 	'deps\.Preferences\.Save\('
-	'deps\.Export\.ListProgress\(r\.Context\(\), *"'
+	# Export: reject a call that passes only (ctx, workID) — the
+	# user-scoped signature takes (ctx, userID, libraryID, workID). The
+	# compile-time signature change is the primary guard; this is
+	# defence in depth against a future re-loosening.
+	'deps\.Export\.ListProgress\([^,]*, *"'
+	'deps\.Export\.ListMarks\([^,]*, *"'
+	'deps\.Export\.ListProgress\([^,]*, *workID *\)'
+	'deps\.Export\.ListMarks\([^,]*, *workID *\)'
 )
 
 violations=""
