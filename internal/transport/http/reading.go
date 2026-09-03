@@ -45,6 +45,48 @@ func readingScope(r *http.Request, w http.ResponseWriter, correlationID string) 
 	return user.UserID, ActiveLibraryFromContext(r.Context()), true
 }
 
+// assertEditionInLibrary confirms editionID is owned in libID before a
+// write is scoped to that library (AUDIT-0012-C1, review of PR #78): the
+// read path (reader_content) and every write path must agree that reading
+// data only references editions inside the caller's active library.
+// "not in your library" and "does not exist" are the same 404 — no
+// cross-library existence oracle.
+func assertEditionInLibrary(deps ReadingAPI, r *http.Request, w http.ResponseWriter, editionID domain.EditionID, libID domain.LibraryID, correlationID string) bool {
+	if deps.LibraryEntries == nil {
+		WriteError(w, domain.Unavailable, "the reading service is not ready yet", correlationID)
+		return false
+	}
+	ok, err := deps.LibraryEntries.EditionInLibrary(r.Context(), editionID, libID)
+	if err != nil {
+		writeDomainError(w, err, correlationID)
+		return false
+	}
+	if !ok {
+		WriteError(w, domain.NotFound, "no such edition in your library", correlationID)
+		return false
+	}
+	return true
+}
+
+// assertWorkInLibrary is assertEditionInLibrary for a Work-keyed write
+// (progress): the library must own at least one edition of the work.
+func assertWorkInLibrary(deps ReadingAPI, r *http.Request, w http.ResponseWriter, workID domain.WorkID, libID domain.LibraryID, correlationID string) bool {
+	if deps.LibraryEntries == nil {
+		WriteError(w, domain.Unavailable, "the reading service is not ready yet", correlationID)
+		return false
+	}
+	ok, err := deps.LibraryEntries.WorkInLibrary(r.Context(), workID, libID)
+	if err != nil {
+		writeDomainError(w, err, correlationID)
+		return false
+	}
+	if !ok {
+		WriteError(w, domain.NotFound, "no such book in your library", correlationID)
+		return false
+	}
+	return true
+}
+
 func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -151,6 +193,9 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 		}
 		userID, libID, ok := readingScope(r, w, correlationID)
 		if !ok {
+			return
+		}
+		if !assertWorkInLibrary(deps, r, w, domain.WorkID(workID), libID, correlationID) {
 			return
 		}
 
@@ -295,6 +340,9 @@ func ReadingBookmarkCreateHandler(poolRef *PoolRef, now func() time.Time) http.H
 		if !ok {
 			return
 		}
+		if !assertEditionInLibrary(deps, r, w, domain.EditionID(editionID), libID, correlationID) {
+			return
+		}
 
 		var req struct {
 			CFI   string  `json:"cfi"`
@@ -412,6 +460,9 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 		if !ok {
 			return
 		}
+		if !assertEditionInLibrary(deps, r, w, domain.EditionID(editionID), libID, correlationID) {
+			return
+		}
 
 		var req struct {
 			StartCFI string  `json:"startCfi"`
@@ -474,7 +525,7 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 			return
 		}
 		id := domain.HighlightID(r.PathValue("highlightId"))
-		userID, libID, ok := readingScope(r, w, correlationID)
+		userID, _, ok := readingScope(r, w, correlationID)
 		if !ok {
 			return
 		}
@@ -512,11 +563,14 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 			}
 		}
 
-		updated := domain.NewHighlight(existing.ID(), existing.EditionID(), existing.StartPosition(), existing.EndPosition(), note, category, existing.CreatedAt())
-		if err := deps.Highlights.SaveForUser(r.Context(), userID, libID, updated); err != nil {
+		// Update note/category only — a PATCH must not move the highlight
+		// into whatever library X-Library-Id currently names (PR #78
+		// review). edition_id and library_id are left as stored.
+		if err := deps.Highlights.UpdateNoteCategoryAndUser(r.Context(), userID, id, note, category); err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
+		updated := domain.NewHighlight(existing.ID(), existing.EditionID(), existing.StartPosition(), existing.EndPosition(), note, category, existing.CreatedAt())
 		writeJSON(w, http.StatusOK, map[string]any{"highlight": highlightToWire(updated)})
 	})
 }

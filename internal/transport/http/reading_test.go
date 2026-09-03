@@ -150,6 +150,17 @@ func (m *memHighlights) SaveForUser(_ context.Context, userID domain.UserID, _ d
 	m.owner[h.ID()] = userID
 	return nil
 }
+func (m *memHighlights) UpdateNoteCategoryAndUser(_ context.Context, userID domain.UserID, id domain.HighlightID, note, category string) error {
+	h, ok := m.byID[id]
+	if !ok || m.owner[id] != userID {
+		return &domain.Error{Category: domain.NotFound, Message: "not found"}
+	}
+	// Rebuild preserving edition/positions/createdAt — the fake has no
+	// separate library field, so this mirrors the SQL's "note/category
+	// only" update.
+	m.byID[id] = domain.NewHighlight(h.ID(), h.EditionID(), h.StartPosition(), h.EndPosition(), note, category, h.CreatedAt())
+	return nil
+}
 func (m *memHighlights) Delete(_ context.Context, id domain.HighlightID) error {
 	delete(m.byID, id)
 	return nil
@@ -184,19 +195,33 @@ func (m *memPrefs) SaveForUser(ctx context.Context, _ domain.UserID, p *domain.R
 	return m.Save(ctx, p)
 }
 
-// memLibraryEntries maps edition -> the single library that owns it.
+// memLibraryEntries maps edition -> the single library that owns it. When
+// permissive is set (the default from newReadingAPI), every edition/work
+// is treated as in-library — so tests that don't care about the
+// library-ownership gate keep working; the IDOR tests set an explicit map.
 type memLibraryEntries struct {
-	inLib map[domain.EditionID]domain.LibraryID
+	inLib      map[domain.EditionID]domain.LibraryID
+	works      map[domain.WorkID]domain.LibraryID
+	permissive bool
 }
 
 func (m *memLibraryEntries) FindByEdition(_ context.Context, e domain.EditionID) (*domain.LibraryEntry, error) {
-	if _, ok := m.inLib[e]; ok {
+	if _, ok := m.inLib[e]; ok || m.permissive {
 		return domain.NewLibraryEntry("le-1", e, time.Time{}), nil
 	}
 	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
 }
 func (m *memLibraryEntries) EditionInLibrary(_ context.Context, e domain.EditionID, lib domain.LibraryID) (bool, error) {
+	if m.permissive {
+		return true, nil
+	}
 	return m.inLib[e] == lib, nil
+}
+func (m *memLibraryEntries) WorkInLibrary(_ context.Context, wk domain.WorkID, lib domain.LibraryID) (bool, error) {
+	if m.permissive {
+		return true, nil
+	}
+	return m.works[wk] == lib, nil
 }
 func (m *memLibraryEntries) Save(_ context.Context, _ *domain.LibraryEntry) error        { return nil }
 func (m *memLibraryEntries) DeleteByEdition(_ context.Context, _ domain.EditionID) error { return nil }
@@ -324,14 +349,15 @@ func spyLogger(s *testutil.SpyHandler) *slog.Logger {
 func newReadingAPI() (transporthttp.ReadingAPI, *memExport) {
 	exp := &memExport{works: map[string]bool{}, byUser: map[domain.UserID]memExportUser{}}
 	return transporthttp.ReadingAPI{
-		Progress:    &memReadingProgress{byWork: map[domain.WorkID]*domain.ReadingProgress{}},
-		Bookmarks:   &memBookmarks{byID: map[domain.BookmarkID]*domain.Bookmark{}, owner: map[domain.BookmarkID]domain.UserID{}},
-		Highlights:  &memHighlights{byID: map[domain.HighlightID]*domain.Highlight{}, owner: map[domain.HighlightID]domain.UserID{}},
-		Preferences: &memPrefs{byDevice: map[domain.DeviceID]*domain.ReadingPreferences{}},
-		Editions:    &memEditions{byID: map[domain.EditionID]*domain.Edition{}},
-		Transactor:  inlineTx{},
-		IDs:         &seqID{},
-		Export:      exp,
+		Progress:       &memReadingProgress{byWork: map[domain.WorkID]*domain.ReadingProgress{}},
+		Bookmarks:      &memBookmarks{byID: map[domain.BookmarkID]*domain.Bookmark{}, owner: map[domain.BookmarkID]domain.UserID{}},
+		Highlights:     &memHighlights{byID: map[domain.HighlightID]*domain.Highlight{}, owner: map[domain.HighlightID]domain.UserID{}},
+		Preferences:    &memPrefs{byDevice: map[domain.DeviceID]*domain.ReadingPreferences{}},
+		Editions:       &memEditions{byID: map[domain.EditionID]*domain.Edition{}},
+		LibraryEntries: &memLibraryEntries{permissive: true},
+		Transactor:     inlineTx{},
+		IDs:            &seqID{},
+		Export:         exp,
 	}, exp
 }
 
@@ -544,6 +570,77 @@ func TestReading_RequiresAuthenticatedUser(t *testing.T) {
 	rr := do(t, srv, http.MethodGet, "/api/v1/reading/works/work-1/progress", "", hdr("X-Test-User", ""))
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 without an authenticated user, got %d", rr.Code)
+	}
+}
+
+// TestReading_WritesGatedOnLibraryOwnership covers the PR #78 review
+// finding: the C1 fix gated reads on library ownership but left the write
+// path open. A bookmark/highlight/progress write against an edition or
+// work outside the caller's active library is a 404, not a stored row.
+func TestReading_WritesGatedOnLibraryOwnership(t *testing.T) {
+	api, _ := newReadingAPI()
+	// "ed-mine" is in the default library; "ed-foreign" is in another.
+	api.LibraryEntries = &memLibraryEntries{
+		inLib: map[domain.EditionID]domain.LibraryID{"ed-mine": domain.DefaultLibraryID},
+		works: map[domain.WorkID]domain.LibraryID{"work-mine": domain.DefaultLibraryID},
+	}
+	srv := readingServer(t, api, nil)
+
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"bookmark on a foreign edition", http.MethodPost, "/api/v1/reading/editions/ed-foreign/bookmarks", `{"cfi":"epubcfi(/6/4!/4/10)"}`},
+		{"highlight on a foreign edition", http.MethodPost, "/api/v1/reading/editions/ed-foreign/highlights", `{"startCfi":"epubcfi(/6/4!/4/2/1:0)","endCfi":"epubcfi(/6/4!/4/2/1:9)"}`},
+		{"progress on a work with no edition in the library", http.MethodPost, "/api/v1/reading/works/work-foreign/progress", `{"percentage":0.4,"observedEpoch":0}`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := map[string]string{}
+			if c.method == http.MethodPost && strings.Contains(c.path, "/progress") {
+				h["X-Device-Id"] = validDevice
+			}
+			rr := do(t, srv, c.method, c.path, c.body, h)
+			if rr.Code != http.StatusNotFound {
+				t.Fatalf("%s: status = %d, want 404; body %s", c.name, rr.Code, rr.Body.String())
+			}
+		})
+	}
+
+	// A write against the owned edition still works.
+	rr := do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-mine/bookmarks", `{"cfi":"epubcfi(/6/4!/4/10)"}`, nil)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("bookmark on an owned edition: status = %d, want 201; body %s", rr.Code, rr.Body.String())
+	}
+}
+
+// TestReadingHighlights_PatchDoesNotRelocate covers the PR #78 review
+// finding: a PATCH must update note/category only, never re-scope the
+// highlight into the request's active library. Here it is exercised at
+// the handler level — the PATCH succeeds even when X-Library-Id names a
+// different (but still valid) library, and does not error.
+func TestReadingHighlights_PatchDoesNotRelocate(t *testing.T) {
+	api, _ := newReadingAPI()
+	srv := readingServer(t, api, nil)
+
+	// Create as the default user with the default active library.
+	rr := do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-1/highlights",
+		`{"startCfi":"epubcfi(/6/4!/4/2/1:0)","endCfi":"epubcfi(/6/4!/4/2/1:9)","note":"first"}`, nil)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", rr.Code, rr.Body.String())
+	}
+	var created struct {
+		Highlight struct{ ID string } `json:"highlight"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &created)
+
+	// PATCH with a different X-Library-Id — must still update, not error.
+	rr = do(t, srv, http.MethodPatch, "/api/v1/reading/highlights/"+created.Highlight.ID,
+		`{"note":"second"}`, hdr("X-Library-Id", "some-other-library"))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("patch: %d %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "second") {
+		t.Fatalf("patch did not apply: %s", rr.Body.String())
 	}
 }
 

@@ -210,3 +210,42 @@ func TestHighlightRepository_PerUserIDOR(t *testing.T) {
 		t.Fatalf("alice's highlight was affected by bob: %v", err)
 	}
 }
+
+// TestHighlightRepository_UpdateNoteCategory_DoesNotRelocate is the PR #78
+// review finding: a note/category update must not touch library_id or
+// edition_id.
+func TestHighlightRepository_UpdateNoteCategory_DoesNotRelocate(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+	mustExecPool(t, pool, "INSERT INTO works (id, title) VALUES ('work-1', 'T')")
+	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('ed-1', 'work-1', 'en', '')")
+	mustExecPool(t, pool, "INSERT INTO libraries (id, name, description, allow_reader_uploads, created_at, updated_at) VALUES ('lib-a', 'A', '', false, now(), now()) ON CONFLICT DO NOTHING")
+	repo := postgres.NewHighlightRepository(pool)
+
+	h := domain.NewHighlight("hl-1", "ed-1", "s", "e", "orig", "cat", time.Now().UTC().Truncate(time.Microsecond))
+	if err := repo.SaveForUser(ctx, "alice", "lib-a", h); err != nil {
+		t.Fatalf("SaveForUser: %v", err)
+	}
+
+	if err := repo.UpdateNoteCategoryAndUser(ctx, "alice", "hl-1", "changed", "cat2"); err != nil {
+		t.Fatalf("UpdateNoteCategoryAndUser: %v", err)
+	}
+
+	var libID, edID, note, category string
+	if err := pool.QueryRow(ctx,
+		"SELECT library_id, edition_id, note, category FROM highlights WHERE id = 'hl-1'",
+	).Scan(&libID, &edID, &note, &category); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if libID != "lib-a" || edID != "ed-1" {
+		t.Fatalf("update relocated the highlight: library_id=%q edition_id=%q, want lib-a / ed-1", libID, edID)
+	}
+	if note != "changed" || category != "cat2" {
+		t.Fatalf("update did not apply: note=%q category=%q", note, category)
+	}
+
+	// A foreign user cannot update it.
+	if err := repo.UpdateNoteCategoryAndUser(ctx, "bob", "hl-1", "hax", ""); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("bob UpdateNoteCategoryAndUser: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+}

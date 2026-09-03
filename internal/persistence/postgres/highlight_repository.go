@@ -131,6 +131,25 @@ func (r *HighlightRepository) SaveForUser(ctx context.Context, userID domain.Use
 	return nil
 }
 
+// UpdateNoteCategoryAndUser updates note/category on a row the user owns,
+// leaving edition_id and library_id untouched so a PATCH cannot relocate
+// the highlight (PR #78 review). A foreign or missing id → NotFound.
+func (r *HighlightRepository) UpdateNoteCategoryAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID, note, category string) error {
+	exec := executorFrom(ctx, r.pool)
+
+	tag, err := exec.Exec(ctx,
+		`UPDATE highlights SET note = $3, category = $4
+			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
+		string(id), string(userID), note, category)
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "highlight not found"}
+	}
+	return nil
+}
+
 func (r *HighlightRepository) Delete(ctx context.Context, id domain.HighlightID) error {
 	exec := executorFrom(ctx, r.pool)
 
