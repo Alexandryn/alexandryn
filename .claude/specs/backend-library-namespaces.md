@@ -59,6 +59,14 @@ Personal reading data (`ReadingProgress`, `Bookmark`, `Highlight`, `ReadingPrefe
     Low impact at loopback, **High** once phase 13 opens the bind. The
     phase-13 hardening prelude adds the check + a handler test;
     `backend-network-transport.md` FR-13 carries the middleware change.)
+    The check is applied to **every** authenticated `/api/v1` route, not
+    only the reading surface — `X-Library-Id` is the active-library
+    selector and a header naming a non-member library is always wrong.
+    The **frontend** consequence (PR #78 review, finding 2): a client
+    that persists an active library and later loses membership will get a
+    `403` on every request until it switches libraries; the SPA MUST
+    detect this `Forbidden` code and clear/reset its stored active
+    library rather than looping. Owned by `frontend-auth-and-tenancy.md`.
 - **FR-4: User-Scoped Reading Data Retrofit**:
   - `GET /api/v1/reading/works/:workId/progress` queries `reading_progress` filtered by `user_id = $1 AND library_id = $2 AND work_id = $3`.
   - `POST /api/v1/reading/works/:workId/progress` upserts with row lock on `(user_id, library_id, work_id)`.
