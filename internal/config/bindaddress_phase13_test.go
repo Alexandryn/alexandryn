@@ -155,6 +155,39 @@ func TestBind_Unspecified_WithValidCert_Accepted(t *testing.T) {
 	}
 }
 
+func TestBind_HalfConfiguredCertPair_Rejected(t *testing.T) {
+	// Only one of TLS_CERT_FILE / TLS_KEY_FILE set is a mistake on any
+	// bind class — on a private bind it would otherwise skip the opt-in
+	// TLS branch and silently serve plaintext.
+	for _, tc := range []struct {
+		name      string
+		cert, key string
+		bind      string
+	}{
+		{"private, only cert", "/tls/cert.pem", "", "192.168.1.10:8443"},
+		{"private, only key", "", "/tls/key.pem", "192.168.1.10:8443"},
+		{"public, only cert", "/tls/cert.pem", "", "203.0.113.5:8443"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			validEnv(t)
+			t.Setenv("BIND_ADDRESS", tc.bind)
+			if tc.cert != "" {
+				t.Setenv("TLS_CERT_FILE", tc.cert)
+			}
+			if tc.key != "" {
+				t.Setenv("TLS_KEY_FILE", tc.key)
+			}
+			_, err := config.Load("", noFile, fakeUserConfigDir)
+			if err == nil {
+				t.Fatal("Load() error = nil, want an error — a half-configured TLS pair must not fall through to plaintext")
+			}
+			if !strings.Contains(err.Error(), "TLS_CERT_FILE") || !strings.Contains(err.Error(), "TLS_KEY_FILE") {
+				t.Fatalf("error should name both keys: %v", err)
+			}
+		})
+	}
+}
+
 func TestBind_LoopbackAndPrivate_NoCert_StillAccepted(t *testing.T) {
 	for _, addr := range []string{"127.0.0.1:0", "[::1]:0", "localhost:8080", "10.0.0.5:8080", "[fc00::1]:8080"} {
 		t.Run(addr, func(t *testing.T) {

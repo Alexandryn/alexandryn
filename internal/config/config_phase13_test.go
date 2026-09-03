@@ -110,16 +110,25 @@ func TestLoad_CORSAllowedOrigins_ParsesAndValidates(t *testing.T) {
 		t.Fatalf("CORSAllowedOrigins = %v, want %v", cfg.CORSAllowedOrigins, want)
 	}
 
-	// Scheme and host are canonicalised to lower case (RFC 6454) so a
-	// config typo is not a silently dead entry.
-	validEnv(t)
-	t.Setenv("CORS_ALLOWED_ORIGINS", "HTTPS://App.Example:8443")
-	cfg, err = config.Load("", noFile, fakeUserConfigDir)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "https://app.example:8443" {
-		t.Fatalf("CORSAllowedOrigins = %v, want [https://app.example:8443]", cfg.CORSAllowedOrigins)
+	// Entries are normalized to the serialized-origin form a browser
+	// sends (RFC 6454 §6.1): host lower-cased, the scheme's default port
+	// dropped, a non-default port kept.
+	for _, tc := range []struct{ in, want string }{
+		{"HTTPS://App.Example:8443", "https://app.example:8443"},
+		{"https://library.example.com:443", "https://library.example.com"},
+		{"http://host.example:80", "http://host.example"},
+		{"https://host.example:8443", "https://host.example:8443"},
+		{"HTTP://Host.Example", "http://host.example"},
+	} {
+		validEnv(t)
+		t.Setenv("CORS_ALLOWED_ORIGINS", tc.in)
+		cfg, err = config.Load("", noFile, fakeUserConfigDir)
+		if err != nil {
+			t.Fatalf("Load() %q error = %v", tc.in, err)
+		}
+		if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != tc.want {
+			t.Fatalf("CORS_ALLOWED_ORIGINS=%q -> %v, want [%s]", tc.in, cfg.CORSAllowedOrigins, tc.want)
+		}
 	}
 
 	for _, bad := range []string{

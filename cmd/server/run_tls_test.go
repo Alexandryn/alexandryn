@@ -21,12 +21,24 @@ import (
 )
 
 // TestRun_ServesTLSWhenConfigHasACert is phase 13 Tier 0: when config
-// resolves an in-process-TLS bind (here, a private bind with the opt-in
-// TLS_CERT_FILE/TLS_KEY_FILE), cmd/server wraps the listener in TLS — a
-// plaintext request to the port fails, an https request succeeds. This is
-// what lets validateBindAddress accept a public bind without the process
-// silently serving plaintext on it.
+// resolves an in-process-TLS bind, cmd/server wraps the listener in TLS —
+// a plaintext request to the port fails, an https request succeeds. Two
+// cases: a private bind with the opt-in TLS_CERT_FILE/TLS_KEY_FILE, and
+// an accepted public bind (0.0.0.0, classPublic). The public case is the
+// safety property validateBindAddress's loosened check depends on — a
+// public bind that Load accepts must actually be served over TLS by
+// run(), never plaintext.
 func TestRun_ServesTLSWhenConfigHasACert(t *testing.T) {
+	t.Run("private opt-in cert", func(t *testing.T) {
+		assertRunServesTLS(t, "127.0.0.1:0")
+	})
+	t.Run("accepted public bind", func(t *testing.T) {
+		assertRunServesTLS(t, "0.0.0.0:0")
+	})
+}
+
+func assertRunServesTLS(t *testing.T, bindAddr string) {
+	t.Helper()
 	certPEM, keyPEM := selfSignedCert(t)
 	readFile := func(path string) ([]byte, error) {
 		switch path {
@@ -40,7 +52,7 @@ func TestRun_ServesTLSWhenConfigHasACert(t *testing.T) {
 	}
 
 	t.Setenv("OPEN_LIBRARY_USER_AGENT", "Alexandryn/test")
-	t.Setenv("BIND_ADDRESS", "127.0.0.1:0")
+	t.Setenv("BIND_ADDRESS", bindAddr)
 	t.Setenv("TLS_CERT_FILE", "/tls/cert.pem")
 	t.Setenv("TLS_KEY_FILE", "/tls/key.pem")
 
@@ -49,7 +61,7 @@ func TestRun_ServesTLSWhenConfigHasACert(t *testing.T) {
 		t.Fatalf("config.Load: %v", err)
 	}
 	if cfg.TLSCertificate() == nil {
-		t.Fatal("config.Load did not populate a TLS certificate for the opt-in private bind")
+		t.Fatalf("config.Load did not populate a TLS certificate for bind %q", bindAddr)
 	}
 
 	addrCh := make(chan string, 1)
@@ -75,6 +87,13 @@ func TestRun_ServesTLSWhenConfigHasACert(t *testing.T) {
 	go func() { exitCh <- run(ctx, deps) }()
 
 	addr := waitForAddr(t, addrCh, 2*time.Second)
+	// An unspecified bind (0.0.0.0 / ::) reports its listen address as
+	// 0.0.0.0:port; dial it on the loopback interface.
+	if h, p, err := net.SplitHostPort(addr); err == nil {
+		if ip := net.ParseIP(h); ip != nil && ip.IsUnspecified() {
+			addr = net.JoinHostPort("127.0.0.1", p)
+		}
+	}
 
 	// Plaintext to a TLS listener never returns a real 200 — Go's TLS
 	// server answers a plaintext request with 400 Bad Request (or the

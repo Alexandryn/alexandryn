@@ -445,15 +445,17 @@ func parseBool(raw string) (any, error) {
 }
 
 // parseOriginList splits a comma-separated CORS_ALLOWED_ORIGINS value,
-// trims each entry, and validates it is a bare scheme://host[:port] with
-// an http/https scheme, a host, and no path/query/fragment (ADR 0028 §4:
+// trims each entry, validates it is a bare scheme://host[:port] with an
+// http/https scheme, a host, and no path/query/fragment (ADR 0028 §4:
 // CORS matching is exact string equality, so a malformed entry could
-// never match and is rejected loudly instead). The scheme and host are
-// lowercased to the canonical origin form (RFC 6454) so a config typo
-// like HTTPS://A.example does not sit in the list as a silently dead
-// entry — a browser Origin header is always already lowercased, and
-// lowercasing here can only make an eventual match stricter, never
-// looser.
+// never match and is rejected loudly instead), and normalizes it to the
+// serialized-origin form the browser actually sends (RFC 6454 §6.1):
+// host lower-cased, and the scheme's default port (:443 for https, :80
+// for http) dropped. Without this, the reverse-proxy config ADR 0028 §4
+// describes — an operator pasting https://host:443 straight from a proxy
+// file — would sit in the list as an entry no Origin header can match.
+// Normalization only ever tightens an eventual exact match, never loosens
+// it. (url.Parse already lower-cases the scheme.)
 func parseOriginList(raw string) (any, error) {
 	var out []string
 	for _, part := range strings.Split(raw, ",") {
@@ -468,13 +470,23 @@ func parseOriginList(raw string) (any, error) {
 		if u.Scheme != "http" && u.Scheme != "https" {
 			return nil, fmt.Errorf("entry %q must use the http or https scheme", entry)
 		}
-		if u.Host == "" {
+		if u.Hostname() == "" {
 			return nil, fmt.Errorf("entry %q has no host", entry)
 		}
 		if u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
 			return nil, fmt.Errorf("entry %q must be a bare scheme://host[:port] with no path", entry)
 		}
-		out = append(out, strings.ToLower(u.Scheme)+"://"+strings.ToLower(u.Host))
+		host := strings.ToLower(u.Hostname())
+		if port := u.Port(); port != "" && !isDefaultPort(u.Scheme, port) {
+			host = net.JoinHostPort(host, port)
+		}
+		out = append(out, u.Scheme+"://"+host)
 	}
 	return out, nil
+}
+
+// isDefaultPort reports whether port is the scheme's default (dropped
+// from a serialized origin per RFC 6454 §6.1).
+func isDefaultPort(scheme, port string) bool {
+	return (scheme == "https" && port == "443") || (scheme == "http" && port == "80")
 }
