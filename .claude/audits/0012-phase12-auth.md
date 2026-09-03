@@ -270,3 +270,21 @@ re-audit of the phase-12 authorization surface is required before phase
 12 is marked `Closed`**, recorded as a directive in
 `roadmap/12-authentication/README.md`. Phase 13's own security audit
 (`0013`) will re-verify C1 and C2 as fixed as part of its scope.
+
+### Fix status (2026-09-02, PR #78)
+
+C1, C2, and P12-4 are fixed on `feat/phase13-network-access` as the
+phase-13 hardening prelude (`fix(auth): enforce per-user reading-data
+scoping and access-token type checks`), with unit IDOR tests, middleware
+token-type / library-claim tests, repository IDOR integration tests, and
+a CI guard (`scripts/check-user-scoped-reading.sh`). CI green.
+
+**Forward data note:** the reading-progress fix changes the row key from a
+single global `('', '', work_id)` row to `(user_id, library_id, work_id)`.
+Any pre-existing `reading_progress` row written during phase-11 usage
+carries `user_id = NULL` and becomes invisible after the fix — a user's
+first post-fix progress report inserts a fresh scoped row. Acceptable:
+phase 11 had no real multi-user data at stake, and the reader spec's
+retrofit (`backend-library-namespaces.md` FR-4) already anticipated this.
+No migration is written to reassign the orphaned rows; if that is ever
+wanted it is a separate, explicit data migration, not part of this fix.
