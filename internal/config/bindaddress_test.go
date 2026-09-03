@@ -55,12 +55,15 @@ func TestLoad_BindAddress_PubliclyRoutableWithNoCertRejected(t *testing.T) {
 }
 
 func TestLoad_BindAddress_UnrecognizedHostRejected(t *testing.T) {
+	// A hostname that isn't "localhost" or a literal IP is classified
+	// publicly routable without a DNS lookup (ADR 0028 §1); with no
+	// certificate configured it is refused.
 	validEnv(t)
 	t.Setenv("BIND_ADDRESS", "example.com:8080")
 
 	_, err := config.Load("", noFile, fakeUserConfigDir)
 	if err == nil {
-		t.Fatal("Load() error = nil, want an error — a hostname that isn't \"localhost\" or a literal IP can't be classified without a real DNS lookup")
+		t.Fatal("Load() error = nil, want an error — a DNS-name bind is public and has no certificate")
 	}
 	if !strings.Contains(err.Error(), "BIND_ADDRESS") {
 		t.Fatalf("error %q doesn't name BIND_ADDRESS", err.Error())
@@ -83,33 +86,15 @@ func TestLoad_BindAddress_MalformedRejected(t *testing.T) {
 // --- New cases (T6, tasks/plan.md): the two-mode rule ADR 0017 added,
 // not present in the test plan written before that amendment ---
 
-// Checkpoint F's security review (T17-T19, cmd/server): a valid
-// certificate here used to satisfy FR-8's validation while nothing in
-// cmd/server actually called ServeTLS — the process would bind a public
-// address and silently serve plaintext HTTP despite Load succeeding.
-// Validating a certificate that's never used is worse than no validation
-// at all, since it looks enforced but isn't. Until TLS serving actually
-// exists (ADR 0017 Mode A, phase 13), a publicly routable BIND_ADDRESS is
-// rejected outright, even with an otherwise-valid certificate — stricter
-// than backend-configuration.md FR-8's current text, deliberately, until
-// that spec is amended to match.
-func TestLoad_BindAddress_PubliclyRoutableRejectedEvenWithValidCert(t *testing.T) {
-	validEnv(t)
-	t.Setenv("BIND_ADDRESS", "203.0.113.5:8080")
-	t.Setenv("TLS_CERT_FILE", "/tls/cert.pem")
-	t.Setenv("TLS_KEY_FILE", "/tls/key.pem")
-
-	certPEM, keyPEM := validCert(t)
-	readFile := mapReadFile(map[string][]byte{
-		"/tls/cert.pem": certPEM,
-		"/tls/key.pem":  keyPEM,
-	})
-
-	_, err := config.Load("", readFile, fakeUserConfigDir)
-	if err == nil {
-		t.Fatal("Load() error = nil, want an error — no build-time TLS serving exists yet, so a public bind must be refused regardless of certificate validity")
-	}
-}
+// Superseded by phase 13 Tier 0 (bindaddress_phase13_test.go): a public
+// bind with a valid static certificate is now accepted, and cmd/server
+// serves it over in-process TLS (tls.NewListener). The old
+// "reject even with a valid cert" guard existed only while no TLS-serving
+// path existed; that path is wired now for the static-certificate case
+// (ACME issuance stays Tier 2).
+//
+// See: TestBind_PublicIP_WithValidStaticCert_Accepted,
+//      TestBind_PublicDNSName_CertSANMustMatch.
 
 func TestLoad_BindAddress_PubliclyRoutableWithInvalidCertRejected(t *testing.T) {
 	cases := []struct {

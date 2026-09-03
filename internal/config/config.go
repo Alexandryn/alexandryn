@@ -8,10 +8,12 @@
 package config
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -67,12 +69,48 @@ type Config struct {
 	TLSCertFile string
 	TLSKeyFile  string
 
+	// Phase 13 network keys (backend-configuration.md FR-4 amendment,
+	// ADR 0028). ACMEEnabled selects the certificate provisioning source
+	// for a public bind — ACME issuance vs. the static TLSCertFile/
+	// TLSKeyFile pair; it is not a security toggle (both branches fail
+	// closed). ACMECacheDir empty means "the acme/ subdirectory of the
+	// per-user data directory" — resolved at startup where that path is
+	// known, not here.
+	ACMEEnabled  bool
+	ACMEDomain   string
+	ACMEEmail    string
+	ACMECacheDir string
+
+	// CORSAllowedOrigins is empty by default: no cross-origin request is
+	// honoured and the same-origin SPA is unaffected. Each entry is a
+	// well-formed scheme://host[:port] with no path.
+	CORSAllowedOrigins []string
+
+	// DevicePairingSecret is an optional operator-set extra factor on
+	// POST /api/v1/network/pair/initiate (ADR 0028 §6). Redacted — never
+	// log or print this field directly; call .Reveal() for the real
+	// value.
+	DevicePairingSecret RedactedString
+
 	// DesktopParentPID is optional: when set by the Electron desktop host
 	// (architecture-desktop-host.md FR-8, desktop-host-process-model.md FR-6),
 	// the server watches this PID for termination and self-exits if the parent dies.
 	DesktopParentPID int
+
+	// tlsCert is the validated serving certificate for an in-process TLS
+	// bind (a public bind, or a private bind with the opt-in
+	// TLS_CERT_FILE/TLS_KEY_FILE). nil means "serve plaintext" — a
+	// loopback/private bind with no cert. Populated by validateBindAddress
+	// during Load; read via TLSCertificate.
+	tlsCert *tls.Certificate
 }
 
+// TLSCertificate returns the validated in-process-TLS serving certificate,
+// or nil when the bind is plaintext (loopback/private with no cert). When
+// non-nil, cmd/server MUST wrap the listener in TLS — a non-nil cert here
+// means the bind is either publicly routable or a deliberate private
+// opt-in, and neither may serve plaintext.
+func (c *Config) TLSCertificate() *tls.Certificate { return c.tlsCert }
 
 type category int
 
@@ -178,8 +216,43 @@ var fields = []fieldSpec{
 		parse:    parseInt,
 		apply:    func(cfg *Config, v any) { cfg.DesktopParentPID = v.(int) },
 	},
+	{
+		key:      "ACME_ENABLED",
+		category: categoryOptionalDefault,
+		parse:    parseBool,
+		apply:    func(cfg *Config, v any) { cfg.ACMEEnabled = v.(bool) },
+	},
+	{
+		key:      "ACME_DOMAIN",
+		category: categoryOptionalNoDefault,
+		parse:    parseString,
+		apply:    func(cfg *Config, v any) { cfg.ACMEDomain = v.(string) },
+	},
+	{
+		key:      "ACME_EMAIL",
+		category: categoryOptionalNoDefault,
+		parse:    parseString,
+		apply:    func(cfg *Config, v any) { cfg.ACMEEmail = v.(string) },
+	},
+	{
+		key:      "ACME_CACHE_DIR",
+		category: categoryOptionalNoDefault,
+		parse:    parseString,
+		apply:    func(cfg *Config, v any) { cfg.ACMECacheDir = v.(string) },
+	},
+	{
+		key:      "CORS_ALLOWED_ORIGINS",
+		category: categoryOptionalNoDefault,
+		parse:    parseOriginList,
+		apply:    func(cfg *Config, v any) { cfg.CORSAllowedOrigins = v.([]string) },
+	},
+	{
+		key:      "DEVICE_PAIRING_SECRET",
+		category: categoryOptionalNoDefault,
+		parse:    func(raw string) (any, error) { return raw, nil },
+		apply:    func(cfg *Config, v any) { cfg.DevicePairingSecret = RedactedString(v.(string)) },
+	},
 }
-
 
 // defaults holds each categoryOptionalDefault key's compiled default,
 // applied when no source provides a value. DB_POOL_MAX_CONNS and the
@@ -194,6 +267,7 @@ var defaults = map[string]any{
 	"HTTP_WRITE_TIMEOUT":    15 * time.Second,
 	"HTTP_IDLE_TIMEOUT":     60 * time.Second,
 	"BIND_ADDRESS":          "127.0.0.1:0",
+	"ACME_ENABLED":          false,
 }
 
 // Load resolves and validates every configuration key and returns a
@@ -357,4 +431,45 @@ func parseInt64(raw string) (any, error) {
 
 func parseString(raw string) (any, error) {
 	return raw, nil
+}
+
+// parseBool accepts the common truthy/falsey spellings strconv.ParseBool
+// handles (1/t/T/TRUE/true/True and the 0/f/... negatives). An
+// unrecognised value is an error naming what was expected.
+func parseBool(raw string) (any, error) {
+	b, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil, fmt.Errorf("must be a boolean (true/false/1/0): got %q", raw)
+	}
+	return b, nil
+}
+
+// parseOriginList splits a comma-separated CORS_ALLOWED_ORIGINS value,
+// trims each entry, and validates it is a bare scheme://host[:port] with
+// an http/https scheme, a host, and no path/query/fragment (ADR 0028 §4:
+// CORS matching is exact string equality, so a malformed entry could
+// never match and is rejected loudly instead).
+func parseOriginList(raw string) (any, error) {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		entry := strings.TrimSpace(part)
+		if entry == "" {
+			continue
+		}
+		u, err := url.Parse(entry)
+		if err != nil {
+			return nil, fmt.Errorf("entry %q is not a valid origin: %w", entry, err)
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return nil, fmt.Errorf("entry %q must use the http or https scheme", entry)
+		}
+		if u.Host == "" {
+			return nil, fmt.Errorf("entry %q has no host", entry)
+		}
+		if u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+			return nil, fmt.Errorf("entry %q must be a bare scheme://host[:port] with no path", entry)
+		}
+		out = append(out, u.Scheme+"://"+u.Host)
+	}
+	return out, nil
 }

@@ -234,31 +234,32 @@ file format, where it lives, or the actual validation each key needs.
   check is enforced at startup, unconditionally, before any other
   subsystem initializes.
 
-  **Interim note, amended 2026-08-26 (self-reviewed, needs maintainer
-  re-confirmation — closing out audit finding A-03-05,
-  `.claude/audits/0003-cmd-server-startup-shutdown.md`):** the middle
-  bullet above describes FR-8's eventual, complete behavior. Today,
-  `validateBindAddress` refuses a publicly routable `BIND_ADDRESS`
-  unconditionally — regardless of certificate validity — because no code
-  path calls `ServeTLS` yet; validating a certificate that nothing ever
-  uses to actually encrypt a connection would look enforced without
-  being enforced, which is worse than refusing outright. `internal/config`'s
-  own `validatePublicBindCertificate` is unchanged and still runs first
-  (an invalid/expired/missing certificate still gets its own specific
-  error), it's just not yet sufficient on its own to make a public bind
-  legal. This note is removed, and the middle bullet's own text becomes
-  accurate without qualification, once phase 13 wires `ServeTLS` and
-  `validatePublicBindCertificate` becomes the deciding check again on
-  its own terms.
-
-  **Phase 13 update (2026-09-02, `DRAFT` — pending review):**
-  `backend-network-transport.md` FR-2 wires `ServeTLS` and re-enables
-  `validatePublicBindCertificate` (plus an ACME path) as the deciding
-  check, and adds a DNS-SAN check for a named public host and an
-  `ACME_ENABLED`/`ACME_DOMAIN` acceptance branch (ADR 0028 §1). When that
-  spec is `IMPLEMENTED`, this interim note is deleted and the middle
-  bullet stands unqualified. Until then it still describes the running
-  code.
+  **Interim note history — the unconditional public-bind refusal is
+  lifted for the static-certificate case (2026-09-03, phase 13 Tier 0,
+  `DRAFT`).** From 2026-08-26 to 2026-09-03, `validateBindAddress` refused
+  *every* publicly routable `BIND_ADDRESS` regardless of certificate
+  validity, because no code path served TLS — "a certificate nothing uses
+  to encrypt anything looks enforced without being enforced." Phase 13
+  Tier 0 changes that:
+  - `internal/config/bindaddress.go` classifies the host per ADR 0028 §1
+    (IP literal by range; `localhost` private; any other string public,
+    no DNS lookup), validates a static `TLS_CERT_FILE`/`TLS_KEY_FILE`
+    pair (well-formed, key-match, in-window, and — for a named public
+    host — SAN coverage via `x509.Certificate.VerifyHostname`), and
+    **accepts** a public bind with a valid pair (or a private bind with
+    the opt-in pair). The validated `*tls.Certificate` is stored on
+    `Config` (`TLSCertificate()`).
+  - `cmd/server/run.go` wraps the listener in `tls.NewListener` whenever
+    `Config.TLSCertificate()` is non-nil — so an accepted public bind
+    actually serves in-process TLS, never plaintext. The safety property
+    the old note protected (no plaintext on a public address) holds
+    without the blanket refusal.
+  - **Still deferred to phase 13 Tier 2:** in-process ACME issuance
+    (`ACME_ENABLED` on a public bind is a startup error until then), the
+    cipher-suite / TLS-version policy, ALPN, HSTS, and the `:80`
+    redirect. This note is deleted, and the middle bullet stands
+    unqualified, once Tier 2's `backend-network-transport.md` FR-2/FR-3
+    land.
 
 ## Non-functional requirements
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -259,6 +260,16 @@ func run(ctx context.Context, deps runDeps) int {
 		fmt.Printf("PORT=%d\n", tcpAddr.Port)
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
+
+	// In-process TLS (ADR 0028 §1, phase 13 Tier 0): config populates a
+	// certificate whenever the bind is publicly routable or a deliberate
+	// private opt-in. A non-nil cert means this listener MUST NOT serve
+	// plaintext. The tls.Config here is minimal — the cipher/version
+	// policy, ALPN, and ACME are phase 13 Tier 2.
+	if cert := cfg.TLSCertificate(); cert != nil {
+		listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{*cert}})
+		logger.Info("startup step completed", "step", "tls", "mode", "in-process")
+	}
 
 	srv := deps.newServer(cfg, router)
 	serveErr := make(chan error, 1)
