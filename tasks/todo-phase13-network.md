@@ -17,6 +17,23 @@ trailers.
 Project-wide Definition of Done applies to every task: tests pass, no
 regressions, `go vet` / lints clean, behaviour verified, docs updated.
 
+## Progress
+
+Umbrella branch: `feat/phase13-network-access` (one PR for the whole
+phase, supersedes the Tier-0-only PR #79).
+
+- [x] **Tier 0** — config keys + bind classifier + `run.go` TLS wrap.
+      Commits `0a447d5`, `4449bb6`, `2a980de`. Code review: 3 findings
+      fixed. Security review: clean. Checkpoint 0 passed.
+- [x] **Tier 1** — pure pairing domain (`device_pairing.go`). Commit
+      `0f862b4`. T1.1–T1.4 landed as one cohesive commit (single domain
+      file; tests written first). Checkpoint 1 passed: `go test -race
+      ./internal/domain/...` green, illegal-transition table + constant-
+      time-`Equal` + FR-10 audit tests pass.
+- [ ] **Tier 2** — transport services. Next.
+- [ ] Tier 3 — persistence · Tier 4 — HTTP API · Tier 5 — web UI
+- [ ] Gate 2 — audit 0013 (stop and ask) · Close
+
 ---
 
 ## Tier 0 — config & bind (finish the uncommitted work + commit)
