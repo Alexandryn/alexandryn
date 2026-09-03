@@ -9,92 +9,145 @@ import (
 	"time"
 )
 
-// validateBindAddress enforces FR-8/ADR 0017: BindAddress's resolved host
-// must be loopback or a private range (always legal, Mode B — upstream
-// TLS or none, outside this process's guarantee); a publicly routable
-// address is FR-8's Mode A (in-process TLS via TLSCertFile/TLSKeyFile) in
-// spec text, but is rejected outright here regardless of certificate
-// validity — cmd/server does not yet call ServeTLS anywhere, so Mode A's
-// "legal" outcome would otherwise mean Load succeeding while the process
-// silently serves plaintext HTTP on a public address. Validating a
-// certificate that's never used to actually encrypt anything is worse
-// than no validation, since it looks enforced but isn't (Checkpoint F
-// security review, T17-T19). Revert to calling
-// validatePublicBindCertificate once ServeTLS is actually wired
-// (phase 13) — that function is kept, tested, and ready for that switch.
+// bindClass is BIND_ADDRESS's classification per ADR 0028 §1 / ADR 0017.
+type bindClass int
+
+const (
+	// classLoopbackPrivate — Mode B: TLS, if any, terminates upstream or
+	// via an opt-in in-process certificate; the process is never itself
+	// directly reachable from a public address.
+	classLoopbackPrivate bindClass = iota
+	// classPublic — Mode A: in-process TLS is mandatory.
+	classPublic
+)
+
+// classifyBindHost classifies BIND_ADDRESS's host WITHOUT any DNS
+// resolution (architecture-testing.md FR-6 — this package performs no
+// network I/O). An IP literal is classified by range; the literal string
+// "localhost" is private; every other host string is a DNS name and is
+// classified public — the fail-closed default for "a name we cannot
+// classify locally is one that requires in-process TLS." An operator who
+// runs a name behind a reverse proxy and wants Mode B sets BIND_ADDRESS
+// to the private IP the proxy forwards to, not the name.
+func classifyBindHost(host string) bindClass {
+	if host == "localhost" {
+		return classLoopbackPrivate
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return classPublic
+	}
+	// net.IP.IsPrivate covers RFC 1918 IPv4 and fc00::/7 (IPv6 ULA).
+	if ip.IsLoopback() || ip.IsPrivate() {
+		return classLoopbackPrivate
+	}
+	return classPublic
+}
+
+// validateBindAddress enforces ADR 0028 §1 / ADR 0017 at config-load
+// time. It fails closed: a publicly routable bind with no usable
+// certificate never produces a running configuration, and an
+// invalid/expired certificate is a startup error, never a degrade to
+// plaintext.
+//
+// Phase 13 Tier 0 scope: the static-certificate path (both public and the
+// private opt-in) is fully validated and accepted here. In-process ACME
+// issuance is Tier 2 — until then, ACME_ENABLED on a public bind is a
+// startup error rather than a plaintext fallback.
 func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) error {
 	host, _, err := net.SplitHostPort(cfg.BindAddress)
 	if err != nil {
 		return fmt.Errorf("BIND_ADDRESS must be host:port: %w", err)
 	}
 
-	private, err := isLoopbackOrPrivate(host)
-	if err != nil {
-		return fmt.Errorf("BIND_ADDRESS host is invalid: %w", err)
-	}
-	if private {
+	hasStaticCert := cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
+
+	switch classifyBindHost(host) {
+	case classLoopbackPrivate:
+		if cfg.ACMEEnabled {
+			return fmt.Errorf(
+				"BIND_ADDRESS %s is a loopback/private address; ACME_ENABLED cannot apply — an ACME HTTP-01 challenge needs a publicly reachable address. Use a static TLS_CERT_FILE/TLS_KEY_FILE, or terminate TLS with a reverse proxy in front",
+				cfg.BindAddress)
+		}
+		if hasStaticCert {
+			// Opt-in in-process TLS on a private bind (ADR 0028 §1): a
+			// present pair must be valid; a present-but-broken cert is a
+			// mistake, not a fall-through to plaintext. No SAN check — a
+			// private bind is often reached by IP.
+			cert, err := loadAndValidateCert(cfg, readFile, "")
+			if err != nil {
+				return err
+			}
+			cfg.tlsCert = cert
+		}
+		return nil
+
+	case classPublic:
+		if cfg.ACMEEnabled {
+			return fmt.Errorf(
+				"BIND_ADDRESS %s is publicly routable with ACME_ENABLED, but in-process ACME issuance is not wired yet (phase 13 Tier 2). Configure a static TLS_CERT_FILE/TLS_KEY_FILE for now",
+				cfg.BindAddress)
+		}
+		if !hasStaticCert {
+			return fmt.Errorf(
+				"BIND_ADDRESS %s is publicly routable; TLS_CERT_FILE and TLS_KEY_FILE are required (or run behind a reverse proxy on a loopback/private bind)",
+				cfg.BindAddress)
+		}
+		// SAN name check only when the host is a DNS name — a name-match
+		// check on a bare IP is meaningless (ADR 0028 §1).
+		sanHost := ""
+		if net.ParseIP(host) == nil {
+			sanHost = host
+		}
+		cert, err := loadAndValidateCert(cfg, readFile, sanHost)
+		if err != nil {
+			return err
+		}
+		cfg.tlsCert = cert
 		return nil
 	}
-
-	if err := validatePublicBindCertificate(cfg, readFile); err != nil {
-		return err
-	}
-	return fmt.Errorf("BIND_ADDRESS %s is publicly routable; this build does not yet serve TLS (no ServeTLS wiring exists), so public binds are refused regardless of certificate validity until that lands", cfg.BindAddress)
+	return nil
 }
 
-// isLoopbackOrPrivate classifies host without a real DNS lookup: only a
-// literal IP address or the literal string "localhost" can be classified
-// at all — any other hostname is rejected outright, since this package
-// never performs network I/O to resolve one (architecture-testing.md
-// FR-6's determinism requirement, restated at the config layer).
-func isLoopbackOrPrivate(host string) (bool, error) {
-	if host == "localhost" {
-		return true, nil
-	}
-
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return false, fmt.Errorf(`must be an IP address or "localhost" (got %q) — this package never performs a DNS lookup to classify a hostname`, host)
-	}
-
-	return ip.IsLoopback() || ip.IsPrivate(), nil
-}
-
-// validatePublicBindCertificate loads and validates TLSCertFile/
-// TLSKeyFile through the same injected readFile the config file uses —
-// never a direct filesystem call — and checks the certificate is
-// well-formed, its key matches, and it's within its validity window.
-func validatePublicBindCertificate(cfg *Config, readFile func(string) ([]byte, error)) error {
-	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
-		return fmt.Errorf("BIND_ADDRESS %s is publicly routable; TLS_CERT_FILE and TLS_KEY_FILE are required", cfg.BindAddress)
-	}
-
+// loadAndValidateCert loads TLS_CERT_FILE/TLS_KEY_FILE through the
+// injected readFile (never a direct filesystem call) and checks the
+// certificate is well-formed, its key matches, and it is within its
+// validity window. When sanHost is non-empty the leaf must cover it. The
+// returned *tls.Certificate is the serving material cmd/server wraps the
+// listener with (Config.TLSCertificate).
+func loadAndValidateCert(cfg *Config, readFile func(string) ([]byte, error), sanHost string) (*tls.Certificate, error) {
 	certPEM, err := readFile(cfg.TLSCertFile)
 	if err != nil {
-		return fmt.Errorf("could not read TLS_CERT_FILE %s: %w", cfg.TLSCertFile, err)
+		return nil, fmt.Errorf("could not read TLS_CERT_FILE %s: %w", cfg.TLSCertFile, err)
 	}
 	keyPEM, err := readFile(cfg.TLSKeyFile)
 	if err != nil {
-		return fmt.Errorf("could not read TLS_KEY_FILE %s: %w", cfg.TLSKeyFile, err)
+		return nil, fmt.Errorf("could not read TLS_KEY_FILE %s: %w", cfg.TLSKeyFile, err)
 	}
 
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	pair, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
-		return fmt.Errorf("TLS_CERT_FILE/TLS_KEY_FILE are invalid: %w", err)
+		return nil, fmt.Errorf("TLS_CERT_FILE/TLS_KEY_FILE are invalid: %w", err)
 	}
-
-	if len(cert.Certificate) == 0 {
-		return errors.New("TLS_CERT_FILE contains no certificate")
+	if len(pair.Certificate) == 0 {
+		return nil, errors.New("TLS_CERT_FILE contains no certificate")
 	}
-	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
 	if err != nil {
-		return fmt.Errorf("TLS_CERT_FILE could not be parsed: %w", err)
+		return nil, fmt.Errorf("TLS_CERT_FILE could not be parsed: %w", err)
 	}
 
 	now := time.Now()
 	if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
-		return fmt.Errorf("TLS certificate is not currently valid (validity window %s to %s)", leaf.NotBefore, leaf.NotAfter)
+		return nil, fmt.Errorf("TLS certificate is not currently valid (validity window %s to %s)", leaf.NotBefore, leaf.NotAfter)
 	}
 
-	return nil
+	if sanHost != "" {
+		if err := leaf.VerifyHostname(sanHost); err != nil {
+			return nil, fmt.Errorf("TLS certificate does not cover BIND_ADDRESS host %q: %w", sanHost, err)
+		}
+	}
+
+	pair.Leaf = leaf
+	return &pair, nil
 }

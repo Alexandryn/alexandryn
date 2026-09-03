@@ -23,6 +23,13 @@ func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
 		"TLS_CERT_FILE":           categoryOptionalNoDefault,
 		"TLS_KEY_FILE":            categoryOptionalNoDefault,
 		"DESKTOP_PARENT_PID":      categoryOptionalNoDefault,
+		// Phase 13 (backend-configuration.md FR-4 amendment, ADR 0028).
+		"ACME_ENABLED":          categoryOptionalDefault,
+		"ACME_DOMAIN":           categoryOptionalNoDefault,
+		"ACME_EMAIL":            categoryOptionalNoDefault,
+		"ACME_CACHE_DIR":        categoryOptionalNoDefault,
+		"CORS_ALLOWED_ORIGINS":  categoryOptionalNoDefault,
+		"DEVICE_PAIRING_SECRET": categoryOptionalNoDefault,
 	}
 
 	got := map[string]category{}

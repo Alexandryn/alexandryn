@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"testing"
 	"time"
 )
@@ -20,15 +21,34 @@ import (
 // "now" for any runtime this test could plausibly execute on.
 func generateCert(t *testing.T, notBefore, notAfter time.Time) (certPEM, keyPEM []byte) {
 	t.Helper()
+	return generateCertSAN(t, notBefore, notAfter, nil)
+}
+
+// generateCertSAN is generateCert with explicit subjectAltNames (DNS
+// names and/or IP strings) — for the phase-13 SAN-match check.
+func generateCertSAN(t *testing.T, notBefore, notAfter time.Time, sans []string) (certPEM, keyPEM []byte) {
+	t.Helper()
 
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
 	}
 
+	var dnsNames []string
+	var ipAddrs []net.IP
+	for _, s := range sans {
+		if ip := net.ParseIP(s); ip != nil {
+			ipAddrs = append(ipAddrs, ip)
+		} else {
+			dnsNames = append(dnsNames, s)
+		}
+	}
+
 	template := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
 		Subject:               pkix.Name{CommonName: "alexandryn-test"},
+		DNSNames:              dnsNames,
+		IPAddresses:           ipAddrs,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageDigitalSignature,
@@ -64,4 +84,12 @@ func validCert(t *testing.T) (certPEM, keyPEM []byte) {
 func expiredCert(t *testing.T) (certPEM, keyPEM []byte) {
 	t.Helper()
 	return generateCert(t, time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2000, 6, 1, 0, 0, 0, 0, time.UTC))
+}
+
+// certWithSAN returns a cert/key valid for the next 24h with the given
+// subjectAltName (DNS name or IP string).
+func certWithSAN(t *testing.T, san string) (certPEM, keyPEM []byte) {
+	t.Helper()
+	now := time.Now()
+	return generateCertSAN(t, now.Add(-time.Hour), now.Add(24*time.Hour), []string{san})
 }

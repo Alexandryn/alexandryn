@@ -310,4 +310,3 @@ func TestLoad_DesktopParentPID(t *testing.T) {
 		t.Fatal("Load() error = nil, want error for non-integer DESKTOP_PARENT_PID")
 	}
 }
-
