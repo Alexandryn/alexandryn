@@ -618,6 +618,15 @@ JSON `Content-Type`; shared error helper; `example:` blocks in
 
 ## 8. Tiered TDD sequence (RED → GREEN per tier)
 
+> **Executable breakdown (2026-09-03):** the section below is the Gate-1
+> sketch. The maintainer-reviewed, task-by-task plan with acceptance
+> criteria, verification commands, and checkpoints lives in
+> [`tasks/plan-phase13-network.md`](../../../tasks/plan-phase13-network.md)
+> and [`tasks/todo-phase13-network.md`](../../../tasks/todo-phase13-network.md).
+> Locked decisions D-A..D-G (first-run held, `0.0.0.0` fail-closed,
+> ACME-as-proof, menu-bar deferred, `qrcode` §9 at Tier 5) are in that
+> plan's Architecture Decisions section.
+
 Follows the task's tier plan; every tier writes failing tests first (§2).
 
 - **Tier 0 — config & bind validation.** Add `ACME_*`, `CORS_ALLOWED_ORIGINS`,
