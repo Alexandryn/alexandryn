@@ -28,6 +28,9 @@ type (
 	// Non-goals: "this spec assumes a DeviceID exists... without
 	// designing device management" — phase 14 owns the real thing).
 	DeviceID string
+
+	// Phase 13 (domain-device-pairing.md) — one pairing handshake.
+	PairingSessionID string
 )
 
 // IDGenerator produces a new, unique identifier value at aggregate
