@@ -105,8 +105,14 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		}
 		cfg.tlsCert = cert
 		return nil
+
+	default:
+		// Unreachable today (classifyBindHost returns one of the two
+		// constants above). Kept as a fail-closed guard: this is the
+		// constitution §6 gate, and a future third class must not slip
+		// through as "accepted" by falling off the switch.
+		return fmt.Errorf("BIND_ADDRESS %s could not be classified", cfg.BindAddress)
 	}
-	return nil
 }
 
 // loadAndValidateCert loads TLS_CERT_FILE/TLS_KEY_FILE through the

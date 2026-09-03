@@ -448,7 +448,12 @@ func parseBool(raw string) (any, error) {
 // trims each entry, and validates it is a bare scheme://host[:port] with
 // an http/https scheme, a host, and no path/query/fragment (ADR 0028 §4:
 // CORS matching is exact string equality, so a malformed entry could
-// never match and is rejected loudly instead).
+// never match and is rejected loudly instead). The scheme and host are
+// lowercased to the canonical origin form (RFC 6454) so a config typo
+// like HTTPS://A.example does not sit in the list as a silently dead
+// entry — a browser Origin header is always already lowercased, and
+// lowercasing here can only make an eventual match stricter, never
+// looser.
 func parseOriginList(raw string) (any, error) {
 	var out []string
 	for _, part := range strings.Split(raw, ",") {
@@ -469,7 +474,7 @@ func parseOriginList(raw string) (any, error) {
 		if u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
 			return nil, fmt.Errorf("entry %q must be a bare scheme://host[:port] with no path", entry)
 		}
-		out = append(out, u.Scheme+"://"+u.Host)
+		out = append(out, strings.ToLower(u.Scheme)+"://"+strings.ToLower(u.Host))
 	}
 	return out, nil
 }

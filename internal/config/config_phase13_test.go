@@ -110,6 +110,18 @@ func TestLoad_CORSAllowedOrigins_ParsesAndValidates(t *testing.T) {
 		t.Fatalf("CORSAllowedOrigins = %v, want %v", cfg.CORSAllowedOrigins, want)
 	}
 
+	// Scheme and host are canonicalised to lower case (RFC 6454) so a
+	// config typo is not a silently dead entry.
+	validEnv(t)
+	t.Setenv("CORS_ALLOWED_ORIGINS", "HTTPS://App.Example:8443")
+	cfg, err = config.Load("", noFile, fakeUserConfigDir)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "https://app.example:8443" {
+		t.Fatalf("CORSAllowedOrigins = %v, want [https://app.example:8443]", cfg.CORSAllowedOrigins)
+	}
+
 	for _, bad := range []string{
 		"a.example",                  // no scheme
 		"https://a.example/callback", // path present
