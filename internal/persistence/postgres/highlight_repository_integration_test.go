@@ -181,3 +181,32 @@ func TestHighlightRepository_SQLInjectionProof(t *testing.T) {
 		}
 	}
 }
+
+// TestHighlightRepository_PerUserIDOR is the AUDIT-0012-C1 close-gate
+// integration test for highlights (whose note field carries private
+// user content).
+func TestHighlightRepository_PerUserIDOR(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+	mustExecPool(t, pool, "INSERT INTO works (id, title) VALUES ('work-1', 'Title')")
+	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
+	repo := postgres.NewHighlightRepository(pool)
+
+	alice := domain.NewHighlight("hl-alice", "edition-1", "loc-1", "loc-2", "alice private note", "", time.Now().UTC().Truncate(time.Microsecond))
+	if err := repo.SaveForUser(ctx, "alice", "", alice); err != nil {
+		t.Fatalf("SaveForUser(alice): %v", err)
+	}
+
+	if _, err := repo.FindByIDAndUser(ctx, "bob", "hl-alice"); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("bob FindByIDAndUser: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+	if list, err := repo.FindByEditionAndUser(ctx, "bob", "", "edition-1"); err != nil || len(list) != 0 {
+		t.Fatalf("bob FindByEditionAndUser: %v rows=%d, want 0", err, len(list))
+	}
+	if err := repo.DeleteAndUser(ctx, "bob", "hl-alice"); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("bob DeleteAndUser: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+	if _, err := repo.FindByIDAndUser(ctx, "alice", "hl-alice"); err != nil {
+		t.Fatalf("alice's highlight was affected by bob: %v", err)
+	}
+}

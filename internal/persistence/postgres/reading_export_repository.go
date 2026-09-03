@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
 // ReadingExportRepository is the bulk-read surface reading-data-export.md
@@ -44,15 +47,18 @@ type ExportMark struct {
 	CreatedAt time.Time
 }
 
-// ListProgress returns every ReadingProgress, or just workID's when it is
-// non-empty. Ordered by work id for a deterministic document.
-func (r *ReadingExportRepository) ListProgress(ctx context.Context, workID string) ([]ExportProgress, error) {
+// ListProgress returns the authenticated user's ReadingProgress in the
+// active library, or just workID's when it is non-empty. It never returns
+// another user's rows (AUDIT-0012-C1). Ordered by work id for a
+// deterministic document.
+func (r *ReadingExportRepository) ListProgress(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportProgress, error) {
 	exec := executorFrom(ctx, r.pool)
 	q := `SELECT work_id, percentage, epoch, precise_position_edition_id, precise_position_value, observed_at
-		FROM reading_progress`
-	args := []any{}
+		FROM reading_progress
+		WHERE COALESCE(user_id, '') = COALESCE($1, '') AND COALESCE(library_id, '') = COALESCE($2, '')`
+	args := []any{string(userID), string(libraryID)}
 	if workID != "" {
-		q += ` WHERE work_id = $1`
+		q += ` AND work_id = $3`
 		args = append(args, workID)
 	}
 	q += ` ORDER BY work_id`
@@ -74,25 +80,27 @@ func (r *ReadingExportRepository) ListProgress(ctx context.Context, workID strin
 	return out, rows.Err()
 }
 
-// ListMarks returns every bookmark and highlight, or just those on the
-// editions of workID when it is non-empty. Ordered by (edition_id,
-// created_at, id).
-func (r *ReadingExportRepository) ListMarks(ctx context.Context, workID string) ([]ExportMark, error) {
+// ListMarks returns the authenticated user's bookmarks and highlights in
+// the active library, or just those on the editions of workID when it is
+// non-empty. It never returns another user's rows (AUDIT-0012-C1).
+// Ordered by (edition_id, created_at, id).
+func (r *ReadingExportRepository) ListMarks(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportMark, error) {
 	exec := executorFrom(ctx, r.pool)
 
-	editionFilter := ""
-	args := []any{}
+	// $1 user, $2 library, always present; $3 workID when scoped.
+	args := []any{string(userID), string(libraryID)}
+	scope := `COALESCE(user_id, '') = COALESCE($1, '') AND COALESCE(library_id, '') = COALESCE($2, '')`
 	if workID != "" {
-		editionFilter = ` WHERE edition_id IN (SELECT id FROM editions WHERE work_id = $1)`
 		args = append(args, workID)
+		scope += ` AND edition_id IN (SELECT id FROM editions WHERE work_id = $3)`
 	}
 
-	q := `SELECT id, edition_id, 'bookmark' AS kind, position AS start_cfi, '' AS end_cfi, label, '' AS note, '' AS category, created_at
-		FROM bookmarks` + editionFilter + `
+	q := fmt.Sprintf(`SELECT id, edition_id, 'bookmark' AS kind, position AS start_cfi, '' AS end_cfi, label, '' AS note, '' AS category, created_at
+		FROM bookmarks WHERE %[1]s
 		UNION ALL
 		SELECT id, edition_id, 'highlight' AS kind, start_position AS start_cfi, end_position AS end_cfi, '' AS label, note, category, created_at
-		FROM highlights` + editionFilter + `
-		ORDER BY edition_id, created_at, id`
+		FROM highlights WHERE %[1]s
+		ORDER BY edition_id, created_at, id`, scope)
 
 	rows, err := exec.Query(ctx, q, args...)
 	if err != nil {

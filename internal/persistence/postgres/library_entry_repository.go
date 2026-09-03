@@ -49,6 +49,26 @@ func (r *LibraryEntryRepository) FindByEdition(ctx context.Context, editionID do
 	return domain.NewLibraryEntry(domain.LibraryEntryID(id), editionID, addedAt), nil
 }
 
+// EditionInLibrary reports whether editionID is owned in libraryID
+// (AUDIT-0012-C1). A COALESCE keeps a legacy NULL library_id row
+// (pre-multi-library) matching the default library.
+func (r *LibraryEntryRepository) EditionInLibrary(ctx context.Context, editionID domain.EditionID, libraryID domain.LibraryID) (bool, error) {
+	exec := executorFrom(ctx, r.pool)
+	var exists bool
+	err := exec.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM library_entries
+			WHERE edition_id = $1
+			AND COALESCE(library_id::text, '00000000-0000-0000-0000-000000000001') = $2
+		)`,
+		string(editionID), string(libraryID),
+	).Scan(&exists)
+	if err != nil {
+		return false, TranslateError(err)
+	}
+	return exists, nil
+}
+
 func (r *LibraryEntryRepository) Save(ctx context.Context, e *domain.LibraryEntry) error {
 	exec := executorFrom(ctx, r.pool)
 

@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,6 +26,17 @@ func (d *dummyTokenSigner) Verify(tokenString string, now time.Time) (*auth.Clai
 		return nil, d.err
 	}
 	return d.claims, nil
+}
+
+func (d *dummyTokenSigner) VerifyAccessToken(tokenString string, now time.Time) (*auth.Claims, error) {
+	c, err := d.Verify(tokenString, now)
+	if err != nil {
+		return nil, err
+	}
+	if c.Type != "" && c.Type != auth.TokenTypeAccess {
+		return nil, errors.New("not an access token")
+	}
+	return c, nil
 }
 
 func (d *dummyTokenSigner) SignMFATicket(userID domain.UserID, expiresAt time.Time) (string, error) {
@@ -102,6 +114,65 @@ func TestAuthMiddleware(t *testing.T) {
 			t.Errorf("expected 200, got %d", rec.Code)
 		}
 	})
+
+	t.Run("X-Library-Id in the token's claims is accepted", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/library", nil)
+		req.Header.Set("Authorization", "Bearer valid-token")
+		req.Header.Set("X-Library-Id", string(domain.DefaultLibraryID))
+		rec := httptest.NewRecorder()
+		nextCalled = false
+
+		handler.ServeHTTP(rec, req)
+		if !nextCalled || rec.Code != http.StatusOK {
+			t.Errorf("expected 200 with next called, got %d nextCalled=%v", rec.Code, nextCalled)
+		}
+	})
+
+	t.Run("X-Library-Id not in the token's claims is rejected 403 (AUDIT-0012-P12-4)", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/library", nil)
+		req.Header.Set("Authorization", "Bearer valid-token")
+		req.Header.Set("X-Library-Id", "lib-the-user-does-not-belong-to")
+		rec := httptest.NewRecorder()
+		nextCalled = false
+
+		handler.ServeHTTP(rec, req)
+		if nextCalled {
+			t.Error("expected next handler NOT to be called for a foreign library")
+		}
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rec.Code)
+		}
+	})
+}
+
+func TestAuthMiddleware_RejectsNonAccessTokenTypes(t *testing.T) {
+	now := time.Now()
+	// AUDIT-0012-C2: a signature-valid token minted as an MFA ticket must
+	// not authenticate the access path.
+	signer := &dummyTokenSigner{claims: &auth.Claims{
+		Subject:   "u-1",
+		Role:      domain.RoleAdmin,
+		Libraries: []domain.LibraryID{domain.DefaultLibraryID},
+		ExpiresAt: now.Add(time.Hour).Unix(),
+		Type:      auth.TokenTypeMFATicket,
+	}}
+	nextCalled := false
+	handler := transporthttp.AuthMiddleware(signer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/api/v1/library", nil)
+	req.Header.Set("Authorization", "Bearer an-mfa-ticket")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if nextCalled {
+		t.Error("expected an MFA ticket to be rejected on the access path")
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
 }
 
 func TestRequireRole(t *testing.T) {

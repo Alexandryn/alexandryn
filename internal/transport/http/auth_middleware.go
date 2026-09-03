@@ -42,6 +42,31 @@ func ActiveLibraryFromContext(ctx context.Context) domain.LibraryID {
 	return libID
 }
 
+// writeForbidden writes a 403 with the shared error-body shape. The domain
+// error taxonomy (backend-errors-and-logging.md) has no Forbidden
+// category — 403 is an authorization outcome the transport layer owns, so
+// it is written directly rather than mapped from a domain error.
+func writeForbidden(w http.ResponseWriter, message, corrID string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(errorBody{
+		Code:          "Forbidden",
+		Message:       message,
+		CorrelationID: corrID,
+	})
+}
+
+// libraryInClaims reports whether libID is one of the libraries the token
+// grants access to.
+func libraryInClaims(libID domain.LibraryID, claimed []domain.LibraryID) bool {
+	for _, c := range claimed {
+		if c == libID {
+			return true
+		}
+	}
+	return false
+}
+
 // IsPublicPath checks if a request path does not require authentication.
 func IsPublicPath(path string) bool {
 	if path == "/healthz" || path == "/readyz" {
@@ -87,7 +112,10 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 			}
 
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			claims, err := signer.Verify(tokenString, time.Now())
+			// VerifyAccessToken asserts the token type — a signature-valid
+			// MFA ticket or pairing enrolment grant is rejected here
+			// (AUDIT-0012-C2).
+			claims, err := signer.VerifyAccessToken(tokenString, time.Now())
 			if err != nil {
 				WriteError(w, domain.Unauthorized, "invalid or expired token", corrID)
 				return
@@ -100,7 +128,11 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 				Libraries: claims.Libraries,
 			}
 
-			// Active library resolution from X-Library-Id header
+			// Active library resolution from the X-Library-Id header. A
+			// header naming a library the token does not grant is rejected
+			// (403) — it is not silently used, and it does not fall back to
+			// a default (AUDIT-0012-P12-4, backend-library-namespaces.md
+			// FR-3).
 			activeLibID := domain.LibraryID(r.Header.Get("X-Library-Id"))
 			if activeLibID == "" {
 				if len(claims.Libraries) > 0 {
@@ -108,6 +140,9 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 				} else {
 					activeLibID = domain.DefaultLibraryID
 				}
+			} else if !libraryInClaims(activeLibID, claims.Libraries) {
+				writeForbidden(w, "you are not a member of that library", corrID)
+				return
 			}
 
 			ctx := WithUser(r.Context(), user)
@@ -135,13 +170,7 @@ func RequireRole(roles ...domain.Role) Middleware {
 				}
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(errorBody{
-				Code:          "Forbidden",
-				Message:       "insufficient permissions for this resource",
-				CorrelationID: corrID,
-			})
+			writeForbidden(w, "insufficient permissions for this resource", corrID)
 		})
 	}
 }

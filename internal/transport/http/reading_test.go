@@ -45,12 +45,23 @@ func (m *memReadingProgress) SaveForUser(ctx context.Context, _ domain.UserID, _
 	return m.Save(ctx, p)
 }
 
+// memBookmarks is user-aware: SaveForUser records the owner, and the
+// AndUser lookups honour it. The bare methods (FindByID/Save/Delete) are
+// kept only to satisfy the interface — the reading handlers must not call
+// them, and check-user-scoped-reading.sh enforces that.
 type memBookmarks struct {
-	byID map[domain.BookmarkID]*domain.Bookmark
+	byID  map[domain.BookmarkID]*domain.Bookmark
+	owner map[domain.BookmarkID]domain.UserID
 }
 
 func (m *memBookmarks) FindByID(_ context.Context, id domain.BookmarkID) (*domain.Bookmark, error) {
 	if b, ok := m.byID[id]; ok {
+		return b, nil
+	}
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+func (m *memBookmarks) FindByIDAndUser(_ context.Context, userID domain.UserID, id domain.BookmarkID) (*domain.Bookmark, error) {
+	if b, ok := m.byID[id]; ok && m.owner[id] == userID {
 		return b, nil
 	}
 	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
@@ -64,27 +75,50 @@ func (m *memBookmarks) FindByEdition(_ context.Context, e domain.EditionID) ([]*
 	}
 	return out, nil
 }
-func (m *memBookmarks) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Bookmark, error) {
-	return m.FindByEdition(ctx, e)
+func (m *memBookmarks) FindByEditionAndUser(_ context.Context, userID domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Bookmark, error) {
+	var out []*domain.Bookmark
+	for id, b := range m.byID {
+		if b.EditionID() == e && m.owner[id] == userID {
+			out = append(out, b)
+		}
+	}
+	return out, nil
 }
 func (m *memBookmarks) Save(_ context.Context, b *domain.Bookmark) error {
 	m.byID[b.ID()] = b
 	return nil
 }
-func (m *memBookmarks) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, b *domain.Bookmark) error {
-	return m.Save(ctx, b)
+func (m *memBookmarks) SaveForUser(_ context.Context, userID domain.UserID, _ domain.LibraryID, b *domain.Bookmark) error {
+	m.byID[b.ID()] = b
+	m.owner[b.ID()] = userID
+	return nil
 }
 func (m *memBookmarks) Delete(_ context.Context, id domain.BookmarkID) error {
 	delete(m.byID, id)
 	return nil
 }
+func (m *memBookmarks) DeleteAndUser(_ context.Context, userID domain.UserID, id domain.BookmarkID) error {
+	if _, ok := m.byID[id]; !ok || m.owner[id] != userID {
+		return &domain.Error{Category: domain.NotFound, Message: "not found"}
+	}
+	delete(m.byID, id)
+	delete(m.owner, id)
+	return nil
+}
 
 type memHighlights struct {
-	byID map[domain.HighlightID]*domain.Highlight
+	byID  map[domain.HighlightID]*domain.Highlight
+	owner map[domain.HighlightID]domain.UserID
 }
 
 func (m *memHighlights) FindByID(_ context.Context, id domain.HighlightID) (*domain.Highlight, error) {
 	if h, ok := m.byID[id]; ok {
+		return h, nil
+	}
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+func (m *memHighlights) FindByIDAndUser(_ context.Context, userID domain.UserID, id domain.HighlightID) (*domain.Highlight, error) {
+	if h, ok := m.byID[id]; ok && m.owner[id] == userID {
 		return h, nil
 	}
 	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
@@ -98,18 +132,34 @@ func (m *memHighlights) FindByEdition(_ context.Context, e domain.EditionID) ([]
 	}
 	return out, nil
 }
-func (m *memHighlights) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Highlight, error) {
-	return m.FindByEdition(ctx, e)
+func (m *memHighlights) FindByEditionAndUser(_ context.Context, userID domain.UserID, _ domain.LibraryID, e domain.EditionID) ([]*domain.Highlight, error) {
+	var out []*domain.Highlight
+	for id, h := range m.byID {
+		if h.EditionID() == e && m.owner[id] == userID {
+			out = append(out, h)
+		}
+	}
+	return out, nil
 }
 func (m *memHighlights) Save(_ context.Context, h *domain.Highlight) error {
 	m.byID[h.ID()] = h
 	return nil
 }
-func (m *memHighlights) SaveForUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, h *domain.Highlight) error {
-	return m.Save(ctx, h)
+func (m *memHighlights) SaveForUser(_ context.Context, userID domain.UserID, _ domain.LibraryID, h *domain.Highlight) error {
+	m.byID[h.ID()] = h
+	m.owner[h.ID()] = userID
+	return nil
 }
 func (m *memHighlights) Delete(_ context.Context, id domain.HighlightID) error {
 	delete(m.byID, id)
+	return nil
+}
+func (m *memHighlights) DeleteAndUser(_ context.Context, userID domain.UserID, id domain.HighlightID) error {
+	if _, ok := m.byID[id]; !ok || m.owner[id] != userID {
+		return &domain.Error{Category: domain.NotFound, Message: "not found"}
+	}
+	delete(m.byID, id)
+	delete(m.owner, id)
 	return nil
 }
 
@@ -134,6 +184,23 @@ func (m *memPrefs) SaveForUser(ctx context.Context, _ domain.UserID, p *domain.R
 	return m.Save(ctx, p)
 }
 
+// memLibraryEntries maps edition -> the single library that owns it.
+type memLibraryEntries struct {
+	inLib map[domain.EditionID]domain.LibraryID
+}
+
+func (m *memLibraryEntries) FindByEdition(_ context.Context, e domain.EditionID) (*domain.LibraryEntry, error) {
+	if _, ok := m.inLib[e]; ok {
+		return domain.NewLibraryEntry("le-1", e, time.Time{}), nil
+	}
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+func (m *memLibraryEntries) EditionInLibrary(_ context.Context, e domain.EditionID, lib domain.LibraryID) (bool, error) {
+	return m.inLib[e] == lib, nil
+}
+func (m *memLibraryEntries) Save(_ context.Context, _ *domain.LibraryEntry) error        { return nil }
+func (m *memLibraryEntries) DeleteByEdition(_ context.Context, _ domain.EditionID) error { return nil }
+
 type memEditions struct {
 	byID map[domain.EditionID]*domain.Edition
 }
@@ -157,26 +224,46 @@ type seqID struct{ n int }
 
 func (s *seqID) NewID() string { s.n++; return "id-" + string(rune('a'+s.n-1)) }
 
+type memExportUser struct {
+	progress []postgres.ExportProgress
+	marks    []postgres.ExportMark
+}
+
 type memExport struct {
 	progress []postgres.ExportProgress
 	marks    []postgres.ExportMark
 	works    map[string]bool
+	byUser   map[domain.UserID]memExportUser
+	gotUser  domain.UserID
 }
 
 func (m *memExport) WorkExists(_ context.Context, id string) (bool, error) { return m.works[id], nil }
-func (m *memExport) ListProgress(_ context.Context, workID string) ([]postgres.ExportProgress, error) {
+
+// gotUser records the userID the last ListProgress/ListMarks call was
+// scoped to, so a handler test can assert the handler passed the context
+// user (AUDIT-0012-C1) rather than an empty string.
+func (m *memExport) ListProgress(_ context.Context, userID domain.UserID, _ domain.LibraryID, workID string) ([]postgres.ExportProgress, error) {
+	m.gotUser = userID
+	rows := m.progress
+	if u, scoped := m.byUser[userID]; scoped {
+		rows = u.progress
+	}
 	if workID == "" {
-		return m.progress, nil
+		return rows, nil
 	}
 	var out []postgres.ExportProgress
-	for _, p := range m.progress {
+	for _, p := range rows {
 		if p.WorkID == workID {
 			out = append(out, p)
 		}
 	}
 	return out, nil
 }
-func (m *memExport) ListMarks(_ context.Context, _ string) ([]postgres.ExportMark, error) {
+func (m *memExport) ListMarks(_ context.Context, userID domain.UserID, _ domain.LibraryID, _ string) ([]postgres.ExportMark, error) {
+	m.gotUser = userID
+	if u, scoped := m.byUser[userID]; scoped {
+		return u.marks, nil
+	}
 	return m.marks, nil
 }
 
@@ -199,7 +286,32 @@ func readingServer(t *testing.T, api transporthttp.ReadingAPI, spy *testutil.Spy
 	mux.Handle("GET /api/v1/reading/preferences", transporthttp.ReadingPreferencesGetHandler(poolRef))
 	mux.Handle("PUT /api/v1/reading/preferences", transporthttp.ReadingPreferencesPutHandler(poolRef))
 	mux.Handle("GET /api/v1/reading/export", transporthttp.ReadingExportHandler(poolRef, spyLogger(spy), fixed))
-	return transporthttp.Chain(mux, transporthttp.Recovery(nil, func() string { return "test" }))
+	return transporthttp.Chain(mux, transporthttp.Recovery(nil, func() string { return "test" }), testUserMW)
+}
+
+// testUserMW stands in for the auth middleware in reading-handler tests:
+// it injects an authenticated user (X-Test-User header, default
+// "u-default") and active library (X-Library-Id header, default
+// DefaultLibraryID) into the request context, so the handlers'
+// readingScope resolves. A request with X-Test-User: "" gets no user —
+// used to prove a handler 401s without one.
+func testUserMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		uid := r.Header.Get("X-Test-User")
+		if _, explicit := r.Header["X-Test-User"]; !explicit {
+			uid = "u-default"
+		}
+		if uid != "" {
+			ctx = transporthttp.WithUser(ctx, &transporthttp.AuthenticatedUser{UserID: domain.UserID(uid)})
+			lib := r.Header.Get("X-Library-Id")
+			if lib == "" {
+				lib = string(domain.DefaultLibraryID)
+			}
+			ctx = transporthttp.WithActiveLibrary(ctx, domain.LibraryID(lib))
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func spyLogger(s *testutil.SpyHandler) *slog.Logger {
@@ -210,11 +322,11 @@ func spyLogger(s *testutil.SpyHandler) *slog.Logger {
 }
 
 func newReadingAPI() (transporthttp.ReadingAPI, *memExport) {
-	exp := &memExport{works: map[string]bool{}}
+	exp := &memExport{works: map[string]bool{}, byUser: map[domain.UserID]memExportUser{}}
 	return transporthttp.ReadingAPI{
 		Progress:    &memReadingProgress{byWork: map[domain.WorkID]*domain.ReadingProgress{}},
-		Bookmarks:   &memBookmarks{byID: map[domain.BookmarkID]*domain.Bookmark{}},
-		Highlights:  &memHighlights{byID: map[domain.HighlightID]*domain.Highlight{}},
+		Bookmarks:   &memBookmarks{byID: map[domain.BookmarkID]*domain.Bookmark{}, owner: map[domain.BookmarkID]domain.UserID{}},
+		Highlights:  &memHighlights{byID: map[domain.HighlightID]*domain.Highlight{}, owner: map[domain.HighlightID]domain.UserID{}},
 		Preferences: &memPrefs{byDevice: map[domain.DeviceID]*domain.ReadingPreferences{}},
 		Editions:    &memEditions{byID: map[domain.EditionID]*domain.Edition{}},
 		Transactor:  inlineTx{},
@@ -321,6 +433,117 @@ func TestReadingBookmarks_CRUD(t *testing.T) {
 	rr = do(t, srv, http.MethodDelete, "/api/v1/reading/bookmarks/does-not-exist", "", nil)
 	if rr.Code != 404 {
 		t.Fatalf("delete missing: %d, want 404", rr.Code)
+	}
+}
+
+// hdr builds a header map for the do() helper.
+func hdr(pairs ...string) map[string]string {
+	m := map[string]string{}
+	for i := 0; i+1 < len(pairs); i += 2 {
+		m[pairs[i]] = pairs[i+1]
+	}
+	return m
+}
+
+// TestReading_PerUserIDOR is the AUDIT-0012-C1 close-gate test: user B
+// must not be able to read, modify, delete, or export user A's reading
+// data by knowing an id. Without the per-user scoping fix, every one of
+// these assertions fails.
+func TestReading_PerUserIDOR(t *testing.T) {
+	api, exp := newReadingAPI()
+	srv := readingServer(t, api, nil)
+	alice := hdr("X-Test-User", "alice")
+	bob := hdr("X-Test-User", "bob")
+
+	// Alice creates a bookmark and a highlight.
+	rr := do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-1/bookmarks",
+		`{"cfi":"epubcfi(/6/4!/4/10)","label":"alice-secret"}`, alice)
+	if rr.Code != 201 {
+		t.Fatalf("alice create bookmark: %d %s", rr.Code, rr.Body.String())
+	}
+	var bm struct {
+		Bookmark struct{ ID string } `json:"bookmark"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &bm)
+
+	rr = do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-1/highlights",
+		`{"startCfi":"epubcfi(/6/4!/4/2/1:0)","endCfi":"epubcfi(/6/4!/4/2/1:9)","note":"alice-note"}`, alice)
+	if rr.Code != 201 {
+		t.Fatalf("alice create highlight: %d %s", rr.Code, rr.Body.String())
+	}
+	var hl struct {
+		Highlight struct{ ID string } `json:"highlight"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &hl)
+
+	t.Run("bob cannot list alice's bookmarks by edition", func(t *testing.T) {
+		rr := do(t, srv, http.MethodGet, "/api/v1/reading/editions/ed-1/bookmarks", "", bob)
+		if strings.Contains(rr.Body.String(), "alice-secret") {
+			t.Fatalf("bob saw alice's bookmark: %s", rr.Body.String())
+		}
+	})
+
+	t.Run("bob cannot list alice's highlights by edition", func(t *testing.T) {
+		rr := do(t, srv, http.MethodGet, "/api/v1/reading/editions/ed-1/highlights", "", bob)
+		if strings.Contains(rr.Body.String(), "alice-note") {
+			t.Fatalf("bob saw alice's highlight note: %s", rr.Body.String())
+		}
+	})
+
+	t.Run("bob cannot delete alice's bookmark by id", func(t *testing.T) {
+		rr := do(t, srv, http.MethodDelete, "/api/v1/reading/bookmarks/"+bm.Bookmark.ID, "", bob)
+		if rr.Code != 404 {
+			t.Fatalf("bob delete alice's bookmark: %d, want 404", rr.Code)
+		}
+		// Alice's bookmark still exists.
+		rr = do(t, srv, http.MethodGet, "/api/v1/reading/editions/ed-1/bookmarks", "", alice)
+		if !strings.Contains(rr.Body.String(), "alice-secret") {
+			t.Fatalf("bob's failed delete removed alice's bookmark: %s", rr.Body.String())
+		}
+	})
+
+	t.Run("bob cannot patch alice's highlight by id", func(t *testing.T) {
+		rr := do(t, srv, http.MethodPatch, "/api/v1/reading/highlights/"+hl.Highlight.ID,
+			`{"note":"bob-was-here"}`, bob)
+		if rr.Code != 404 {
+			t.Fatalf("bob patch alice's highlight: %d, want 404", rr.Code)
+		}
+	})
+
+	t.Run("bob cannot delete alice's highlight by id", func(t *testing.T) {
+		rr := do(t, srv, http.MethodDelete, "/api/v1/reading/highlights/"+hl.Highlight.ID, "", bob)
+		if rr.Code != 404 {
+			t.Fatalf("bob delete alice's highlight: %d, want 404", rr.Code)
+		}
+	})
+
+	t.Run("export is scoped to the calling user", func(t *testing.T) {
+		exp.byUser["alice"] = memExportUser{
+			marks: []postgres.ExportMark{{ID: "m-a", EditionID: "ed-1", Kind: "bookmark", StartCFI: "x", Label: "alice-secret"}},
+		}
+		exp.byUser["bob"] = memExportUser{
+			marks: []postgres.ExportMark{{ID: "m-b", EditionID: "ed-1", Kind: "bookmark", StartCFI: "y", Label: "bob-only"}},
+		}
+		rr := do(t, srv, http.MethodGet, "/api/v1/reading/export", "", bob)
+		if exp.gotUser != "bob" {
+			t.Fatalf("export was not scoped to the caller: gotUser=%q", exp.gotUser)
+		}
+		if strings.Contains(rr.Body.String(), "alice-secret") {
+			t.Fatalf("bob's export leaked alice's data: %s", rr.Body.String())
+		}
+		if !strings.Contains(rr.Body.String(), "bob-only") {
+			t.Fatalf("bob's export missing bob's own data: %s", rr.Body.String())
+		}
+	})
+}
+
+func TestReading_RequiresAuthenticatedUser(t *testing.T) {
+	api, _ := newReadingAPI()
+	srv := readingServer(t, api, nil)
+	// X-Test-User: "" -> testUserMW injects no user -> handler 401s.
+	rr := do(t, srv, http.MethodGet, "/api/v1/reading/works/work-1/progress", "", hdr("X-Test-User", ""))
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without an authenticated user, got %d", rr.Code)
 	}
 }
 

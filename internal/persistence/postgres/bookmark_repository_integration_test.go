@@ -178,3 +178,37 @@ func TestBookmarkRepository_SQLInjectionProof(t *testing.T) {
 		}
 	}
 }
+
+// TestBookmarkRepository_PerUserIDOR is the AUDIT-0012-C1 close-gate
+// integration test: one user's bookmark is invisible and undeletable to
+// another user through the …AndUser methods.
+func TestBookmarkRepository_PerUserIDOR(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+	mustExecPool(t, pool, "INSERT INTO works (id, title) VALUES ('work-1', 'Title')")
+	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('edition-1', 'work-1', 'en', '')")
+	repo := postgres.NewBookmarkRepository(pool)
+
+	alice := domain.NewBookmark("bm-alice", "edition-1", "loc-1", "alice-only", time.Now().UTC().Truncate(time.Microsecond))
+	if err := repo.SaveForUser(ctx, "alice", "", alice); err != nil {
+		t.Fatalf("SaveForUser(alice): %v", err)
+	}
+
+	if _, err := repo.FindByIDAndUser(ctx, "bob", "bm-alice"); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("bob FindByIDAndUser alice's bookmark: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+	if list, err := repo.FindByEditionAndUser(ctx, "bob", "", "edition-1"); err != nil || len(list) != 0 {
+		t.Fatalf("bob FindByEditionAndUser: %v rows=%d, want 0 rows no error", err, len(list))
+	}
+	if err := repo.DeleteAndUser(ctx, "bob", "bm-alice"); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("bob DeleteAndUser alice's bookmark: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+	// Alice's bookmark survived bob's attempts.
+	if _, err := repo.FindByIDAndUser(ctx, "alice", "bm-alice"); err != nil {
+		t.Fatalf("alice's bookmark was affected by bob's calls: %v", err)
+	}
+	// Alice can delete her own.
+	if err := repo.DeleteAndUser(ctx, "alice", "bm-alice"); err != nil {
+		t.Fatalf("alice DeleteAndUser own bookmark: %v", err)
+	}
+}

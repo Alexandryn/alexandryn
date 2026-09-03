@@ -56,6 +56,10 @@ func ReadingExportHandler(poolRef *PoolRef, logger *slog.Logger, now func() time
 			WriteError(w, domain.Unavailable, "export is not available", correlationID)
 			return
 		}
+		userID, libID, ok := readingScope(r, w, correlationID)
+		if !ok {
+			return
+		}
 
 		workID := r.URL.Query().Get("workId")
 		if workID != "" {
@@ -74,12 +78,12 @@ func ReadingExportHandler(poolRef *PoolRef, logger *slog.Logger, now func() time
 			}
 		}
 
-		rawProgress, err := deps.Export.ListProgress(r.Context(), workID)
+		rawProgress, err := deps.Export.ListProgress(r.Context(), userID, libID, workID)
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		rawMarks, err := deps.Export.ListMarks(r.Context(), workID)
+		rawMarks, err := deps.Export.ListMarks(r.Context(), userID, libID, workID)
 		if err != nil {
 			writeDomainError(w, err, correlationID)
 			return

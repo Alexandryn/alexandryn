@@ -177,6 +177,13 @@ func (r *fakeLibraryEntryRepository) FindByEdition(_ context.Context, editionID 
 	return e, nil
 }
 
+func (r *fakeLibraryEntryRepository) EditionInLibrary(_ context.Context, editionID domain.EditionID, _ domain.LibraryID) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.entries[editionID]
+	return ok, nil
+}
+
 func (r *fakeLibraryEntryRepository) Save(_ context.Context, e *domain.LibraryEntry) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -508,6 +515,14 @@ func (r *fakeBookmarkRepository) FindByEditionAndUser(ctx context.Context, _ dom
 	return r.FindByEdition(ctx, editionID)
 }
 
+func (r *fakeBookmarkRepository) FindByIDAndUser(ctx context.Context, _ domain.UserID, id domain.BookmarkID) (*domain.Bookmark, error) {
+	return r.FindByID(ctx, id)
+}
+
+func (r *fakeBookmarkRepository) DeleteAndUser(ctx context.Context, _ domain.UserID, id domain.BookmarkID) error {
+	return r.Delete(ctx, id)
+}
+
 func (r *fakeBookmarkRepository) Save(_ context.Context, b *domain.Bookmark) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -566,6 +581,14 @@ func (r *fakeHighlightRepository) FindByEdition(_ context.Context, editionID dom
 
 func (r *fakeHighlightRepository) FindByEditionAndUser(ctx context.Context, _ domain.UserID, _ domain.LibraryID, editionID domain.EditionID) ([]*domain.Highlight, error) {
 	return r.FindByEdition(ctx, editionID)
+}
+
+func (r *fakeHighlightRepository) FindByIDAndUser(ctx context.Context, _ domain.UserID, id domain.HighlightID) (*domain.Highlight, error) {
+	return r.FindByID(ctx, id)
+}
+
+func (r *fakeHighlightRepository) DeleteAndUser(ctx context.Context, _ domain.UserID, id domain.HighlightID) error {
+	return r.Delete(ctx, id)
 }
 
 func (r *fakeHighlightRepository) Save(_ context.Context, h *domain.Highlight) error {
