@@ -60,6 +60,18 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		return fmt.Errorf("BIND_ADDRESS must be host:port: %w", err)
 	}
 
+	// A half-configured pair is a mistake on any bind class, never a
+	// silent fall-through to plaintext: on a private bind it would
+	// otherwise skip the opt-in TLS branch below and serve HTTP; on a
+	// public bind the "cert required" error would fire but misleadingly
+	// name both files as missing when one is set.
+	if (cfg.TLSCertFile == "") != (cfg.TLSKeyFile == "") {
+		setKey := "TLS_KEY_FILE"
+		if cfg.TLSCertFile != "" {
+			setKey = "TLS_CERT_FILE"
+		}
+		return fmt.Errorf("TLS_CERT_FILE and TLS_KEY_FILE must be set together (only %s is set)", setKey)
+	}
 	hasStaticCert := cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
 
 	switch classifyBindHost(host) {
