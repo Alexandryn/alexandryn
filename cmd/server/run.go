@@ -264,10 +264,15 @@ func run(ctx context.Context, deps runDeps) int {
 	// In-process TLS (ADR 0028 §1, phase 13 Tier 0): config populates a
 	// certificate whenever the bind is publicly routable or a deliberate
 	// private opt-in. A non-nil cert means this listener MUST NOT serve
-	// plaintext. The tls.Config here is minimal — the cipher/version
-	// policy, ALPN, and ACME are phase 13 Tier 2.
+	// plaintext. MinVersion is pinned to TLS 1.2 explicitly — Go's own
+	// default is already 1.2, but stating it here means the floor does
+	// not silently depend on a toolchain default on a bind that may be
+	// public. The cipher list, ALPN, HSTS, and ACME are phase 13 Tier 2.
 	if cert := cfg.TLSCertificate(); cert != nil {
-		listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{*cert}})
+		listener = tls.NewListener(listener, &tls.Config{
+			Certificates: []tls.Certificate{*cert},
+			MinVersion:   tls.VersionTLS12,
+		})
 		logger.Info("startup step completed", "step", "tls", "mode", "in-process")
 	}
 

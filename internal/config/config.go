@@ -477,8 +477,13 @@ func parseOriginList(raw string) (any, error) {
 			return nil, fmt.Errorf("entry %q must be a bare scheme://host[:port] with no path", entry)
 		}
 		host := strings.ToLower(u.Hostname())
+		if strings.Contains(host, ":") {
+			// An IPv6 literal — u.Hostname() strips the brackets a
+			// serialized origin keeps ("http://[::1]", RFC 6454 §6.1).
+			host = "[" + host + "]"
+		}
 		if port := u.Port(); port != "" && !isDefaultPort(u.Scheme, port) {
-			host = net.JoinHostPort(host, port)
+			host += ":" + port
 		}
 		out = append(out, u.Scheme+"://"+host)
 	}
