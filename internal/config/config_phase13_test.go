@@ -119,6 +119,9 @@ func TestLoad_CORSAllowedOrigins_ParsesAndValidates(t *testing.T) {
 		{"http://host.example:80", "http://host.example"},
 		{"https://host.example:8443", "https://host.example:8443"},
 		{"HTTP://Host.Example", "http://host.example"},
+		{"http://[::1]", "http://[::1]"},                   // IPv6 literal, no port — brackets kept
+		{"http://[FD00::1]:8474", "http://[fd00::1]:8474"}, // IPv6 literal with port
+		{"https://[::1]:443", "https://[::1]"},             // IPv6 + default port dropped
 	} {
 		validEnv(t)
 		t.Setenv("CORS_ALLOWED_ORIGINS", tc.in)
