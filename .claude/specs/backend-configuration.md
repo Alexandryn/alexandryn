@@ -254,12 +254,24 @@ file format, where it lives, or the actual validation each key needs.
     actually serves in-process TLS, never plaintext. The safety property
     the old note protected (no plaintext on a public address) holds
     without the blanket refusal.
-  - **Still deferred to phase 13 Tier 2:** in-process ACME issuance
-    (`ACME_ENABLED` on a public bind is a startup error until then), the
-    cipher-suite / TLS-version policy, ALPN, HSTS, and the `:80`
-    redirect. This note is deleted, and the middle bullet stands
-    unqualified, once Tier 2's `backend-network-transport.md` FR-2/FR-3
-    land.
+  - **Phase 13 Tier 2 (2026-09-04, `DRAFT`):** `validateBindAddress` now
+    also accepts `ACME_ENABLED=true` on a public bind (requires
+    `ACME_DOMAIN`; if `BIND_ADDRESS`'s host is a name it must equal
+    `ACME_DOMAIN`; mutually exclusive with a static `TLS_CERT_FILE`/
+    `TLS_KEY_FILE`). It records `Config.Reachability()` (loopback / private
+    / public) and `Config.TLSMode()` (none / static / acme). `cmd/server`
+    builds the `autocert.Manager` (`HostWhitelist(ACME_DOMAIN)`,
+    `DirCache` under `ACME_CACHE_DIR` or `acme/` in the data dir,
+    `AcceptTOS`), wires `GetCertificate`, and runs a `:80` HTTP→HTTPS
+    redirect listener (serving `manager.HTTPHandler` in ACME mode) for
+    every public bind. The `NewTLSConfig` cipher/version/ALPN policy and
+    the HSTS middleware also landed. **Still open:** the Pebble
+    certificate-lifecycle integration test is written but self-skips —
+    Pebble confirms end-to-end issuance locally, the automated assertion
+    hits an `x/crypto` acme-client ↔ Pebble finalize-response
+    incompatibility on cert download (phase-13 follow-up). This whole
+    note is deleted, and the middle bullet stands unqualified, once that
+    test is green and the maintainer re-confirms.
 
 ## Non-functional requirements
 

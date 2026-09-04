@@ -103,14 +103,33 @@ type Config struct {
 	// loopback/private bind with no cert. Populated by validateBindAddress
 	// during Load; read via TLSCertificate.
 	tlsCert *tls.Certificate
+
+	// reachability and tlsMode are set by validateBindAddress from
+	// BIND_ADDRESS's class plus the certificate/ACME state (ADR 0028 §1).
+	// reachability: "loopback" | "private" | "public".
+	// tlsMode:      "none" (plaintext, upstream TLS may terminate) |
+	//               "static" (in-process, file cert) |
+	//               "acme" (in-process, autocert-issued).
+	reachability string
+	tlsMode      string
 }
 
 // TLSCertificate returns the validated in-process-TLS serving certificate,
-// or nil when the bind is plaintext (loopback/private with no cert). When
-// non-nil, cmd/server MUST wrap the listener in TLS — a non-nil cert here
-// means the bind is either publicly routable or a deliberate private
-// opt-in, and neither may serve plaintext.
+// or nil when the bind is plaintext (loopback/private with no cert) or
+// when certificates come from ACME (TLSMode == "acme"). When non-nil,
+// cmd/server MUST wrap the listener in TLS.
 func (c *Config) TLSCertificate() *tls.Certificate { return c.tlsCert }
+
+// Reachability reports whether BIND_ADDRESS is "loopback", "private", or
+// "public" (ADR 0028 §1). "public" is Mode A — in-process TLS mandatory
+// and a :80 HTTP->HTTPS redirect listener runs.
+func (c *Config) Reachability() string { return c.reachability }
+
+// TLSMode reports how TLS terminates: "none" (plaintext on this
+// listener), "static" (in-process, TLS_CERT_FILE/TLS_KEY_FILE), or "acme"
+// (in-process, autocert). backend-network-api.md FR-4's /network/status
+// reports it.
+func (c *Config) TLSMode() string { return c.tlsMode }
 
 type category int
 

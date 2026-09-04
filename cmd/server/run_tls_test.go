@@ -135,6 +135,105 @@ func assertRunServesTLS(t *testing.T, bindAddr string) {
 	}
 }
 
+// TestRun_PublicStaticBind_Serves80Redirect: a public static-cert bind
+// (Mode A) also runs a :80 listener that 308-redirects http:// to
+// https:// (backend-network-transport.md FR-3). The listen dep here maps
+// ":80" to an ephemeral loopback port so the test can exercise it
+// unprivileged.
+func TestRun_PublicStaticBind_Serves80Redirect(t *testing.T) {
+	certPEM, keyPEM := selfSignedCert(t)
+	readFile := func(path string) ([]byte, error) {
+		switch path {
+		case "/tls/cert.pem":
+			return certPEM, nil
+		case "/tls/key.pem":
+			return keyPEM, nil
+		default:
+			return nil, fs.ErrNotExist
+		}
+	}
+	t.Setenv("OPEN_LIBRARY_USER_AGENT", "Alexandryn/test")
+	t.Setenv("BIND_ADDRESS", "0.0.0.0:0")
+	t.Setenv("TLS_CERT_FILE", "/tls/cert.pem")
+	t.Setenv("TLS_KEY_FILE", "/tls/key.pem")
+
+	cfg, err := config.Load("", readFile, func() (string, error) { return t.TempDir(), nil })
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+
+	mainCh := make(chan string, 1)
+	redirectCh := make(chan string, 1)
+	listen := func(network, address string) (net.Listener, error) {
+		if address == ":80" {
+			ln, lerr := net.Listen("tcp", "127.0.0.1:0")
+			if lerr == nil {
+				redirectCh <- ln.Addr().String()
+			}
+			return ln, lerr
+		}
+		ln, lerr := net.Listen(network, address)
+		if lerr == nil {
+			mainCh <- ln.Addr().String()
+		}
+		return ln, lerr
+	}
+
+	deps := runDeps{
+		loadConfig:          func() (*config.Config, error) { return cfg, nil },
+		newLogger:           quietLogger,
+		newRouter:           newProductionRouter,
+		listen:              listen,
+		newServer:           realServerDeps(),
+		clock:               realClock{},
+		obtainPostgres:      func(context.Context, *config.Config) error { return nil },
+		postgresMaxAttempts: 1,
+		postgresBackoff:     0,
+		sleep:               sleepOrDone,
+		runMigrations:       func(context.Context, *config.Config) error { return nil },
+		newPool:             func(context.Context, *config.Config) (pgPool, *repositories, error) { return &fakePool{}, nil, nil },
+		stderr:              io.Discard,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	exitCh := make(chan int, 1)
+	go func() { exitCh <- run(ctx, deps) }()
+
+	_ = waitForAddr(t, mainCh, 2*time.Second)
+	redirectAddr := waitForAddr(t, redirectCh, 2*time.Second)
+
+	client := &http.Client{
+		Timeout:       2 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	var resp *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var gerr error
+		resp, gerr = client.Get("http://" + redirectAddr + "/library")
+		if gerr == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if resp == nil {
+		t.Fatal(":80 redirect listener never answered")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusPermanentRedirect {
+		t.Fatalf("status = %d, want 308", resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc == "" || loc[:6] != "https:" {
+		t.Fatalf("Location = %q, want an https:// URL", loc)
+	}
+
+	cancel()
+	if code := waitForExit(t, exitCh, 3*time.Second); code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+}
+
 func selfSignedCert(t *testing.T) (certPEM, keyPEM []byte) {
 	t.Helper()
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
