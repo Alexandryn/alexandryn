@@ -39,14 +39,21 @@ phase, supersedes the Tier-0-only PR #79).
       policy (T2.10), commits `f5e8e51`/`122ecba`/`cf2f5f1`. Chain:
       recovery→limits→logging→security-headers→HSTS→rate-limit→CORS→auth→routing.
 - [x] **Tier 2 part 3** — `:80` HTTP→HTTPS redirect + ACME via `autocert`
-      (T2.2/T2.3), commit `b857f43`. `Config.Reachability()`/`TLSMode()`;
-      `NewACMEManager` (HostPolicy pinned); `HTTPSRedirect`; two-listener
-      graceful shutdown. **Follow-up:** the Pebble cert-lifecycle
-      integration test self-skips — issuance proven locally, the download
-      assertion hits an `x/crypto` acme ↔ Pebble finalize incompatibility;
-      + wire the CI Pebble service once green. Middleware-chain amendment
+      (T2.2/T2.3), commits `b857f43`..`6a32c92`. `Config.Reachability()`/
+      `TLSMode()`/`NamedBindHost()`; `NewACMEManager` (HostPolicy pinned);
+      `HTTPSRedirect` (canonical-host, IPv6-safe); `:80` shares the main
+      Recovery/SecurityHeaders/rate-limiter. Two full code-review rounds
+      (14 findings, all fixed — HSTS-in-ACME-mode gap, reader-iframe
+      X-Frame-Options break, rate-limiter map eviction, ACME cache-dir
+      log leak, several DRY/duplication fixes) + CI green on all three
+      jobs. **Follow-up:** the Pebble cert-lifecycle integration test
+      self-skips — issuance proven locally end to end, the download
+      assertion hits an `x/crypto` acme-client ↔ Pebble finalize-response
+      incompatibility; wiring the CI Pebble service is deferred until
+      that's resolved. Middleware-chain amendment
       (`backend-http-transport.md` FR-1) + `backend-configuration.md`
-      FR-8 note still `DRAFT` pending Checkpoint 2.
+      FR-8 note still `DRAFT` pending Checkpoint 2 maintainer
+      re-confirmation.
 - [ ] HKDF subkey wiring (`enrolment-grant-v1` + the two pairing-code
       subkeys) → Tier 4, with the login/pair handlers that consume them.
 - [ ] Tier 3 — persistence · Tier 4 — HTTP API · Tier 5 — web UI
