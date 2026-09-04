@@ -351,7 +351,7 @@ func run(ctx context.Context, deps runDeps) int {
 		if canonicalHost == "" {
 			canonicalHost = bindHost
 		}
-		var h http.Handler = transporthttp.HTTPSRedirect(canonicalHost, tlsPort)
+		h := transporthttp.HTTPSRedirect(canonicalHost, tlsPort)
 		if acmeManager != nil {
 			h = acmeManager.HTTPHandler(h)
 		}
