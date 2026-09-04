@@ -78,6 +78,17 @@ func TestPairingCode_EqualIsConstantTimeAndNormalizes(t *testing.T) {
 	// field makes == a compile error. See device_pairing_audit_test.go.
 }
 
+func TestPairingCode_ZeroValueNeverEquals(t *testing.T) {
+	var zero domain.PairingCode
+	real := mustCode(t, "ABCD2345")
+	if zero.Equal(zero) {
+		t.Fatal("a zero PairingCode must not equal itself — that would read as a correct code on the verify path")
+	}
+	if zero.Equal(real) || real.Equal(zero) {
+		t.Fatal("a zero PairingCode must not equal a real one")
+	}
+}
+
 func TestPairingCode_DisplayAndRedaction(t *testing.T) {
 	c := mustCode(t, "abcd2345")
 	if c.Normalized() != "ABCD2345" {
@@ -389,6 +400,10 @@ func TestRehydratePairingSession_RevalidatesInvariants(t *testing.T) {
 	// expired is unconstrained
 	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", code, domain.PairingExpired, now, now.Add(testTTL), nil); err != nil {
 		t.Fatalf("an expired session with no device ID is valid: %v", err)
+	}
+	// a zero-value code must fail rehydration
+	if _, err := domain.RehydratePairingSession("ps-1", "admin-1", domain.PairingCode{}, domain.PairingPending, now, now.Add(testTTL), nil); err == nil {
+		t.Fatal("a zero-value PairingCode must fail rehydration")
 	}
 }
 

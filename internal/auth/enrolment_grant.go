@@ -1,14 +1,9 @@
 package auth
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
@@ -62,15 +57,14 @@ func (s *EnrolmentGrantSigner) Sign(sessionID domain.PairingSessionID, now time.
 	if sessionID == "" {
 		return "", errors.New("auth: enrolment grant needs a pairing session ID")
 	}
-	claims := EnrolmentClaims{
+	return hs256Sign(s.secret, EnrolmentClaims{
 		Type:      TokenTypeEnrolment,
 		SessionID: sessionID,
 		JTI:       s.ids.NewID(),
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(EnrolmentGrantTTL).Unix(),
 		Issuer:    s.issuer,
-	}
-	return s.encode(claims)
+	})
 }
 
 // Verify checks the algorithm, signature (constant time), expiry, issuer,
@@ -79,29 +73,12 @@ func (s *EnrolmentGrantSigner) Sign(sessionID domain.PairingSessionID, now time.
 // rejection as "no device association", not "login failed"
 // (backend-network-api.md FR-9).
 func (s *EnrolmentGrantSigner) Verify(token string, now time.Time) (*EnrolmentClaims, error) {
-	h, p, sig, ok := splitJWT(token)
-	if !ok {
-		return nil, errors.New("auth: malformed enrolment grant")
-	}
-
-	var header jwtHeader
-	if hj, err := base64.RawURLEncoding.DecodeString(h); err != nil || json.Unmarshal(hj, &header) != nil {
-		return nil, errors.New("auth: malformed enrolment grant header")
-	}
-	if header.Algorithm != "HS256" {
-		return nil, fmt.Errorf("auth: enrolment grant algorithm %q unsupported", header.Algorithm)
-	}
-
-	sigBytes, err := base64.RawURLEncoding.DecodeString(sig)
+	claimsJSON, err := hs256VerifiedClaims(s.secret, token)
 	if err != nil {
-		return nil, errors.New("auth: malformed enrolment grant signature")
+		return nil, err
 	}
-	if subtle.ConstantTimeCompare(sigBytes, s.hmac(h+"."+p)) != 1 {
-		return nil, errors.New("auth: enrolment grant signature mismatch")
-	}
-
 	var claims EnrolmentClaims
-	if cj, err := base64.RawURLEncoding.DecodeString(p); err != nil || json.Unmarshal(cj, &claims) != nil {
+	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
 		return nil, errors.New("auth: malformed enrolment grant claims")
 	}
 	if claims.Type != TokenTypeEnrolment {
@@ -117,31 +94,4 @@ func (s *EnrolmentGrantSigner) Verify(token string, now time.Time) (*EnrolmentCl
 		return nil, errors.New("auth: enrolment grant is missing a required claim")
 	}
 	return &claims, nil
-}
-
-func (s *EnrolmentGrantSigner) encode(claims EnrolmentClaims) (string, error) {
-	hj, err := json.Marshal(jwtHeader{Algorithm: "HS256", Type: "JWT"})
-	if err != nil {
-		return "", err
-	}
-	cj, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
-	}
-	signingInput := base64.RawURLEncoding.EncodeToString(hj) + "." + base64.RawURLEncoding.EncodeToString(cj)
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(s.hmac(signingInput)), nil
-}
-
-func (s *EnrolmentGrantSigner) hmac(data string) []byte {
-	m := hmac.New(sha256.New, s.secret)
-	m.Write([]byte(data))
-	return m.Sum(nil)
-}
-
-func splitJWT(token string) (h, p, sig string, ok bool) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return "", "", "", false
-	}
-	return parts[0], parts[1], parts[2], true
 }

@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/Alexandryn/alexandryn/internal/auth"
 )
@@ -58,10 +59,5 @@ func HealthAndStaticPath(path string) bool {
 	case "/healthz", "/readyz":
 		return true
 	}
-	return !isAPIPath(path)
-}
-
-func isAPIPath(path string) bool {
-	const prefix = "/api/v1/"
-	return len(path) >= len(prefix) && path[:len(prefix)] == prefix
+	return !strings.HasPrefix(path, "/api/v1/")
 }
