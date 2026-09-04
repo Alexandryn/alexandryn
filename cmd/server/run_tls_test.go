@@ -220,7 +220,7 @@ func TestRun_PublicStaticBind_Serves80Redirect(t *testing.T) {
 	if resp == nil {
 		t.Fatal(":80 redirect listener never answered")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusPermanentRedirect {
 		t.Fatalf("status = %d, want 308", resp.StatusCode)
 	}
