@@ -3,7 +3,6 @@ package http
 import (
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 // OriginValidation wraps the UNAUTHENTICATED state-changing routes — in
@@ -28,14 +27,19 @@ import (
 // `allowed` is computed once at startup by the listener layer as the union
 // of every non-loopback interface origin the server serves, the configured
 // mDNS host name, and every CORS_ALLOWED_ORIGINS entry — enumerated, so an
-// implementer cannot loosen it to a substring match.
+// implementer cannot loosen it to a substring match. Every entry MUST
+// already be in the canonical serialized-origin form CORS.go and
+// config.parseOriginList use (lower-cased host, default port dropped,
+// IPv6 bracketed) — this middleware does exact matching only, the same
+// posture CORS takes, rather than re-normalizing with a second, divergent
+// implementation that could disagree with CORS's on the same allowlist.
 func OriginValidation(allowed []string) Middleware {
 	set := make(map[string]struct{}, len(allowed))
 	for _, o := range allowed {
-		set[strings.ToLower(strings.TrimRight(o, "/"))] = struct{}{}
+		set[o] = struct{}{}
 	}
 	inSet := func(origin string) bool {
-		_, ok := set[strings.ToLower(strings.TrimRight(origin, "/"))]
+		_, ok := set[origin]
 		return ok
 	}
 	return func(next http.Handler) http.Handler {
@@ -68,12 +72,13 @@ func OriginValidation(allowed []string) Middleware {
 }
 
 // originAllowedFromReferer rebuilds the scheme://host[:port] origin from a
-// Referer URL and checks it against the allowed set.
+// Referer URL and checks it against the allowed set. url.Parse already
+// lower-cases the scheme; the host is used as the browser sent it,
+// matching the exact-match posture the rest of this file uses.
 func originAllowedFromReferer(u *url.URL, set map[string]struct{}) bool {
 	if u.Scheme == "" || u.Host == "" {
 		return false
 	}
-	origin := strings.ToLower(u.Scheme + "://" + u.Host)
-	_, ok := set[origin]
+	_, ok := set[u.Scheme+"://"+u.Host]
 	return ok
 }

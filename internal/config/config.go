@@ -112,7 +112,19 @@ type Config struct {
 	//               "acme" (in-process, autocert-issued).
 	reachability string
 	tlsMode      string
+
+	// namedBindHost is BIND_ADDRESS's host when it is a DNS name on a
+	// public bind (empty for a bare-IP bind or any non-public class) —
+	// set once by validateBindAddress's own classification, so a caller
+	// (the :80 redirect's canonical host) never re-derives "is this a
+	// name" with a second copy of the same check.
+	namedBindHost string
 }
+
+// NamedBindHost returns BIND_ADDRESS's host when Reachability() is
+// "public" and the host is a DNS name (not a bare IP literal); empty
+// otherwise.
+func (c *Config) NamedBindHost() string { return c.namedBindHost }
 
 // TLSCertificate returns the validated in-process-TLS serving certificate,
 // or nil when the bind is plaintext (loopback/private with no cert) or

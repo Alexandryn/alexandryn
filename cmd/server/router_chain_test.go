@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -45,6 +46,36 @@ func TestChain_SecurityHeadersOnEveryResponse(t *testing.T) {
 	// No cert in this cfg -> plaintext bind -> no HSTS.
 	if rec.Header().Get("Strict-Transport-Security") != "" {
 		t.Error("HSTS set on a plaintext bind")
+	}
+}
+
+// Regression: HSTS was gated on cfg.TLSCertificate() != nil, which stays
+// nil in ACME mode (only the static-cert path populates it) — a public
+// ACME-terminated bind, the deployment where HSTS matters most, shipped
+// without it. The gate is now an explicit TLSMode allow-list.
+func TestChain_HSTSSetForACMEMode(t *testing.T) {
+	t.Setenv("OPEN_LIBRARY_USER_AGENT", "Alexandryn/test")
+	t.Setenv("BIND_ADDRESS", "library.example.com:443")
+	t.Setenv("ACME_ENABLED", "true")
+	t.Setenv("ACME_DOMAIN", "library.example.com")
+	cfg, err := config.Load("", func(string) ([]byte, error) { return nil, fs.ErrNotExist }, func() (string, error) { return t.TempDir(), nil })
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if cfg.TLSMode() != "acme" {
+		t.Fatalf("TLSMode() = %q, want acme", cfg.TLSMode())
+	}
+	if cfg.TLSCertificate() != nil {
+		t.Fatal("ACME mode must not populate a static certificate — this is exactly the case the old TLSCertificate()!=nil gate got wrong")
+	}
+
+	limiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, time.Minute)
+	router := newProductionRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+
+	if got := rec.Header().Get("Strict-Transport-Security"); got != "max-age=31536000" {
+		t.Fatalf("HSTS on an ACME-mode bind = %q, want max-age=31536000", got)
 	}
 }
 

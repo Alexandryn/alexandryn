@@ -13,10 +13,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// crockford is the Crockford base32 alphabet, uppercase, no padding,
-// excluding I, L, O, U — the same set domain.NewPairingCode accepts.
-const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-
 // codeBytes is 5, so 8 Crockford characters carry exactly 40 bits of
 // entropy — the floor backend-network-transport.md FR-9 requires against
 // a 5-minute, rate-limited online guess.
@@ -36,12 +32,14 @@ func GeneratePairingCode() (domain.PairingCode, error) {
 }
 
 // encodeCrockford40 packs 5 bytes (40 bits) big-endian into 8 5-bit
-// groups, each mapped through the Crockford alphabet.
+// groups, each mapped through domain.CrockfordAlphabet — the single
+// definition of that alphabet, so this generator and
+// domain.NewPairingCode's validator can never drift apart.
 func encodeCrockford40(b [codeBytes]byte) string {
 	v := uint64(b[0])<<32 | uint64(b[1])<<24 | uint64(b[2])<<16 | uint64(b[3])<<8 | uint64(b[4])
 	out := make([]byte, 8)
 	for i := 7; i >= 0; i-- {
-		out[i] = crockford[v&0x1f]
+		out[i] = domain.CrockfordAlphabet[v&0x1f]
 		v >>= 5
 	}
 	return string(out)

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"net"
 	"net/http"
 	"strings"
 
@@ -48,9 +49,18 @@ func HTTPSRedirect(canonicalHost, tlsPort string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host := canonicalHost
 		if host == "" {
-			host = r.Host
-			if i := strings.LastIndexByte(host, ':'); i >= 0 {
-				host = host[:i]
+			// net.SplitHostPort, not a bare LastIndexByte(':') split — a
+			// bracketed IPv6 literal has a ':' before the closing bracket
+			// that a naive split would cut at, mangling the redirect
+			// target. SplitHostPort strips the brackets on success, so a
+			// host containing ':' (IPv6) needs re-bracketing for the URL.
+			if h, _, err := net.SplitHostPort(r.Host); err == nil {
+				host = h
+			} else {
+				host = r.Host // no port present — r.Host is already the bare (possibly bracketed) host
+			}
+			if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
+				host = "[" + host + "]"
 			}
 		}
 		target := "https://" + host
