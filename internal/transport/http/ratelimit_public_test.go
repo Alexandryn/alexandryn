@@ -25,8 +25,10 @@ func TestPublicRateLimit_BurstThen429_KeyedOnRemoteAddr(t *testing.T) {
 		return serve(mw, r)
 	}
 
-	if req("").Code != http.StatusOK || req("").Code != http.StatusOK {
-		t.Fatal("first two requests within the burst should pass")
+	for i := 1; i <= 2; i++ {
+		if got := req("").Code; got != http.StatusOK {
+			t.Fatalf("burst request %d status = %d, want 200", i, got)
+		}
 	}
 	blocked := req("")
 	if blocked.Code != http.StatusTooManyRequests {
