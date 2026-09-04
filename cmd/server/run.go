@@ -318,8 +318,16 @@ func run(ctx context.Context, deps runDeps) int {
 		if acmeManager.Client != nil && acmeManager.Client.DirectoryURL != "" {
 			caURL = acmeManager.Client.DirectoryURL
 		}
+		// The cache directory path is NOT logged — it is home-relative
+		// (constitution §8, CLAUDE.md reflex). The operator sets or knows
+		// ACME_CACHE_DIR; whether it is the default or explicit is all the
+		// log needs to say.
+		cacheDirKind := "default (acme/ under the data directory)"
+		if cfg.ACMECacheDir != "" {
+			cacheDirKind = "ACME_CACHE_DIR"
+		}
 		logger.Info("startup step completed", "step", "tls", "mode", "acme",
-			"domain", cfg.ACMEDomain, "cacheDir", cacheDir, "caDirectoryURL", caURL)
+			"domain", cfg.ACMEDomain, "cacheDir", cacheDirKind, "caDirectoryURL", caURL)
 	default:
 		logger.Info("startup step completed", "step", "tls", "mode", "none")
 	}
@@ -330,10 +338,20 @@ func run(ctx context.Context, deps runDeps) int {
 	var redirectSrv *http.Server
 	if cfg.Reachability() == "public" {
 		tlsPort := boundPort
-		if tlsPort == "" {
-			_, tlsPort, _ = net.SplitHostPort(cfg.BindAddress)
+		bindHost := ""
+		if h, p, err := net.SplitHostPort(cfg.BindAddress); err == nil {
+			if tlsPort == "" {
+				tlsPort = p
+			}
+			if net.ParseIP(h) == nil && h != "localhost" {
+				bindHost = h // a DNS-name bind
+			}
 		}
-		var h http.Handler = transporthttp.HTTPSRedirect(tlsPort)
+		canonicalHost := cfg.ACMEDomain
+		if canonicalHost == "" {
+			canonicalHost = bindHost
+		}
+		var h http.Handler = transporthttp.HTTPSRedirect(canonicalHost, tlsPort)
 		if acmeManager != nil {
 			h = acmeManager.HTTPHandler(h)
 		}
