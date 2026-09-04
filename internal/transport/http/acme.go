@@ -33,19 +33,25 @@ func NewACMEManager(cfg *config.Config, cacheDir string) *autocert.Manager {
 }
 
 // HTTPSRedirect returns a handler that 308-redirects every request to the
-// https:// form of the same host and path. It runs on the :80 listener
-// for every public bind (FR-3) — for a static-cert bind on its own, and
-// behind autocert.Manager.HTTPHandler for an ACME bind (which serves the
-// HTTP-01 challenge and delegates everything else here). It never serves
+// https:// form of the same path. It runs on the :80 listener for every
+// public bind (FR-3) — for a static-cert bind on its own, and behind
+// autocert.Manager.HTTPHandler for an ACME bind (which serves the HTTP-01
+// challenge and delegates everything else here). It never serves
 // application content.
 //
-// tlsPort is the port the TLS listener is bound to; it is appended to the
-// redirect target unless it is empty or 443.
-func HTTPSRedirect(tlsPort string) http.Handler {
+//   - canonicalHost, when non-empty (ACME_DOMAIN, or a named BIND_ADDRESS
+//     host), is the redirect target's host — the request's own Host
+//     header is not trusted for it. When empty (a bare-IP public bind)
+//     the request Host is the only option; the port is stripped.
+//   - tlsPort is appended unless it is empty or 443.
+func HTTPSRedirect(canonicalHost, tlsPort string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		host := r.Host
-		if i := strings.LastIndexByte(host, ':'); i >= 0 {
-			host = host[:i]
+		host := canonicalHost
+		if host == "" {
+			host = r.Host
+			if i := strings.LastIndexByte(host, ':'); i >= 0 {
+				host = host[:i]
+			}
 		}
 		target := "https://" + host
 		if tlsPort != "" && tlsPort != "443" {

@@ -12,19 +12,19 @@ import (
 
 func TestHTTPSRedirect(t *testing.T) {
 	cases := []struct {
-		name, tlsPort, host, path, want string
+		name, canonical, tlsPort, host, path, want string
 	}{
-		{"default 443", "443", "books.example.com", "/x?y=1", "https://books.example.com/x?y=1"},
-		{"empty port", "", "books.example.com", "/", "https://books.example.com/"},
-		{"non-default port", "8443", "books.example.com", "/a", "https://books.example.com:8443/a"},
-		{"host carries a port", "8443", "192.168.1.24:80", "/a", "https://192.168.1.24:8443/a"},
+		{"canonical host, default port", "books.example.com", "443", "anything", "/x?y=1", "https://books.example.com/x?y=1"},
+		{"canonical host, non-default port", "books.example.com", "8443", "anything", "/a", "https://books.example.com:8443/a"},
+		{"no canonical -> request host, port stripped", "", "8443", "192.168.1.24:80", "/a", "https://192.168.1.24:8443/a"},
+		{"forged Host is ignored when canonical is set", "books.example.com", "443", "evil.example", "/a", "https://books.example.com/a"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "http://"+tc.host+tc.path, nil)
 			r.Host = tc.host
-			transporthttp.HTTPSRedirect(tc.tlsPort).ServeHTTP(rec, r)
+			transporthttp.HTTPSRedirect(tc.canonical, tc.tlsPort).ServeHTTP(rec, r)
 
 			if rec.Code != http.StatusPermanentRedirect {
 				t.Fatalf("status = %d, want 308", rec.Code)
