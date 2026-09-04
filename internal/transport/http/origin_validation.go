@@ -51,8 +51,10 @@ func OriginValidation(allowed []string) Middleware {
 				return
 			}
 
-			// No Origin. Consult Referer only for a request with a body.
-			if r.Body != nil && r.ContentLength != 0 {
+			// No Origin. Consult Referer only for a request with a body
+			// (ContentLength == -1 means chunked with unknown length —
+			// that counts as a body).
+			if r.ContentLength != 0 {
 				if ref := r.Header.Get("Referer"); ref != "" {
 					if u, err := url.Parse(ref); err != nil || !originAllowedFromReferer(u, set) {
 						writeForbidden(w, "request origin is not allowed", corrID)

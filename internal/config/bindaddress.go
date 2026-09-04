@@ -38,7 +38,10 @@ func classifyBindHost(host string) bindClass {
 		return classPublic
 	}
 	// net.IP.IsPrivate covers RFC 1918 IPv4 and fc00::/7 (IPv6 ULA).
-	if ip.IsLoopback() || ip.IsPrivate() {
+	// Link-local (169.254.0.0/16, fe80::/10) is also a local-only range —
+	// an operator on an interface with no DHCP lease binds there, and it
+	// is never publicly routable.
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
 		return classLoopbackPrivate
 	}
 	return classPublic
@@ -102,7 +105,7 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		}
 		if !hasStaticCert {
 			return fmt.Errorf(
-				"BIND_ADDRESS %s is publicly routable; TLS_CERT_FILE and TLS_KEY_FILE are required (or run behind a reverse proxy on a loopback/private bind)",
+				"BIND_ADDRESS %s is not a loopback or private-range address, so in-process TLS is required: set TLS_CERT_FILE and TLS_KEY_FILE, or bind to a loopback/private address behind a reverse proxy",
 				cfg.BindAddress)
 		}
 		// SAN name check only when the host is a DNS name — a name-match

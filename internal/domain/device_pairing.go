@@ -79,8 +79,14 @@ func NewPairingCode(untrusted string) (PairingCode, error) {
 
 // Equal reports whether other holds the same normalized value, compared
 // in constant time (FR-1 — a non-constant-time compare of a 40-bit
-// secret over a LAN is a realistic side channel).
+// secret over a LAN is a realistic side channel). A zero-value
+// PairingCode never equals anything, itself included: subtle.ConstantTimeCompare
+// treats nil==nil as a match, which on the credential path must not read
+// as "the code is correct".
 func (c PairingCode) Equal(other PairingCode) bool {
+	if len(c.b) != pairingCodeLen || len(other.b) != pairingCodeLen {
+		return false
+	}
 	return subtle.ConstantTimeCompare(c.b, other.b) == 1
 }
 
@@ -180,6 +186,9 @@ func RehydratePairingSession(
 ) (*PairingSession, error) {
 	if strings.TrimSpace(string(id)) == "" || strings.TrimSpace(string(initiatedBy)) == "" {
 		return nil, &Error{Category: Internal, Message: "persisted pairing session is missing an identifier"}
+	}
+	if len(code.b) != pairingCodeLen {
+		return nil, &Error{Category: Internal, Message: "persisted pairing session has an invalid code"}
 	}
 	if !state.valid() {
 		return nil, &Error{Category: Internal, Message: fmt.Sprintf("persisted pairing session has an unknown state %q", state)}

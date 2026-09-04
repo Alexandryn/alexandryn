@@ -30,12 +30,21 @@ func CORS(allowedOrigins []string) Middleware {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// When an allowlist is configured the response varies by
+			// Origin whether or not it matched — set Vary unconditionally
+			// in that mode so a cache in front (the reverse-proxy case)
+			// does not serve a match response to a non-allowed origin or
+			// the reverse. With no allowlist nothing here depends on
+			// Origin, so no Vary.
+			if len(allowed) > 0 {
+				w.Header().Add("Vary", "Origin")
+			}
+
 			origin := r.Header.Get("Origin")
 			_, ok := allowed[origin]
 			if origin != "" && ok {
 				h := w.Header()
 				h.Set("Access-Control-Allow-Origin", origin)
-				h.Add("Vary", "Origin")
 				h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 				h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Library-Id")
 				h.Set("Access-Control-Max-Age", "600")

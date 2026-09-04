@@ -1,14 +1,9 @@
 package auth
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
@@ -74,68 +69,13 @@ func (s *JWTSigner) Sign(claims Claims) (string, error) {
 	if claims.Issuer == "" {
 		claims.Issuer = s.issuer
 	}
-
-	header := jwtHeader{
-		Algorithm: "HS256",
-		Type:      "JWT",
-	}
-
-	headerJSON, err := json.Marshal(header)
-	if err != nil {
-		return "", fmt.Errorf("auth/jwt: marshal header failed: %w", err)
-	}
-
-	claimsJSON, err := json.Marshal(claims)
-	if err != nil {
-		return "", fmt.Errorf("auth/jwt: marshal claims failed: %w", err)
-	}
-
-	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
-	claimsB64 := base64.RawURLEncoding.EncodeToString(claimsJSON)
-
-	signingInput := headerB64 + "." + claimsB64
-	sig := s.computeHMAC([]byte(signingInput))
-	sigB64 := base64.RawURLEncoding.EncodeToString(sig)
-
-	return signingInput + "." + sigB64, nil
+	return hs256Sign(s.secret, claims)
 }
 
 func (s *JWTSigner) Verify(tokenString string, now time.Time) (*Claims, error) {
-	parts := strings.Split(tokenString, ".")
-	if len(parts) != 3 {
-		return nil, errors.New("auth/jwt: invalid token format")
-	}
-
-	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	claimsJSON, err := hs256VerifiedClaims(s.secret, tokenString)
 	if err != nil {
-		return nil, errors.New("auth/jwt: invalid header encoding")
-	}
-
-	var header jwtHeader
-	if err := json.Unmarshal(headerJSON, &header); err != nil {
-		return nil, errors.New("auth/jwt: invalid header JSON")
-	}
-
-	// Strictly enforce HS256 algorithm (block 'none' algorithm attacks)
-	if header.Algorithm != "HS256" {
-		return nil, fmt.Errorf("auth/jwt: unsupported algorithm %q", header.Algorithm)
-	}
-
-	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil {
-		return nil, errors.New("auth/jwt: invalid signature encoding")
-	}
-
-	signingInput := parts[0] + "." + parts[1]
-	expectedSig := s.computeHMAC([]byte(signingInput))
-
-	if subtle.ConstantTimeCompare(signature, expectedSig) != 1 {
-		return nil, errors.New("auth/jwt: signature mismatch")
-	}
-
-	claimsJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, errors.New("auth/jwt: invalid claims encoding")
+		return nil, err
 	}
 
 	var claims Claims
@@ -188,10 +128,4 @@ func (s *JWTSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.
 		return "", errors.New("auth/jwt: invalid token type for MFA ticket")
 	}
 	return claims.Subject, nil
-}
-
-func (s *JWTSigner) computeHMAC(data []byte) []byte {
-	h := hmac.New(sha256.New, s.secret)
-	h.Write(data)
-	return h.Sum(nil)
 }
