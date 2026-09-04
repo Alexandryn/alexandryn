@@ -35,10 +35,20 @@ phase, supersedes the Tier-0-only PR #79).
       `PublicRateLimit`, `auth.EnrolmentGrantSigner`,
       `pairing.GeneratePairingCode`. Commits `aaa0fd7`, `e3241ab`. All
       unit-tested in isolation, not yet mounted.
-- [ ] **Tier 2 part 2** — `transport.Listeners` + `:80` redirect (T2.2),
-      ACME/`autocert` + Pebble in CI (T2.3), the middleware-chain
-      assembly + FR-13 re-verification (T2.10), and the run.go HKDF
-      subkey derivation.
+- [x] **Tier 2 part 2** — middleware-chain assembly + `NewTLSConfig`
+      policy (T2.10), commits `f5e8e51`/`122ecba`/`cf2f5f1`. Chain:
+      recovery→limits→logging→security-headers→HSTS→rate-limit→CORS→auth→routing.
+- [x] **Tier 2 part 3** — `:80` HTTP→HTTPS redirect + ACME via `autocert`
+      (T2.2/T2.3), commit `b857f43`. `Config.Reachability()`/`TLSMode()`;
+      `NewACMEManager` (HostPolicy pinned); `HTTPSRedirect`; two-listener
+      graceful shutdown. **Follow-up:** the Pebble cert-lifecycle
+      integration test self-skips — issuance proven locally, the download
+      assertion hits an `x/crypto` acme ↔ Pebble finalize incompatibility;
+      + wire the CI Pebble service once green. Middleware-chain amendment
+      (`backend-http-transport.md` FR-1) + `backend-configuration.md`
+      FR-8 note still `DRAFT` pending Checkpoint 2.
+- [ ] HKDF subkey wiring (`enrolment-grant-v1` + the two pairing-code
+      subkeys) → Tier 4, with the login/pair handlers that consume them.
 - [ ] Tier 3 — persistence · Tier 4 — HTTP API · Tier 5 — web UI
 - [ ] Gate 2 — audit 0013 (stop and ask) · Close
 
