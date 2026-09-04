@@ -101,15 +101,34 @@ stdlib `ServeMux`.
   document, so it not carrying the security headers is acceptable.
 
   **Implemented 2026-09-04 (phase 13 Tier 2)** — `cmd/server/main.go`
-  `newProductionRouter` composes the chain in exactly this order
-  (`recovery → limits → logging → security headers → HSTS → CORS →
-  global rate limit → auth → routing`); the `Origin validation`
-  wrapper is added at pairing-route registration in Tier 4, not the
-  global chain. `cmd/server/router_chain_test.go` asserts the security
-  headers, CORS deny-by-default, and the `/healthz` rate limit through the
-  real router; FR-13's access-token-type and `X-Library-Id` checks landed
-  with the phase-12 hardening prelude. The `DRAFT` marker stays until the
-  maintainer re-confirms this amendment (phase 13 Checkpoint 2).
+  `newProductionRouter` composes the chain as
+  `recovery → limits → logging → security headers → HSTS →
+  global rate limit → CORS → auth → routing`. Two deviations from the
+  draft order above, both from the Tier-2 code review:
+  - **global rate limit sits *before* CORS**, not after. A CORS
+    preflight (`OPTIONS` + `Access-Control-Request-Method`) is
+    short-circuited with a `204` by the CORS layer without reaching
+    `next`; if the limiter were behind CORS, a preflight-shaped flood on
+    a health probe would never be metered. `router_chain_test.go`'s
+    `TestChain_RateLimitRunsBeforeCORSPreflight` locks this.
+  - **the rate limiter covers only the two health probes**
+    (`HealthProbePath`), not the SPA static assets. Static assets are
+    served from an in-memory `embed.FS` (no DB, no compute); a flood of
+    them is bandwidth only, and behind a reverse proxy every client
+    shares one `RemoteAddr` — a bucket there would `429` a legitimate
+    multi-user SPA load mid-boot. FR-8's "static assets" line is treated
+    as satisfied-by-omission with this rationale; the pairing routes get
+    their own strict buckets in Tier 4.
+  The `Origin validation` wrapper is added at pairing-route registration
+  in Tier 4, not the global chain. `router_chain_test.go` asserts the
+  security headers, CORS deny-by-default / configured-origin echo, and
+  the `/healthz` rate limit through the real router; FR-13's
+  access-token-type and `X-Library-Id` checks landed with the phase-12
+  hardening prelude. Per-IP maps for both this limiter and the phase-12
+  auth limiter are now evicted on a `ctx`-bound ticker
+  (`IPRateLimiter.StartEviction`) — previously `Cleanup` had no caller
+  and the maps only grew. The `DRAFT` marker stays until the maintainer
+  re-confirms this amendment (phase 13 Checkpoint 2).
   Original text above stands as the phase-03 baseline this extends.
 - **FR-2** Request limits, applied by the limits middleware before a
   handler sees the request:

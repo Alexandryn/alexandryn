@@ -28,7 +28,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
-	"golang.org/x/time/rate"
 )
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
@@ -159,7 +158,7 @@ func sleepOrDone(ctx context.Context, d time.Duration) {
 // the embedded web/dist build as the SPA-fallback catch-all — wrapped by
 // the middleware chain in architecture-backend.md FR-6's fixed order
 // (recovery, limits, logging, routing).
-func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef) http.Handler {
+func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", transporthttp.Healthz(poolRef))
 	mux.Handle("/readyz", transporthttp.Readyz(poolRef))
@@ -252,32 +251,26 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	// The middleware chain, outermost-in (backend-http-transport.md FR-1
 	// as amended for ADR 0028, architecture-backend.md FR-6):
 	//   recovery -> limits -> logging -> security headers (all binds) ->
-	//   HSTS (in-process TLS only) -> CORS -> global rate limit (public
-	//   paths) -> auth -> routing.
+	//   HSTS (in-process TLS only) -> global rate limit (health probes) ->
+	//   CORS -> auth -> routing.
 	// Recovery stays strictly outermost; limits and logging keep their
 	// phase-03 positions; routing stays innermost. Only the auth slot
-	// grew. CORS and the rate limiter sit BEFORE auth: a preflight
-	// carries no credentials and an unauthenticated flood should be shed
-	// before token verification. Origin validation (FR-7) is a
+	// grew. The rate limiter sits before CORS so a CORS-preflight-shaped
+	// flood on a health probe is metered before CORS can short-circuit it
+	// with a 204; both sit before auth so an unauthenticated flood is
+	// shed before token verification. Origin validation (FR-7) is a
 	// route-group wrapper on the unauthenticated pairing routes, added at
-	// route registration in Tier 4 — not a global layer.
-	// backend-network-transport.md FR-8's health/static bucket. The spec's
-	// 60/min-burst-30 placeholder is raised here: HealthAndStaticPath also
-	// covers the SPA's static assets, and a cold first load of a chunked
-	// bundle is commonly 30-80 requests from one IP within a second — a
-	// tighter bucket would 429 a legitimate page mid-load. 300/min /
-	// burst 100 survives that and still sheds a sustained anonymous flood
-	// against cheap embedded assets. Tier 4 adds the strict, separate
-	// pairing-route buckets.
-	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/5), 100, 10*time.Minute)
+	// route registration in Tier 4 — not a global layer. publicLimiter is
+	// owned by run() so its per-IP map eviction is bound to the process
+	// context.
 	return transporthttp.Chain(mux,
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
 		transporthttp.SecurityHeaders(),
 		transporthttp.HSTS(cfg.TLSCertificate() != nil),
+		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthProbePath),
 		transporthttp.CORS(cfg.CORSAllowedOrigins),
-		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthAndStaticPath),
 		transporthttp.LazyAuthMiddleware(poolRef),
 	)
 }

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -13,11 +14,11 @@ type ipEntry struct {
 }
 
 type IPRateLimiter struct {
-	mu      sync.Mutex
-	ips     map[string]*ipEntry
-	rate    rate.Limit
-	burst   int
-	ttl     time.Duration
+	mu    sync.Mutex
+	ips   map[string]*ipEntry
+	rate  rate.Limit
+	burst int
+	ttl   time.Duration
 }
 
 func NewIPRateLimiter(r rate.Limit, burst int, ttl time.Duration) *IPRateLimiter {
@@ -57,4 +58,28 @@ func (i *IPRateLimiter) Cleanup(now time.Time) {
 			delete(i.ips, ip)
 		}
 	}
+}
+
+// StartEviction runs Cleanup on a ticker until ctx is done. Without it the
+// per-IP map only ever grows — an unauthenticated caller rotating source
+// addresses (trivial over IPv6) would push it to OOM, turning the limiter
+// that exists to shed a flood into a memory-exhaustion vector. Call it
+// once per limiter, at startup, with the process context.
+func (i *IPRateLimiter) StartEviction(ctx context.Context) {
+	interval := i.ttl / 2
+	if interval < time.Minute {
+		interval = time.Minute
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				i.Cleanup(now)
+			}
+		}
+	}()
 }

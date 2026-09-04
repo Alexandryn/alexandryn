@@ -14,7 +14,7 @@ import (
 
 func TestPublicRateLimit_BurstThen429_KeyedOnRemoteAddr(t *testing.T) {
 	limiter := auth.NewIPRateLimiter(rate.Every(time.Minute), 2, time.Minute) // burst 2
-	mw := transporthttp.PublicRateLimit(limiter, transporthttp.HealthAndStaticPath)
+	mw := transporthttp.PublicRateLimit(limiter, transporthttp.HealthProbePath)
 
 	req := func(xff string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -47,28 +47,29 @@ func TestPublicRateLimit_BurstThen429_KeyedOnRemoteAddr(t *testing.T) {
 	}
 }
 
-func TestPublicRateLimit_DoesNotTouchAPIPaths(t *testing.T) {
+func TestPublicRateLimit_OnlyTouchesHealthProbes(t *testing.T) {
 	limiter := auth.NewIPRateLimiter(rate.Every(time.Hour), 0, time.Minute) // 0 burst — always denies if applied
-	mw := transporthttp.PublicRateLimit(limiter, transporthttp.HealthAndStaticPath)
+	mw := transporthttp.PublicRateLimit(limiter, transporthttp.HealthProbePath)
 
-	r := httptest.NewRequest(http.MethodGet, "/api/v1/library", nil)
-	r.RemoteAddr = "203.0.113.9:5555"
-	if rec := serve(mw, r); rec.Code != http.StatusOK {
-		t.Fatalf("/api/v1 path status = %d — the health/static limiter must not apply", rec.Code)
+	for _, path := range []string{"/api/v1/library", "/", "/assets/app.js"} {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.RemoteAddr = "203.0.113.9:5555"
+		if rec := serve(mw, r); rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d — the health-probe limiter must not apply to static assets or the API", path, rec.Code)
+		}
 	}
 }
 
-func TestHealthAndStaticPath(t *testing.T) {
+func TestHealthProbePath(t *testing.T) {
 	for path, want := range map[string]bool{
-		"/healthz":          true,
-		"/readyz":           true,
-		"/":                 true,
-		"/assets/app.js":    true,
-		"/api/v1/library":   false,
-		"/api/v1/network/x": false,
+		"/healthz":        true,
+		"/readyz":         true,
+		"/":               false,
+		"/assets/app.js":  false,
+		"/api/v1/library": false,
 	} {
-		if got := transporthttp.HealthAndStaticPath(path); got != want {
-			t.Errorf("HealthAndStaticPath(%q) = %v, want %v", path, got, want)
+		if got := transporthttp.HealthProbePath(path); got != want {
+			t.Errorf("HealthProbePath(%q) = %v, want %v", path, got, want)
 		}
 	}
 }

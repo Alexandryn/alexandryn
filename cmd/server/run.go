@@ -80,7 +80,7 @@ func (realClock) Now() time.Time { return time.Now() }
 type runDeps struct {
 	loadConfig func() (*config.Config, error)
 	newLogger  func(cfg *config.Config) *slog.Logger
-	newRouter  func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef) http.Handler
+	newRouter  func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler
 	listen     func(network, address string) (net.Listener, error)
 	newServer  func(cfg *config.Config, handler http.Handler) shutdownableServer
 	clock      clock
@@ -246,7 +246,13 @@ func run(ctx context.Context, deps runDeps) int {
 
 	poolRef := &transporthttp.PoolRef{}
 
-	router := deps.newRouter(cfg, logger, poolRef)
+	// The unauthenticated health-probe rate limiter (backend-network-transport.md
+	// FR-8). Its per-IP map is evicted on a ticker bound to ctx — without
+	// that the map only grows.
+	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, 10*time.Minute)
+	publicLimiter.StartEviction(ctx)
+
+	router := deps.newRouter(cfg, logger, poolRef, publicLimiter)
 	logger.Info("startup step completed", "step", "router")
 
 	listener, err := deps.listen("tcp", cfg.BindAddress)
@@ -443,6 +449,10 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if repos != nil {
 		if repos.users != nil {
+			// The auth-endpoint brute-force limiter — evicted on a ctx-bound
+			// ticker, same as publicLimiter (previously this map only grew).
+			authLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/5), 10, 15*time.Minute)
+			authLimiter.StartEviction(ctx)
 			poolRef.SetAuthAPI(transporthttp.AuthAPI{
 				Users:              repos.users,
 				Credentials:        repos.credentials,
@@ -455,7 +465,7 @@ func run(ctx context.Context, deps runDeps) int {
 				Hasher:             auth.NewArgon2idPasswordHasher(auth.DefaultArgon2idParams()),
 				Signer:             auth.NewJWTSigner(jwtSubkey, "alexandryn"),
 				TOTPEngine:         auth.NewTOTPEngine("Alexandryn"),
-				Limiter:            auth.NewIPRateLimiter(rate.Every(time.Second/5), 10, 15*time.Minute),
+				Limiter:            authLimiter,
 				MasterKey:          mfaSubkey,
 				IDs:                idgen.New(),
 			})

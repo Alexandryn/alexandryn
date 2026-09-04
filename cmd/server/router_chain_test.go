@@ -6,9 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"golang.org/x/time/rate"
 )
 
 // The phase-13 middleware-chain assembly (backend-http-transport.md FR-1
@@ -22,7 +25,8 @@ func chainTestRouter(t *testing.T, origins []string) http.Handler {
 		HTTPMaxBodyBytes:   1 << 20,
 		CORSAllowedOrigins: origins,
 	}
-	return newProductionRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{})
+	limiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, time.Minute)
+	return newProductionRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
 }
 
 func TestChain_SecurityHeadersOnEveryResponse(t *testing.T) {
@@ -79,6 +83,26 @@ func TestChain_PublicRateLimitOnHealthz(t *testing.T) {
 	}
 	if last != http.StatusTooManyRequests {
 		t.Fatalf("150th rapid /healthz got %d, want 429 — the public rate limiter is not mounted", last)
+	}
+}
+
+func TestChain_RateLimitRunsBeforeCORSPreflight(t *testing.T) {
+	// A CORS-preflight-shaped flood on a health probe must be metered —
+	// the rate limiter sits ahead of CORS, so CORS can't short-circuit it
+	// with a 204 before the bucket is consulted.
+	router := chainTestRouter(t, []string{"https://proxy.example"})
+	var last int
+	for i := 0; i < 150; i++ {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodOptions, "/healthz", nil)
+		req.RemoteAddr = "203.0.113.77:6000"
+		req.Header.Set("Origin", "https://proxy.example")
+		req.Header.Set("Access-Control-Request-Method", "GET")
+		router.ServeHTTP(rec, req)
+		last = rec.Code
+	}
+	if last != http.StatusTooManyRequests {
+		t.Fatalf("preflight flood on /healthz ended at %d, want 429 — the limiter is behind CORS's 204 short-circuit", last)
 	}
 }
 

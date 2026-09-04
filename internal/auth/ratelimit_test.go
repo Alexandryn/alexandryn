@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -30,5 +31,22 @@ func TestIPRateLimiter(t *testing.T) {
 	// IP 2 is independent
 	if !limiter.Allow(ip2) {
 		t.Error("expected first request for ip2 to be allowed")
+	}
+}
+
+func TestIPRateLimiter_StartEviction(t *testing.T) {
+	// ttl/2 with a tiny ttl -> the interval is clamped up to 1 minute, so
+	// exercise Cleanup directly plus prove StartEviction stops on ctx.
+	limiter := auth.NewIPRateLimiter(rate.Every(time.Second), 1, 10*time.Millisecond)
+	limiter.Allow("203.0.113.1")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	limiter.StartEviction(ctx)
+	cancel() // must return without leaking the goroutine
+
+	time.Sleep(20 * time.Millisecond)
+	limiter.Cleanup(time.Now()) // the ip is now older than the 10ms ttl
+	if !limiter.Allow("203.0.113.1") {
+		t.Fatal("after Cleanup past the TTL the entry should be gone and a fresh bucket allows")
 	}
 }
