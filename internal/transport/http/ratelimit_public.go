@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/Alexandryn/alexandryn/internal/auth"
 )
@@ -23,10 +22,17 @@ func writeRateLimited(w http.ResponseWriter, corrID string) {
 
 // PublicRateLimit applies a per-client-IP token bucket to every request
 // `applies` returns true for (backend-network-transport.md FR-8) — the
-// unauthenticated public surface that is broader than a LAN-only threat
-// model once the bind opens: /healthz, /readyz, the embedded static
-// assets, and (added in Tier 4) the pairing routes, each with its own
-// bucket via a separate PublicRateLimit layer.
+// unauthenticated public surface once the bind opens beyond loopback.
+// Tier 4 adds separate, stricter PublicRateLimit layers for the pairing
+// routes.
+//
+// The SPA's embedded static assets are deliberately NOT rate-limited
+// here: they are served from an in-memory embed.FS (no DB, no compute),
+// a flood of them is bandwidth only (the excluded DoS category), and
+// behind a reverse proxy every client shares one RemoteAddr — a tight
+// bucket there would 429 a legitimate multi-user SPA load mid-boot. The
+// health probes are the real anonymous-hammer target and cost a pool
+// ping, so they keep a bucket.
 //
 // The client IP is taken from the connection's RemoteAddr, NEVER from
 // X-Forwarded-For — trusting a client-supplied header for rate-limit
@@ -51,13 +57,8 @@ func PublicRateLimit(limiter *auth.IPRateLimiter, applies func(path string) bool
 	}
 }
 
-// HealthAndStaticPath reports whether path is part of the health / static
-// public surface FR-8's first bucket covers: the two health probes and
-// anything that is not an /api/v1 route (the SPA and its assets).
-func HealthAndStaticPath(path string) bool {
-	switch path {
-	case "/healthz", "/readyz":
-		return true
-	}
-	return !strings.HasPrefix(path, "/api/v1/")
+// HealthProbePath reports whether path is one of the two unauthenticated
+// health probes — FR-8's first rate-limit bucket.
+func HealthProbePath(path string) bool {
+	return path == "/healthz" || path == "/readyz"
 }
