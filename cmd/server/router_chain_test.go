@@ -69,8 +69,8 @@ func TestChain_CORSEchoesAConfiguredOrigin(t *testing.T) {
 func TestChain_PublicRateLimitOnHealthz(t *testing.T) {
 	router := chainTestRouter(t, nil)
 	var last int
-	// burst is 30 in newProductionRouter.
-	for i := 0; i < 40; i++ {
+	// burst is 100 in newProductionRouter; well past it must 429.
+	for i := 0; i < 150; i++ {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 		req.RemoteAddr = "203.0.113.44:5000"
@@ -78,7 +78,7 @@ func TestChain_PublicRateLimitOnHealthz(t *testing.T) {
 		last = rec.Code
 	}
 	if last != http.StatusTooManyRequests {
-		t.Fatalf("40th rapid /healthz got %d, want 429 — the public rate limiter is not mounted", last)
+		t.Fatalf("150th rapid /healthz got %d, want 429 — the public rate limiter is not mounted", last)
 	}
 }
 

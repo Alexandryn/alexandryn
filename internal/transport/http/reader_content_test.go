@@ -78,8 +78,13 @@ func TestReaderContent_ServesSanitisedHTMLWithCSP(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body %s", rr.Code, rr.Body.String())
 	}
-	if csp := rr.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'none'") {
+	if csp := rr.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'none'") || !strings.Contains(csp, "frame-ancestors 'self'") {
 		t.Fatalf("CSP header missing or wrong: %q", csp)
+	}
+	// The reader UI frames this content same-origin; the endpoint must
+	// override the app-document middleware's X-Frame-Options: DENY.
+	if xfo := rr.Header().Get("X-Frame-Options"); xfo != "SAMEORIGIN" {
+		t.Fatalf("X-Frame-Options = %q, want SAMEORIGIN — DENY would break the reader iframe", xfo)
 	}
 	body := rr.Body.String()
 	if strings.Contains(body, "evil()") || strings.Contains(body, "tracker.example") {
