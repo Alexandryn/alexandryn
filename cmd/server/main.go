@@ -20,6 +20,7 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/openlibrary"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
+	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
@@ -27,6 +28,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"golang.org/x/time/rate"
 )
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
@@ -247,10 +249,27 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
 
+	// The middleware chain, outermost-in (backend-http-transport.md FR-1
+	// as amended for ADR 0028, architecture-backend.md FR-6):
+	//   recovery -> limits -> logging -> security headers (all binds) ->
+	//   HSTS (in-process TLS only) -> CORS -> global rate limit (public
+	//   paths) -> auth -> routing.
+	// Recovery stays strictly outermost; limits and logging keep their
+	// phase-03 positions; routing stays innermost. Only the auth slot
+	// grew. CORS and the rate limiter sit BEFORE auth: a preflight
+	// carries no credentials and an unauthenticated flood should be shed
+	// before token verification. Origin validation (FR-7) is a
+	// route-group wrapper on the unauthenticated pairing routes, added at
+	// route registration in Tier 4 — not a global layer.
+	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second), 30, 10*time.Minute)
 	return transporthttp.Chain(mux,
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
+		transporthttp.SecurityHeaders(),
+		transporthttp.HSTS(cfg.TLSCertificate() != nil),
+		transporthttp.CORS(cfg.CORSAllowedOrigins),
+		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthAndStaticPath),
 		transporthttp.LazyAuthMiddleware(poolRef),
 	)
 }

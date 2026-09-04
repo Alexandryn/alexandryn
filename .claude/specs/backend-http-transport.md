@@ -99,6 +99,17 @@ stdlib `ServeMux`.
   CSRF-safe by construction (ADR 0028 §5). A request rejected by the
   limits layer (oversized body) is a JSON error, not a framed HTML
   document, so it not carrying the security headers is acceptable.
+
+  **Implemented 2026-09-04 (phase 13 Tier 2)** — `cmd/server/main.go`
+  `newProductionRouter` composes the chain in exactly this order
+  (`recovery → limits → logging → security headers → HSTS → CORS →
+  global rate limit → auth → routing`); the `Origin validation`
+  wrapper is added at pairing-route registration in Tier 4, not the
+  global chain. `cmd/server/router_chain_test.go` asserts the security
+  headers, CORS deny-by-default, and the `/healthz` rate limit through the
+  real router; FR-13's access-token-type and `X-Library-Id` checks landed
+  with the phase-12 hardening prelude. The `DRAFT` marker stays until the
+  maintainer re-confirms this amendment (phase 13 Checkpoint 2).
   Original text above stands as the phase-03 baseline this extends.
 - **FR-2** Request limits, applied by the limits middleware before a
   handler sees the request:
