@@ -119,6 +119,14 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		return nil
 
 	case classPublic:
+		// A DNS name, not a bare IP literal — computed once and reused
+		// below (the ACME domain-match check, the SAN-check gate, and
+		// cfg.namedBindHost, which cmd/server reads instead of
+		// re-deriving this same classification for the :80 redirect).
+		isName := net.ParseIP(host) == nil
+		if isName {
+			cfg.namedBindHost = host
+		}
 		if cfg.ACMEEnabled {
 			// Mode A via ACME (ADR 0028 §2). config performs no network
 			// I/O — it only checks the material is coherent; the
@@ -126,8 +134,8 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 			if cfg.ACMEDomain == "" {
 				return fmt.Errorf("BIND_ADDRESS %s has ACME_ENABLED but ACME_DOMAIN is not set", cfg.BindAddress)
 			}
-			if h := host; net.ParseIP(h) == nil && !strings.EqualFold(h, cfg.ACMEDomain) {
-				return fmt.Errorf("BIND_ADDRESS host %q must equal ACME_DOMAIN %q", h, cfg.ACMEDomain)
+			if isName && !strings.EqualFold(host, cfg.ACMEDomain) {
+				return fmt.Errorf("BIND_ADDRESS host %q must equal ACME_DOMAIN %q", host, cfg.ACMEDomain)
 			}
 			if hasStaticCert {
 				return fmt.Errorf("ACME_ENABLED and TLS_CERT_FILE/TLS_KEY_FILE are mutually exclusive — pick one certificate source")
@@ -143,7 +151,7 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		// SAN name check only when the host is a DNS name — a name-match
 		// check on a bare IP is meaningless (ADR 0028 §1).
 		sanHost := ""
-		if net.ParseIP(host) == nil {
+		if isName {
 			sanHost = host
 		}
 		cert, err := loadAndValidateCert(cfg, readFile, sanHost)

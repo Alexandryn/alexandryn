@@ -17,6 +17,8 @@ func TestHTTPSRedirect(t *testing.T) {
 		{"canonical host, default port", "books.example.com", "443", "anything", "/x?y=1", "https://books.example.com/x?y=1"},
 		{"canonical host, non-default port", "books.example.com", "8443", "anything", "/a", "https://books.example.com:8443/a"},
 		{"no canonical -> request host, port stripped", "", "8443", "192.168.1.24:80", "/a", "https://192.168.1.24:8443/a"},
+		{"no canonical, bracketed IPv6 with port", "", "8443", "[2001:db8::1]:80", "/a", "https://[2001:db8::1]:8443/a"},
+		{"no canonical, bracketed IPv6 with no port", "", "443", "[2001:db8::1]", "/a", "https://[2001:db8::1]/a"},
 		{"forged Host is ignored when canonical is set", "books.example.com", "443", "evil.example", "/a", "https://books.example.com/a"},
 	}
 	for _, tc := range cases {

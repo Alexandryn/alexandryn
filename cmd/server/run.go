@@ -338,26 +338,33 @@ func run(ctx context.Context, deps runDeps) int {
 	var redirectSrv *http.Server
 	if cfg.Reachability() == "public" {
 		tlsPort := boundPort
-		bindHost := ""
-		if h, p, err := net.SplitHostPort(cfg.BindAddress); err == nil {
-			if tlsPort == "" {
+		if tlsPort == "" {
+			if _, p, err := net.SplitHostPort(cfg.BindAddress); err == nil {
 				tlsPort = p
 			}
-			if net.ParseIP(h) == nil && h != "localhost" {
-				bindHost = h // a DNS-name bind
-			}
 		}
+		// cfg.NamedBindHost() reuses validateBindAddress's own
+		// DNS-name-vs-IP-literal classification rather than re-deriving
+		// it here (a second copy of that check is a drift risk on a
+		// redirect-target, Host-header-adjacent surface).
 		canonicalHost := cfg.ACMEDomain
 		if canonicalHost == "" {
-			canonicalHost = bindHost
+			canonicalHost = cfg.NamedBindHost()
 		}
-		h := transporthttp.HTTPSRedirect(canonicalHost, tlsPort)
+		var h http.Handler = transporthttp.HTTPSRedirect(canonicalHost, tlsPort)
 		if acmeManager != nil {
 			h = acmeManager.HTTPHandler(h)
 		}
-		redirectLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, 10*time.Minute)
-		redirectLimiter.StartEviction(ctx)
-		h = transporthttp.PublicRateLimit(redirectLimiter, func(string) bool { return true })(h)
+		// The same health-probe limiter and correlation/recovery/security
+		// layers the main router uses — one rate-limit policy, one map,
+		// not a second un-synchronized copy for this listener alone.
+		// SecurityHeaders applies here too (its own doc: "every response
+		// on every bind"); Logging is skipped — this listener never
+		// serves anything but a redirect or an ACME challenge, neither
+		// carrying a correlation ID a client would ever see.
+		h = transporthttp.PublicRateLimit(publicLimiter, func(string) bool { return true })(h)
+		h = transporthttp.SecurityHeaders()(h)
+		h = transporthttp.Recovery(logger, newCorrelationID)(h)
 
 		rl, lerr := deps.listen("tcp", ":80")
 		if lerr != nil {

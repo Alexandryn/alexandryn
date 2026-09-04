@@ -268,7 +268,7 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
 		transporthttp.SecurityHeaders(),
-		transporthttp.HSTS(cfg.TLSCertificate() != nil),
+		transporthttp.HSTS(cfg.TLSMode() == "static" || cfg.TLSMode() == "acme"),
 		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthProbePath),
 		transporthttp.CORS(cfg.CORSAllowedOrigins),
 		transporthttp.LazyAuthMiddleware(poolRef),

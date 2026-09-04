@@ -227,7 +227,10 @@ func TestBind_HalfConfiguredCertPair_Rejected(t *testing.T) {
 }
 
 func TestBind_LoopbackAndPrivate_NoCert_StillAccepted(t *testing.T) {
-	for _, addr := range []string{"127.0.0.1:0", "[::1]:0", "localhost:8080", "10.0.0.5:8080", "[fc00::1]:8080"} {
+	// 169.254.0.0/16 / fe80::/10 (link-local) join the private class
+	// alongside RFC 1918 / ULA: never publicly routable, an operator with
+	// no DHCP lease can legitimately bind here (D-B, tasks/plan-phase13-network.md).
+	for _, addr := range []string{"127.0.0.1:0", "[::1]:0", "localhost:8080", "10.0.0.5:8080", "[fc00::1]:8080", "169.254.1.5:8080", "[fe80::1]:8080"} {
 		t.Run(addr, func(t *testing.T) {
 			setBind(t, addr)
 			if _, err := config.Load("", noFile, fakeUserConfigDir); err != nil {

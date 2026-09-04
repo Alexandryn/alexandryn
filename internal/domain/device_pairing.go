@@ -33,10 +33,14 @@ var (
 	ErrDeviceAlreadyRevoked = errors.New("paired device is already revoked")
 )
 
-// crockford is the Crockford base32 alphabet (uppercase, no padding),
-// excluding I, L, O and U. domain-device-pairing.md FR-2 rejects a
-// non-Crockford character rather than leniently decoding I->1 / O->0.
-const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+// CrockfordAlphabet is the Crockford base32 alphabet (uppercase, no
+// padding), excluding I, L, O and U. domain-device-pairing.md FR-2
+// rejects a non-Crockford character rather than leniently decoding
+// I->1 / O->0. Exported so the one other place that needs it —
+// internal/pairing's crypto/rand-backed generator, which must encode
+// into exactly the alphabet this package's constructor validates against
+// — references this single copy instead of keeping its own.
+const CrockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 // pairingCodeLen is the fixed shape: eight Crockford characters, the
 // smallest fixed format that can carry the >= 40 bits of entropy
@@ -66,7 +70,7 @@ func NewPairingCode(untrusted string) (PairingCode, error) {
 		}
 	}
 	for _, r := range n {
-		if !strings.ContainsRune(crockford, r) {
+		if !strings.ContainsRune(CrockfordAlphabet, r) {
 			return PairingCode{}, &Error{
 				Category: InvalidInput,
 				Message:  "pairing code must use the Crockford base32 alphabet (no I, L, O or U)",
@@ -259,32 +263,45 @@ func (s *PairingSession) ExpireAt(now time.Time) {
 	}
 }
 
-// Verify checks, in order: terminal state (no mutation — a consumed or
-// already-expired session is never re-touched, FR-4), then expiry (a
-// pending/verified session past its TTL moves to expired, FR-5), then
-// the non-pending case, then the caller's device ID, then the submitted
-// code in constant time (FR-6). A wrong code returns ErrPairingCodeMismatch
-// and does NOT change state — burning the session on a wrong guess would
-// let an unauthenticated LAN client grief a real pairing. On a match it
-// sets the DeviceID and moves to verified.
-func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID DeviceID) error {
+// checkAdvanceable is Verify and Consume's shared preamble: reject a
+// terminal session outright with no mutation (FR-4), expire a stale
+// pending/verified session (FR-5 — this is the one legal mutation a
+// rejected call can still make), then reject if the session isn't in the
+// one state the caller expects. expiredMsg differs per caller: Verify
+// passes the same generic "not recognised" text a wrong code returns (no
+// oracle on the unauthenticated pairing route); Consume names the expiry
+// plainly (its caller is already authenticated).
+func (s *PairingSession) checkAdvanceable(now time.Time, expected PairingState, verb, expiredMsg string) error {
 	if s.terminal() {
 		return &Error{
 			Category: Conflict,
-			Message:  fmt.Sprintf("pairing session in state %q cannot be verified", s.state),
+			Message:  fmt.Sprintf("pairing session in state %q cannot be %s", s.state, verb),
 			Err:      ErrPairingWrongState,
 		}
 	}
 	if s.isExpired(now) {
 		s.state = PairingExpired
-		return &Error{Category: Conflict, Message: "pairing code not recognised", Err: ErrPairingExpired}
+		return &Error{Category: Conflict, Message: expiredMsg, Err: ErrPairingExpired}
 	}
-	if s.state != PairingPending {
+	if s.state != expected {
 		return &Error{
 			Category: Conflict,
-			Message:  fmt.Sprintf("pairing session in state %q cannot be verified", s.state),
+			Message:  fmt.Sprintf("pairing session in state %q cannot be %s", s.state, verb),
 			Err:      ErrPairingWrongState,
 		}
+	}
+	return nil
+}
+
+// Verify checks the shared preamble (FR-4/FR-5), then the caller's
+// device ID, then the submitted code in constant time (FR-6). A wrong
+// code returns ErrPairingCodeMismatch and does NOT change state —
+// burning the session on a wrong guess would let an unauthenticated LAN
+// client grief a real pairing. On a match it sets the DeviceID and moves
+// to verified.
+func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID DeviceID) error {
+	if err := s.checkAdvanceable(now, PairingPending, "verified", "pairing code not recognised"); err != nil {
+		return err
 	}
 	// The device ID is the caller's (a fresh server-generated value), not
 	// the attacker's — check it before the code compare so a bad-argument
@@ -306,23 +323,8 @@ func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID D
 // as a single call so the repository can run it inside the same
 // transaction that writes the PairedDevice row (ADR 0021).
 func (s *PairingSession) Consume(now time.Time) error {
-	if s.terminal() {
-		return &Error{
-			Category: Conflict,
-			Message:  fmt.Sprintf("pairing session in state %q cannot be consumed", s.state),
-			Err:      ErrPairingWrongState,
-		}
-	}
-	if s.isExpired(now) {
-		s.state = PairingExpired
-		return &Error{Category: Conflict, Message: "pairing session has expired", Err: ErrPairingExpired}
-	}
-	if s.state != PairingVerified {
-		return &Error{
-			Category: Conflict,
-			Message:  fmt.Sprintf("pairing session in state %q cannot be consumed", s.state),
-			Err:      ErrPairingWrongState,
-		}
+	if err := s.checkAdvanceable(now, PairingVerified, "consumed", "pairing session has expired"); err != nil {
+		return err
 	}
 	s.state = PairingConsumed
 	return nil
