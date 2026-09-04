@@ -30,7 +30,15 @@ phase, supersedes the Tier-0-only PR #79).
       file; tests written first). Checkpoint 1 passed: `go test -race
       ./internal/domain/...` green, illegal-transition table + constant-
       time-`Equal` + FR-10 audit tests pass.
-- [ ] **Tier 2** — transport services. Next.
+- [~] **Tier 2 part 1** — the self-contained units: `NewTLSConfig`,
+      `SecurityHeaders`+`HSTS`, `CORS`, `OriginValidation`,
+      `PublicRateLimit`, `auth.EnrolmentGrantSigner`,
+      `pairing.GeneratePairingCode`. Commits `aaa0fd7`, `e3241ab`. All
+      unit-tested in isolation, not yet mounted.
+- [ ] **Tier 2 part 2** — `transport.Listeners` + `:80` redirect (T2.2),
+      ACME/`autocert` + Pebble in CI (T2.3), the middleware-chain
+      assembly + FR-13 re-verification (T2.10), and the run.go HKDF
+      subkey derivation.
 - [ ] Tier 3 — persistence · Tier 4 — HTTP API · Tier 5 — web UI
 - [ ] Gate 2 — audit 0013 (stop and ask) · Close
 
