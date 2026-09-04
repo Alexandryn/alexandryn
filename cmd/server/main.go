@@ -261,7 +261,15 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	// before token verification. Origin validation (FR-7) is a
 	// route-group wrapper on the unauthenticated pairing routes, added at
 	// route registration in Tier 4 — not a global layer.
-	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second), 30, 10*time.Minute)
+	// backend-network-transport.md FR-8's health/static bucket. The spec's
+	// 60/min-burst-30 placeholder is raised here: HealthAndStaticPath also
+	// covers the SPA's static assets, and a cold first load of a chunked
+	// bundle is commonly 30-80 requests from one IP within a second — a
+	// tighter bucket would 429 a legitimate page mid-load. 300/min /
+	// burst 100 survives that and still sheds a sustained anonymous flood
+	// against cheap embedded assets. Tier 4 adds the strict, separate
+	// pairing-route buckets.
+	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/5), 100, 10*time.Minute)
 	return transporthttp.Chain(mux,
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),

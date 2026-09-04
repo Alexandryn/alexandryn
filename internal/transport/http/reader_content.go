@@ -18,8 +18,13 @@ const readerContentPerRequestTimeout = 30 * time.Second
 
 // readerContentCSP is the response policy a sandboxed client leans on as
 // a second, independent layer over its own iframe sandbox
-// (backend-reader-content.md FR-9).
-const readerContentCSP = "default-src 'self'; script-src 'none'; object-src 'none'"
+// (backend-reader-content.md FR-9). frame-ancestors 'self': the reader UI
+// frames this content in a same-origin sandboxed <iframe src=…>
+// (frontend-reader.md FR-1), which the app-document security-headers
+// middleware's X-Frame-Options: DENY would otherwise block — this
+// endpoint owns its own framing policy (ADR 0024) and allows exactly
+// same-origin.
+const readerContentCSP = "default-src 'self'; script-src 'none'; object-src 'none'; frame-ancestors 'self'"
 
 // ReaderContentHandler serves one sanitised entry from inside an owned
 // Edition's EPUB: GET /api/v1/library/editions/{editionId}/reader/content/{path...}
@@ -127,6 +132,10 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Content-Security-Policy", readerContentCSP)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		// Override the app-document middleware's X-Frame-Options: DENY —
+		// this content is framed same-origin by the reader UI's sandboxed
+		// iframe. SAMEORIGIN still refuses a cross-origin framer.
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Cache-Control", "private, max-age=300")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
