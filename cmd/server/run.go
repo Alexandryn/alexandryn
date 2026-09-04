@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
@@ -23,6 +24,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
 )
 
@@ -167,11 +169,20 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 // Close have both had their chance — never before, never concurrently.
 // pool may be nil: a shutdown signal arriving before FR-1 step 6 has
 // constructed one has nothing to close yet.
-func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, pool pgPool, jobSystem jobRunner, logger *slog.Logger) int {
+func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, logger *slog.Logger) int {
 	logger.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
 	defer cancel()
+
+	// The :80 redirect/ACME listener (if any) drains alongside the main
+	// server, bounded by the same grace period (FR-11).
+	if redirectSrv != nil {
+		if err := redirectSrv.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("the :80 redirect listener did not drain within the grace period", "error", err.Error())
+			_ = redirectSrv.Close()
+		}
+	}
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -236,6 +247,20 @@ func run(ctx context.Context, deps runDeps) int {
 	logger.Info("startup step completed", "step", "config")
 	logger.Info("startup step completed", "step", "logger")
 
+	// The per-user data directory (architecture-persistence.md FR-1) —
+	// resolved once, used for the ACME certificate cache and the source
+	// credential key.
+	appDataDir := ""
+	userConfigDirFn := deps.userConfigDir
+	if userConfigDirFn == nil {
+		userConfigDirFn = os.UserConfigDir
+	}
+	if userConfig, err := userConfigDirFn(); err == nil && userConfig != "" {
+		appDataDir = filepath.Join(userConfig, "alexandryn")
+	} else {
+		appDataDir = filepath.Join(os.TempDir(), "alexandryn")
+	}
+
 	if cfg.DesktopParentPID > 0 && deps.watchParent != nil {
 		if err := deps.watchParent(cfg.DesktopParentPID); err != nil {
 			logger.Error("startup failed", "step", "parentwatch", "error", err.Error())
@@ -260,25 +285,74 @@ func run(ctx context.Context, deps runDeps) int {
 		logger.Error("startup failed", "step", "listen", "error", err.Error())
 		return 1
 	}
+	boundPort := ""
 	if tcpAddr, ok := listener.Addr().(*net.TCPAddr); ok {
 		// desktop-host-process-model.md FR-2 / architecture-desktop-host.md:
 		// Announces bound ephemeral port to Electron host process.
 		fmt.Printf("PORT=%d\n", tcpAddr.Port)
+		boundPort = strconv.Itoa(tcpAddr.Port)
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
-	// In-process TLS (ADR 0028 §1/§3): config populates a certificate
-	// whenever the bind is publicly routable or a deliberate private
-	// opt-in. A non-nil cert means this listener MUST NOT serve plaintext.
-	// NewTLSConfig carries the version floor (TLS 1.2), the AEAD+ECDHE
-	// cipher list, and ALPN; HSTS is added by the middleware chain for a
-	// TLS bind. ACME issuance and the :80 redirect listener are the
-	// remaining Tier 2 items.
-	if cert := cfg.TLSCertificate(); cert != nil {
+	// TLS mode + the :80 redirect listener (ADR 0028 §1/§2/§3,
+	// backend-network-transport.md FR-2/FR-3). config.TLSMode()/Reachability()
+	// were fixed by validateBindAddress from the address class plus the
+	// certificate/ACME state — never a flag.
+	var acmeManager *autocert.Manager
+	switch cfg.TLSMode() {
+	case "static":
 		tlsCfg := transporthttp.NewTLSConfig()
-		tlsCfg.Certificates = []tls.Certificate{*cert}
+		tlsCfg.Certificates = []tls.Certificate{*cfg.TLSCertificate()}
 		listener = tls.NewListener(listener, tlsCfg)
-		logger.Info("startup step completed", "step", "tls", "mode", "in-process")
+		logger.Info("startup step completed", "step", "tls", "mode", "static")
+	case "acme":
+		cacheDir := cfg.ACMECacheDir
+		if cacheDir == "" {
+			cacheDir = filepath.Join(appDataDir, "acme")
+		}
+		acmeManager = transporthttp.NewACMEManager(cfg, cacheDir)
+		tlsCfg := transporthttp.NewTLSConfig()
+		tlsCfg.GetCertificate = acmeManager.GetCertificate
+		listener = tls.NewListener(listener, tlsCfg)
+		caURL := "https://acme-v02.api.letsencrypt.org/directory (Let's Encrypt, autocert default)"
+		if acmeManager.Client != nil && acmeManager.Client.DirectoryURL != "" {
+			caURL = acmeManager.Client.DirectoryURL
+		}
+		logger.Info("startup step completed", "step", "tls", "mode", "acme",
+			"domain", cfg.ACMEDomain, "cacheDir", cacheDir, "caDirectoryURL", caURL)
+	default:
+		logger.Info("startup step completed", "step", "tls", "mode", "none")
+	}
+
+	// Every public bind (static or ACME) gets a :80 HTTP->HTTPS redirect
+	// listener so http:// is not connection-refused; in ACME mode it also
+	// serves the HTTP-01 challenge. It never serves application content.
+	var redirectSrv *http.Server
+	if cfg.Reachability() == "public" {
+		tlsPort := boundPort
+		if tlsPort == "" {
+			_, tlsPort, _ = net.SplitHostPort(cfg.BindAddress)
+		}
+		var h http.Handler = transporthttp.HTTPSRedirect(tlsPort)
+		if acmeManager != nil {
+			h = acmeManager.HTTPHandler(h)
+		}
+		redirectLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, 10*time.Minute)
+		redirectLimiter.StartEviction(ctx)
+		h = transporthttp.PublicRateLimit(redirectLimiter, func(string) bool { return true })(h)
+
+		rl, lerr := deps.listen("tcp", ":80")
+		if lerr != nil {
+			if cfg.TLSMode() == "acme" {
+				logger.Error("startup failed", "step", "listen-80", "error", lerr.Error())
+				return 1
+			}
+			logger.Warn("could not bind :80 for the HTTP->HTTPS redirect; http:// will be connection-refused", "error", lerr.Error())
+		} else {
+			redirectSrv = &http.Server{Handler: h, ReadHeaderTimeout: 10 * time.Second}
+			go func() { _ = redirectSrv.Serve(rl) }()
+			logger.Info("startup step completed", "step", "listen-80")
+		}
 	}
 
 	srv := deps.newServer(cfg, router)
@@ -290,7 +364,7 @@ func run(ctx context.Context, deps runDeps) int {
 			// The signal that ended this loop was a shutdown, not a
 			// database failure — FR-4 requires attempting Shutdown, not
 			// exiting through the ordinary FR-3 failure path below.
-			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -310,7 +384,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if err := deps.runMigrations(ctx, cfg); err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -331,7 +405,7 @@ func run(ctx context.Context, deps runDeps) int {
 	pool, repos, err := deps.newPool(ctx, cfg)
 	if err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -383,17 +457,6 @@ func run(ctx context.Context, deps runDeps) int {
 				Export:         repos.readingExport,
 			})
 		}
-	}
-
-	appDataDir := ""
-	userConfigDirFn := deps.userConfigDir
-	if userConfigDirFn == nil {
-		userConfigDirFn = os.UserConfigDir
-	}
-	if userConfig, err := userConfigDirFn(); err == nil && userConfig != "" {
-		appDataDir = filepath.Join(userConfig, "alexandryn")
-	} else {
-		appDataDir = filepath.Join(os.TempDir(), "alexandryn")
 	}
 
 	key, err := crypto.LoadOrCreateKey(appDataDir, func() (int, error) {
@@ -511,7 +574,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	select {
 	case <-ctx.Done():
-		return gracefulShutdown(cfg, deps, srv, pool, jobSystem, logger)
+		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, logger)
 	case err := <-serveErr:
 		// The server stopped on its own, not via a shutdown signal — no
 		// Shutdown was called, but FR-6's "close the pool before the

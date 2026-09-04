@@ -82,17 +82,55 @@ func TestBind_PublicIP_BareIPSkipsSANCheck(t *testing.T) {
 	}
 }
 
-func TestBind_Public_ACMEEnabled_NotYetSupported(t *testing.T) {
-	// Tier 2 wires ACME issuance. Until then, ACME_ENABLED on a public
-	// bind is a startup error (fail closed), not a plaintext fallback.
-	setBind(t, "library.example.com:443")
-	t.Setenv("ACME_ENABLED", "true")
-	t.Setenv("ACME_DOMAIN", "library.example.com")
-	if _, err := config.Load("", noFile, fakeUserConfigDir); err == nil {
-		t.Fatal("Load() error = nil, want an error — in-process ACME is not wired until phase 13 Tier 2")
-	} else if !strings.Contains(strings.ToLower(err.Error()), "acme") {
-		t.Fatalf("error should mention ACME: %v", err)
-	}
+func TestBind_Public_ACME(t *testing.T) {
+	t.Run("enabled with a matching domain -> accepted, tlsMode acme", func(t *testing.T) {
+		setBind(t, "library.example.com:443")
+		t.Setenv("ACME_ENABLED", "true")
+		t.Setenv("ACME_DOMAIN", "library.example.com")
+		cfg, err := config.Load("", noFile, fakeUserConfigDir)
+		if err != nil {
+			t.Fatalf("Load() error = %v, want nil", err)
+		}
+		if cfg.TLSMode() != "acme" {
+			t.Fatalf("TLSMode() = %q, want acme", cfg.TLSMode())
+		}
+		if cfg.TLSCertificate() != nil {
+			t.Fatal("ACME mode must not populate a static certificate")
+		}
+	})
+	t.Run("enabled without a domain -> error", func(t *testing.T) {
+		setBind(t, "library.example.com:443")
+		t.Setenv("ACME_ENABLED", "true")
+		if _, err := config.Load("", noFile, fakeUserConfigDir); err == nil {
+			t.Fatal("want an error — ACME_ENABLED needs ACME_DOMAIN")
+		}
+	})
+	t.Run("domain does not equal the named bind host -> error", func(t *testing.T) {
+		setBind(t, "library.example.com:443")
+		t.Setenv("ACME_ENABLED", "true")
+		t.Setenv("ACME_DOMAIN", "other.example.com")
+		if _, err := config.Load("", noFile, fakeUserConfigDir); err == nil {
+			t.Fatal("want an error — BIND_ADDRESS host must equal ACME_DOMAIN")
+		}
+	})
+	t.Run("enabled together with a static cert -> error", func(t *testing.T) {
+		setBind(t, "library.example.com:443")
+		t.Setenv("ACME_ENABLED", "true")
+		t.Setenv("ACME_DOMAIN", "library.example.com")
+		certPEM, keyPEM := certWithSAN(t, "library.example.com")
+		rf := withCert(t, certPEM, keyPEM)
+		if _, err := config.Load("", rf, fakeUserConfigDir); err == nil {
+			t.Fatal("want an error — ACME and a static cert are mutually exclusive")
+		}
+	})
+	t.Run("a bare-IP public bind with ACME + domain -> accepted (IP host skips the equality check)", func(t *testing.T) {
+		setBind(t, "203.0.113.5:443")
+		t.Setenv("ACME_ENABLED", "true")
+		t.Setenv("ACME_DOMAIN", "library.example.com")
+		if _, err := config.Load("", noFile, fakeUserConfigDir); err != nil {
+			t.Fatalf("Load() error = %v, want nil", err)
+		}
+	})
 }
 
 func TestBind_PrivateIP_WithOptInCert_Accepted(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -13,36 +14,52 @@ import (
 type bindClass int
 
 const (
-	// classLoopbackPrivate — Mode B: TLS, if any, terminates upstream or
-	// via an opt-in in-process certificate; the process is never itself
-	// directly reachable from a public address.
-	classLoopbackPrivate bindClass = iota
-	// classPublic — Mode A: in-process TLS is mandatory.
+	// classLoopback / classPrivate — Mode B: TLS, if any, terminates
+	// upstream or via an opt-in in-process certificate; the process is
+	// never itself directly reachable from a public address.
+	classLoopback bindClass = iota
+	classPrivate
+	// classPublic — Mode A: in-process TLS is mandatory and a :80
+	// HTTP->HTTPS redirect listener runs.
 	classPublic
 )
+
+func (c bindClass) reachability() string {
+	switch c {
+	case classLoopback:
+		return "loopback"
+	case classPrivate:
+		return "private"
+	default:
+		return "public"
+	}
+}
 
 // classifyBindHost classifies BIND_ADDRESS's host WITHOUT any DNS
 // resolution (architecture-testing.md FR-6 — this package performs no
 // network I/O). An IP literal is classified by range; the literal string
-// "localhost" is private; every other host string is a DNS name and is
+// "localhost" is loopback; every other host string is a DNS name and is
 // classified public — the fail-closed default for "a name we cannot
 // classify locally is one that requires in-process TLS." An operator who
 // runs a name behind a reverse proxy and wants Mode B sets BIND_ADDRESS
 // to the private IP the proxy forwards to, not the name.
 func classifyBindHost(host string) bindClass {
 	if host == "localhost" {
-		return classLoopbackPrivate
+		return classLoopback
 	}
 	ip := net.ParseIP(host)
 	if ip == nil {
 		return classPublic
 	}
+	if ip.IsLoopback() {
+		return classLoopback
+	}
 	// net.IP.IsPrivate covers RFC 1918 IPv4 and fc00::/7 (IPv6 ULA).
 	// Link-local (169.254.0.0/16, fe80::/10) is also a local-only range —
 	// an operator on an interface with no DHCP lease binds there, and it
 	// is never publicly routable.
-	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
-		return classLoopbackPrivate
+	if ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+		return classPrivate
 	}
 	return classPublic
 }
@@ -53,15 +70,18 @@ func classifyBindHost(host string) bindClass {
 // invalid/expired certificate is a startup error, never a degrade to
 // plaintext.
 //
-// Phase 13 Tier 0 scope: the static-certificate path (both public and the
-// private opt-in) is fully validated and accepted here. In-process ACME
-// issuance is Tier 2 — until then, ACME_ENABLED on a public bind is a
-// startup error rather than a plaintext fallback.
+// It also records cfg.reachability and cfg.tlsMode from the resolved
+// class and the certificate/ACME state, for cmd/server's listener
+// selection and /network/status.
 func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) error {
 	host, _, err := net.SplitHostPort(cfg.BindAddress)
 	if err != nil {
 		return fmt.Errorf("BIND_ADDRESS must be host:port: %w", err)
 	}
+
+	class := classifyBindHost(host)
+	cfg.reachability = class.reachability()
+	cfg.tlsMode = "none"
 
 	// A half-configured pair is a mistake on any bind class, never a
 	// silent fall-through to plaintext: on a private bind it would
@@ -77,8 +97,8 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 	}
 	hasStaticCert := cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
 
-	switch classifyBindHost(host) {
-	case classLoopbackPrivate:
+	switch class {
+	case classLoopback, classPrivate:
 		if cfg.ACMEEnabled {
 			return fmt.Errorf(
 				"BIND_ADDRESS %s is a loopback/private address; ACME_ENABLED cannot apply — an ACME HTTP-01 challenge needs a publicly reachable address. Use a static TLS_CERT_FILE/TLS_KEY_FILE, or terminate TLS with a reverse proxy in front",
@@ -94,18 +114,30 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 				return err
 			}
 			cfg.tlsCert = cert
+			cfg.tlsMode = "static"
 		}
 		return nil
 
 	case classPublic:
 		if cfg.ACMEEnabled {
-			return fmt.Errorf(
-				"BIND_ADDRESS %s is publicly routable with ACME_ENABLED, but in-process ACME issuance is not wired yet (phase 13 Tier 2). Configure a static TLS_CERT_FILE/TLS_KEY_FILE for now",
-				cfg.BindAddress)
+			// Mode A via ACME (ADR 0028 §2). config performs no network
+			// I/O — it only checks the material is coherent; the
+			// autocert.Manager is built in cmd/server.
+			if cfg.ACMEDomain == "" {
+				return fmt.Errorf("BIND_ADDRESS %s has ACME_ENABLED but ACME_DOMAIN is not set", cfg.BindAddress)
+			}
+			if h := host; net.ParseIP(h) == nil && !strings.EqualFold(h, cfg.ACMEDomain) {
+				return fmt.Errorf("BIND_ADDRESS host %q must equal ACME_DOMAIN %q", h, cfg.ACMEDomain)
+			}
+			if hasStaticCert {
+				return fmt.Errorf("ACME_ENABLED and TLS_CERT_FILE/TLS_KEY_FILE are mutually exclusive — pick one certificate source")
+			}
+			cfg.tlsMode = "acme"
+			return nil
 		}
 		if !hasStaticCert {
 			return fmt.Errorf(
-				"BIND_ADDRESS %s is not a loopback or private-range address, so in-process TLS is required: set TLS_CERT_FILE and TLS_KEY_FILE, or bind to a loopback/private address behind a reverse proxy",
+				"BIND_ADDRESS %s is not a loopback or private-range address, so in-process TLS is required: set TLS_CERT_FILE and TLS_KEY_FILE, enable ACME_ENABLED with an ACME_DOMAIN, or bind to a loopback/private address behind a reverse proxy",
 				cfg.BindAddress)
 		}
 		// SAN name check only when the host is a DNS name — a name-match
@@ -119,6 +151,7 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 			return err
 		}
 		cfg.tlsCert = cert
+		cfg.tlsMode = "static"
 		return nil
 
 	default:
