@@ -12,10 +12,14 @@ import { DevicePairingModal } from '../Network/DevicePairingModal'
 
 export function getReachabilityDescription(reachability: string): string {
   switch (reachability) {
+    case 'loopback':
     case 'local_only':
       return 'Alexandryn is only accessible from this computer.'
+    case 'private':
+    case 'lan':
     case 'local_network':
       return 'Accessible from devices on your local network.'
+    case 'public':
     case 'internet':
       return 'Accessible from the internet.'
     default:

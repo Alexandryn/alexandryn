@@ -23,6 +23,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/deskhost/parentwatch"
+	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/logging"
@@ -189,23 +190,26 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	sourceRepo := transporthttp.NewLazySourceRecordRepository(poolRef)
 	sourceSem := sources.NewSemaphore(sources.DefaultOutboundLimit)
 
-	mux.Handle("POST /api/v1/sources", transporthttp.CreateSourceHandler(sourceRepo, poolRef, sourceSem, idGen, logger))
-	mux.Handle("GET /api/v1/sources", transporthttp.ListSourcesHandler(sourceRepo))
-	mux.Handle("GET /api/v1/sources/{id}", transporthttp.GetSourceHandler(sourceRepo))
-	mux.Handle("PATCH /api/v1/sources/{id}", transporthttp.UpdateSourceHandler(sourceRepo, poolRef, sourceSem, logger))
-	mux.Handle("DELETE /api/v1/sources/{id}", transporthttp.DeleteSourceHandler(sourceRepo, poolRef))
-	mux.Handle("POST /api/v1/sources/{id}/health-check", transporthttp.HealthCheckSourceHandler(sourceRepo, poolRef, sourceSem, logger))
-	mux.Handle("GET /api/v1/sources/{id}/browse", transporthttp.BrowseSourceHandler(sourceRepo, poolRef, sourceSem, logger))
-	mux.Handle("GET /api/v1/sources/{id}/search", transporthttp.SearchSourceHandler(sourceRepo, poolRef, sourceSem, logger))
+	adminOnly := transporthttp.RequireRole(domain.RoleAdmin)
+
+	mux.Handle("POST /api/v1/sources", adminOnly(transporthttp.CreateSourceHandler(sourceRepo, poolRef, sourceSem, idGen, logger)))
+	mux.Handle("GET /api/v1/sources", adminOnly(transporthttp.ListSourcesHandler(sourceRepo)))
+	mux.Handle("GET /api/v1/sources/{id}", adminOnly(transporthttp.GetSourceHandler(sourceRepo)))
+	mux.Handle("PATCH /api/v1/sources/{id}", adminOnly(transporthttp.UpdateSourceHandler(sourceRepo, poolRef, sourceSem, logger)))
+	mux.Handle("DELETE /api/v1/sources/{id}", adminOnly(transporthttp.DeleteSourceHandler(sourceRepo, poolRef)))
+	mux.Handle("POST /api/v1/sources/{id}/health-check", adminOnly(transporthttp.HealthCheckSourceHandler(sourceRepo, poolRef, sourceSem, logger)))
+	mux.Handle("GET /api/v1/sources/{id}/browse", adminOnly(transporthttp.BrowseSourceHandler(sourceRepo, poolRef, sourceSem, logger)))
+	mux.Handle("GET /api/v1/sources/{id}/search", adminOnly(transporthttp.SearchSourceHandler(sourceRepo, poolRef, sourceSem, logger)))
 
 	candRepo := transporthttp.NewLazyImportCandidateRepository(poolRef)
 	discoveryRunner := transporthttp.NewLazyDiscoveryRunner(poolRef)
 	importerSvc := transporthttp.NewLazyImporterService(poolRef)
+	ingestAuth := transporthttp.LazyRequireIngestPermission(poolRef)
 
-	mux.Handle("POST /api/v1/import/discover", transporthttp.ImportDiscoverHandler(discoveryRunner))
-	mux.Handle("GET /api/v1/import/candidates", transporthttp.ImportCandidatesListHandler(candRepo))
-	mux.Handle("POST /api/v1/import/candidates/{id}/confirm", transporthttp.ImportCandidateConfirmHandler(importerSvc, candRepo, openLibraryClient))
-	mux.Handle("POST /api/v1/import/candidates/{id}/reject", transporthttp.ImportCandidateRejectHandler(importerSvc, candRepo))
+	mux.Handle("POST /api/v1/import/discover", ingestAuth(transporthttp.ImportDiscoverHandler(discoveryRunner)))
+	mux.Handle("GET /api/v1/import/candidates", ingestAuth(transporthttp.ImportCandidatesListHandler(candRepo)))
+	mux.Handle("POST /api/v1/import/candidates/{id}/confirm", ingestAuth(transporthttp.ImportCandidateConfirmHandler(importerSvc, candRepo, openLibraryClient)))
+	mux.Handle("POST /api/v1/import/candidates/{id}/reject", ingestAuth(transporthttp.ImportCandidateRejectHandler(importerSvc, candRepo)))
 
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
 
@@ -267,6 +271,8 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("GET /api/v1/network/status", transporthttp.LazyNetworkStatusHandler(poolRef, fallbackNetworkInfo(cfg)))
 	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
 	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
+
+	mux.Handle("GET /api/bootstrap", transporthttp.LazyBootstrapHandler(poolRef))
 
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
