@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/Alexandryn/alexandryn/internal/auth"
@@ -26,6 +27,11 @@ type AuthAPI struct {
 	Limiter            *auth.IPRateLimiter
 	MasterKey          []byte
 	IDs                domain.IDGenerator
+	PairedDevices      domain.PairedDeviceRepository
+	NetworkSettings    domain.NetworkSettingsRepository
+	EnrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
+	EnrolmentSigner    *auth.EnrolmentGrantSigner
+	Logger             *slog.Logger
 }
 
 func (r *PoolRef) SetAuthAPI(a AuthAPI) {

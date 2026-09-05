@@ -28,6 +28,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"golang.org/x/time/rate"
 )
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
@@ -243,6 +244,29 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 	mux.Handle("GET /api/v1/libraries/{id}/members", transporthttp.LazyListMembersHandler(poolRef))
 	mux.Handle("POST /api/v1/libraries/{id}/invitations", transporthttp.LazyCreateInvitationHandler(poolRef))
 	mux.Handle("POST /api/v1/invitations/{token}/accept", transporthttp.LazyAcceptInvitationHandler(poolRef))
+
+	// Network & Pairing routes (Phase 13)
+	pairInitiateLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/5), 3, 15*time.Minute)
+	pairVerifyLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/10), 5, 15*time.Minute)
+
+	initiateHandler := transporthttp.Chain(
+		transporthttp.LazyInitiatePairingHandler(poolRef),
+		transporthttp.PublicRateLimit(pairInitiateLimiter, func(string) bool { return true }),
+	)
+	mux.Handle("POST /api/v1/network/pair/initiate", initiateHandler)
+
+	allowedOrigins := computeAllowedOrigins(cfg)
+	verifyHandler := transporthttp.Chain(
+		transporthttp.LazyVerifyPairingHandler(poolRef),
+		transporthttp.PublicRateLimit(pairVerifyLimiter, func(string) bool { return true }),
+		transporthttp.OriginValidation(allowedOrigins),
+	)
+	mux.Handle("POST /api/v1/network/pair/verify", verifyHandler)
+
+	mux.Handle("GET /api/v1/network/pair/{id}/qr", transporthttp.LazyPairingQRHandler(poolRef))
+	mux.Handle("GET /api/v1/network/status", transporthttp.LazyNetworkStatusHandler(poolRef, fallbackNetworkInfo(cfg)))
+	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
+	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
 
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 

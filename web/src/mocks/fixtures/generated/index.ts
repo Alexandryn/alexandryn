@@ -918,4 +918,138 @@ export const generatedFixtures = {
       role: 'reader',
     },
   },
+  initiatePairing: {
+    '201': {
+      pairingId: '00000000-0000-0000-0000-000000000001',
+      code: 'ABCD-EFGH',
+      payload: 'http://192.168.1.50:8080/connect?c=ABCD-EFGH',
+      address: '192.168.1.50:8080',
+      expiresAt: '2026-09-05T12:05:00Z',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'malformed request body or body too large',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '403': {
+      code: 'forbidden',
+      message: 'insufficient permissions for this resource',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '415': {
+      code: 'unsupported_media_type',
+      message: 'Content-Type must be application/json',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '429': {
+      code: 'rate_limited',
+      message: 'too many requests, slow down and try again shortly',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  verifyPairing: {
+    '200': {
+      enrolmentGrant: 'mock.enrolment.jwt',
+      address: '192.168.1.50:8080',
+      hostName: 'alexandryn.local',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'malformed pairing code: must be 8 Crockford base32 characters',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '403': {
+      code: 'forbidden',
+      message: 'request origin is not allowed',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'pairing code not recognised',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '415': {
+      code: 'unsupported_media_type',
+      message: 'Content-Type must be application/json',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '429': {
+      code: 'rate_limited',
+      message: 'too many requests, slow down and try again shortly',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getPairingQR: {
+    '200': {
+      address: '192.168.1.50:8080',
+      expiresAt: '2026-09-05T12:05:00Z',
+      state: 'pending',
+      code: 'ABCD-EFGH',
+      payload: 'http://192.168.1.50:8080/connect?c=ABCD-EFGH',
+    },
+    '403': {
+      code: 'forbidden',
+      message: 'insufficient permissions for this resource',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'pairing session not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  getNetworkStatus: {
+    '200': {
+      reachability: 'lan',
+      tlsMode: 'none',
+      authRequired: true,
+      address: 'http://192.168.1.50:8080',
+      addresses: [
+        {
+          scope: 'lan',
+          url: 'http://192.168.1.50:8080',
+        },
+      ],
+      hostName: 'alexandryn.local',
+    },
+    '401': {
+      code: 'unauthorized',
+      message: 'missing or invalid authorization token',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  updateNetworkSettings: {
+    '200': {
+      hostName: 'alexandryn.local',
+      rememberDeviceDays: 30,
+      updatedAt: '2026-09-05T12:00:00Z',
+    },
+    '400': {
+      code: 'invalid_input',
+      message: 'unrecognised settings key "unknownKey"',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '403': {
+      code: 'forbidden',
+      message: 'insufficient permissions for this resource',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '415': {
+      code: 'unsupported_media_type',
+      message: 'Content-Type must be application/json',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  deletePairing: {
+    '403': {
+      code: 'forbidden',
+      message: 'insufficient permissions for this resource',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'pairing session not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const

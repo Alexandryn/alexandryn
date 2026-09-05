@@ -12,6 +12,7 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
 	"github.com/Alexandryn/alexandryn/internal/adapters/sources"
+	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
@@ -86,6 +87,13 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/reading/highlights/{highlightId}",
 		"/api/v1/reading/preferences",
 		"/api/v1/reading/export",
+		// Phase 13 — network access & device pairing.
+		"/api/v1/network/pair/initiate",
+		"/api/v1/network/pair/verify",
+		"/api/v1/network/pair/{id}/qr",
+		"/api/v1/network/status",
+		"/api/v1/network/settings",
+		"/api/v1/network/pair/{id}",
 	}
 	for _, p := range phasePaths {
 		if doc.Paths.Find(p) == nil {
@@ -744,3 +752,237 @@ func TestPhase12ContractResponses(t *testing.T) {
 		}
 	})
 }
+
+type ctIDGen struct{}
+
+func (ctIDGen) NewID() string { return "ct-id-12345" }
+
+type ctPairingSessions struct {
+	mu       sync.Mutex
+	sessions map[domain.PairingSessionID]*domain.PairingSession
+}
+
+func (c *ctPairingSessions) FindByID(_ context.Context, id domain.PairingSessionID) (*domain.PairingSession, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if s, ok := c.sessions[id]; ok {
+		return s, nil
+	}
+	return nil, &domain.Error{Category: domain.NotFound, Message: "pairing session not found"}
+}
+
+func (c *ctPairingSessions) FindByCodeIndex(_ context.Context, _ []byte) (*domain.PairingSession, error) {
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+
+func (c *ctPairingSessions) FindPendingByCodeIndexForUpdate(_ context.Context, _ []byte, _ time.Time) (*domain.PairingSession, error) {
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+
+func (c *ctPairingSessions) Save(_ context.Context, s *domain.PairingSession) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.sessions[s.ID()] = s
+	return nil
+}
+
+func (c *ctPairingSessions) SaveWithInitiatorIP(_ context.Context, s *domain.PairingSession, _ string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.sessions[s.ID()] = s
+	return nil
+}
+
+func (c *ctPairingSessions) Delete(_ context.Context, _ domain.PairingSessionID) error {
+	return nil
+}
+
+type ctVerifier struct {
+	session *domain.PairingSession
+}
+
+func (v ctVerifier) VerifyAndConsume(_ context.Context, _ domain.PairingCode, _ domain.DeviceID, _ string, _ domain.DeviceClass, _ time.Time) (*domain.PairingSession, error) {
+	return v.session, nil
+}
+
+type ctPairedDevices struct{}
+
+func (ctPairedDevices) FindByID(_ context.Context, _ domain.DeviceID) (*domain.PairedDevice, error) {
+	return nil, nil
+}
+func (ctPairedDevices) FindByOwner(_ context.Context, _ domain.UserID) ([]*domain.PairedDevice, error) {
+	return nil, nil
+}
+func (ctPairedDevices) FindByPairingSessionID(_ context.Context, _ domain.PairingSessionID) (*domain.PairedDevice, error) {
+	return nil, nil
+}
+func (ctPairedDevices) InsertProvisional(_ context.Context, _ domain.DeviceID, _ string, _ domain.DeviceClass, _ domain.EnrolledVia, _ domain.PairingSessionID, _ time.Time) error {
+	return nil
+}
+func (ctPairedDevices) AssignOwnerByPairingSession(_ context.Context, _ domain.PairingSessionID, _ domain.UserID) error {
+	return nil
+}
+func (ctPairedDevices) Save(_ context.Context, _ *domain.PairedDevice) error {
+	return nil
+}
+func (ctPairedDevices) Revoke(_ context.Context, _ domain.DeviceID, _ time.Time) error {
+	return nil
+}
+
+type ctNetworkSettings struct {
+	settings *domain.NetworkSettings
+}
+
+func (s *ctNetworkSettings) Get(_ context.Context) (*domain.NetworkSettings, error) {
+	if s.settings != nil {
+		return s.settings, nil
+	}
+	return &domain.NetworkSettings{
+		HostName:           "alexandryn.local",
+		RememberDeviceDays: 30,
+		UpdatedAt:          time.Now(),
+	}, nil
+}
+
+func (s *ctNetworkSettings) Upsert(_ context.Context, settings *domain.NetworkSettings) error {
+	s.settings = settings
+	return nil
+}
+
+func TestPhase13ContractResponses(t *testing.T) {
+	v := contracttest.New(t)
+	now := func() time.Time { return time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC) }
+	code, err := domain.NewPairingCode("3ABCDEFG")
+	if err != nil {
+		t.Fatalf("unexpected error creating pairing code: %v", err)
+	}
+	session, err := domain.NewPairingSession("sess-1", "admin-1", code, 5*time.Minute, now())
+	if err != nil {
+		t.Fatalf("unexpected error creating pairing session: %v", err)
+	}
+
+	sessionRepo := &ctPairingSessions{
+		sessions: map[domain.PairingSessionID]*domain.PairingSession{
+			"sess-1": session,
+		},
+	}
+	deviceRepo := ctPairedDevices{}
+	settingsRepo := &ctNetworkSettings{}
+	signer := auth.NewEnrolmentGrantSigner([]byte("01234567890123456789012345678901"), "alexandryn-test", ctIDGen{})
+	verifier := ctVerifier{session: session}
+
+	t.Run("POST /api/v1/network/pair/initiate → 201 InitiatePairingResponse", func(t *testing.T) {
+		h := transporthttp.InitiatePairingHandler(sessionRepo, func() (domain.PairingCode, error) {
+			return code, nil
+		}, "", "alexandryn.local:4000", "http", ctIDGen{}, now, nil)
+
+		req := mustRequest(t, "POST", "/api/v1/network/pair/initiate", bytes.NewReader([]byte("{}")))
+		user := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusCreated {
+			t.Errorf("expected 201, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST /api/v1/network/pair/verify → 200 VerifyPairingResponse", func(t *testing.T) {
+		h := transporthttp.VerifyPairingHandler(verifier, signer, "alexandryn.local:4000", "alexandryn.local", ctIDGen{}, now, nil)
+
+		req := mustRequest(t, "POST", "/api/v1/network/pair/verify", bytes.NewReader([]byte(`{"code":"3ABCDEFG"}`)))
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/network/pair/{id}/qr → 200 PairingQRResponse", func(t *testing.T) {
+		h := transporthttp.PairingQRHandler(sessionRepo, "alexandryn.local:4000", "http", nil)
+
+		req := mustRequest(t, "GET", "/api/v1/network/pair/sess-1/qr", nil)
+		req.SetPathValue("id", "sess-1")
+		user := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d: body=%s", rr.Code, rr.Body.String())
+		}
+	})
+
+	t.Run("GET /api/v1/network/status → 200 NetworkStatusReader", func(t *testing.T) {
+		infoProvider := func() transporthttp.NetworkInfo {
+			return transporthttp.NetworkInfo{
+				Reachability: "local_network",
+				TLSMode:      "none",
+				BindAddress:  "0.0.0.0:4000",
+				HostName:     "alexandryn.local",
+				Addresses: []transporthttp.NetworkAddressWire{
+					{Scope: "local", URL: "http://192.168.1.50:4000"},
+				},
+			}
+		}
+		h := transporthttp.NetworkStatusHandler(infoProvider, nil)
+
+		req := mustRequest(t, "GET", "/api/v1/network/status", nil)
+		user := &transporthttp.AuthenticatedUser{UserID: "reader-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/network/status → 200 NetworkStatusAdmin", func(t *testing.T) {
+		infoProvider := func() transporthttp.NetworkInfo {
+			return transporthttp.NetworkInfo{
+				Reachability: "local_network",
+				TLSMode:      "none",
+				BindAddress:  "0.0.0.0:4000",
+				HostName:     "alexandryn.local",
+				Addresses: []transporthttp.NetworkAddressWire{
+					{Scope: "local", URL: "http://192.168.1.50:4000"},
+				},
+			}
+		}
+		h := transporthttp.NetworkStatusHandler(infoProvider, nil)
+
+		req := mustRequest(t, "GET", "/api/v1/network/status", nil)
+		user := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("PATCH /api/v1/network/settings → 200 NetworkSettingsResponse", func(t *testing.T) {
+		h := transporthttp.UpdateNetworkSettingsHandler(settingsRepo, now, nil)
+
+		req := mustRequest(t, "PATCH", "/api/v1/network/settings", bytes.NewReader([]byte(`{"hostName":"alexandryn.local","rememberDeviceDays":14}`)))
+		user := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("DELETE /api/v1/network/pair/{id} → 204 No Content", func(t *testing.T) {
+		h := transporthttp.DeletePairingHandler(sessionRepo, deviceRepo, now, nil)
+
+		req := mustRequest(t, "DELETE", "/api/v1/network/pair/sess-1", nil)
+		req.SetPathValue("id", "sess-1")
+		user := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusNoContent {
+			t.Errorf("expected 204, got %d", rr.Code)
+		}
+	})
+}
+
