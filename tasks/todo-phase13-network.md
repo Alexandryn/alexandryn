@@ -54,9 +54,14 @@ phase, supersedes the Tier-0-only PR #79).
       (`backend-http-transport.md` FR-1) + `backend-configuration.md`
       FR-8 note still `DRAFT` pending Checkpoint 2 maintainer
       re-confirmation.
-- [ ] HKDF subkey wiring (`enrolment-grant-v1` + the two pairing-code
-      subkeys) → Tier 4, with the login/pair handlers that consume them.
-- [ ] Tier 3 — persistence · Tier 4 — HTTP API · Tier 5 — web UI
+- [x] **Tier 3** — persistence (T3.1–T3.5, commits `2c0c063`..`225140a`).
+      Migration `00010_phase13_network.sql` (sessions, devices, grant jtis,
+      settings); `PairingSessionRepository` (AES-256-GCM code encryption +
+      blind HMAC index); `PairedDeviceRepository`, `NetworkSettingsRepository`,
+      and `EnrolmentGrantJTIRepository`; `PairingVerifier` (atomic verify +
+      provisional device insert under row lock); `NetworkSweep` (5-minute
+      lifecycle ticker).
+- [ ] Tier 4 — HTTP API · Tier 5 — web UI
 - [ ] Gate 2 — audit 0013 (stop and ask) · Close
 
 ---
@@ -309,11 +314,11 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T3.1 — migration `00010_phase13_network.sql`
 **Acceptance criteria:**
-- [ ] `pairing_sessions`: `id` pk, `initiated_by` fk `users` `ON DELETE CASCADE`, `code_ciphertext` bytea, `code_index` bytea `UNIQUE`, `state` text `CHECK` (4 values), `created_at`/`expires_at` `timestamptz`, `device_id` nullable, `initiator_ip` inet nullable; index `(state, expires_at)`. **No plaintext/hashed code column.**
-- [ ] `paired_devices`: `id` pk, `owner_id` nullable fk `users` `ON DELETE CASCADE`, `label`, `device_class`/`enrolled_via` `CHECK` enums, `created_at`/`last_seen_at`, `revoked_at` nullable, `pairing_session_id` nullable fk `pairing_sessions` **`ON DELETE SET NULL`**
-- [ ] `enrolment_grant_jtis`: `jti` pk, `spent_at`
-- [ ] `network_settings`: single row — `host_name`, `remember_device_days`, `updated_at`
-- [ ] applies to an empty DB and rolls back cleanly, incl. the `ON DELETE SET NULL`
+- [x] `pairing_sessions`: `id` pk, `initiated_by` fk `users` `ON DELETE CASCADE`, `code_ciphertext` bytea, `code_index` bytea `UNIQUE`, `state` text `CHECK` (4 values), `created_at`/`expires_at` `timestamptz`, `device_id` nullable, `initiator_ip` inet nullable; index `(state, expires_at)`. **No plaintext/hashed code column.**
+- [x] `paired_devices`: `id` pk, `owner_id` nullable fk `users` `ON DELETE CASCADE`, `label`, `device_class`/`enrolled_via` `CHECK` enums, `created_at`/`last_seen_at`, `revoked_at` nullable, `pairing_session_id` nullable fk `pairing_sessions` **`ON DELETE SET NULL`**
+- [x] `enrolment_grant_jtis`: `jti` pk, `spent_at`
+- [x] `network_settings`: single row — `host_name`, `remember_device_days`, `updated_at`
+- [x] applies to an empty DB and rolls back cleanly, incl. the `ON DELETE SET NULL`
 **Verification:** `go test -tags=integration ./internal/persistence/postgres/ -run Migrat`
 **Dependencies:** Checkpoint 1
 **Files:** `internal/persistence/postgres/migrations/00010_phase13_network.sql`, `migrate_integration_test.go`
@@ -321,11 +326,11 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T3.2 — `PairingSessionRepository`
 **Acceptance criteria:**
-- [ ] interface in `internal/domain` (matches `domain/repository.go`), impl in `internal/persistence/postgres`
-- [ ] on write: encrypt the normalized code AES-256-GCM under `pairing-code-enc-v1` (ciphertext + nonce), compute the blind HMAC index under `pairing-code-index-v1`, store both
-- [ ] on read: decrypt, hand `domain` a reconstructed **validated** `PairingCode`; encryption/HMAC live in the repository, `domain` stays crypto-free
-- [ ] round-trip test: encrypt→store→decrypt yields the original code; the blind index matches a fresh HMAC of the same code
-- [ ] all queries parameterised
+- [x] interface in `internal/domain` (matches `domain/repository.go`), impl in `internal/persistence/postgres`
+- [x] on write: encrypt the normalized code AES-256-GCM under `pairing-code-enc-v1` (ciphertext + nonce), compute the blind HMAC index under `pairing-code-index-v1`, store both
+- [x] on read: decrypt, hand `domain` a reconstructed **validated** `PairingCode`; encryption/HMAC live in the repository, `domain` stays crypto-free
+- [x] round-trip test: encrypt→store→decrypt yields the original code; the blind index matches a fresh HMAC of the same code
+- [x] all queries parameterised
 **Verification:** `go test -race -tags=integration ./internal/persistence/postgres/ -run PairingSession`
 **Dependencies:** T3.1, T2.8
 **Files:** `internal/domain/repository.go`, `internal/persistence/postgres/pairing_session_repository.go`, `_integration_test.go`
@@ -333,9 +338,9 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T3.3 — `PairedDeviceRepository` + `NetworkSettingsRepository` + grant-jti store
 **Acceptance criteria:**
-- [ ] CRUD for `paired_devices` (incl. `owner_id` assignment, `Revoke`), the one-row `network_settings` (read + upsert), `enrolment_grant_jtis` (insert + exists-check)
-- [ ] no column stores a raw code, token, or `User-Agent` string
-- [ ] all queries parameterised
+- [x] CRUD for `paired_devices` (incl. `owner_id` assignment, `Revoke`), the one-row `network_settings` (read + upsert), `enrolment_grant_jtis` (insert + exists-check)
+- [x] no column stores a raw code, token, or `User-Agent` string
+- [x] all queries parameterised
 **Verification:** `go test -race -tags=integration ./internal/persistence/postgres/ -run PairedDevice|NetworkSettings|GrantJti`
 **Dependencies:** T3.1
 **Files:** `internal/domain/repository.go`, `internal/persistence/postgres/{paired_device,network_settings,enrolment_grant}_repository.go`, `_integration_test.go`
@@ -344,9 +349,9 @@ phase, supersedes the Tier-0-only PR #79).
 ### T3.4 — row-locked atomic verify
 **Description:** FR-2 / ADR 0021. Follows `source_removal_atomicity_integration_test.go`.
 **Acceptance criteria:**
-- [ ] one transaction: `SELECT … FROM pairing_sessions WHERE code_index=$1 AND state='pending' AND expires_at > now() FOR UPDATE` → decrypt → rehydrate → `session.Verify(now, code, deviceID)` → `session.Consume(now)` + persist + insert `paired_devices` (owner unset)
-- [ ] injected failure between `Consume` and the insert → full rollback (code still `pending`, no device row, no grant `jti`)
-- [ ] concurrent double-submit (two goroutines, same code) → exactly one binds a device, the other gets no match; proven by an integration test (the `FOR UPDATE` lock)
+- [x] one transaction: `SELECT … FROM pairing_sessions WHERE code_index=$1 AND state='pending' AND expires_at > now() FOR UPDATE` → decrypt → rehydrate → `session.Verify(now, code, deviceID)` → `session.Consume(now)` + persist + insert `paired_devices` (owner unset)
+- [x] injected failure between `Consume` and the insert → full rollback (code still `pending`, no device row, no grant `jti`)
+- [x] concurrent double-submit (two goroutines, same code) → exactly one binds a device, the other gets no match; proven by an integration test (the `FOR UPDATE` lock)
 **Verification:** `go test -race -tags=integration ./internal/persistence/postgres/ -run VerifyAtomic|DoubleSubmit`
 **Dependencies:** T3.2, T3.3, T1.2
 **Files:** `internal/persistence/postgres/pairing_verify.go` (or in the repo), `_integration_test.go`
@@ -355,19 +360,19 @@ phase, supersedes the Tier-0-only PR #79).
 ### T3.5 — FR-8 background sweep
 **Description:** D-G — a 5-minute lifecycle ticker (not the job queue).
 **Acceptance criteria:**
-- [ ] marks `pending` sessions past `expires_at` as `expired`; deletes `expired`/`consumed` sessions > 24h; deletes `paired_devices` still `owner_id IS NULL` > 1h; deletes `enrolment_grant_jtis` older than the max grant TTL
-- [ ] not invoked on any request path
-- [ ] seeded-fixture integration test asserts each transition/deletion
+- [x] marks `pending` sessions past `expires_at` as `expired`; deletes `expired`/`consumed` sessions > 24h; deletes `paired_devices` still `owner_id IS NULL` > 1h; deletes `enrolment_grant_jtis` older than the max grant TTL
+- [x] not invoked on any request path
+- [x] seeded-fixture integration test asserts each transition/deletion
 **Verification:** `go test -race -tags=integration ./... -run Sweep`
 **Dependencies:** T3.3
 **Files:** `internal/persistence/postgres/network_sweep.go` (or `cmd/server`), `_integration_test.go`; `cmd/server/run.go` (start the ticker)
 **Scope:** S
 
 ### Checkpoint 3
-- [ ] `go test -race -tags=integration ./internal/persistence/...` green
-- [ ] migration up/down clean; atomicity + concurrent-double-submit + sweep tests pass
-- [ ] `scripts/check-parameterized-queries.sh` clean
-- [ ] commit
+- [x] `go test -race -tags=integration ./internal/persistence/...` green
+- [x] migration up/down clean; atomicity + concurrent-double-submit + sweep tests pass
+- [x] `scripts/check-parameterized-queries.sh` clean
+- [x] commit
 
 ---
 
