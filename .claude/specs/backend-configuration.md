@@ -234,44 +234,21 @@ file format, where it lives, or the actual validation each key needs.
   check is enforced at startup, unconditionally, before any other
   subsystem initializes.
 
-  **Interim note history — the unconditional public-bind refusal is
-  lifted for the static-certificate case (2026-09-03, phase 13 Tier 0,
-  `DRAFT`).** From 2026-08-26 to 2026-09-03, `validateBindAddress` refused
-  *every* publicly routable `BIND_ADDRESS` regardless of certificate
-  validity, because no code path served TLS — "a certificate nothing uses
-  to encrypt anything looks enforced without being enforced." Phase 13
-  Tier 0 changes that:
+  **TLS bind enforcement (Phase 13, ADR 0017, ADR 0028):**
   - `internal/config/bindaddress.go` classifies the host per ADR 0028 §1
     (IP literal by range; `localhost` private; any other string public,
     no DNS lookup), validates a static `TLS_CERT_FILE`/`TLS_KEY_FILE`
     pair (well-formed, key-match, in-window, and — for a named public
-    host — SAN coverage via `x509.Certificate.VerifyHostname`), and
-    **accepts** a public bind with a valid pair (or a private bind with
-    the opt-in pair). The validated `*tls.Certificate` is stored on
-    `Config` (`TLSCertificate()`).
-  - `cmd/server/run.go` wraps the listener in `tls.NewListener` whenever
-    `Config.TLSCertificate()` is non-nil — so an accepted public bind
-    actually serves in-process TLS, never plaintext. The safety property
-    the old note protected (no plaintext on a public address) holds
-    without the blanket refusal.
-  - **Phase 13 Tier 2 (2026-09-04, `DRAFT`):** `validateBindAddress` now
-    also accepts `ACME_ENABLED=true` on a public bind (requires
-    `ACME_DOMAIN`; if `BIND_ADDRESS`'s host is a name it must equal
-    `ACME_DOMAIN`; mutually exclusive with a static `TLS_CERT_FILE`/
-    `TLS_KEY_FILE`). It records `Config.Reachability()` (loopback / private
-    / public) and `Config.TLSMode()` (none / static / acme). `cmd/server`
-    builds the `autocert.Manager` (`HostWhitelist(ACME_DOMAIN)`,
-    `DirCache` under `ACME_CACHE_DIR` or `acme/` in the data dir,
-    `AcceptTOS`), wires `GetCertificate`, and runs a `:80` HTTP→HTTPS
-    redirect listener (serving `manager.HTTPHandler` in ACME mode) for
-    every public bind. The `NewTLSConfig` cipher/version/ALPN policy and
-    the HSTS middleware also landed. **Still open:** the Pebble
-    certificate-lifecycle integration test is written but self-skips —
-    Pebble confirms end-to-end issuance locally, the automated assertion
-    hits an `x/crypto` acme-client ↔ Pebble finalize-response
-    incompatibility on cert download (phase-13 follow-up). This whole
-    note is deleted, and the middle bullet stands unqualified, once that
-    test is green and the maintainer re-confirms.
+    host — SAN coverage via `x509.Certificate.VerifyHostname`), or
+    validates `ACME_ENABLED=true` on a public bind (requiring
+    `ACME_DOMAIN`, matching `BIND_ADDRESS` name, mutually exclusive with
+    static cert files). It records `Config.Reachability()` (loopback / private
+    / public) and `Config.TLSMode()` (none / static / acme).
+  - `cmd/server/run.go` wraps the listener in `tls.NewListener` or provides
+    the `autocert.Manager` whenever TLS is enabled — so an accepted public
+    bind serves in-process TLS, never plaintext. For every public bind, a
+    concurrent port `:80` redirect/ACME listener is also run and drained
+    gracefully alongside the main server.
 
 ## Non-functional requirements
 

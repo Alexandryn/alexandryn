@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 8/9/S-H4 + the `qrcode` §9 record reworked and self-reviewed 2026-09-02. **`fr4` / first-run resolved 2026-09-03: a first-run network step is out of scope for phase 13** (`roadmap/13-network-access/README.md` Scope Out) — this spec builds the standing Settings → Network panel and the pairing flow only. |
+| **Status** | `VERIFIED` — implemented across Tier 5, certified in Gate 2 security audit `0013`, and verified green by Playwright E2E and vitest test suites. |
 | **Phase** | `13-network-access` |
 | **Author** | Claude (Sonnet 5) |
 | **Created** | 2026-09-02 |
-| **Last updated** | 2026-09-02 |
+| **Last updated** | 2026-09-05 |
 | **Reviewed in** | [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) (two independent agents) — Needs rework at review time, findings addressed |
 | **Design reference** | Canvases re-read fresh 2026-09-02. `.design-reference/ANALYSIS.md` synced **2026-08-13**, scope-classification ledger dated **2026-08-17**. **Binding, relied on:** `Alexandryn-Electron-Admin.dc.html` `sgNetwork`'s **"Advanced" disclosure row** — the *only* ledger entry for this surface (**Binding, contents uncaptured** — the row is drawn, its panel body is not); and `Alexandryn-Web.dc.html` `atConnect`/`atAccess` (**Binding**, outline only). **Present in the canvas but NOT relied on as authority:** the first-run `fr4` step — `ANALYSIS.md` classifies `atFirstRun` **Unclassified**, which CLAUDE.md makes a stop-and-ask, not a default (see Open questions); `sgDevices` — **no ledger row at all**; the `sgNetwork` status card, toggle rows, and QR card as *drawn* — they sit on `atSettings`'s Network tab, which the ledger leaves Unclassified apart from the one Advanced row. This spec designs the panel body and the pairing flow from `roadmap/13-network-access/README.md` + ADR 0028, treating the drawn elements as visual reference for *look*, not as a binding contract for *scope*. **Contradictions (in `implementation-plan.md` Gate 1.5, resolved by ADR 0028):** D-1 `atConnect`'s "Library passphrase" → the account password, standard username/password sign-in (§6); D-2 the "Require authentication" toggle → **not built**, a static "Authentication is always on" statement (§7); D-3 no captured Advanced-panel body → designed here from the roadmap; D-4 device list/revoke → phase 14, this phase shows only the pairing flow + "revoke this pairing" (plan C-3); D-5 the "Allow access from this network" toggle → **not built**, a read-only reachability statement (§8). |
 
