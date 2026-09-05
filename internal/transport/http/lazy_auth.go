@@ -35,7 +35,14 @@ func LazyLoginHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		LoginHandler(api.Users, api.Credentials, api.MFA, api.LibraryMemberships, api.RefreshTokens, api.Hasher, api.Signer, api.IDs, api.Limiter).ServeHTTP(w, r)
+		var opts []LoginOption
+		if api.EnrolmentSigner != nil && api.PairedDevices != nil && api.EnrolmentGrantJTIs != nil {
+			opts = append(opts, WithEnrolmentGrant(api.EnrolmentSigner, api.PairedDevices, api.EnrolmentGrantJTIs, api.Logger))
+		}
+		if api.NetworkSettings != nil {
+			opts = append(opts, WithNetworkSettings(api.NetworkSettings))
+		}
+		LoginHandler(api.Users, api.Credentials, api.MFA, api.LibraryMemberships, api.RefreshTokens, api.Hasher, api.Signer, api.IDs, api.Limiter, opts...).ServeHTTP(w, r)
 	})
 }
 
@@ -46,7 +53,11 @@ func LazyRefreshHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		RefreshHandler(api.RefreshTokens, api.Users, api.LibraryMemberships, api.Signer, api.IDs, api.Limiter).ServeHTTP(w, r)
+		var opts []RefreshOption
+		if api.NetworkSettings != nil {
+			opts = append(opts, WithNetworkSettings(api.NetworkSettings))
+		}
+		RefreshHandler(api.RefreshTokens, api.Users, api.LibraryMemberships, api.Signer, api.IDs, api.Limiter, opts...).ServeHTTP(w, r)
 	})
 }
 

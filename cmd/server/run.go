@@ -22,6 +22,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
+	"github.com/Alexandryn/alexandryn/internal/pairing"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 	"golang.org/x/crypto/acme/autocert"
@@ -529,6 +531,30 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		return 1
 	}
+	pairingEncSubkey, err := cryptoSvc.DeriveSubkey("pairing-code-enc-v1")
+	if err != nil {
+		logger.Error("failed to derive pairing code enc subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	pairingIndexSubkey, err := cryptoSvc.DeriveSubkey("pairing-code-index-v1")
+	if err != nil {
+		logger.Error("failed to derive pairing code index subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+	enrolmentGrantSubkey, err := cryptoSvc.DeriveSubkey("enrolment-grant-v1")
+	if err != nil {
+		logger.Error("failed to derive enrolment grant subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
 
 	poolRef.SetSourceCrypto(transporthttp.SourceCrypto{
 		Encryptor: cryptoSvc,
@@ -536,6 +562,43 @@ func run(ctx context.Context, deps runDeps) int {
 	})
 
 	if repos != nil {
+		var enrolmentSigner *auth.EnrolmentGrantSigner
+		if repos.pool != nil && repos.pairedDevices != nil && repos.networkSettings != nil {
+			pairingSessionRepo, err := postgres.NewPairingSessionRepository(repos.pool, pairingEncSubkey, pairingIndexSubkey)
+			if err != nil {
+				logger.Error("failed to create pairing session repository", "error", err.Error())
+				if pool != nil {
+					pool.Close()
+				}
+				return 1
+			}
+			verifier := postgres.NewPairingVerifier(repos.transactor, pairingSessionRepo, repos.pairedDevices)
+			enrolmentSigner = auth.NewEnrolmentGrantSigner(enrolmentGrantSubkey, "alexandryn", idgen.New())
+
+			scheme := "http"
+			if cfg.TLSMode() == "static" || cfg.TLSMode() == "acme" {
+				scheme = "https"
+			}
+
+			poolRef.SetNetworkAPI(transporthttp.NetworkAPI{
+				PairingSessions:    pairingSessionRepo,
+				PairedDevices:      repos.pairedDevices,
+				NetworkSettings:    repos.networkSettings,
+				EnrolmentGrantJTIs: repos.enrolmentGrantJTIs,
+				Verifier:           verifier,
+				GrantSigner:        enrolmentSigner,
+				CodeGen:            pairing.GeneratePairingCode,
+				PairingSecret:      cfg.DevicePairingSecret.Reveal(),
+				ServerAddress:      cfg.BindAddress,
+				HostName:           "alexandryn.local",
+				Scheme:             scheme,
+				IDs:                idgen.New(),
+				Now:                time.Now,
+				Logger:             logger,
+				InfoProvider:       fallbackNetworkInfo(cfg),
+			})
+		}
+
 		if repos.users != nil {
 			// The auth-endpoint brute-force limiter — evicted on a ctx-bound
 			// ticker, same as publicLimiter (previously this map only grew).
@@ -556,6 +619,11 @@ func run(ctx context.Context, deps runDeps) int {
 				Limiter:            authLimiter,
 				MasterKey:          mfaSubkey,
 				IDs:                idgen.New(),
+				PairedDevices:      repos.pairedDevices,
+				NetworkSettings:    repos.networkSettings,
+				EnrolmentGrantJTIs: repos.enrolmentGrantJTIs,
+				EnrolmentSigner:    enrolmentSigner,
+				Logger:             logger,
 			})
 		}
 		if repos.importCandidates != nil {

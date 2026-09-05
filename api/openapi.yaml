@@ -1777,6 +1777,7 @@ paths:
               properties:
                 emailOrUsername: { type: string }
                 password: { type: string }
+                enrolmentGrant: { type: string }
       responses:
         '200':
           description: Authentication successful or MFA required
@@ -2235,6 +2236,296 @@ paths:
               example:
                 libraryId: "00000000-0000-0000-0000-000000000001"
                 role: "reader"
+
+  # ── Phase 13: Network and Device Pairing endpoints ───────────────────
+  # backend-network-api.md FR-1 through FR-6
+
+  /api/v1/network/pair/initiate:
+    post:
+      operationId: initiatePairing
+      summary: Create a new 5-minute device pairing session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secret:
+                  type: string
+      responses:
+        '201':
+          description: Pairing session created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InitiatePairingResponse' }
+              example:
+                pairingId: "00000000-0000-0000-0000-000000000001"
+                code: "ABCD-EFGH"
+                payload: "http://192.168.1.50:8080/connect?c=ABCD-EFGH"
+                address: "192.168.1.50:8080"
+                expiresAt: "2026-09-05T12:05:00Z"
+        '400':
+          description: Malformed request payload
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: invalid_input
+                message: malformed request body or body too large
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '403':
+          description: Insufficient permissions or wrong pairing secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: forbidden
+                message: insufficient permissions for this resource
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unsupported_media_type
+                message: Content-Type must be application/json
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: rate_limited
+                message: too many requests, slow down and try again shortly
+                correlationId: "00000000-0000-0000-0000-000000000000"
+
+  /api/v1/network/pair/verify:
+    post:
+      operationId: verifyPairing
+      summary: Verify candidate device pairing code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+                label: { type: string }
+      responses:
+        '200':
+          description: Pairing code verified and enrolment grant issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerifyPairingResponse' }
+              example:
+                enrolmentGrant: "mock.enrolment.jwt"
+                address: "192.168.1.50:8080"
+                hostName: "alexandryn.local"
+        '400':
+          description: Malformed code format
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: invalid_input
+                message: "malformed pairing code: must be 8 Crockford base32 characters"
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '403':
+          description: Origin not allowed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: forbidden
+                message: request origin is not allowed
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '404':
+          description: Pairing code not recognized or expired
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: not_found
+                message: pairing code not recognised
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unsupported_media_type
+                message: Content-Type must be application/json
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: rate_limited
+                message: too many requests, slow down and try again shortly
+                correlationId: "00000000-0000-0000-0000-000000000000"
+
+  /api/v1/network/pair/{id}/qr:
+    get:
+      operationId: getPairingQR
+      summary: Get pairing QR payload and code for active session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Pairing QR data retrieved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PairingQRResponse' }
+              example:
+                address: "192.168.1.50:8080"
+                expiresAt: "2026-09-05T12:05:00Z"
+                state: "pending"
+                code: "ABCD-EFGH"
+                payload: "http://192.168.1.50:8080/connect?c=ABCD-EFGH"
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: forbidden
+                message: insufficient permissions for this resource
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '404':
+          description: Pairing session not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: not_found
+                message: pairing session not found
+                correlationId: "00000000-0000-0000-0000-000000000000"
+
+  /api/v1/network/status:
+    get:
+      operationId: getNetworkStatus
+      summary: Get network reachability and addresses scoped by role
+      responses:
+        '200':
+          description: Network reachability and configuration status
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/NetworkStatusAdmin' }
+                  - { $ref: '#/components/schemas/NetworkStatusReader' }
+              example:
+                reachability: "lan"
+                tlsMode: "none"
+                authRequired: true
+                address: "http://192.168.1.50:8080"
+                addresses:
+                  - scope: "lan"
+                    url: "http://192.168.1.50:8080"
+                hostName: "alexandryn.local"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unauthorized
+                message: missing or invalid authorization token
+                correlationId: "00000000-0000-0000-0000-000000000000"
+
+  /api/v1/network/settings:
+    patch:
+      operationId: updateNetworkSettings
+      summary: Update network settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostName: { type: string }
+                rememberDeviceDays: { type: integer, minimum: 1, maximum: 90 }
+      responses:
+        '200':
+          description: Network settings updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NetworkSettingsResponse' }
+              example:
+                hostName: "alexandryn.local"
+                rememberDeviceDays: 30
+                updatedAt: "2026-09-05T12:00:00Z"
+        '400':
+          description: Invalid input or forbidden configuration key
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: invalid_input
+                message: "unrecognised settings key \"unknownKey\""
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: forbidden
+                message: insufficient permissions for this resource
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: unsupported_media_type
+                message: Content-Type must be application/json
+                correlationId: "00000000-0000-0000-0000-000000000000"
+
+  /api/v1/network/pair/{id}:
+    delete:
+      operationId: deletePairing
+      summary: Revoke pairing session or associated device
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Pairing session expired or device revoked
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: forbidden
+                message: insufficient permissions for this resource
+                correlationId: "00000000-0000-0000-0000-000000000000"
+        '404':
+          description: Pairing session not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: not_found
+                message: pairing session not found
+                correlationId: "00000000-0000-0000-0000-000000000000"
 
 components:
   securitySchemes:
@@ -3190,6 +3481,82 @@ components:
         email: { type: string, format: email }
         role: { type: string, enum: [admin, reader] }
         createdAt: { type: string, format: date-time }
+
+    # ── Phase 13: Network and Device Pairing schemas ─────────────────
+    # backend-network-api.md FR-1 through FR-6
+
+    InitiatePairingResponse:
+      type: object
+      additionalProperties: false
+      required: [pairingId, code, payload, address, expiresAt]
+      properties:
+        pairingId: { type: string }
+        code: { type: string }
+        payload: { type: string }
+        address: { type: string }
+        expiresAt: { type: string, format: date-time }
+
+    VerifyPairingResponse:
+      type: object
+      additionalProperties: false
+      required: [enrolmentGrant, address, hostName]
+      properties:
+        enrolmentGrant: { type: string }
+        address: { type: string }
+        hostName: { type: string }
+
+    PairingQRResponse:
+      type: object
+      additionalProperties: false
+      required: [address, expiresAt, state, code, payload]
+      properties:
+        address: { type: string }
+        expiresAt: { type: string, format: date-time }
+        state: { type: string, enum: [pending, verified, consumed, expired] }
+        code: { type: string }
+        payload: { type: string }
+
+    NetworkAddress:
+      type: object
+      additionalProperties: false
+      required: [scope, url]
+      properties:
+        scope: { type: string }
+        url: { type: string }
+
+    NetworkStatusReader:
+      type: object
+      additionalProperties: false
+      required: [reachability, tlsMode, authRequired, address]
+      properties:
+        reachability: { type: string }
+        tlsMode: { type: string, enum: [none, static, acme] }
+        authRequired: { type: boolean }
+        address: { type: string }
+
+    NetworkStatusAdmin:
+      type: object
+      additionalProperties: false
+      required: [reachability, tlsMode, authRequired, address, addresses, hostName]
+      properties:
+        reachability: { type: string }
+        tlsMode: { type: string, enum: [none, static, acme] }
+        authRequired: { type: boolean }
+        address: { type: string }
+        addresses:
+          type: array
+          items: { $ref: '#/components/schemas/NetworkAddress' }
+        hostName: { type: string }
+        acmeDomain: { type: string }
+
+    NetworkSettingsResponse:
+      type: object
+      additionalProperties: false
+      required: [hostName, rememberDeviceDays, updatedAt]
+      properties:
+        hostName: { type: string }
+        rememberDeviceDays: { type: integer, minimum: 1, maximum: 90 }
+        updatedAt: { type: string, format: date-time }
 
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.

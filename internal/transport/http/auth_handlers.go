@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +13,39 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
+
+type authConfig struct {
+	grantSigner  *auth.EnrolmentGrantSigner
+	devRepo      domain.PairedDeviceRepository
+	jtiRepo      domain.EnrolmentGrantJTIRepository
+	settingsRepo domain.NetworkSettingsRepository
+	logger       *slog.Logger
+}
+
+type LoginOption func(*authConfig)
+type RefreshOption = LoginOption
+
+// WithEnrolmentGrant configures the login handler to process device enrolment grants (T4.7, FR-9).
+func WithEnrolmentGrant(
+	grantSigner *auth.EnrolmentGrantSigner,
+	devRepo domain.PairedDeviceRepository,
+	jtiRepo domain.EnrolmentGrantJTIRepository,
+	logger *slog.Logger,
+) LoginOption {
+	return func(c *authConfig) {
+		c.grantSigner = grantSigner
+		c.devRepo = devRepo
+		c.jtiRepo = jtiRepo
+		c.logger = logger
+	}
+}
+
+// WithNetworkSettings configures network settings (such as rememberDeviceDays) for token expiry (T4.7, FR-3/FR-4).
+func WithNetworkSettings(settingsRepo domain.NetworkSettingsRepository) LoginOption {
+	return func(c *authConfig) {
+		c.settingsRepo = settingsRepo
+	}
+}
 
 type UserSummaryWire struct {
 	ID       string `json:"id"`
@@ -178,7 +212,15 @@ func LoginHandler(
 	signer auth.TokenSigner,
 	idGen domain.IDGenerator,
 	limiter *auth.IPRateLimiter,
+	opts ...LoginOption,
 ) http.Handler {
+	var cfg authConfig
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 
@@ -196,6 +238,7 @@ func LoginHandler(
 		var req struct {
 			EmailOrUsername string `json:"emailOrUsername"`
 			Password        string `json:"password"`
+			EnrolmentGrant  string `json:"enrolmentGrant,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, domain.InvalidInput, "malformed request", corrID)
@@ -226,6 +269,31 @@ func LoginHandler(
 
 		now := time.Now()
 
+		// If enrolment grant is present, associate device (fail-safe: ignore errors without failing login, FR-9)
+		if req.EnrolmentGrant != "" && cfg.grantSigner != nil && cfg.devRepo != nil && cfg.jtiRepo != nil {
+			claims, err := cfg.grantSigner.Verify(req.EnrolmentGrant, now)
+			if err != nil {
+				if cfg.logger != nil {
+					cfg.logger.Info("invalid enrolment grant ignored", "correlationId", corrID, "error", err.Error())
+				}
+			} else {
+				spent, err := cfg.jtiRepo.Exists(r.Context(), claims.JTI)
+				if err != nil || spent {
+					if cfg.logger != nil {
+						cfg.logger.Info("replayed enrolment grant ignored", "correlationId", corrID, "jti", claims.JTI)
+					}
+				} else {
+					if err := cfg.devRepo.AssignOwnerByPairingSession(r.Context(), claims.SessionID, user.ID()); err != nil {
+						if cfg.logger != nil {
+							cfg.logger.Info("failed to assign device owner, ignoring", "correlationId", corrID, "error", err.Error())
+						}
+					} else {
+						_ = cfg.jtiRepo.Record(r.Context(), claims.JTI, now)
+					}
+				}
+			}
+		}
+
 		// Check TOTP MFA
 		totp, err := mfaRepo.FindByUserID(r.Context(), user.ID())
 		if err == nil && totp.IsEnabled() {
@@ -252,9 +320,16 @@ func LoginHandler(
 			libIDs = []domain.LibraryID{domain.DefaultLibraryID}
 		}
 
+		rtTTL := 30 * 24 * time.Hour
+		if cfg.settingsRepo != nil {
+			if settings, err := cfg.settingsRepo.Get(r.Context()); err == nil && settings != nil && settings.RememberDeviceDays >= 1 && settings.RememberDeviceDays <= 90 {
+				rtTTL = time.Duration(settings.RememberDeviceDays) * 24 * time.Hour
+			}
+		}
+
 		rawRT, hashRT, _ := generateRandomToken(32)
 		rtID := domain.RefreshTokenID(idGen.NewID())
-		rt, _ := domain.NewRefreshToken(rtID, user.ID(), hashRT, now.Add(30*24*time.Hour), now)
+		rt, _ := domain.NewRefreshToken(rtID, user.ID(), hashRT, now.Add(rtTTL), now)
 		_ = rtRepo.Save(r.Context(), rt)
 
 		accessToken, _ := signer.Sign(auth.Claims{
@@ -290,7 +365,15 @@ func RefreshHandler(
 	signer auth.TokenSigner,
 	idGen domain.IDGenerator,
 	limiter *auth.IPRateLimiter,
+	opts ...RefreshOption,
 ) http.Handler {
+	var cfg authConfig
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 
@@ -333,9 +416,16 @@ func RefreshHandler(
 		rt.Revoke(now)
 		_ = rtRepo.Save(r.Context(), rt)
 
+		rtTTL := 30 * 24 * time.Hour
+		if cfg.settingsRepo != nil {
+			if settings, err := cfg.settingsRepo.Get(r.Context()); err == nil && settings != nil && settings.RememberDeviceDays >= 1 && settings.RememberDeviceDays <= 90 {
+				rtTTL = time.Duration(settings.RememberDeviceDays) * 24 * time.Hour
+			}
+		}
+
 		rawNewRT, hashNewRT, _ := generateRandomToken(32)
 		newRTID := domain.RefreshTokenID(idGen.NewID())
-		newRT, _ := domain.NewRefreshToken(newRTID, user.ID(), hashNewRT, now.Add(30*24*time.Hour), now)
+		newRT, _ := domain.NewRefreshToken(newRTID, user.ID(), hashNewRT, now.Add(rtTTL), now)
 		_ = rtRepo.Save(r.Context(), newRT)
 
 		mems, _ := memRepo.FindByUser(r.Context(), user.ID())

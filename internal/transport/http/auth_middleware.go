@@ -81,6 +81,7 @@ func IsPublicPath(path string) bool {
 		"/api/v1/auth/password-reset/request",
 		"/api/v1/auth/password-reset/confirm",
 		"/api/v1/auth/mfa/totp/verify",
+		"/api/v1/network/pair/verify",
 	}
 	for _, p := range publicAuthPaths {
 		if path == p {

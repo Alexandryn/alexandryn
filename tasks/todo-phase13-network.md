@@ -380,10 +380,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.1 — `POST /api/v1/network/pair/initiate`
 **Acceptance criteria:**
-- [ ] `RequireRole(admin)`; rate-limited (T2.7 `pair/initiate` bucket)
-- [ ] `DEVICE_PAIRING_SECRET` configured → body must carry a matching `{"secret":...}` (constant-time) or `403` generic
-- [ ] success → `201 {pairingId, code, payload, address, expiresAt}`; `payload` = `<scheme>://<address>/connect?c=<code>`; session persisted (code encrypted)
-- [ ] the secret is never logged / never in an error string
+- [x] `RequireRole(admin)`; rate-limited (T2.7 `pair/initiate` bucket)
+- [x] `DEVICE_PAIRING_SECRET` configured → body must carry a matching `{"secret":...}` (constant-time) or `403` generic
+- [x] success → `201 {pairingId, code, payload, address, expiresAt}`; `payload` = `<scheme>://<address>/connect?c=<code>`; session persisted (code encrypted)
+- [x] the secret is never logged / never in an error string
 **Verification:** `go test ./internal/transport/http/... -run PairInitiate`
 **Dependencies:** Checkpoint 3, T2.10
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -391,11 +391,11 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.2 — `POST /api/v1/network/pair/verify`
 **Acceptance criteria:**
-- [ ] unauthenticated, `Origin`-checked (T2.6), rate-limited (T2.7)
-- [ ] malformed code shape → `400` `InvalidInput`
-- [ ] wrong / expired / never-existed → **byte-identical generic `404`** ("pairing code not recognised")
-- [ ] success → `200 {enrolmentGrant, address, hostName}`; the enrolment grant carries the `PairingSessionID` + a fresh `jti`
-- [ ] 4 KiB body cap; non-JSON `Content-Type` → `415`
+- [x] unauthenticated, `Origin`-checked (T2.6), rate-limited (T2.7)
+- [x] malformed code shape → `400` `InvalidInput`
+- [x] wrong / expired / never-existed → **byte-identical generic `404`** ("pairing code not recognised")
+- [x] success → `200 {enrolmentGrant, address, hostName}`; the enrolment grant carries the `PairingSessionID` + a fresh `jti`
+- [x] 4 KiB body cap; non-JSON `Content-Type` → `415`
 **Verification:** `go test ./internal/transport/http/... -run PairVerify` (generic-404 test must fail before impl)
 **Dependencies:** T4.1, T3.4
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -403,9 +403,9 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.3 — `GET /api/v1/network/pair/{id}/qr`
 **Acceptance criteria:**
-- [ ] admin-only, **only for a session the caller initiated** (`initiated_by = caller`) — another admin's session → `404` (no cross-admin enumeration)
-- [ ] returns `{payload, address, code, expiresAt, state}`; code from decrypting the stored ciphertext
-- [ ] `consumed`/`expired` session → terminal `state` with `payload` and `code` as empty strings
+- [x] admin-only, **only for a session the caller initiated** (`initiated_by = caller`) — another admin's session → `404` (no cross-admin enumeration)
+- [x] returns `{payload, address, code, expiresAt, state}`; code from decrypting the stored ciphertext
+- [x] `consumed`/`expired` session → terminal `state` with `payload` and `code` as empty strings
 **Verification:** `go test ./internal/transport/http/... -run PairQR`
 **Dependencies:** T4.1
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -413,11 +413,11 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.4 — `GET /api/v1/network/status`
 **Acceptance criteria:**
-- [ ] authenticated; **role-scoped**: `reader`/non-admin → `{reachability, tlsMode, authRequired:true, address}` (address = the single URL the caller's own request arrived on, from bind config + matched server-side origin, never the client `Host` header); `admin` → + `{addresses:[{scope,url}], hostName, acmeDomain}` (acmeDomain only when `tlsMode=="acme"`)
-- [ ] `tlsMode ∈ {"none","static","acme"}`
-- [ ] neither response contains: any filesystem path, the cert/key, the ACME cache dir, `ACME_EMAIL`, `DATABASE_URL` or a substring, `DEVICE_PAIRING_SECRET`, any FR-9a subkey, a raw driver error, the home dir — table test with a `Config` carrying recognisable fake values for each
-- [ ] `authRequired` is always `true`; no code path writes it (grep + the T4.5 rejection test)
-- [ ] no DB call (answers even when Postgres is down)
+- [x] authenticated; **role-scoped**: `reader`/non-admin → `{reachability, tlsMode, authRequired:true, address}` (address = the single URL the caller's own request arrived on, from bind config + matched server-side origin, never the client `Host` header); `admin` → + `{addresses:[{scope,url}], hostName, acmeDomain}` (acmeDomain only when `tlsMode=="acme"`)
+- [x] `tlsMode ∈ {"none","static","acme"}`
+- [x] neither response contains: any filesystem path, the cert/key, the ACME cache dir, `ACME_EMAIL`, `DATABASE_URL` or a substring, `DEVICE_PAIRING_SECRET`, any FR-9a subkey, a raw driver error, the home dir — table test with a `Config` carrying recognisable fake values for each
+- [x] `authRequired` is always `true`; no code path writes it (grep + the T4.5 rejection test)
+- [x] no DB call (answers even when Postgres is down)
 **Verification:** `go test ./internal/transport/http/... -run NetworkStatus` (never-include-list test must fail before impl)
 **Dependencies:** T2.2 (needs the resolved bind + interface list)
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -425,10 +425,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.5 — `PATCH /api/v1/network/settings`
 **Acceptance criteria:**
-- [ ] admin-only; accept-list is **exactly** `hostName` (regex `^(?=.{1,63}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.local)?$`) + `rememberDeviceDays` (integer `1..90`)
-- [ ] any other key — `bindAddress`, `tlsCertFile`, `acmeDomain`, `authRequired`, unknown → `400` `InvalidInput` naming the key; restart-only keys say the value is set in the config file and takes effect after a restart
-- [ ] returns `200` with the full effective settings; persisted to `network_settings`
-- [ ] `rememberDeviceDays` is consumed by refresh-token issuance (T4.9 / `backend-authentication.md` FR-3/FR-4 amendment)
+- [x] admin-only; accept-list is **exactly** `hostName` (regex `^(?=.{1,63}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.local)?$`) + `rememberDeviceDays` (integer `1..90`)
+- [x] any other key — `bindAddress`, `tlsCertFile`, `acmeDomain`, `authRequired`, unknown → `400` `InvalidInput` naming the key; restart-only keys say the value is set in the config file and takes effect after a restart
+- [x] returns `200` with the full effective settings; persisted to `network_settings`
+- [x] `rememberDeviceDays` is consumed by refresh-token issuance (T4.9 / `backend-authentication.md` FR-3/FR-4 amendment)
 **Verification:** `go test ./internal/transport/http/... -run NetworkSettings`
 **Dependencies:** T3.3
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -436,9 +436,9 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.6 — `DELETE /api/v1/network/pair/{id}`
 **Acceptance criteria:**
-- [ ] admin-only, initiator-only (`404` for a foreign `pairingId`)
-- [ ] non-terminal session → expire it; `consumed` → `PairedDevice.Revoke(now)` on the device it produced; `204`
-- [ ] response docs + the audit note: this does **not** yet invalidate that device's phase-12 refresh tokens — phase 14 (flagged, not skipped)
+- [x] admin-only, initiator-only (`404` for a foreign `pairingId`)
+- [x] non-terminal session → expire it; `consumed` → `PairedDevice.Revoke(now)` on the device it produced; `204`
+- [x] response docs + the audit note: this does **not** yet invalidate that device's phase-12 refresh tokens — phase 14 (flagged, not skipped)
 **Verification:** `go test ./internal/transport/http/... -run PairDelete`
 **Dependencies:** T4.1, T3.3
 **Files:** `internal/transport/http/network.go`, `network_test.go`
@@ -447,10 +447,10 @@ phase, supersedes the Tier-0-only PR #79).
 ### T4.7 — login `enrolmentGrant` parameter
 **Description:** FR-9 / ADR 0028 §6. Amends the phase-12 login contract.
 **Acceptance criteria:**
-- [ ] `POST /api/v1/auth/login` accepts optional `{"enrolmentGrant"?: string}`
-- [ ] when present: verify under `enrolment-grant-v1`; check `jti` unspent; resolve `PairedDevice` via `sid → pairing_sessions.id → paired_devices.pairing_session_id`; **set `owner_id` to the now-authenticated user** (not `InitiatedBy`); record `jti` in `enrolment_grant_jtis`
-- [ ] invalid / expired / replayed / wrong-subkey / wrong-`typ` grant → **ignored**: login still succeeds, no device association, logged at `info` with the correlation ID
-- [ ] replay: same `jti` twice → the second login makes no device link
+- [x] `POST /api/v1/auth/login` accepts optional `{"enrolmentGrant"?: string}`
+- [x] when present: verify under `enrolment-grant-v1`; check `jti` unspent; resolve `PairedDevice` via `sid → pairing_sessions.id → paired_devices.pairing_session_id`; **set `owner_id` to the now-authenticated user** (not `InitiatedBy`); record `jti` in `enrolment_grant_jtis`
+- [x] invalid / expired / replayed / wrong-subkey / wrong-`typ` grant → **ignored**: login still succeeds, no device association, logged at `info` with the correlation ID
+- [x] replay: same `jti` twice → the second login makes no device link
 **Verification:** `go test -race -tags=integration ./internal/transport/http/... ./internal/persistence/... -run LoginGrant`
 **Dependencies:** T2.9, T3.3
 **Files:** `internal/transport/http/auth_handlers.go`, `auth_handlers_test.go`
@@ -458,10 +458,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T4.8 — OpenAPI + contract tests
 **Acceptance criteria:**
-- [ ] new paths in `api/openapi.yaml` with an `example:` block per response (success + `400`/`403`/`404`/`415`/`429`)
-- [ ] `npm run mocks:gen-fixtures` succeeds
-- [ ] contract tests in `internal/testutil/contracttest/` — each response validates against its schema; `429`/`403`/`404`/`415` bodies match `architecture-contracts.md` FR-5
-- [ ] `POST /api/v1/auth/login` schema amended for optional `enrolmentGrant`
+- [x] new paths in `api/openapi.yaml` with an `example:` block per response (success + `400`/`403`/`404`/`415`/`429`)
+- [x] `npm run mocks:gen-fixtures` succeeds
+- [x] contract tests in `internal/testutil/contracttest/` — each response validates against its schema; `429`/`403`/`404`/`415` bodies match `architecture-contracts.md` FR-5
+- [x] `POST /api/v1/auth/login` schema amended for optional `enrolmentGrant`
 **Verification:** `go test ./internal/testutil/contracttest/...`; `npm run mocks:gen-fixtures`
 **Dependencies:** T4.1–T4.7
 **Files:** `api/openapi.yaml`, `internal/testutil/contracttest/network_test.go`
@@ -470,22 +470,22 @@ phase, supersedes the Tier-0-only PR #79).
 ### T4.9 — close-gate re-verification
 **Description:** `roadmap/13-network-access/README.md` close gate + `backend-network-api.md` FR-13. Most of the code landed on the branch (PR #78 prelude) — this task is the **tests** that certify it.
 **Acceptance criteria:**
-- [ ] per-endpoint reading-API IDOR tests: user A cannot read / write / delete user B's `progress` / `bookmark` / `highlight` by ID
-- [ ] `GET /api/v1/reading/export` isolation integration test: returns only the caller's rows
-- [ ] `AuthMiddleware`: `X-Library-Id` not in `claims.Libraries` → `403`; a `reader` cannot set an arbitrary library header
-- [ ] `AuthMiddleware`: `mfa_ticket` / `enrol` presented as a bearer token → `401`
-- [ ] `rememberDeviceDays` change → the next issued refresh token's `expires_at` reflects it (integration test)
-- [ ] `scripts/check-user-scoped-reading.sh` clean
+- [x] per-endpoint reading-API IDOR tests: user A cannot read / write / delete user B's `progress` / `bookmark` / `highlight` by ID
+- [x] `GET /api/v1/reading/export` isolation integration test: returns only the caller's rows
+- [x] `AuthMiddleware`: `X-Library-Id` not in `claims.Libraries` → `403`; a `reader` cannot set an arbitrary library header
+- [x] `AuthMiddleware`: `mfa_ticket` / `enrol` presented as a bearer token → `401`
+- [x] `rememberDeviceDays` change → the next issued refresh token's `expires_at` reflects it (integration test)
+- [x] `scripts/check-user-scoped-reading.sh` clean
 **Verification:** `go test -race -tags=integration ./internal/transport/http/... ./internal/persistence/...`
 **Dependencies:** T4.5, T4.7
 **Files:** `internal/transport/http/{reading_test.go,auth_middleware_test.go}`, `internal/persistence/postgres/reading_export_repository_integration_test.go`
 **Scope:** M
 
 ### Checkpoint 4
-- [ ] `go test -race ./... && go test -race -tags=integration ./...` green
-- [ ] contract suite green; `npm run mocks:gen-fixtures` clean
-- [ ] every close-gate box in `roadmap/13-network-access/README.md` Exit criteria has a passing test
-- [ ] commit; open the backend PR for review (two independent reviewers, per `feedback_make_improve_review_fix_cycle`)
+- [x] `go test -race ./... && go test -race -tags=integration ./...` green
+- [x] contract suite green; `npm run mocks:gen-fixtures` clean
+- [x] every close-gate box in `roadmap/13-network-access/README.md` Exit criteria has a passing test
+- [x] commit; open the backend PR for review (two independent reviewers, per `feedback_make_improve_review_fix_cycle`)
 
 ---
 

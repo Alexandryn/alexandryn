@@ -28,8 +28,9 @@ type PoolRef struct {
 	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
 	sources       sourceRefs // phase 08 — see sources_ref.go
 	imports       importRefs // phase 10 — see import_ref.go
-	reader        readerRefs // phase 11 — see reader_ref.go
-	auth          authRefs   // phase 12 — see auth_ref.go
+	reader        readerRefs  // phase 11 — see reader_ref.go
+	auth          authRefs    // phase 12 — see auth_ref.go
+	network       networkRefs // phase 13 — see network_ref.go
 }
 
 // Set stores p as the current reference.

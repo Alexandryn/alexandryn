@@ -25,6 +25,7 @@ import (
 // reach for except this struct itself, per FR-2's constructor-injection
 // requirement — a struct field, not a package-level global.
 type repositories struct {
+	pool               *pgxpool.Pool
 	works              domain.WorkRepository
 	authors            domain.AuthorRepository
 	editions           domain.EditionRepository
@@ -100,6 +101,7 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 	)
 
 	return &repositories{
+		pool:               pool,
 		works:              workRepo,
 		authors:            authorRepo,
 		editions:           editionRepo,
