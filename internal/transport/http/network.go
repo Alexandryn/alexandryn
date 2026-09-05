@@ -442,10 +442,7 @@ func NetworkStatusHandler(
 var dnsLabelRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 func isValidHostName(host string) bool {
-	label := host
-	if strings.HasSuffix(label, ".local") {
-		label = strings.TrimSuffix(label, ".local")
-	}
+	label := strings.TrimSuffix(host, ".local")
 	if len(label) < 1 || len(label) > 63 {
 		return false
 	}
