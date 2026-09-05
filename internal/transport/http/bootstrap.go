@@ -51,7 +51,13 @@ func LazyBootstrapHandler(ref *PoolRef) http.Handler {
 			if api, ok := ref.GetAuthAPI(); ok && api.Libraries != nil {
 				activeLibID := ActiveLibraryFromContext(r.Context())
 				if activeLibID == "" || activeLibID == domain.DefaultLibraryID {
-					if h := r.Header.Get("X-Library-Id"); h != "" {
+					// This route is on IsPublicPath (it must answer before
+					// authentication for anonymous capability probing), so
+					// AuthMiddleware's own libraryInClaims check never runs
+					// for it — mirror it here rather than trusting the raw
+					// header, or a reader could name a library they are not
+					// a member of and read back its AllowReaderUploads flag.
+					if h := r.Header.Get("X-Library-Id"); h != "" && libraryInClaims(domain.LibraryID(h), user.Libraries) {
 						activeLibID = domain.LibraryID(h)
 					}
 				}
