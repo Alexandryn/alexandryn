@@ -60,9 +60,9 @@ func TestNetworkSweep_SweepOnce_TransitionsAndDeletions(t *testing.T) {
 		(id, owner_id, label, device_class, enrolled_via, created_at, last_seen_at)
 		VALUES ('dev-old-claimed', 'user-sweep-reader', 'Old Claimed', 'phone', 'pairing_code', now() - interval '70 minutes', now() - interval '70 minutes')`)
 
-	// i) JTI > 10m old -> should be deleted
+	// i) JTI > 10m old (+1h margin) -> should be deleted
 	mustExecPool(t, pool, `INSERT INTO enrolment_grant_jtis (jti, spent_at)
-		VALUES ('jti-old-spent', now() - interval '15 minutes')`)
+		VALUES ('jti-old-spent', now() - interval '75 minutes')`)
 
 	// j) JTI < 10m old -> should survive
 	mustExecPool(t, pool, `INSERT INTO enrolment_grant_jtis (jti, spent_at)
@@ -139,5 +139,53 @@ func TestNetworkSweep_SweepOnce_TransitionsAndDeletions(t *testing.T) {
 	_ = db.QueryRowContext(ctx, `SELECT count(*) FROM enrolment_grant_jtis WHERE jti = 'jti-recent-spent'`).Scan(&count)
 	if count != 1 {
 		t.Errorf("recent jti count = %d, want 1", count)
+	}
+}
+
+func TestNetworkSweep_Start(t *testing.T) {
+	pool := schemaTestPool(t)
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('user-start-admin', 'startadmin', 'startadmin@example.com', 'admin', now(), now())`)
+
+	// Stale pending session: expires_at in past -> should become expired by background ticker
+	mustExecPool(t, pool, `INSERT INTO pairing_sessions
+		(id, initiated_by, code_ciphertext, code_index, state, created_at, expires_at)
+		VALUES ('ps-start-pending', 'user-start-admin', '\x01', '\x20', 'pending', now() - interval '6 minutes', now() - interval '1 minute')`)
+
+	sweep := postgres.NewNetworkSweep(pool)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		sweep.Start(ctx, 20*time.Millisecond, nil)
+		close(done)
+	}()
+
+	db := testDB(t)
+	// Poll until swept or timeout
+	deadline := time.Now().Add(2 * time.Second)
+	swept := false
+	for time.Now().Before(deadline) {
+		var state string
+		err := db.QueryRowContext(ctx, `SELECT state FROM pairing_sessions WHERE id = 'ps-start-pending'`).Scan(&state)
+		if err == nil && state == "expired" {
+			swept = true
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+
+	if !swept {
+		t.Fatal("expected stale session to be swept to expired by Start loop")
+	}
+
+	cancel()
+	select {
+	case <-done:
+		// Clean exit
+	case <-time.After(time.Second):
+		t.Fatal("sweep.Start did not terminate after context cancel")
 	}
 }

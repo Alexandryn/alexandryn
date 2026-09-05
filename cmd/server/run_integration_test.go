@@ -213,6 +213,18 @@ func assertRepositoriesConstructed(t *testing.T, repos *repositories) {
 		"transactor":         repos.transactor,
 		"metadataCache":      repos.metadataCache,
 		"coverCache":         repos.coverCache,
+		"users":              repos.users,
+		"credentials":        repos.credentials,
+		"refreshTokens":      repos.refreshTokens,
+		"mfa":                repos.mfa,
+		"passwordResets":     repos.passwordResets,
+		"libraries":          repos.libraries,
+		"libraryMemberships": repos.libraryMemberships,
+		"libraryInvitations": repos.libraryInvitations,
+		"pairedDevices":      repos.pairedDevices,
+		"networkSettings":    repos.networkSettings,
+		"enrolmentGrantJTIs": repos.enrolmentGrantJTIs,
+		"networkSweep":       repos.networkSweep,
 	}
 	for name, field := range fields {
 		if field == nil {

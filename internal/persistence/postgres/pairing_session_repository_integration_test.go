@@ -157,22 +157,42 @@ func TestPairingSessionRepository_FindPendingByCodeIndexForUpdate(t *testing.T) 
 
 	idx := repo.CodeIndex(code)
 
-	// Case 1: unexpired pending -> found
-	locked, err := repo.FindPendingByCodeIndexForUpdate(ctx, idx, now.Add(time.Minute))
+	// Non-transactional context fails with domain.Internal
+	_, err = repo.FindPendingByCodeIndexForUpdate(ctx, idx, now.Add(time.Minute))
+	if err == nil || domain.CategoryOf(err) != domain.Internal {
+		t.Fatalf("expected Internal error when called outside transaction, got: %v", err)
+	}
+
+	transactor := postgres.NewTransactor(pool)
+
+	// Case 1: unexpired pending inside tx -> found
+	err = transactor.InTx(ctx, func(txCtx context.Context) error {
+		locked, err := repo.FindPendingByCodeIndexForUpdate(txCtx, idx, now.Add(time.Minute))
+		if err != nil {
+			return err
+		}
+		if locked.ID() != session.ID() {
+			t.Fatalf("locked ID = %q, want %q", locked.ID(), session.ID())
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("FindPendingByCodeIndexForUpdate: %v", err)
-	}
-	if locked.ID() != session.ID() {
-		t.Fatalf("locked ID = %q, want %q", locked.ID(), session.ID())
+		t.Fatalf("InTx case 1: %v", err)
 	}
 
-	// Case 2: past expiry -> NotFound
-	_, err = repo.FindPendingByCodeIndexForUpdate(ctx, idx, now.Add(6*time.Minute))
-	if err == nil || domain.CategoryOf(err) != domain.NotFound {
-		t.Fatalf("expected NotFound for past expiry, got: %v", err)
+	// Case 2: past expiry inside tx -> NotFound
+	err = transactor.InTx(ctx, func(txCtx context.Context) error {
+		_, err := repo.FindPendingByCodeIndexForUpdate(txCtx, idx, now.Add(6*time.Minute))
+		if err == nil || domain.CategoryOf(err) != domain.NotFound {
+			t.Fatalf("expected NotFound for past expiry, got: %v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("InTx case 2: %v", err)
 	}
 
-	// Case 3: consumed session -> NotFound
+	// Case 3: consumed session inside tx -> NotFound
 	devID := domain.DeviceID("dev-1")
 	_ = session.Verify(now.Add(time.Minute), code, devID)
 	_ = session.Consume(now.Add(2 * time.Minute))
@@ -180,9 +200,15 @@ func TestPairingSessionRepository_FindPendingByCodeIndexForUpdate(t *testing.T) 
 		t.Fatalf("Save consumed: %v", err)
 	}
 
-	_, err = repo.FindPendingByCodeIndexForUpdate(ctx, idx, now.Add(3*time.Minute))
-	if err == nil || domain.CategoryOf(err) != domain.NotFound {
-		t.Fatalf("expected NotFound for consumed session, got: %v", err)
+	err = transactor.InTx(ctx, func(txCtx context.Context) error {
+		_, err := repo.FindPendingByCodeIndexForUpdate(txCtx, idx, now.Add(3*time.Minute))
+		if err == nil || domain.CategoryOf(err) != domain.NotFound {
+			t.Fatalf("expected NotFound for consumed session, got: %v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("InTx case 3: %v", err)
 	}
 }
 
@@ -219,5 +245,58 @@ func TestPairingSessionRepository_TamperedCiphertextFails(t *testing.T) {
 	var domErr *domain.Error
 	if !errors.As(err, &domErr) || domErr.Category != domain.Internal {
 		t.Fatalf("expected Internal domain error on decrypt failure, got: %v", err)
+	}
+}
+
+func TestPairingSessionRepository_Delete(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('user-admin-del', 'admindel', 'admindel@example.com', 'admin', now(), now())`)
+
+	encKey, indexKey := testKeys()
+	repo, err := postgres.NewPairingSessionRepository(pool, encKey, indexKey)
+	if err != nil {
+		t.Fatalf("NewPairingSessionRepository: %v", err)
+	}
+
+	code, _ := domain.NewPairingCode("DEL1-2345")
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	session, _ := domain.NewPairingSession("ps-del-1", "user-admin-del", code, 5*time.Minute, now)
+
+	if err := repo.Save(ctx, session); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	// First delete succeeds
+	if err := repo.Delete(ctx, session.ID()); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	// FindByID returns NotFound
+	_, err = repo.FindByID(ctx, session.ID())
+	if err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected NotFound after delete, got: %v", err)
+	}
+
+	// Subsequent delete returns NotFound
+	err = repo.Delete(ctx, session.ID())
+	if err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected NotFound on repeated delete, got: %v", err)
+	}
+}
+
+func TestPairingSessionRepository_KeyValidation(t *testing.T) {
+	pool := schemaTestPool(t)
+	validKey := make([]byte, 32)
+	shortKey := make([]byte, 16)
+
+	if _, err := postgres.NewPairingSessionRepository(pool, shortKey, validKey); err == nil {
+		t.Fatal("expected error for short encKey, got nil")
+	}
+
+	if _, err := postgres.NewPairingSessionRepository(pool, validKey, shortKey); err == nil {
+		t.Fatal("expected error for short indexKey, got nil")
 	}
 }

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -35,7 +36,7 @@ type SweepResults struct {
 const (
 	sweepExpireStaleSessionsSQL = `UPDATE pairing_sessions
 		SET state = 'expired'
-		WHERE state = 'pending' AND expires_at <= $1`
+		WHERE state IN ('pending', 'verified') AND expires_at <= $1`
 
 	sweepDeleteTerminalSessionsSQL = `DELETE FROM pairing_sessions
 		WHERE state IN ('expired', 'consumed') AND expires_at <= $1`
@@ -52,7 +53,7 @@ func (s *NetworkSweep) SweepOnce(ctx context.Context, now time.Time) (SweepResul
 	exec := executorFrom(ctx, s.pool)
 	var res SweepResults
 
-	// 1. Mark pending sessions past expires_at as expired
+	// 1. Mark pending/verified sessions past expires_at as expired
 	tag, err := exec.Exec(ctx, sweepExpireStaleSessionsSQL, now)
 	if err != nil {
 		return res, TranslateError(err)
@@ -75,8 +76,8 @@ func (s *NetworkSweep) SweepOnce(ctx context.Context, now time.Time) (SweepResul
 	}
 	res.DeletedDevices = tag.RowsAffected()
 
-	// 4. Delete enrolment_grant_jtis older than max grant TTL (10m)
-	cutoffGrant := now.Add(-s.maxGrantTTL)
+	// 4. Delete enrolment_grant_jtis older than max grant TTL with safety margin
+	cutoffGrant := now.Add(-s.maxGrantTTL - 1*time.Hour)
 	tag, err = exec.Exec(ctx, sweepDeleteSpentGrantJTIsSQL, cutoffGrant)
 	if err != nil {
 		return res, TranslateError(err)
@@ -97,8 +98,13 @@ func (s *NetworkSweep) Start(ctx context.Context, interval time.Duration, logger
 			case <-ctx.Done():
 				return
 			case t := <-ticker.C:
-				res, err := s.SweepOnce(ctx, t)
+				sweepCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				res, err := s.SweepOnce(sweepCtx, t)
+				cancel()
 				if err != nil {
+					if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+						return
+					}
 					if logger != nil {
 						logger.Warn("network sweep failed", "error", err.Error())
 					}

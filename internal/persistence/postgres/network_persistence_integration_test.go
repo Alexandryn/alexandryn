@@ -92,6 +92,12 @@ func TestPairedDeviceRepository_CRUD(t *testing.T) {
 		t.Fatalf("InsertProvisional: %v", err)
 	}
 
+	// FindByPairingSessionID on provisional device returns NotFound (unassigned owner)
+	_, err = devRepo.FindByPairingSessionID(ctx, domain.PairingSessionID("ps-prov-1"))
+	if err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected NotFound for provisional device FindByPairingSessionID, got: %v", err)
+	}
+
 	// Assign owner
 	err = devRepo.AssignOwnerByPairingSession(ctx, domain.PairingSessionID("ps-prov-1"), domain.UserID("user-dev-1"))
 	if err != nil {
@@ -104,6 +110,21 @@ func TestPairedDeviceRepository_CRUD(t *testing.T) {
 	}
 	if assigned.Owner() != domain.UserID("user-dev-1") {
 		t.Fatalf("assigned owner = %q, want user-dev-1", assigned.Owner())
+	}
+
+	// FindByPairingSessionID on claimed device succeeds
+	bySession, err := devRepo.FindByPairingSessionID(ctx, domain.PairingSessionID("ps-prov-1"))
+	if err != nil {
+		t.Fatalf("FindByPairingSessionID after assign: %v", err)
+	}
+	if bySession.ID() != provID || bySession.Owner() != domain.UserID("user-dev-1") {
+		t.Fatalf("bySession unexpected: id=%q owner=%q", bySession.ID(), bySession.Owner())
+	}
+
+	// Non-existent session returns NotFound
+	_, err = devRepo.FindByPairingSessionID(ctx, domain.PairingSessionID("ps-nonexistent"))
+	if err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected NotFound for non-existent session FindByPairingSessionID, got: %v", err)
 	}
 }
 

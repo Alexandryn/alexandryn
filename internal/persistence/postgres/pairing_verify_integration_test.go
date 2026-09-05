@@ -128,7 +128,7 @@ func TestPairingVerifier_MidTransactionFailureRollsBack(t *testing.T) {
 	}
 	transactor := postgres.NewTransactor(pool)
 
-	verifier := postgres.NewPairingVerifierWithDeviceRepo(transactor, sessionRepo, failingDeviceRepo)
+	verifier := postgres.NewPairingVerifier(transactor, sessionRepo, failingDeviceRepo)
 
 	code, _ := domain.NewPairingCode("3456-789A")
 	now := time.Now().UTC().Truncate(time.Microsecond)
@@ -254,3 +254,48 @@ func TestPairingVerifier_ConcurrentDoubleSubmitBindsExactlyOne(t *testing.T) {
 		t.Fatalf("session state = %q, want consumed", reloaded.State())
 	}
 }
+
+func TestPairingVerifier_LabelFallbackAndValidation(t *testing.T) {
+	verifier, sessionRepo, deviceRepo, _, _ := setupVerifier(t)
+	ctx := context.Background()
+
+	// 1. Empty/whitespace label falls back to deviceClass ("phone")
+	code1, _ := domain.NewPairingCode("6789-ABCD")
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	session1, _ := domain.NewPairingSession("ps-label-1", "user-admin-1", code1, 5*time.Minute, now)
+	if err := sessionRepo.Save(ctx, session1); err != nil {
+		t.Fatalf("sessionRepo.Save: %v", err)
+	}
+
+	devID1 := domain.DeviceID("dev-fallback-1")
+	_, err := verifier.VerifyAndConsume(ctx, code1, devID1, "   ", domain.DeviceClassPhone, now.Add(time.Minute))
+	if err != nil {
+		t.Fatalf("VerifyAndConsume with empty label: %v", err)
+	}
+
+	// Claim and rehydrate device to prove it succeeds
+	if err := deviceRepo.AssignOwnerByPairingSession(ctx, "ps-label-1", "user-admin-1"); err != nil {
+		t.Fatalf("AssignOwnerByPairingSession: %v", err)
+	}
+	dev, err := deviceRepo.FindByID(ctx, devID1)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if dev.Label() != "phone" {
+		t.Fatalf("dev.Label() = %q, want fallback %q", dev.Label(), "phone")
+	}
+
+	// 2. Over-long label (> 100 runes) returns InvalidInput
+	code2, _ := domain.NewPairingCode("789A-BCDE")
+	session2, _ := domain.NewPairingSession("ps-label-2", "user-admin-1", code2, 5*time.Minute, now)
+	if err := sessionRepo.Save(ctx, session2); err != nil {
+		t.Fatalf("sessionRepo.Save: %v", err)
+	}
+
+	longLabel := string(make([]rune, 101))
+	_, err = verifier.VerifyAndConsume(ctx, code2, "dev-long-1", longLabel, domain.DeviceClassPhone, now.Add(time.Minute))
+	if err == nil || domain.CategoryOf(err) != domain.InvalidInput {
+		t.Fatalf("expected InvalidInput for label > 100 runes, got: %v", err)
+	}
+}
+
