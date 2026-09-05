@@ -180,6 +180,9 @@ export const handlers = [
   http.get('*/api/v1/auth/setup/status', () =>
     HttpResponse.json({ isSetup: true }),
   ),
+  http.post('*/api/v1/auth/login', () =>
+    HttpResponse.json(generatedFixtures.login['200']),
+  ),
   http.get('*/api/v1/libraries', () =>
     HttpResponse.json({
       libraries: [
@@ -194,6 +197,52 @@ export const handlers = [
       ],
     }),
   ),
+
+  // Network & Pairing (Phase 13)
+  http.post('*/api/v1/network/pair/initiate', () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem('alexandryn_mock_revoked')
+    }
+    return HttpResponse.json(generatedFixtures.initiatePairing['201'], { status: 201 })
+  }),
+  http.post('*/api/v1/network/pair/verify', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { code?: string }
+    const code = body.code?.replace(/-/g, '').toUpperCase()
+    const isRevoked =
+      typeof window !== 'undefined' &&
+      window.localStorage &&
+      window.localStorage.getItem('alexandryn_mock_revoked') === 'true'
+    if (
+      !code ||
+      code === '00000000' ||
+      code === 'EXPDCODE' ||
+      code === 'EXPIRED' ||
+      isRevoked
+    ) {
+      return HttpResponse.json(generatedFixtures.verifyPairing['404'], { status: 404 })
+    }
+    return HttpResponse.json(generatedFixtures.verifyPairing['200'])
+  }),
+  http.get('*/api/v1/network/pair/:id/qr', () =>
+    HttpResponse.json(generatedFixtures.getPairingQR['200']),
+  ),
+  http.get('*/api/v1/network/status', () =>
+    HttpResponse.json(generatedFixtures.getNetworkStatus['200']),
+  ),
+  http.patch('*/api/v1/network/settings', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    return HttpResponse.json({
+      ...generatedFixtures.updateNetworkSettings['200'],
+      ...body,
+      updatedAt: new Date().toISOString(),
+    })
+  }),
+  http.delete('*/api/v1/network/pair/:id', () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('alexandryn_mock_revoked', 'true')
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
 
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]

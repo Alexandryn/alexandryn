@@ -493,10 +493,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.1 — `qrcode` dependency
 **Acceptance criteria:**
-- [ ] §9 record written: what it does, why not stdlib / hand-rolled, abandonment risk; a maintained-library check (recent releases, no unpatched advisories)
-- [ ] `check:bundle-size` headroom result recorded
-- [ ] **maintainer sign-off (D-E)** before merge; on a fail, vendor `qrcode-generator` (~4 KB) instead
-- [ ] only the matrix-generation entry point imported (not canvas/terminal renderers)
+- [x] §9 record written: what it does, why not stdlib / hand-rolled, abandonment risk; a maintained-library check (recent releases, no unpatched advisories)
+- [x] `check:bundle-size` headroom result recorded
+- [x] **maintainer sign-off (D-E)** before merge; on a fail, vendor `qrcode-generator` (~4 KB) instead
+- [x] only the matrix-generation entry point imported (not canvas/terminal renderers)
 **Verification:** `npm run check:bundle-size`; PR description carries the §9 record
 **Dependencies:** Checkpoint 4
 **Files:** `web/package.json`, `web/package-lock.json`, PR description
@@ -504,9 +504,9 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.2 — `data/network.ts` hooks + MSW
 **Acceptance criteria:**
-- [ ] TanStack Query hooks (no inline `fetch`, `frontend-shell-and-routing.md` FR-2) for the six endpoints; hook types are the union of the role-scoped `/network/status` shapes
-- [ ] `login()` in `web/src/data/auth.ts` gains an optional `enrolmentGrant` passed to `POST /api/v1/auth/login`
-- [ ] MSW handlers seeded from the generated fixtures
+- [x] TanStack Query hooks (no inline `fetch`, `frontend-shell-and-routing.md` FR-2) for the six endpoints; hook types are the union of the role-scoped `/network/status` shapes
+- [x] `login()` in `web/src/data/auth.ts` gains an optional `enrolmentGrant` passed to `POST /api/v1/auth/login`
+- [x] MSW handlers seeded from the generated fixtures
 **Verification:** `npm test -- data/network`
 **Dependencies:** T5.1, T4.8
 **Files:** `web/src/data/network.ts`, `web/src/data/auth.ts`, `web/src/mocks/handlers.ts`
@@ -514,11 +514,11 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.3 — `NetworkSettings.tsx`
 **Acceptance criteria:**
-- [ ] renders under `hostOnly('network','Network')`; status card; `tlsMode` copy is honest for all four cases (FR-1 — incl. the "not encrypted unless a reverse proxy…" private-plaintext line)
-- [ ] a **static** "Authentication is always on" row — no toggle, no toggle role in the tree
-- [ ] read-only reachability row + read-only "Advanced" disclosure (keyboard, `aria-expanded`): bind address, TLS cert **"configured"/"not configured"** (never a path), ACME domain, mDNS `hostName` (editable) + "changes take effect after restarting" line; ACME-TOS line when `tlsMode:acme`
-- [ ] editable mDNS name + "remember devices for N days" (1–90) → `PATCH` optimistic update + rollback + error toast
-- [ ] no path / cert / secret ever in the DOM — test with a mock status carrying fake recognisable values
+- [x] renders under `hostOnly('network','Network')`; status card; `tlsMode` copy is honest for all four cases (FR-1 — incl. the "not encrypted unless a reverse proxy…" private-plaintext line)
+- [x] a **static** "Authentication is always on" row — no toggle, no toggle role in the tree
+- [x] read-only reachability row + read-only "Advanced" disclosure (keyboard, `aria-expanded`): bind address, TLS cert **"configured"/"not configured"** (never a path), ACME domain, mDNS `hostName` (editable) + "changes take effect after restarting" line; ACME-TOS line when `tlsMode:acme`
+- [x] editable mDNS name + "remember devices for N days" (1–90) → `PATCH` optimistic update + rollback + error toast
+- [x] no path / cert / secret ever in the DOM — test with a mock status carrying fake recognisable values
 **Verification:** `npm test -- NetworkSettings`; `npm run check:token-styling`
 **Dependencies:** T5.2
 **Files:** `web/src/screens/Settings/NetworkSettings.tsx`, `.test.tsx`
@@ -526,10 +526,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.4 — `DevicePairingModal.tsx`
 **Acceptance criteria:**
-- [ ] Radix `Dialog`; `initiate` on open (with `DEVICE_PAIRING_SECRET` field only when the server says one is required); QR rendered client-side from `payload`; `XXXX-XXXX` code in mono
-- [ ] live countdown to `expiresAt`, `aria-live="polite"`, announced at 60/30/10/0s only; at zero → "This code expired" + "Generate a new code"
-- [ ] "Revoke" and Escape both `DELETE /network/pair/{id}`; "Done" does not
-- [ ] does **not** poll verify state (fire-and-forget)
+- [x] Radix `Dialog`; `initiate` on open (with `DEVICE_PAIRING_SECRET` field only when the server says one is required); QR rendered client-side from `payload`; `XXXX-XXXX` code in mono
+- [x] live countdown to `expiresAt`, `aria-live="polite"`, announced at 60/30/10/0s only; at zero → "This code expired" + "Generate a new code"
+- [x] "Revoke" and Escape both `DELETE /network/pair/{id}`; "Done" does not
+- [x] does **not** poll verify state (fire-and-forget)
 **Verification:** `npm test -- DevicePairingModal`
 **Dependencies:** T5.2
 **Files:** `web/src/screens/Network/DevicePairingModal.tsx`, `.test.tsx`
@@ -537,10 +537,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.5 — `/connect` route
 **Acceptance criteria:**
-- [ ] reads `?c=<code>`, prefills, then `history.replaceState` strips `?c=` immediately
-- [ ] one "Pairing code" field (`XXXX-XXXX`, auto-uppercase, hyphen auto-insert) + optional "Name this device" + "Continue"
-- [ ] submit → `POST /network/pair/verify`; on `200` navigate to phase-12 `/login` with `enrolmentGrant` + `hostName` in **router state, not the URL** (test asserts `location.search` clean)
-- [ ] `404` → generic "pairing code not recognised" + retry; `429` → "Too many attempts. Wait a minute and try again."
+- [x] reads `?c=<code>`, prefills, then `history.replaceState` strips `?c=` immediately
+- [x] one "Pairing code" field (`XXXX-XXXX`, auto-uppercase, hyphen auto-insert) + optional "Name this device" + "Continue"
+- [x] submit → `POST /network/pair/verify`; on `200` navigate to phase-12 `/login` with `enrolmentGrant` + `hostName` in **router state, not the URL** (test asserts `location.search` clean)
+- [x] `404` → generic "pairing code not recognised" + retry; `429` → "Too many attempts. Wait a minute and try again."
 **Verification:** `npm test -- connect` (grant-not-in-URL test must fail before impl)
 **Dependencies:** T5.2
 **Files:** `web/src/screens/Network/ConnectScreen.tsx`, `web/src/app/routes.tsx`, `.test.tsx`
@@ -548,9 +548,9 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.6 — `/access` route
 **Acceptance criteria:**
-- [ ] reader-scoped `/network/status` shape + a small **fixed** capability list keyed off the current role (`admin` vs `reader`) + the library names from the JWT `libraries` claim + "Upload" only when the active library allows reader uploads
-- [ ] "Sign out of this browser" → phase-12 `logout()`
-- [ ] no `hostModes` cloud card
+- [x] reader-scoped `/network/status` shape + a small **fixed** capability list keyed off the current role (`admin` vs `reader`) + the library names from the JWT `libraries` claim + "Upload" only when the active library allows reader uploads
+- [x] "Sign out of this browser" → phase-12 `logout()`
+- [x] no `hostModes` cloud card
 **Verification:** `npm test -- access`
 **Dependencies:** T5.2
 **Files:** `web/src/screens/Network/AccessScreen.tsx`, `web/src/app/routes.tsx`, `.test.tsx`
@@ -558,10 +558,10 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.7 — routes, gating, a11y, tokens
 **Acceptance criteria:**
-- [ ] `routes.tsx`: `network` under `hostOnly`; `connect`/`access` are the real screens; a viewer hitting `/settings/network` gets the gate state with no host-only flash
-- [ ] `check:token-styling`, `check:a11y-tabindex`, `check:a11y-hidden-text` clean over the new files; zero raw px/hex
-- [ ] `@axe-core/playwright` zero violations on `NetworkSettings`, `DevicePairingModal` (open), `/connect`, `/access`
-- [ ] `prefers-reduced-motion` respected (static countdown)
+- [x] `routes.tsx`: `network` under `hostOnly`; `connect`/`access` are the real screens; a viewer hitting `/settings/network` gets the gate state with no host-only flash
+- [x] `check:token-styling`, `check:a11y-tabindex`, `check:a11y-hidden-text` clean over the new files; zero raw px/hex
+- [x] `@axe-core/playwright` zero violations on `NetworkSettings`, `DevicePairingModal` (open), `/connect`, `/access`
+- [x] `prefers-reduced-motion` respected (static countdown)
 **Verification:** `npm run test:a11y`; the check scripts
 **Dependencies:** T5.3–T5.6
 **Files:** `web/src/app/routes.tsx`, the four screen files
@@ -569,18 +569,18 @@ phase, supersedes the Tier-0-only PR #79).
 
 ### T5.8 — Playwright E2E
 **Acceptance criteria:**
-- [ ] host opens the modal → a second browser context opens `/connect?c=<code>` → verify → redirected to `/login` → logs in → lands in the library
-- [ ] expired code → generic error; revoke from the host → the code no longer verifies
+- [x] host opens the modal → a second browser context opens `/connect?c=<code>` → verify → redirected to `/login` → logs in → lands in the library
+- [x] expired code → generic error; revoke from the host → the code no longer verifies
 **Verification:** `npm run test:e2e -- pairing`
 **Dependencies:** T5.7
 **Files:** `web/e2e/pairing.spec.ts`
 **Scope:** M
 
 ### Checkpoint 5
-- [ ] `npm test`, `npm run build` green
-- [ ] `check:token-styling` / `check:a11y-*` clean; axe zero violations
-- [ ] Playwright pairing happy-path green
-- [ ] commit; frontend PR for review
+- [x] `npm test`, `npm run build` green
+- [x] `check:token-styling` / `check:a11y-*` clean; axe zero violations
+- [x] Playwright pairing happy-path green
+- [x] commit; frontend PR for review
 
 ---
 

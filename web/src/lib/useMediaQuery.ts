@@ -10,11 +10,17 @@ import { useSyncExternalStore } from 'react'
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (onStoreChange) => {
+      if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return () => {}
+      }
       const mql = window.matchMedia(query)
       mql.addEventListener('change', onStoreChange)
       return () => mql.removeEventListener('change', onStoreChange)
     },
-    () => window.matchMedia(query).matches,
+    () =>
+      typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia(query).matches
+        : false,
     () => false,
   )
 }

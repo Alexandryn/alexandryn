@@ -12,7 +12,9 @@ import { defineConfig } from '@playwright/test'
 // The `app` server is `vite` itself, so MSW's dev worker starts
 // automatically (src/main.tsx).
 export default defineConfig({
+  testDir: './e2e',
   timeout: 30_000,
+  use: { baseURL: 'http://localhost:5175' },
   // One worker, never parallel: the benchmark project asserts a tight
   // initial-paint budget (frontend-generated-covers.md FR-4) and is
   // starved when it shares the machine with other browsers. Retries
@@ -34,7 +36,7 @@ export default defineConfig({
     {
       name: 'app',
       testDir: './e2e',
-      testMatch: /\.app\.spec\.ts$/,
+      testMatch: /(?:\.app|pairing)\.spec\.ts$/,
       use: { baseURL: 'http://localhost:5175' },
     },
     {

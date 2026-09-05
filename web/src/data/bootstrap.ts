@@ -5,7 +5,7 @@ import { getJson } from './http'
  * Settings, System, Sources configuration, Import). The real source of
  * this value is phase 12's concern; phase 04's mock grants all of them.
  */
-export type Capability = 'sources' | 'import' | 'settings' | 'system'
+export type Capability = 'sources' | 'import' | 'settings' | 'system' | 'network'
 
 export interface Bootstrap {
   capabilities: Record<Capability, boolean>

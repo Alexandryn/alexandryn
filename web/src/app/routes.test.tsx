@@ -49,6 +49,7 @@ const HOST_ONLY: [string, string][] = [
   ['/import', 'Import Review'],
   ['/settings', 'Settings'],
   ['/system', 'System'],
+  ['/settings/network', 'Network Access'],
 ]
 
 describe('route table (FR-1)', () => {

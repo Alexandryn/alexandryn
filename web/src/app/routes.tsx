@@ -14,6 +14,9 @@ import { Reader } from '../screens/Reader'
 import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
 import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
+import { NetworkSettings } from '../screens/Settings/NetworkSettings'
+import { ConnectScreen } from '../screens/Network/ConnectScreen'
+import { AccessScreen } from '../screens/Network/AccessScreen'
 
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireCapability } from './capability'
@@ -27,8 +30,6 @@ function hostOnly(capability: Capability, title: string, note?: string) {
     </RequireCapability>
   )
 }
-
-const VIEWER_NOTE = 'Part of the network-access surface — built in a later phase.'
 
 const shellChildren: RouteObject[] = [
   { index: true, element: <Navigate to="/library" replace /> },
@@ -80,13 +81,21 @@ const shellChildren: RouteObject[] = [
       </RequireCapability>
     ),
   },
+  {
+    path: 'settings/network',
+    element: (
+      <RequireCapability capability="network">
+        <NetworkSettings />
+      </RequireCapability>
+    ),
+  },
+  { path: 'network', element: <Navigate to="/settings/network" replace /> },
   { path: 'settings', element: hostOnly('settings', 'Settings') },
   { path: 'system', element: hostOnly('system', 'System') },
 
-  // Viewer surface — chrome deferred to phase 11/12/13 (design-conformance
-  // finding 3); the routes are registered so the URLs resolve.
-  { path: 'access', element: <ScreenPlaceholder title="Access" note={VIEWER_NOTE} /> },
-  { path: 'connect', element: <ScreenPlaceholder title="Connect" note={VIEWER_NOTE} /> },
+  // Viewer surface (Phase 13)
+  { path: 'access', element: <AccessScreen /> },
+  { path: 'connect', element: <ConnectScreen /> },
   { path: 'reader/:id', element: <ParamPlaceholder title="Reader" param="id" /> },
   { path: 'read/:workId/:editionId', element: <Reader /> },
 
@@ -98,6 +107,7 @@ export const routes: RouteObject[] = [
   { path: '/setup', element: <SetupScreen /> },
   { path: '/login', element: <LoginScreen /> },
   { path: '/invite/:token', element: <AcceptInviteScreen /> },
+  { path: '/connect', element: <ConnectScreen /> },
 
   // Authenticated shell
   {
