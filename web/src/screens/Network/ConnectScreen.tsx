@@ -19,7 +19,14 @@ export function ConnectScreen() {
   const navigate = useNavigate()
   const verifyMutation = useVerifyPairing()
 
-  const [code, setCode] = useState('')
+  // ?c=<code> is read as the initial state directly (not set via an effect
+  // after mount) — deriving it from a prop/URL on first render needs no
+  // effect, and setting state synchronously inside one only costs an extra
+  // render (react-hooks/set-state-in-effect).
+  const [code, setCode] = useState(() => {
+    const rawCode = searchParams.get('c')
+    return rawCode ? formatPairingCode(rawCode) : ''
+  })
   const [label, setLabel] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -27,21 +34,23 @@ export function ConnectScreen() {
   const codeInputId = useId()
   const labelInputId = useId()
 
-  // Read ?c=<code> on mount, prefill, then immediately strip from URL history
+  // Strip ?c= from window history immediately once read, so it doesn't
+  // linger in the URL/history after prefilling the form above.
   useEffect(() => {
-    const rawCode = searchParams.get('c')
-    if (rawCode) {
-      setCode(formatPairingCode(rawCode))
-
-      // Strip ?c= from window history immediately
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href)
-        url.searchParams.delete('c')
-        const newUrl = url.pathname + (url.search ? url.search : '')
-        window.history.replaceState({}, '', newUrl)
-      }
+    if (searchParams.get('c') && typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('c')
+      const newUrl = url.pathname + (url.search ? url.search : '')
+      window.history.replaceState({}, '', newUrl)
     }
   }, [searchParams])
+
+  // Imperative focus management (not the autoFocus JSX prop,
+  // jsx-a11y/no-autofocus) is a legitimate effect: an external-system
+  // (DOM) update, not a state derivation.
+  useEffect(() => {
+    codeInputRef.current?.focus()
+  }, [])
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPairingCode(e.target.value)
@@ -116,7 +125,6 @@ export function ConnectScreen() {
               ref={codeInputRef}
               id={codeInputId}
               type="text"
-              autoFocus
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="characters"

@@ -203,7 +203,17 @@ export const handlers = [
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem('alexandryn_mock_revoked')
     }
-    return HttpResponse.json(generatedFixtures.initiatePairing['201'], { status: 201 })
+    // expiresAt is computed relative to request time, not taken verbatim
+    // from the generated fixture's static example timestamp — a fixed
+    // absolute date is a time bomb that silently fails every test relying
+    // on a non-expired code once wall-clock time passes it.
+    return HttpResponse.json(
+      {
+        ...generatedFixtures.initiatePairing['201'],
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      },
+      { status: 201 },
+    )
   }),
   http.post('*/api/v1/network/pair/verify', async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as { code?: string }

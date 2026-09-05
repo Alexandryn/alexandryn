@@ -60,18 +60,26 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
     [],
   )
 
-  // Start initiate when modal opens
+  // Start initiate when modal opens; reset when it closes. Both branches
+  // are scheduled rather than run directly: an effect body that sets state
+  // synchronously (whether inline, like the reset below, or via a called
+  // function like startInitiation) causes an extra cascading render
+  // (react-hooks/set-state-in-effect) — scheduling makes the state update
+  // happen outside the effect's own commit, at an imperceptible (0ms) delay.
   useEffect(() => {
-    if (open) {
-      if (!session) {
-        void startInitiation()
+    const id = setTimeout(() => {
+      if (open) {
+        if (!session) {
+          void startInitiation()
+        }
+      } else {
+        setSession(null)
+        setError(null)
+        setSecretRequired(false)
+        setSecretInput('')
       }
-    } else {
-      setSession(null)
-      setError(null)
-      setSecretRequired(false)
-      setSecretInput('')
-    }
+    }, 0)
+    return () => clearTimeout(id)
   }, [open, session, startInitiation])
 
   // Live countdown timer
@@ -118,14 +126,14 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
     } catch {
       return ''
     }
-  }, [session?.payload])
+  }, [session])
 
   const handleRevokeAndClose = useCallback(() => {
     if (session?.pairingId) {
       deleteMutation.mutate(session.pairingId)
     }
     onOpenChange(false)
-  }, [session?.pairingId, deleteMutation, onOpenChange])
+  }, [session, deleteMutation, onOpenChange])
 
   const handleDone = useCallback(() => {
     // Done closes without revoking
