@@ -78,6 +78,7 @@ deserves to know they were already weighed.
 | [0026](0026-multi-library-tenancy-model.md) | Multi-library tenancy model | Accepted |
 | [0027](0027-totp-mfa-implementation.md) | TOTP MFA implementation | Accepted |
 | [0028](0028-phase13-network-transport-and-pairing.md) | Phase 13 transport: bind mode derived from the resolved address + cert state (not a flag); ACME via `autocert` (no new module); app-origin CSP + security headers on every bind; CORS deny-by-default; no CSRF tokens under Bearer auth (`Origin` check on pairing routes); pairing as a thin bootstrap over phase-12 accounts with encrypted-at-rest codes and a distinct signing subkey per token purpose; authentication never disable-able; `rememberDeviceDays` the one operator-tunable token lifetime | Accepted |
+| [0029](0029-cross-device-identity-agreement.md) | Cross-device identity agreement: server-canonical Work ID is the sync key; per-device sync state (cursor + last-synced-at) extends `PairedDevice` rather than a separate model; pull-based polling transport | Proposed |
 
 ## Open questions not yet ADRs
 
