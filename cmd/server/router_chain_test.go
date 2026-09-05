@@ -157,3 +157,36 @@ func TestFR12_IsPublicPathUnchanged(t *testing.T) {
 		}
 	}
 }
+
+func TestRouter_BootstrapRouteAccessible(t *testing.T) {
+	router := chainTestRouter(t, nil)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/bootstrap", nil)
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 on /api/bootstrap, got %d", rec.Code)
+	}
+}
+
+func TestRouter_SourcesAndImportProtectedFromUnauthenticated(t *testing.T) {
+	router := chainTestRouter(t, nil)
+
+	// An unauthenticated request to /api/v1/sources must be rejected (either 401 or 503 if DB unready, but NEVER 200)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sources", nil)
+	router.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK {
+		t.Errorf("unauthenticated /api/v1/sources succeeded with 200, want rejection")
+	}
+
+	// An unauthenticated request to /api/v1/import/discover must be rejected
+	recImport := httptest.NewRecorder()
+	reqImport := httptest.NewRequest(http.MethodPost, "/api/v1/import/discover", nil)
+	router.ServeHTTP(recImport, reqImport)
+
+	if recImport.Code == http.StatusOK {
+		t.Errorf("unauthenticated /api/v1/import/discover succeeded with 200, want rejection")
+	}
+}

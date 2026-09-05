@@ -245,3 +245,29 @@ func LazyAuthMiddleware(ref *PoolRef) Middleware {
 	}
 }
 
+func LazyRequireIngestPermission(ref *PoolRef) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			corrID := CorrelationIDFromContext(r.Context())
+			user := UserFromContext(r.Context())
+			if user == nil {
+				WriteError(w, domain.Unauthorized, "unauthorized", corrID)
+				return
+			}
+
+			if user.Role == domain.RoleAdmin {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			api, ok := ref.GetAuthAPI()
+			if !ok {
+				WriteError(w, domain.Unavailable, "database not ready", corrID)
+				return
+			}
+
+			RequireIngestPermission(api.Libraries)(next).ServeHTTP(w, r)
+		})
+	}
+}
+

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/adapters/crypto"
@@ -178,29 +179,41 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 	defer cancel()
 
 	// The :80 redirect/ACME listener (if any) drains alongside the main
-	// server, bounded by the same grace period (FR-11).
+	// server, bounded by the same grace period (FR-11), concurrently.
+	var shutdownWG sync.WaitGroup
+
 	if redirectSrv != nil {
-		if err := redirectSrv.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("the :80 redirect listener did not drain within the grace period", "error", err.Error())
-			_ = redirectSrv.Close()
-		}
+		shutdownWG.Add(1)
+		go func() {
+			defer shutdownWG.Done()
+			if err := redirectSrv.Shutdown(shutdownCtx); err != nil {
+				logger.Warn("the :80 redirect listener did not drain within the grace period", "error", err.Error())
+				_ = redirectSrv.Close()
+			}
+		}()
 	}
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			// The grace period expired with requests still in flight
-			// (Failure modes table) — expected under load, not an error
-			// to report, but Shutdown alone leaves those connections
-			// open; force-close what's left so they're cleanly cancelled
-			// rather than left for the process exit to reap out from
-			// under them (FR-4).
-			if closeErr := srv.Close(); closeErr != nil {
-				logger.Error("force-close after shutdown timeout failed", "error", closeErr.Error())
+	shutdownWG.Add(1)
+	go func() {
+		defer shutdownWG.Done()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				// The grace period expired with requests still in flight
+				// (Failure modes table) — expected under load, not an error
+				// to report, but Shutdown alone leaves those connections
+				// open; force-close what's left so they're cleanly cancelled
+				// rather than left for the process exit to reap out from
+				// under them (FR-4).
+				if closeErr := srv.Close(); closeErr != nil {
+					logger.Error("force-close after shutdown timeout failed", "error", closeErr.Error())
+				}
+			} else {
+				logger.Error("shutdown did not complete cleanly", "error", err.Error())
 			}
-		} else {
-			logger.Error("shutdown did not complete cleanly", "error", err.Error())
 		}
-	}
+	}()
+
+	shutdownWG.Wait()
 
 	// backend-service-lifecycle.md FR-6, amended for phase 09: the job
 	// worker pool stops after the HTTP server has stopped accepting work
