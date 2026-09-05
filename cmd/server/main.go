@@ -160,7 +160,7 @@ func sleepOrDone(ctx context.Context, d time.Duration) {
 // the embedded web/dist build as the SPA-fallback catch-all — wrapped by
 // the middleware chain in architecture-backend.md FR-6's fixed order
 // (recovery, limits, logging, routing).
-func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler {
+func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", transporthttp.Healthz(poolRef))
 	mux.Handle("/readyz", transporthttp.Readyz(poolRef))
@@ -251,7 +251,9 @@ func newProductionRouter(cfg *config.Config, logger *slog.Logger, poolRef *trans
 
 	// Network & Pairing routes (Phase 13)
 	pairInitiateLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/5), 3, 15*time.Minute)
+	pairInitiateLimiter.StartEviction(ctx)
 	pairVerifyLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/10), 5, 15*time.Minute)
+	pairVerifyLimiter.StartEviction(ctx)
 
 	initiateHandler := transporthttp.Chain(
 		transporthttp.LazyInitiatePairingHandler(poolRef),
