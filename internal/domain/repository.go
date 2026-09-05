@@ -272,6 +272,7 @@ type PairedDeviceRepository interface {
 	AssignOwnerByPairingSession(ctx context.Context, sessionID PairingSessionID, owner UserID) error
 	Save(ctx context.Context, d *PairedDevice) error
 	Revoke(ctx context.Context, id DeviceID, now time.Time) error
+	RevokeByPairingSessionID(ctx context.Context, sessionID PairingSessionID, now time.Time) error
 }
 
 type NetworkSettingsRepository interface {

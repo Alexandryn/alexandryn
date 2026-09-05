@@ -975,16 +975,30 @@ func TestNetworkSettings_ForbiddenKeys(t *testing.T) {
 	}
 }
 
+// provisionalRecord mirrors a paired_devices row with owner_id still NULL —
+// the same state the Postgres repository can't rehydrate into a
+// domain.PairedDevice (Owner is a mandatory field), so it's tracked here
+// separately from byID rather than papered over with a placeholder owner.
+type provisionalRecord struct {
+	label     string
+	class     domain.DeviceClass
+	via       domain.EnrolledVia
+	createdAt time.Time
+	revokedAt *time.Time
+}
+
 type memPairedDevices struct {
-	mu     sync.Mutex
-	byID   map[domain.DeviceID]*domain.PairedDevice
-	bySess map[domain.PairingSessionID]domain.DeviceID
+	mu          sync.Mutex
+	byID        map[domain.DeviceID]*domain.PairedDevice
+	bySess      map[domain.PairingSessionID]domain.DeviceID
+	provisional map[domain.DeviceID]*provisionalRecord
 }
 
 func newMemPairedDevices() *memPairedDevices {
 	return &memPairedDevices{
-		byID:   make(map[domain.DeviceID]*domain.PairedDevice),
-		bySess: make(map[domain.PairingSessionID]domain.DeviceID),
+		byID:        make(map[domain.DeviceID]*domain.PairedDevice),
+		bySess:      make(map[domain.PairingSessionID]domain.DeviceID),
+		provisional: make(map[domain.DeviceID]*provisionalRecord),
 	}
 }
 
@@ -999,8 +1013,7 @@ func (m *memPairedDevices) InsertProvisional(_ context.Context, id domain.Device
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.bySess[sessID] = id
-	dev, _ := domain.NewPairedDevice(id, "provisional", label, class, via, now)
-	m.byID[id] = dev
+	m.provisional[id] = &provisionalRecord{label: label, class: class, via: via, createdAt: now}
 	return nil
 }
 
@@ -1011,9 +1024,19 @@ func (m *memPairedDevices) AssignOwnerByPairingSession(_ context.Context, sessID
 	if !ok {
 		return &domain.Error{Category: domain.NotFound, Message: "device not found"}
 	}
-	existing := m.byID[devID]
-	updated, _ := domain.NewPairedDevice(existing.ID(), owner, existing.Label(), existing.DeviceClass(), existing.EnrolledVia(), existing.CreatedAt())
-	m.byID[devID] = updated
+	p, ok := m.provisional[devID]
+	if !ok {
+		// Already owned, or never provisioned: mirrors "owner_id IS NULL" matching 0 rows.
+		return &domain.Error{Category: domain.NotFound, Message: "provisional paired device not found for session"}
+	}
+	if p.revokedAt != nil {
+		// Mirrors the "AND revoked_at IS NULL" guard: a device revoked while still
+		// provisional must not be claimable by a later login (security fix).
+		return &domain.Error{Category: domain.NotFound, Message: "provisional paired device not found for session"}
+	}
+	dev, _ := domain.NewPairedDevice(devID, owner, p.label, p.class, p.via, p.createdAt)
+	m.byID[devID] = dev
+	delete(m.provisional, devID)
 	return nil
 }
 
@@ -1033,7 +1056,11 @@ func (m *memPairedDevices) FindByPairingSessionID(_ context.Context, sessID doma
 	if !ok {
 		return nil, &domain.Error{Category: domain.NotFound, Message: "device not found"}
 	}
-	return m.byID[devID], nil
+	if d, ok := m.byID[devID]; ok {
+		return d, nil
+	}
+	// Provisional (owner_id NULL) — matches scanDevice's real-repo behaviour.
+	return nil, &domain.Error{Category: domain.NotFound, Message: "paired device is provisional (unassigned owner)"}
 }
 
 func (m *memPairedDevices) FindByOwner(_ context.Context, owner domain.UserID) ([]*domain.PairedDevice, error) {
@@ -1059,6 +1086,38 @@ func (m *memPairedDevices) Revoke(_ context.Context, id domain.DeviceID, now tim
 		return err
 	}
 	return nil
+}
+
+// RevokeByPairingSessionID revokes the device tied to a pairing session
+// regardless of whether it has an assigned owner yet — the fix for the bug
+// where an admin's revoke silently no-op'd on a still-provisional device.
+func (m *memPairedDevices) RevokeByPairingSessionID(_ context.Context, sessID domain.PairingSessionID, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	devID, ok := m.bySess[sessID]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "paired device not found for session or already revoked"}
+	}
+	if p, ok := m.provisional[devID]; ok {
+		if p.revokedAt != nil {
+			return &domain.Error{Category: domain.NotFound, Message: "paired device not found for session or already revoked"}
+		}
+		revokedAt := now
+		p.revokedAt = &revokedAt
+		return nil
+	}
+	d, ok := m.byID[devID]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "paired device not found for session or already revoked"}
+	}
+	return d.Revoke(now)
+}
+
+func (m *memPairedDevices) isProvisionalRevoked(id domain.DeviceID) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.provisional[id]
+	return ok && p.revokedAt != nil
 }
 
 func TestPairDelete_PendingSession(t *testing.T) {
@@ -1125,6 +1184,51 @@ func TestPairDelete_ConsumedSessionRevokesDevice(t *testing.T) {
 	}
 	if revokedDev.RevokedAt() == nil {
 		t.Fatal("expected device to be revoked")
+	}
+}
+
+// TestPairDelete_ConsumedSessionStillProvisionalDeviceIsRevoked reproduces
+// the bug where an admin's DELETE /network/pair/{id} silently did nothing
+// for a device that verified but hasn't completed login yet (owner_id still
+// NULL): FindByPairingSessionID returned NotFound for a provisional device,
+// so the handler's `err == nil && dev != nil` guard skipped Revoke entirely
+// while still returning 204.
+func TestPairDelete_ConsumedSessionStillProvisionalDeviceIsRevoked(t *testing.T) {
+	sessionRepo := newMemPairingSessions()
+	devRepo := newMemPairedDevices()
+	now := time.Now().UTC()
+
+	code, _ := domain.NewPairingCode("789A-BCD1")
+	session, _ := domain.NewPairingSession("ps-del-prov", "user-admin-1", code, 5*time.Minute, now)
+	_ = session.Verify(now.Add(time.Minute), code, "dev-still-provisional")
+	_ = session.Consume(now.Add(2 * time.Minute))
+	_ = sessionRepo.Save(context.Background(), session)
+
+	// Device verified but never logged in: still provisional, owner_id NULL.
+	_ = devRepo.InsertProvisional(context.Background(), "dev-still-provisional", "Tablet", domain.DeviceClassTablet, domain.EnrolledViaPairingCode, "ps-del-prov", now)
+
+	handler := transporthttp.DeletePairingHandler(sessionRepo, devRepo, func() time.Time { return now.Add(3 * time.Minute) }, nil)
+
+	req := httptest.NewRequest("DELETE", "/api/v1/network/pair/ps-del-prov", nil)
+	req.SetPathValue("id", "ps-del-prov")
+	req = req.WithContext(transporthttp.WithUser(req.Context(), adminUser()))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+
+	if !devRepo.isProvisionalRevoked("dev-still-provisional") {
+		t.Fatal("expected still-provisional device to be revoked, but revoke silently no-op'd")
+	}
+
+	// Closing the gap the finding raised: a device revoked while provisional
+	// must not become claimable by a later login completing with the same grant.
+	err := devRepo.AssignOwnerByPairingSession(context.Background(), "ps-del-prov", "user-victim")
+	if err == nil {
+		t.Fatal("expected AssignOwnerByPairingSession to fail for a revoked provisional device, got nil error")
 	}
 }
 

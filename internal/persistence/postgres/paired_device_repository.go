@@ -97,7 +97,7 @@ func (r *PairedDeviceRepository) InsertProvisional(
 
 const pairedDeviceAssignOwnerBySessionSQL = `UPDATE paired_devices
 	SET owner_id = $1
-	WHERE pairing_session_id = $2 AND owner_id IS NULL`
+	WHERE pairing_session_id = $2 AND owner_id IS NULL AND revoked_at IS NULL`
 
 func (r *PairedDeviceRepository) AssignOwnerByPairingSession(
 	ctx context.Context,
@@ -127,6 +127,27 @@ func (r *PairedDeviceRepository) Revoke(ctx context.Context, id domain.DeviceID,
 	}
 	if tag.RowsAffected() == 0 {
 		return &domain.Error{Category: domain.NotFound, Message: "paired device not found or already revoked"}
+	}
+	return nil
+}
+
+const pairedDeviceRevokeBySessionSQL = `UPDATE paired_devices
+	SET revoked_at = $1
+	WHERE pairing_session_id = $2 AND revoked_at IS NULL`
+
+// RevokeByPairingSessionID revokes the device tied to a pairing session
+// directly by pairing_session_id, independent of owner_id. scanDevice (and
+// so Revoke(id)/FindByPairingSessionID) can't represent a still-provisional
+// device — Owner is a mandatory domain.PairedDevice field — which previously
+// made an admin's revoke of a not-yet-claimed device a silent no-op.
+func (r *PairedDeviceRepository) RevokeByPairingSessionID(ctx context.Context, sessionID domain.PairingSessionID, now time.Time) error {
+	exec := executorFrom(ctx, r.pool)
+	tag, err := exec.Exec(ctx, pairedDeviceRevokeBySessionSQL, now, string(sessionID))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "paired device not found for session or already revoked"}
 	}
 	return nil
 }
