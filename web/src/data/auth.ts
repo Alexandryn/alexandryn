@@ -158,7 +158,12 @@ export function confirmTOTP(code: string): Promise<{ enabled: boolean }> {
   return postJson('/api/v1/auth/mfa/totp/confirm', { code })
 }
 
-export async function verifyTOTP(data: { mfaTicket: string; code?: string; recoveryCode?: string }): Promise<AuthResponse> {
+export async function verifyTOTP(data: {
+  mfaTicket: string
+  code?: string
+  recoveryCode?: string
+  enrolmentGrant?: string
+}): Promise<AuthResponse> {
   const res = await postJson<AuthResponse>('/api/v1/auth/mfa/totp/verify', data)
   if (res.accessToken) setAccessToken(res.accessToken)
   if (res.refreshToken) setRefreshToken(res.refreshToken)

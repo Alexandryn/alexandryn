@@ -1423,6 +1423,176 @@ func TestLogin_WithInvalidGrantIgnored(t *testing.T) {
 	}
 }
 
+// TestLogin_MFARequired_DoesNotConsumeEnrolmentGrant reproduces the bug
+// where LoginHandler processed the enrolment grant (assigning device
+// ownership, burning the JTI) BEFORE the TOTP-MFA check, so a password-only
+// request against an MFA-enabled account durably committed the device
+// assignment and spent the grant even though login never completed (no
+// tokens issued — only mfaRequired: true).
+func TestLogin_MFARequired_DoesNotConsumeEnrolmentGrant(t *testing.T) {
+	users := newMemUsers()
+	creds := newMemCredentials()
+	mfaRepo := newMemMFA()
+	mems := newMemMemberships()
+	rtRepo := newMemRefreshTokens()
+	hasher := auth.NewArgon2idPasswordHasher(auth.FastArgon2idParamsForTesting())
+	signer := auth.NewJWTSigner([]byte("test-jwt-secret-at-least-32-bytes!"), "alexandryn")
+	idGen := &fakeIDGen{val: "id-fixed-mfa-1"}
+	limiter := auth.NewIPRateLimiter(rate.Inf, 100, time.Hour)
+
+	user, _ := domain.NewUser("user-mfa-1", "mfauser1", "mfauser1@example.com", domain.RoleReader, time.Now(), time.Now())
+	_ = users.Save(context.Background(), user)
+
+	hash, _ := hasher.HashPassword("secretpass")
+	cred, _ := domain.NewUserCredentials(user.ID(), hash, time.Now())
+	_ = creds.Save(context.Background(), cred)
+
+	confirmedAt := time.Now()
+	totpSettings, _ := domain.NewTOTPSettings(user.ID(), []byte("encrypted-secret-placeholder"), nil, true, &confirmedAt, time.Now())
+	_ = mfaRepo.Save(context.Background(), totpSettings)
+
+	devRepo := newMemPairedDevices()
+	jtiRepo := newMemGrantJTIs()
+	grantSigner := auth.NewEnrolmentGrantSigner([]byte("enrolment-sub-key-32-bytes-long!"), "alexandryn", idGen)
+
+	now := time.Now().UTC()
+	_ = devRepo.InsertProvisional(context.Background(), "dev-prov-mfa", "MFA Device", domain.DeviceClassTablet, domain.EnrolledViaPairingCode, "ps-mfa-sess", now)
+
+	grant, err := grantSigner.Sign("ps-mfa-sess", now)
+	if err != nil {
+		t.Fatalf("grantSigner.Sign: %v", err)
+	}
+
+	loginHandler := transporthttp.LoginHandler(
+		users, creds, mfaRepo, mems, rtRepo, hasher, signer, idGen, limiter,
+		transporthttp.WithEnrolmentGrant(grantSigner, devRepo, jtiRepo, nil),
+	)
+
+	body, _ := json.Marshal(map[string]string{
+		"emailOrUsername": "mfauser1",
+		"password":        "secretpass",
+		"enrolmentGrant":  grant,
+	})
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	loginHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (mfaRequired response); body: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		MFARequired bool   `json:"mfaRequired"`
+		MFATicket   string `json:"mfaTicket"`
+		AccessToken string `json:"accessToken"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if !resp.MFARequired || resp.MFATicket == "" {
+		t.Fatalf("expected mfaRequired response with a ticket, got %+v", resp)
+	}
+	if resp.AccessToken != "" {
+		t.Fatal("expected no access token on an mfaRequired response")
+	}
+
+	// The device must still be provisional — the grant must not have been
+	// consumed by a login that never actually completed.
+	if _, err := devRepo.FindByID(context.Background(), "dev-prov-mfa"); err == nil {
+		t.Fatal("expected device to remain unassigned/provisional, but it was claimed")
+	}
+	claims, _ := grantSigner.Verify(grant, now)
+	if exists, _ := jtiRepo.Exists(context.Background(), claims.JTI); exists {
+		t.Fatal("expected enrolment grant JTI to remain unspent after an mfaRequired response")
+	}
+}
+
+// TestTOTPVerify_WithEnrolmentGrant proves the grant is instead processed
+// once login actually completes via the TOTP step, when the client resends
+// the same enrolmentGrant alongside the TOTP code.
+func TestTOTPVerify_WithEnrolmentGrant(t *testing.T) {
+	users := newMemUsers()
+	mfaRepo := newMemMFA()
+	mems := newMemMemberships()
+	rtRepo := newMemRefreshTokens()
+	signer := auth.NewJWTSigner([]byte("test-jwt-secret-at-least-32-bytes!"), "alexandryn")
+	idGen := &fakeIDGen{val: "id-fixed-totp-1"}
+	totpEngine := auth.NewTOTPEngine("Alexandryn")
+	masterKey := []byte("totp-master-key-32-bytes-long!!")
+
+	user, _ := domain.NewUser("user-totp-1", "totpuser1", "totpuser1@example.com", domain.RoleReader, time.Now(), time.Now())
+	_ = users.Save(context.Background(), user)
+
+	secret, err := totpEngine.GenerateSecret()
+	if err != nil {
+		t.Fatalf("GenerateSecret: %v", err)
+	}
+	encryptedSecret, err := auth.EncryptSecret([]byte(secret), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptSecret: %v", err)
+	}
+	confirmedAt := time.Now()
+	totpSettings, _ := domain.NewTOTPSettings(user.ID(), encryptedSecret, nil, true, &confirmedAt, time.Now())
+	_ = mfaRepo.Save(context.Background(), totpSettings)
+
+	devRepo := newMemPairedDevices()
+	jtiRepo := newMemGrantJTIs()
+	grantSigner := auth.NewEnrolmentGrantSigner([]byte("enrolment-sub-key-32-bytes-long!"), "alexandryn", idGen)
+
+	now := time.Now().UTC()
+	_ = devRepo.InsertProvisional(context.Background(), "dev-prov-totp", "TOTP Device", domain.DeviceClassTablet, domain.EnrolledViaPairingCode, "ps-totp-sess", now)
+
+	grant, err := grantSigner.Sign("ps-totp-sess", now)
+	if err != nil {
+		t.Fatalf("grantSigner.Sign: %v", err)
+	}
+
+	mfaTicket, err := signer.SignMFATicket(user.ID(), now.Add(5*time.Minute))
+	if err != nil {
+		t.Fatalf("SignMFATicket: %v", err)
+	}
+
+	code, err := totpEngine.GenerateCode(secret, now)
+	if err != nil {
+		t.Fatalf("GenerateCode: %v", err)
+	}
+
+	verifyHandler := transporthttp.TOTPVerifyHandler(
+		mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey,
+		transporthttp.WithEnrolmentGrant(grantSigner, devRepo, jtiRepo, nil),
+	)
+
+	body, _ := json.Marshal(map[string]string{
+		"mfaTicket":      mfaTicket,
+		"code":           code,
+		"enrolmentGrant": grant,
+	})
+	req := httptest.NewRequest("POST", "/api/v1/auth/mfa/totp/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	verifyHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+
+	claimedDev, err := devRepo.FindByID(context.Background(), "dev-prov-totp")
+	if err != nil {
+		t.Fatalf("devRepo.FindByID: %v", err)
+	}
+	if claimedDev.Owner() != user.ID() {
+		t.Errorf("device owner = %q, want %q", claimedDev.Owner(), user.ID())
+	}
+
+	claims, _ := grantSigner.Verify(grant, now)
+	exists, err := jtiRepo.Exists(context.Background(), claims.JTI)
+	if err != nil || !exists {
+		t.Errorf("expected jti to be recorded as spent, exists=%v, err=%v", exists, err)
+	}
+}
+
 func TestLogin_WithRememberDeviceDays(t *testing.T) {
 	users := newMemUsers()
 	creds := newMemCredentials()

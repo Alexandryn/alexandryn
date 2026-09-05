@@ -4,11 +4,12 @@ import { verifyTOTP } from '../../data/auth'
 
 interface MfaPromptModalProps {
   mfaTicket: string
+  enrolmentGrant?: string
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function MfaPromptModal({ mfaTicket, onSuccess, onCancel }: MfaPromptModalProps) {
+export function MfaPromptModal({ mfaTicket, enrolmentGrant, onSuccess, onCancel }: MfaPromptModalProps) {
   const [code, setCode] = useState('')
   const [recoveryCode, setRecoveryCode] = useState('')
   const [useRecovery, setUseRecovery] = useState(false)
@@ -22,9 +23,9 @@ export function MfaPromptModal({ mfaTicket, onSuccess, onCancel }: MfaPromptModa
 
     try {
       if (useRecovery) {
-        await verifyTOTP({ mfaTicket, recoveryCode })
+        await verifyTOTP({ mfaTicket, recoveryCode, enrolmentGrant })
       } else {
-        await verifyTOTP({ mfaTicket, code })
+        await verifyTOTP({ mfaTicket, code, enrolmentGrant })
       }
       onSuccess()
     } catch (err: unknown) {

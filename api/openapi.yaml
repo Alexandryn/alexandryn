@@ -1974,6 +1974,12 @@ paths:
                 mfaTicket: { type: string }
                 code: { type: string }
                 recoveryCode: { type: string }
+                enrolmentGrant:
+                  type: string
+                  description: >-
+                    Resent from the login step when MFA is enabled, so device
+                    pairing completes once login actually finishes rather than
+                    on the password-only step.
       responses:
         '200':
           description: 2FA verification successful, tokens issued
