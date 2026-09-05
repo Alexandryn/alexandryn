@@ -602,7 +602,7 @@ func run(ctx context.Context, deps runDeps) int {
 				GrantSigner:        enrolmentSigner,
 				CodeGen:            pairing.GeneratePairingCode,
 				PairingSecret:      cfg.DevicePairingSecret.Reveal(),
-				ServerAddress:      cfg.BindAddress,
+				ServerAddress:      resolveServerAddress(cfg),
 				HostName:           "alexandryn.local",
 				Scheme:             scheme,
 				IDs:                idgen.New(),
