@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // OriginValidation wraps the UNAUTHENTICATED state-changing routes:
@@ -76,12 +77,15 @@ func OriginValidation(allowed []string) Middleware {
 
 // originAllowedFromReferer rebuilds the scheme://host[:port] origin from a
 // Referer URL and checks it against the allowed set. url.Parse already
-// lower-cases the scheme; the host is used as the browser sent it,
-// matching the exact-match posture the rest of this file uses.
+// lower-cases the scheme; the host is explicitly lower-cased too, to match
+// `allowed`'s documented canonical form (CORS/config.parseOriginList
+// already lower-case the host) — a browser is free to send a Referer with
+// a mixed-case host, and that must compare equal, not spuriously reject a
+// legitimate request.
 func originAllowedFromReferer(u *url.URL, set map[string]struct{}) bool {
 	if u.Scheme == "" || u.Host == "" {
 		return false
 	}
-	_, ok := set[u.Scheme+"://"+u.Host]
+	_, ok := set[u.Scheme+"://"+strings.ToLower(u.Host)]
 	return ok
 }
