@@ -51,4 +51,12 @@ func TestOriginValidation(t *testing.T) {
 	if rec := serve(mw, mk("", "http://192.168.1.24:8474/connect")); rec.Code != http.StatusOK {
 		t.Errorf("matching Referer got %d, want 200", rec.Code)
 	}
+
+	// No Origin, matching Referer but with a mixed-case host -> still
+	// allowed. `allowed` is documented as already lower-cased (the
+	// canonical form CORS/config.parseOriginList produce); a mixed-case
+	// Referer host from a real client must not be spuriously rejected.
+	if rec := serve(mw, mk("", "http://Alexandryn.Local:8474/connect")); rec.Code != http.StatusOK {
+		t.Errorf("mixed-case-host matching Referer got %d, want 200", rec.Code)
+	}
 }

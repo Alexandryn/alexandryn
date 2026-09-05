@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -396,7 +397,7 @@ func NetworkStatusHandler(
 			scheme = "https"
 		}
 		for _, addr := range info.Addresses {
-			if strings.Contains(addr.URL, r.Host) {
+			if u, err := url.Parse(addr.URL); err == nil && u.Host == r.Host {
 				matchedAddress = addr.URL
 				break
 			}

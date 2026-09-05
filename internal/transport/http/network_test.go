@@ -684,6 +684,43 @@ func TestNetworkStatus_ReaderScope(t *testing.T) {
 	}
 }
 
+// TestNetworkStatus_HostMatchIsExactNotSubstring reproduces the bug where
+// matching the client's Host header against known server addresses used
+// strings.Contains(addr.URL, r.Host) — a substring match, not host[:port]
+// equality. "10.0.0.15:8443" is a literal substring of "110.0.0.15:8443",
+// so a request actually reaching the server via 110.0.0.15 could match and
+// echo back the wrong configured address entry.
+func TestNetworkStatus_HostMatchIsExactNotSubstring(t *testing.T) {
+	info := transporthttp.NetworkInfo{
+		Reachability: "lan",
+		TLSMode:      "none",
+		BindAddress:  "0.0.0.0:8443",
+		HostName:     "library.local",
+		Addresses: []transporthttp.NetworkAddressWire{
+			{Scope: "public", URL: "http://110.0.0.15:8443"},
+			{Scope: "lan", URL: "http://10.0.0.15:8443"},
+		},
+	}
+
+	handler := transporthttp.NetworkStatusHandler(func() transporthttp.NetworkInfo { return info }, nil)
+
+	req := httptest.NewRequest("GET", "/api/v1/network/status", nil)
+	req.Host = "10.0.0.15:8443"
+	req = req.WithContext(transporthttp.WithUser(req.Context(), adminUser()))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	var raw map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&raw); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if raw["address"] != "http://10.0.0.15:8443" {
+		t.Fatalf("address = %v, want the exact-matching entry http://10.0.0.15:8443 (substring match picked the wrong one)", raw["address"])
+	}
+}
+
 func TestNetworkStatus_AdminScope(t *testing.T) {
 	info := transporthttp.NetworkInfo{
 		Reachability: "public",
