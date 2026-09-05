@@ -252,3 +252,14 @@ type LibraryInvitationRepository interface {
 	Save(ctx context.Context, inv *LibraryInvitation) error
 	Delete(ctx context.Context, id LibraryInvitationID) error
 }
+
+// Phase 13 Network Access & Device Pairing Repositories
+
+type PairingSessionRepository interface {
+	FindByID(ctx context.Context, id PairingSessionID) (*PairingSession, error)
+	FindByCodeIndex(ctx context.Context, codeIndex []byte) (*PairingSession, error)
+	FindPendingByCodeIndexForUpdate(ctx context.Context, codeIndex []byte, now time.Time) (*PairingSession, error)
+	Save(ctx context.Context, s *PairingSession) error
+	SaveWithInitiatorIP(ctx context.Context, s *PairingSession, ip string) error
+	Delete(ctx context.Context, id PairingSessionID) error
+}
