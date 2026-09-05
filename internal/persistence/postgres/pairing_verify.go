@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
@@ -27,15 +28,6 @@ func NewPairingVerifier(
 	}
 }
 
-// NewPairingVerifierWithDeviceRepo allows injecting a test or custom device repo.
-func NewPairingVerifierWithDeviceRepo(
-	transactor domain.Transactor,
-	sessionRepo *PairingSessionRepository,
-	deviceRepo domain.PairedDeviceRepository,
-) *PairingVerifier {
-	return NewPairingVerifier(transactor, sessionRepo, deviceRepo)
-}
-
 // VerifyAndConsume locks the pending pairing session row (SELECT ... FOR UPDATE),
 // validates and consumes the session, saves the session state, and inserts
 // the provisional paired device row inside a single atomic transaction (ADR 0021).
@@ -47,6 +39,17 @@ func (v *PairingVerifier) VerifyAndConsume(
 	deviceClass domain.DeviceClass,
 	now time.Time,
 ) (*domain.PairingSession, error) {
+	trimmedLabel := strings.TrimSpace(label)
+	if trimmedLabel == "" {
+		trimmedLabel = string(deviceClass)
+		if trimmedLabel == "" {
+			trimmedLabel = "Device"
+		}
+	}
+	if len([]rune(trimmedLabel)) > 100 {
+		return nil, &domain.Error{Category: domain.InvalidInput, Message: "device label cannot exceed 100 characters"}
+	}
+
 	var verifiedSession *domain.PairingSession
 
 	err := v.transactor.InTx(ctx, func(txCtx context.Context) error {

@@ -22,7 +22,7 @@ CREATE INDEX pairing_sessions_state_expires_idx ON pairing_sessions (state, expi
 CREATE TABLE paired_devices (
     id                 TEXT PRIMARY KEY,
     owner_id           TEXT REFERENCES users(id) ON DELETE CASCADE,
-    label              TEXT NOT NULL DEFAULT '',
+    label              TEXT NOT NULL CHECK (length(trim(label)) > 0 AND length(label) <= 100),
     device_class       TEXT NOT NULL CHECK (device_class IN ('phone', 'tablet', 'desktop', 'tv', 'unknown')),
     enrolled_via       TEXT NOT NULL CHECK (enrolled_via IN ('pairing_code', 'password_login')),
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -32,13 +32,15 @@ CREATE TABLE paired_devices (
 );
 
 CREATE INDEX paired_devices_owner_idx ON paired_devices (owner_id);
-CREATE INDEX paired_devices_pairing_session_idx ON paired_devices (pairing_session_id);
+CREATE UNIQUE INDEX paired_devices_pairing_session_uidx ON paired_devices (pairing_session_id) WHERE pairing_session_id IS NOT NULL;
 
 -- 3. Enrolment grant JTIs (single-use replay defence)
 CREATE TABLE enrolment_grant_jtis (
     jti      TEXT PRIMARY KEY,
     spent_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX enrolment_grant_jtis_spent_at_idx ON enrolment_grant_jtis (spent_at);
 
 -- 4. Network settings (single row)
 CREATE TABLE network_settings (

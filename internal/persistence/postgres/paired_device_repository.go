@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -68,10 +69,21 @@ func (r *PairedDeviceRepository) InsertProvisional(
 	pairingSessionID domain.PairingSessionID,
 	now time.Time,
 ) error {
+	trimmed := strings.TrimSpace(label)
+	if trimmed == "" {
+		trimmed = string(deviceClass)
+		if trimmed == "" {
+			trimmed = "Device"
+		}
+	}
+	if len([]rune(trimmed)) > 100 {
+		return &domain.Error{Category: domain.InvalidInput, Message: "device label cannot exceed 100 characters"}
+	}
+
 	exec := executorFrom(ctx, r.pool)
 	_, err := exec.Exec(ctx, pairedDeviceInsertProvisionalSQL,
 		string(id),
-		label,
+		trimmed,
 		string(deviceClass),
 		string(enrolledVia),
 		now,

@@ -30,8 +30,8 @@ func NewPairingSessionRepository(pool *pgxpool.Pool, encKey []byte, indexKey []b
 	if len(encKey) != 32 {
 		return nil, fmt.Errorf("pairing session repo: encKey must be 32 bytes, got %d", len(encKey))
 	}
-	if len(indexKey) == 0 {
-		return nil, errors.New("pairing session repo: indexKey cannot be empty")
+	if len(indexKey) != 32 {
+		return nil, fmt.Errorf("pairing session repo: indexKey must be 32 bytes, got %d", len(indexKey))
 	}
 
 	block, err := aes.NewCipher(encKey)
@@ -156,6 +156,9 @@ const pairingSessionFindPendingForUpdateSQL = `SELECT ` + pairingSessionSelectCo
 	FOR UPDATE`
 
 func (r *PairingSessionRepository) FindPendingByCodeIndexForUpdate(ctx context.Context, codeIndex []byte, now time.Time) (*domain.PairingSession, error) {
+	if _, ok := ctx.Value(txContextKey{}).(pgx.Tx); !ok {
+		return nil, &domain.Error{Category: domain.Internal, Message: "FindPendingByCodeIndexForUpdate requires an active transaction"}
+	}
 	exec := executorFrom(ctx, r.pool)
 	row := exec.QueryRow(ctx, pairingSessionFindPendingForUpdateSQL, codeIndex, now)
 	return r.scanSession(row)

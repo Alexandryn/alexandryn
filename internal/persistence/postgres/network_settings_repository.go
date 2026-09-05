@@ -57,6 +57,9 @@ const networkSettingsUpsertSQL = `INSERT INTO network_settings (
 		updated_at = EXCLUDED.updated_at`
 
 func (r *NetworkSettingsRepository) Upsert(ctx context.Context, s *domain.NetworkSettings) error {
+	if s == nil {
+		return &domain.Error{Category: domain.InvalidInput, Message: "network settings cannot be nil"}
+	}
 	exec := executorFrom(ctx, r.pool)
 	_, err := exec.Exec(ctx, networkSettingsUpsertSQL,
 		s.HostName,
