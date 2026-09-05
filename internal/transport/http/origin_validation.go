@@ -5,12 +5,15 @@ import (
 	"net/url"
 )
 
-// OriginValidation wraps the UNAUTHENTICATED state-changing routes — in
-// phase 13, POST /api/v1/network/pair/verify (backend-network-transport.md
-// FR-7, ADR 0028 §5). Every other state-changing route is already
-// Authorization-gated and CSRF-safe by construction (a browser does not
-// attach the Bearer header cross-site), so this is a route-group wrapper,
-// not a global layer.
+// OriginValidation wraps the UNAUTHENTICATED state-changing routes:
+// POST /api/v1/network/pair/verify (backend-network-transport.md FR-7,
+// ADR 0028 §5), and POST /api/v1/auth/setup and /api/v1/auth/login — the
+// other two IsPublicPath routes that change state with no Authorization
+// header to make them CSRF-safe by construction. Every *authenticated*
+// state-changing route doesn't need this: a browser does not attach the
+// Bearer header cross-site. This is a route-group wrapper, not a global
+// layer, because that authenticated-by-construction argument covers
+// everything else.
 //
 //   - A request whose Origin header is PRESENT and not in `allowed` -> 403.
 //   - A request with NO Origin header -> allowed through. A native client,

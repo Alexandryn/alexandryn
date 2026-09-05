@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -155,6 +156,30 @@ func TestFR12_IsPublicPathUnchanged(t *testing.T) {
 	for _, p := range notPublic {
 		if transporthttp.IsPublicPath(p) {
 			t.Errorf("%s must NOT be public — opening the bind grants no route anonymous access", p)
+		}
+	}
+}
+
+// TestRouter_OriginValidationOnSetupAndLogin reproduces the gap where
+// OriginValidation was applied only to POST /network/pair/verify on the
+// stated premise that every other state-changing route is
+// Authorization-gated and therefore CSRF-safe by construction — but
+// /api/v1/auth/setup and /api/v1/auth/login are also unauthenticated,
+// state-changing POST routes (IsPublicPath), so that premise doesn't hold
+// for them. A hostile page could otherwise drive a victim's browser to
+// POST to either during the pre-first-run window.
+func TestRouter_OriginValidationOnSetupAndLogin(t *testing.T) {
+	router := chainTestRouter(t, []string{"https://allowed.example"})
+
+	for _, path := range []string{"/api/v1/auth/setup", "/api/v1/auth/login"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "https://hostile.example")
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s with a foreign Origin: status = %d, want 403 — OriginValidation is not mounted", path, rec.Code)
 		}
 	}
 }

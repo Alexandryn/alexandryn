@@ -226,10 +226,18 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("PUT /api/v1/reading/preferences", transporthttp.ReadingPreferencesPutHandler(poolRef))
 	mux.Handle("GET /api/v1/reading/export", transporthttp.ReadingExportHandler(poolRef, logger, time.Now))
 
-	// Auth routes (Phase 12)
+	// Auth routes (Phase 12). /auth/setup and /auth/login are, like
+	// /network/pair/verify, unauthenticated state-changing POST routes
+	// (IsPublicPath) — OriginValidation applies to all three for the same
+	// reason (backend-network-transport.md FR-7, ADR 0028 §5).
+	allowedOrigins := computeAllowedOrigins(cfg)
+	originValidated := func(h http.Handler) http.Handler {
+		return transporthttp.Chain(h, transporthttp.OriginValidation(allowedOrigins))
+	}
+
 	mux.Handle("GET /api/v1/auth/setup/status", transporthttp.LazySetupStatusHandler(poolRef))
-	mux.Handle("POST /api/v1/auth/setup", transporthttp.LazySetupHandler(poolRef))
-	mux.Handle("POST /api/v1/auth/login", transporthttp.LazyLoginHandler(poolRef))
+	mux.Handle("POST /api/v1/auth/setup", originValidated(transporthttp.LazySetupHandler(poolRef)))
+	mux.Handle("POST /api/v1/auth/login", originValidated(transporthttp.LazyLoginHandler(poolRef)))
 	mux.Handle("POST /api/v1/auth/refresh", transporthttp.LazyRefreshHandler(poolRef))
 	mux.Handle("POST /api/v1/auth/logout", transporthttp.LazyLogoutHandler(poolRef))
 	mux.Handle("POST /api/v1/auth/password-reset/request", transporthttp.LazyPasswordResetRequestHandler(poolRef))
@@ -261,7 +269,6 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	)
 	mux.Handle("POST /api/v1/network/pair/initiate", initiateHandler)
 
-	allowedOrigins := computeAllowedOrigins(cfg)
 	verifyHandler := transporthttp.Chain(
 		transporthttp.LazyVerifyPairingHandler(poolRef),
 		transporthttp.PublicRateLimit(pairVerifyLimiter, func(string) bool { return true }),
