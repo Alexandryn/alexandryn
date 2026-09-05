@@ -595,6 +595,10 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 	}
 
+	if repos != nil && repos.networkSweep != nil {
+		repos.networkSweep.Start(ctx, 5*time.Minute, logger)
+	}
+
 	logger.Info("ready")
 
 	select {

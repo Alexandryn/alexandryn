@@ -52,6 +52,10 @@ type repositories struct {
 	libraries          domain.LibraryRepository
 	libraryMemberships domain.LibraryMembershipRepository
 	libraryInvitations domain.LibraryInvitationRepository
+	pairedDevices      domain.PairedDeviceRepository
+	networkSettings    domain.NetworkSettingsRepository
+	enrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
+	networkSweep       *postgres.NetworkSweep
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -123,5 +127,9 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		libraries:          postgres.NewLibraryRepository(pool),
 		libraryMemberships: postgres.NewLibraryMembershipRepository(pool),
 		libraryInvitations: postgres.NewLibraryInvitationRepository(pool),
+		pairedDevices:      postgres.NewPairedDeviceRepository(pool),
+		networkSettings:    postgres.NewNetworkSettingsRepository(pool),
+		enrolmentGrantJTIs: postgres.NewEnrolmentGrantJTIRepository(pool),
+		networkSweep:       postgres.NewNetworkSweep(pool),
 	}
 }
