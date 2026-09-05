@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — Gate 1 + Gate 1.5 cleared 2026-09-02. Four specs `APPROVED` (independent two-agent review [`0050`](../../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) + rework); ADR 0028 `Accepted`. Test plans and implementation not started. Branch `feat/phase13-network-access` (from `feat/phase12-auth`). |
+| **Status** | **Closed** — merged to `main` via [PR #80](https://github.com/Alexandryn/alexandryn/pull/80) on 2026-09-05 (merge commit `369190f`). All exit criteria met; security audit `0013` recorded with no open Critical/High findings and AUDIT-0012-C1/C2 re-verified fixed. Maintainer approval recorded via the PR merge itself. Four specs `APPROVED`; ADR 0028 `Accepted`. |
 | **Depends on** | Phase 12 |
 | **Blocks** | 14, 15 |
 
@@ -129,4 +129,4 @@ split, without needing its own edit.
 - [x] Plaintext-on-a-LAN-bind is disclosed to the operator in the Network panel and logged once at `warn` on startup (review 0050 S-H4)
 - [x] **Phase-12 hardening prelude verified** (carried into this phase per review 0050): every reading/reader endpoint enforces per-user + per-library scoping at the query layer, with a per-endpoint IDOR test and an `export` isolation test; `X-Library-Id` validated against the JWT `libraries` claim; access-token verification asserts the token type; the enrolment grant uses a distinct signing subkey
 - [x] Security audit `0013` recorded, no open Critical or High findings, and it re-verifies AUDIT-0012-C1/C2 as fixed
-- [ ] Maintainer approval recorded
+- [x] Maintainer approval recorded — [PR #80](https://github.com/Alexandryn/alexandryn/pull/80) merged 2026-09-05
