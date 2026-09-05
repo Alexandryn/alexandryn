@@ -11,5 +11,6 @@ export const bootstrapFixture = {
     import: true,
     settings: true,
     system: true,
+    network: true,
   },
 } as const

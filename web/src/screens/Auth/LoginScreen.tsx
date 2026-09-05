@@ -1,11 +1,15 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { login } from '../../data/auth'
 import { MfaPromptModal } from './MfaPromptModal'
 
 export function LoginScreen() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const routerState = location.state as { enrolmentGrant?: string; hostName?: string } | null
+  const enrolmentGrant = routerState?.enrolmentGrant
+
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +22,7 @@ export function LoginScreen() {
     setLoading(true)
 
     try {
-      const res = await login({ emailOrUsername, password })
+      const res = await login({ emailOrUsername, password, enrolmentGrant })
       if (res.mfaRequired && res.mfaTicket) {
         setMfaTicket(res.mfaTicket)
       } else {

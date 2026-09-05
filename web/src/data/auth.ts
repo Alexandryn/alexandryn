@@ -102,7 +102,11 @@ export async function setupAdmin(data: { username: string; email: string; passwo
   return res
 }
 
-export async function login(data: { emailOrUsername: string; password: string }): Promise<AuthResponse> {
+export async function login(data: {
+  emailOrUsername: string
+  password: string
+  enrolmentGrant?: string
+}): Promise<AuthResponse> {
   const res = await postJson<AuthResponse>('/api/v1/auth/login', data)
   if (res.accessToken) setAccessToken(res.accessToken)
   if (res.refreshToken) setRefreshToken(res.refreshToken)
