@@ -132,7 +132,7 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 			*order = append(*order, "logger")
 			return slog.New(spy)
 		},
-		newRouter: func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
+		newRouter: func(_ context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
 			*order = append(*order, "router")
 			if poolRef == nil {
 				t.Fatal("newRouter called with a nil poolRef")
@@ -426,7 +426,7 @@ func TestRun_PoolReferencePopulatedAfterStep6(t *testing.T) {
 	deps, _ := recordingDeps(t, &order)
 
 	var capturedRef *transporthttp.PoolRef
-	deps.newRouter = func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
+	deps.newRouter = func(_ context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
 		order = append(order, "router")
 		capturedRef = poolRef
 		return http.NewServeMux()
@@ -457,7 +457,7 @@ func TestRun_SourceRepositoriesAndCryptoPopulatedAfterStep6(t *testing.T) {
 	deps.userConfigDir = func() (string, error) { return t.TempDir(), nil }
 
 	var capturedRef *transporthttp.PoolRef
-	deps.newRouter = func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
+	deps.newRouter = func(_ context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
 		order = append(order, "router")
 		capturedRef = poolRef
 		return http.NewServeMux()

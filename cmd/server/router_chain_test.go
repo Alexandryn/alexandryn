@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -27,7 +28,7 @@ func chainTestRouter(t *testing.T, origins []string) http.Handler {
 		CORSAllowedOrigins: origins,
 	}
 	limiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, time.Minute)
-	return newProductionRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
+	return newProductionRouter(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
 }
 
 func TestChain_SecurityHeadersOnEveryResponse(t *testing.T) {
@@ -70,7 +71,7 @@ func TestChain_HSTSSetForACMEMode(t *testing.T) {
 	}
 
 	limiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, time.Minute)
-	router := newProductionRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
+	router := newProductionRouter(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), &transporthttp.PoolRef{}, limiter)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 

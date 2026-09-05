@@ -251,7 +251,7 @@ func TestConcurrency_ShutdownUnderLoad(t *testing.T) {
 	deps := runDeps{
 		loadConfig: func() (*config.Config, error) { return cfg, nil },
 		newLogger:  quietLogger,
-		newRouter: func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
+		newRouter: func(_ context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, _ *auth.IPRateLimiter) http.Handler {
 			mux.Handle("/healthz", transporthttp.Healthz(poolRef))
 			return mux
 		},

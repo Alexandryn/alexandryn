@@ -85,7 +85,7 @@ func (realClock) Now() time.Time { return time.Now() }
 type runDeps struct {
 	loadConfig func() (*config.Config, error)
 	newLogger  func(cfg *config.Config) *slog.Logger
-	newRouter  func(cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler
+	newRouter  func(ctx context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler
 	listen     func(network, address string) (net.Listener, error)
 	newServer  func(cfg *config.Config, handler http.Handler) shutdownableServer
 	clock      clock
@@ -292,7 +292,7 @@ func run(ctx context.Context, deps runDeps) int {
 	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, 10*time.Minute)
 	publicLimiter.StartEviction(ctx)
 
-	router := deps.newRouter(cfg, logger, poolRef, publicLimiter)
+	router := deps.newRouter(ctx, cfg, logger, poolRef, publicLimiter)
 	logger.Info("startup step completed", "step", "router")
 
 	listener, err := deps.listen("tcp", cfg.BindAddress)
