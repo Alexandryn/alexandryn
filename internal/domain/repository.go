@@ -263,3 +263,24 @@ type PairingSessionRepository interface {
 	SaveWithInitiatorIP(ctx context.Context, s *PairingSession, ip string) error
 	Delete(ctx context.Context, id PairingSessionID) error
 }
+
+type PairedDeviceRepository interface {
+	FindByID(ctx context.Context, id DeviceID) (*PairedDevice, error)
+	FindByOwner(ctx context.Context, owner UserID) ([]*PairedDevice, error)
+	FindByPairingSessionID(ctx context.Context, sessionID PairingSessionID) (*PairedDevice, error)
+	InsertProvisional(ctx context.Context, id DeviceID, label string, deviceClass DeviceClass, enrolledVia EnrolledVia, pairingSessionID PairingSessionID, now time.Time) error
+	AssignOwnerByPairingSession(ctx context.Context, sessionID PairingSessionID, owner UserID) error
+	Save(ctx context.Context, d *PairedDevice) error
+	Revoke(ctx context.Context, id DeviceID, now time.Time) error
+}
+
+type NetworkSettingsRepository interface {
+	Get(ctx context.Context) (*NetworkSettings, error)
+	Upsert(ctx context.Context, s *NetworkSettings) error
+}
+
+type EnrolmentGrantJTIRepository interface {
+	Record(ctx context.Context, jti string, spentAt time.Time) error
+	Exists(ctx context.Context, jti string) (bool, error)
+}
+
