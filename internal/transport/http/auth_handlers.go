@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -45,6 +46,40 @@ func WithNetworkSettings(settingsRepo domain.NetworkSettingsRepository) LoginOpt
 	return func(c *authConfig) {
 		c.settingsRepo = settingsRepo
 	}
+}
+
+// applyEnrolmentGrant associates a device with a user via an enrolment
+// grant (T4.7, FR-9). Called only once a login is actually completing —
+// LoginHandler calls it after the TOTP-MFA gate (not before: a password-only
+// step that only returns mfaRequired must not durably assign device
+// ownership or spend the grant's JTI), and TOTPVerifyHandler calls it after
+// a successful code/recovery-code check for the MFA-enabled path. Fail-safe:
+// any error here is logged and ignored without failing the login.
+func applyEnrolmentGrant(ctx context.Context, cfg authConfig, grant string, userID domain.UserID, now time.Time, corrID string) {
+	if grant == "" || cfg.grantSigner == nil || cfg.devRepo == nil || cfg.jtiRepo == nil {
+		return
+	}
+	claims, err := cfg.grantSigner.Verify(grant, now)
+	if err != nil {
+		if cfg.logger != nil {
+			cfg.logger.Info("invalid enrolment grant ignored", "correlationId", corrID, "error", err.Error())
+		}
+		return
+	}
+	spent, err := cfg.jtiRepo.Exists(ctx, claims.JTI)
+	if err != nil || spent {
+		if cfg.logger != nil {
+			cfg.logger.Info("replayed enrolment grant ignored", "correlationId", corrID, "jti", claims.JTI)
+		}
+		return
+	}
+	if err := cfg.devRepo.AssignOwnerByPairingSession(ctx, claims.SessionID, userID); err != nil {
+		if cfg.logger != nil {
+			cfg.logger.Info("failed to assign device owner, ignoring", "correlationId", corrID, "error", err.Error())
+		}
+		return
+	}
+	_ = cfg.jtiRepo.Record(ctx, claims.JTI, now)
 }
 
 type UserSummaryWire struct {
@@ -269,32 +304,12 @@ func LoginHandler(
 
 		now := time.Now()
 
-		// If enrolment grant is present, associate device (fail-safe: ignore errors without failing login, FR-9)
-		if req.EnrolmentGrant != "" && cfg.grantSigner != nil && cfg.devRepo != nil && cfg.jtiRepo != nil {
-			claims, err := cfg.grantSigner.Verify(req.EnrolmentGrant, now)
-			if err != nil {
-				if cfg.logger != nil {
-					cfg.logger.Info("invalid enrolment grant ignored", "correlationId", corrID, "error", err.Error())
-				}
-			} else {
-				spent, err := cfg.jtiRepo.Exists(r.Context(), claims.JTI)
-				if err != nil || spent {
-					if cfg.logger != nil {
-						cfg.logger.Info("replayed enrolment grant ignored", "correlationId", corrID, "jti", claims.JTI)
-					}
-				} else {
-					if err := cfg.devRepo.AssignOwnerByPairingSession(r.Context(), claims.SessionID, user.ID()); err != nil {
-						if cfg.logger != nil {
-							cfg.logger.Info("failed to assign device owner, ignoring", "correlationId", corrID, "error", err.Error())
-						}
-					} else {
-						_ = cfg.jtiRepo.Record(r.Context(), claims.JTI, now)
-					}
-				}
-			}
-		}
-
-		// Check TOTP MFA
+		// Check TOTP MFA before doing anything the enrolment grant would
+		// durably commit: a password-only request against an MFA-enabled
+		// account must not spend the grant or assign device ownership,
+		// since login has not actually completed (no tokens are issued
+		// below — only mfaRequired: true). TOTPVerifyHandler processes the
+		// grant instead, once the second factor is verified.
 		totp, err := mfaRepo.FindByUserID(r.Context(), user.ID())
 		if err == nil && totp.IsEnabled() {
 			mfaTicket, err := signer.SignMFATicket(user.ID(), now.Add(5*time.Minute))
@@ -309,6 +324,8 @@ func LoginHandler(
 			})
 			return
 		}
+
+		applyEnrolmentGrant(r.Context(), cfg, req.EnrolmentGrant, user.ID(), now, corrID)
 
 		// Resolve library memberships for JWT claims
 		mems, _ := memRepo.FindByUser(r.Context(), user.ID())
@@ -699,14 +716,23 @@ func TOTPVerifyHandler(
 	signer auth.TokenSigner,
 	idGen domain.IDGenerator,
 	masterKey []byte,
+	opts ...LoginOption,
 ) http.Handler {
+	var cfg authConfig
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 
 		var req struct {
-			MFATicket    string `json:"mfaTicket"`
-			Code         string `json:"code,omitempty"`
-			RecoveryCode string `json:"recoveryCode,omitempty"`
+			MFATicket      string `json:"mfaTicket"`
+			Code           string `json:"code,omitempty"`
+			RecoveryCode   string `json:"recoveryCode,omitempty"`
+			EnrolmentGrant string `json:"enrolmentGrant,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.MFATicket == "" {
 			WriteError(w, domain.InvalidInput, "missing MFA ticket", corrID)
@@ -756,6 +782,8 @@ func TOTPVerifyHandler(
 			WriteError(w, domain.Unauthorized, "invalid MFA code or recovery code", corrID)
 			return
 		}
+
+		applyEnrolmentGrant(r.Context(), cfg, req.EnrolmentGrant, user.ID(), now, corrID)
 
 		mems, _ := memRepo.FindByUser(r.Context(), user.ID())
 		var libIDs []domain.LibraryID

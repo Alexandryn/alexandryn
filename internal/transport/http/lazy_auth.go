@@ -123,7 +123,11 @@ func LazyTOTPVerifyHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		TOTPVerifyHandler(api.MFA, api.Users, api.RefreshTokens, api.LibraryMemberships, api.TOTPEngine, api.Signer, api.IDs, api.MasterKey).ServeHTTP(w, r)
+		var opts []LoginOption
+		if api.EnrolmentSigner != nil && api.PairedDevices != nil && api.EnrolmentGrantJTIs != nil {
+			opts = append(opts, WithEnrolmentGrant(api.EnrolmentSigner, api.PairedDevices, api.EnrolmentGrantJTIs, api.Logger))
+		}
+		TOTPVerifyHandler(api.MFA, api.Users, api.RefreshTokens, api.LibraryMemberships, api.TOTPEngine, api.Signer, api.IDs, api.MasterKey, opts...).ServeHTTP(w, r)
 	})
 }
 

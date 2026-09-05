@@ -91,6 +91,7 @@ export function LoginScreen() {
       {mfaTicket && (
         <MfaPromptModal
           mfaTicket={mfaTicket}
+          enrolmentGrant={enrolmentGrant}
           onSuccess={() => {
             setMfaTicket(null)
             navigate('/library', { replace: true })
