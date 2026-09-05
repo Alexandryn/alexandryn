@@ -12,7 +12,7 @@ import {
 import { fetchLibraries, type Library } from '../../data/libraries'
 import { useNetworkStatus } from '../../data/network'
 import { useQuery } from '@tanstack/react-query'
-import { getReachabilityDescription, getTLSDescription } from '../Settings/NetworkSettings'
+import { getReachabilityDescription, getTLSDescription } from '../../lib/networkDescriptions'
 
 function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null
@@ -41,7 +41,7 @@ export function AccessScreen() {
     queryFn: fetchLibraries,
   })
 
-  const libraries = librariesData?.libraries || []
+  const libraries = useMemo(() => librariesData?.libraries || [], [librariesData])
   const activeLibId = getActiveLibraryId() || (libraries[0]?.id ?? null)
   const activeLibrary = libraries.find((l) => l.id === activeLibId)
 
