@@ -29,10 +29,19 @@ not as a blocker. Resolving condition 3 is out of phase 14's scope.
 
 ## Objective
 
-Reading progress, bookmarks, and highlights are synchronized across a household's authorized
-devices. When two devices update the same record while offline, the server reconciles the conflict
-explicitly and deterministically — no silent last-write-wins, no data loss. A user can see which
-devices are paired to their account and revoke any of them.
+Reading progress is synchronized across a household's authorized devices. When two devices
+update it while offline, the server reconciles the conflict explicitly and deterministically —
+no silent last-write-wins, no data loss. A user can see which devices are paired to their account
+and revoke any of them.
+
+Bookmarks and highlights are pulled read-only in the same sync payload (so a new or reconnecting
+device sees them), but this phase does not build a write path or conflict resolution for them —
+`backend-device-sync.md`'s own Non-goals name this explicitly: "the merge semantics for bookmarks
+are more complex than progress reconciliation and warrant their own spec." A device that creates
+a bookmark or highlight offline has no way to sync it yet; that gap is named, not fixed, here.
+The original phase outline's "synchronised... with explicit conflict resolution" language covered
+all three; this correction narrows it to what is actually specified so the exit criteria below
+don't imply more than what's being built.
 
 ## Why here
 
@@ -54,10 +63,11 @@ surface it has never seen designed.
   `FindByOwner` and `Revoke` repository methods through a handler for the first time.
   No new repository logic for this — the repository exists and is tested; the gap is transport.
 - A sync transport: a pull-based, LAN-local mechanism by which a remote device fetches the
-  current canonical state of progress, bookmarks, and highlights for works in its library,
-  and posts its own updates. The server runs `ReconcileProgress` on every incoming progress
-  report (already implemented in the domain and wired in phase 11 for single-device writes;
-  this phase extends that to multi-device contention).
+  current canonical state of progress, bookmarks, and highlights for works in its library.
+  Progress is a full read/write path — a device also posts its own progress updates, and the
+  server runs `ReconcileProgress` on every incoming report (already implemented in the domain
+  and wired in phase 11 for single-device writes; this phase extends that to multi-device
+  contention). Bookmarks and highlights are read-only in this pull — see Out, below.
 - Conflict resolution for concurrent offline updates — the `(epoch, percentage)` reconciliation
   math is already correct; this phase provides the transport through which it is invoked by
   multiple devices.
@@ -68,11 +78,18 @@ surface it has never seen designed.
   Questions (review `0049`, finding 8). Before the sync protocol runs, both sides must agree
   which Work/Edition a ProgressReport is about. ADR 0029 decides this first.
 - A device management UI: a screen or panel from which the authenticated user can see their
-  paired devices and revoke one. **This screen has no captured canvas in the design reference
-  as of the 2026-08-13 sync** — see "Design-conformance stop" below.
+  paired devices and revoke one. **A canvas for this exists and always has** — see "Design
+  reference correction" below; the earlier claim in this document that no canvas existed was
+  wrong.
 
 **Out**
 
+- Bookmark/highlight write-path sync and conflict resolution. A device creating a bookmark or
+  highlight while offline has no way to post it through the sync transport in this phase — the
+  merge semantics are more complex than progress reconciliation (deletion vs. edit, no natural
+  total order the way epoch/percentage gives progress) and warrant their own spec and ADR.
+  Named in `backend-device-sync.md`'s Open questions so it is not later rediscovered as a "sync
+  bug." A future spec, still within or after this phase depending on scheduling, closes it.
 - Any server-mediated relay beyond the LAN. Alexandryn operates no relay, tunnel, or
   traffic-mediating infrastructure on any user's behalf, under any bind mode (constitution §6,
   ADR 0017, ADR 0028).
@@ -84,16 +101,49 @@ surface it has never seen designed.
 - PDF or CBZ reading — phase 11 is EPUB-only; this phase does not extend the format surface.
 - Phase 12's outstanding "fuller independent re-audit" — out of this phase's scope, flagged above.
 
-## Design-conformance stop: device management UI
+## Design reference correction (2026-09-05)
 
-`.design-reference/ANALYSIS.md` (last sync 2026-08-13) contains no `atDevices` or
-`atDeviceManagement` canvas anywhere across the four surface files. `atSettings` is
-**Unclassified** with no phase claiming it; no device-management sub-panel appears behind it.
+This document originally claimed no device-management canvas existed, and blocked
+`frontend-device-management.md` on a DesignSync capture. **That claim was wrong.** A re-pull of
+the design project (same content as already committed — `Alexandryn-Electron-Admin.dc.html` is
+byte-identical to its 2026-08-13 version, nothing changed on the design side) found the screen
+had been there the whole time: a "Devices" tab within Settings (`sgDevices`,
+`settingsTab==='devices'`), alongside metadata/network/security/storage/advanced. It was missed
+because it's a Settings sub-tab, not a separate top-level route — a search for a literal
+`atDevices` route found nothing, but the sub-tab was drawn in full. `ANALYSIS.md` had already
+filed it correctly under a wide "`atSettings` (remaining tabs) — Unclassified" bucket; that entry
+should now be split out and explicitly claimed for this phase rather than left unclassified.
 
-Per CLAUDE.md's design-conformance rule, the frontend device-management spec **cannot be drafted**
-until a canvas is captured via the DesignSync tool (`get_project`, project ID
-`78075626-e444-438f-8437-205d57129a37`). This is a stop-and-ask. The implementation session must
-resolve this before drafting `frontend-device-management.md`.
+What the canvas actually shows, answering `frontend-device-management.md`'s original capture
+questions directly:
+
+- Sub-tab within Settings, not a separate route (above).
+- **Both surfaces exist, scoped differently.** Electron Admin's Devices tab is the admin-facing
+  list of every device, each with a "Revoke" action. The Web canvas (`atAccess`, "This session")
+  and Mobile ("THIS DEVICE") each show only the *current* browser/device's own session — a
+  "Sign out" action, not a list of other devices or a revoke control over them.
+- Per device, the host list shows: a status dot, name (e.g. "Pixel 8"), kind (e.g.
+  "Phone · Chrome"), IP address, last-seen text, and a session descriptor ("Owner" /
+  "Remembered device" / "Expires in *N* days").
+- Revocation is an inline text action ("Revoke", in the error color), not a button or swipe.
+- **No confirmation dialog is captured for revocation.** Still a genuine open question the spec
+  must decide.
+
+Two things the re-pull surfaced that need a decision before the Web-side session screen is built,
+not before the host-side Devices tab:
+
+- The Web canvas's join screen is a "Library passphrase" + "Remember this browser for 30 days"
+  flow, with a fallback pointing to "Settings → Devices → Pending" for host approval. That does
+  not match phase 13's actual shipped join mechanism (Gate 1 decision C-1(a): account login +
+  QR pairing, no passphrase, no pending-approval state). **Maintainer has not decided whether
+  this is stale content predating that decision or a second join path still wanted** — the
+  implementation session must stop and ask before assuming either way when it reaches the
+  Web-side session/join screens. Do not build the passphrase flow, and do not silently drop it
+  from the canvas either — ask.
+- The same Web "This session" screen also carries an "OFFLINE COPIES" card. That is the
+  offline-file-cache element this phase's own Out section excludes (coupled to the unresolved
+  cloud-relay question). Building the session/sign-out part of that screen must not carry the
+  offline-copies card along with it.
 
 ## What phase 13 built that this phase extends
 
@@ -131,14 +181,16 @@ Secondary decisions (may be ADR addenda or spec FRs depending on weight):
 | Spec | Status |
 |---|---|
 | `backend-device-sync.md` | Not yet scoped — blocked on ADR 0029 |
-| `frontend-device-management.md` | Not yet scoped — blocked on missing canvas (stop-and-ask above) |
+| `frontend-device-management.md` | Canvas exists (see "Design reference correction" above); spec content being corrected to match, not yet APPROVED |
 
 Working decomposition (planning session's decomposition is authoritative if it diverges):
 1. ADR 0029 — drafted and approved first; everything else depends on it.
 2. `backend-device-sync.md` — sync transport, conflict resolution, device list/revocation
    endpoints, per-device cursors, PairedDevice extension decision. Depends on ADR 0029.
-3. `frontend-device-management.md` — device list, revocation, sync status indicators.
-   Depends on ADR 0029 and the missing canvas being captured.
+3. `frontend-device-management.md` — device list, revocation, sync status indicators, against
+   the canvas identified in "Design reference correction" above. Depends on ADR 0029. Does not
+   build the Web-side passphrase/pending-approval join screen without the maintainer's
+   confirmation (see the same section).
 
 ## Risks
 
@@ -146,7 +198,7 @@ Working decomposition (planning session's decomposition is authoritative if it d
 |---|---|---|---|
 | Two devices disagree about which Work/Edition a ProgressReport refers to — sync appears to work but reports are against different canonical records | Medium | High — silent data divergence with no visible error | ADR 0029 must resolve this before any sync spec is written. Leaving it as a footnote inside the sync spec reproduces the exact failure `0049` finding 8 documents. |
 | Refresh token revocation not applied on device revoke (A-13-06, Accepted, deferred from phase 13) | Low | Medium | ADR 0028 §6 deferred this to phase 14. This phase must state the decision explicitly — carry forward or resolve. Cannot be silently inherited from the closed audit finding. |
-| Missing device-management canvas blocks frontend spec indefinitely | Medium | Phase cannot close exit criterion "device management UI supports revocation" | Named as a stop-and-ask. Canvas must be captured before the implementation session begins. |
+| Web-side passphrase/pending-approval join screen gets built or silently dropped without the maintainer's input | Medium | Either builds a join mechanism phase 13 never shipped, or loses design intent that was actually still wanted | Named as a stop-and-ask in "Design reference correction" above; the implementation session must ask before assuming either way when it reaches the Web-side session/join screens. |
 | Sync cursor design introduces IDOR (device reading another user's sync state) | Low | High | Per-user + per-library scoping discipline applied from the start. `scripts/check-user-scoped-reading.sh` extended to cover sync endpoints. |
 | `ReconcileProgress` epoch assumption broken by a clock-skewed or replay-attacking LAN client | Low | Medium | Epoch is server-assigned, never client-supplied (domain-reading.md FR-2). Sync spec must state this invariant and the transport must validate it at the boundary. |
 
@@ -192,7 +244,8 @@ or precise positions — only IDs and outcome categories.
 - [ ] Conflict resolution tested against concurrent offline edits
 - [ ] Per-device sync cursor advances correctly; incremental fetch tested
 - [ ] IDOR test: a device cannot read or write another user's sync state
-- [ ] Device management UI supports revocation (pending canvas capture)
+- [ ] Device management UI supports revocation, built against the existing Settings → Devices
+      canvas; revocation confirmation UX decided in the spec (not captured in the canvas)
 - [ ] A-13-06 explicitly resolved or deferred with a recorded reason — not silently inherited
 - [ ] `scripts/check-user-scoped-reading.sh` extended to sync endpoints and passes
 - [ ] All specs in this phase are `VERIFIED`
