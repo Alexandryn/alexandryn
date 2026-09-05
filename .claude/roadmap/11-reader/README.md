@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Specs approved, implementation not started |
+| **Status** | **Implemented** — all four specs `IMPLEMENTED`, security audit `0011` cleared Gate 2 (2026-09-02), `feat/phase11-reader` awaiting final maintainer PR approval for `VERIFIED`. Status line was stale ("Specs approved, implementation not started"); corrected 2026-09-05 when phase 14 opened. |
 | **Depends on** | Phase 06, Phase 10 |
 | **Blocks** | 14 |
 | **Opened** | — |
