@@ -625,11 +625,10 @@ func DeletePairingHandler(
 		currentTime := now().UTC()
 
 		if session.State() == domain.PairingConsumed {
-			// Find device and revoke
-			dev, err := deviceRepo.FindByPairingSessionID(r.Context(), sessionID)
-			if err == nil && dev != nil {
-				_ = deviceRepo.Revoke(r.Context(), dev.ID(), currentTime)
-			}
+			// Revoke by session ID directly: the device may still be
+			// provisional (owner_id NULL, not yet claimed by login), which
+			// FindByPairingSessionID can't represent as a domain.PairedDevice.
+			_ = deviceRepo.RevokeByPairingSessionID(r.Context(), sessionID, currentTime)
 		} else if session.State() == domain.PairingPending || session.State() == domain.PairingVerified {
 			session.ExpireAt(session.ExpiresAt())
 			_ = sessionRepo.Save(r.Context(), session)

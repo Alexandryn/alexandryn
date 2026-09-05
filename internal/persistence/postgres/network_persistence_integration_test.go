@@ -128,6 +128,83 @@ func TestPairedDeviceRepository_CRUD(t *testing.T) {
 	}
 }
 
+// TestPairedDeviceRepository_RevokeByPairingSessionID reproduces the bug
+// where an admin's revoke of a still-provisional device (verified but not
+// yet claimed by login, owner_id NULL) silently did nothing: the old code
+// path went through FindByPairingSessionID -> Revoke(id), and
+// FindByPairingSessionID returns NotFound for a provisional row (Owner is a
+// mandatory domain.PairedDevice field, so scanDevice can't represent one).
+// RevokeByPairingSessionID revokes by pairing_session_id directly, so it
+// works regardless of whether the device has been claimed yet.
+func TestPairedDeviceRepository_RevokeByPairingSessionID(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('user-dev-2', 'devuser2', 'devuser2@example.com', 'reader', now(), now())`)
+
+	devRepo := postgres.NewPairedDeviceRepository(pool)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	mustExecPool(t, pool, `INSERT INTO pairing_sessions
+		(id, initiated_by, code_ciphertext, code_index, state, created_at, expires_at)
+		VALUES ('ps-revoke-prov', 'user-dev-2', '\x01', '\x03', 'consumed', now(), now() + interval '5 minutes')`)
+
+	provID := domain.DeviceID("dev-revoke-provisional")
+	if err := devRepo.InsertProvisional(
+		ctx, provID, "Provisional Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode,
+		domain.PairingSessionID("ps-revoke-prov"), now,
+	); err != nil {
+		t.Fatalf("InsertProvisional: %v", err)
+	}
+
+	// The bug: revoking through the device (never assigned) is a no-op —
+	// there is no device ID to revoke by until ownership is assigned.
+	// The fix under test revokes by session ID instead.
+	revokeTime := now.Add(time.Minute)
+	if err := devRepo.RevokeByPairingSessionID(ctx, domain.PairingSessionID("ps-revoke-prov"), revokeTime); err != nil {
+		t.Fatalf("RevokeByPairingSessionID on provisional device: %v", err)
+	}
+
+	// A revoked provisional device must not become claimable by a later
+	// login completing with the same grant (closes the "admin revokes,
+	// device still gets fully paired" gap).
+	err := devRepo.AssignOwnerByPairingSession(ctx, domain.PairingSessionID("ps-revoke-prov"), domain.UserID("user-dev-2"))
+	if err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected AssignOwnerByPairingSession to fail (NotFound) for a revoked provisional device, got: %v", err)
+	}
+
+	// Revoking an already-revoked (or nonexistent) session is reported, not silently ok.
+	if err := devRepo.RevokeByPairingSessionID(ctx, domain.PairingSessionID("ps-revoke-prov"), revokeTime); err == nil || domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("expected NotFound revoking an already-revoked session, got: %v", err)
+	}
+
+	// RevokeByPairingSessionID also works for an already-owned device.
+	mustExecPool(t, pool, `INSERT INTO pairing_sessions
+		(id, initiated_by, code_ciphertext, code_index, state, created_at, expires_at)
+		VALUES ('ps-revoke-owned', 'user-dev-2', '\x01', '\x04', 'consumed', now(), now() + interval '5 minutes')`)
+	ownedID := domain.DeviceID("dev-revoke-owned")
+	if err := devRepo.InsertProvisional(
+		ctx, ownedID, "Owned Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode,
+		domain.PairingSessionID("ps-revoke-owned"), now,
+	); err != nil {
+		t.Fatalf("InsertProvisional (owned): %v", err)
+	}
+	if err := devRepo.AssignOwnerByPairingSession(ctx, domain.PairingSessionID("ps-revoke-owned"), domain.UserID("user-dev-2")); err != nil {
+		t.Fatalf("AssignOwnerByPairingSession (owned): %v", err)
+	}
+	if err := devRepo.RevokeByPairingSessionID(ctx, domain.PairingSessionID("ps-revoke-owned"), revokeTime); err != nil {
+		t.Fatalf("RevokeByPairingSessionID on owned device: %v", err)
+	}
+	owned, err := devRepo.FindByID(ctx, ownedID)
+	if err != nil {
+		t.Fatalf("FindByID owned device: %v", err)
+	}
+	if owned.RevokedAt() == nil {
+		t.Fatal("expected owned device RevokedAt to be set")
+	}
+}
+
 func TestNetworkSettingsRepository(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

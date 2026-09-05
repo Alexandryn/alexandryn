@@ -828,6 +828,9 @@ func (ctPairedDevices) Save(_ context.Context, _ *domain.PairedDevice) error {
 func (ctPairedDevices) Revoke(_ context.Context, _ domain.DeviceID, _ time.Time) error {
 	return nil
 }
+func (ctPairedDevices) RevokeByPairingSessionID(_ context.Context, _ domain.PairingSessionID, _ time.Time) error {
+	return nil
+}
 
 type ctNetworkSettings struct {
 	settings *domain.NetworkSettings
