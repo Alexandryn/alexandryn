@@ -587,36 +587,36 @@ phase, supersedes the Tier-0-only PR #79).
 ## Gate 2 — security audit `0013`  ──  STOP AND ASK  ──
 
 ### G2.1 — four-attacker + STRIDE pass
-- [ ] full adversarial pass over the phase (prefer two independent subagents — `feedback_make_improve_review_fix_cycle`): malicious LAN client (unauth + paired-reader), on-path/MITM, phished-onto-hostile-page, attacker-with-the-QR
-- [ ] record `.claude/audits/0013-phase13-network-access.md` from `.claude/templates/audit.md`; severities rated honestly (§10 — no inflate, no deflate)
-- [ ] establishes (not "re-confirms") the app-origin CSP on every response path incl. the SPA fallback + error responses
-- [ ] confirms ADR 0024 sanitisation + phase-11 reader CSP still hold for all LAN-served content
+- [x] full adversarial pass over the phase (prefer two independent subagents — `feedback_make_improve_review_fix_cycle`): malicious LAN client (unauth + paired-reader), on-path/MITM, phished-onto-hostile-page, attacker-with-the-QR
+- [x] record `.claude/audits/0013-phase13-network-access.md` from `.claude/templates/audit.md`; severities rated honestly (§10 — no inflate, no deflate)
+- [x] establishes (not "re-confirms") the app-origin CSP on every response path incl. the SPA fallback + error responses
+- [x] confirms ADR 0024 sanitisation + phase-11 reader CSP still hold for all LAN-served content
 
 ### G2.2 — re-verify the phase-12 authz prelude
-- [ ] AUDIT-0012-C1: trace each reading/reader handler → repository → SQL, read the `user_id` + `library_id` predicate in the query text (not from the repo layer — CLAUDE.md Reflex)
-- [ ] AUDIT-0012-C2: `VerifyAccessToken` asserts the type on the wired middleware path
-- [ ] P12-4: `X-Library-Id` validated against `claims.Libraries` on the wired path
+- [x] AUDIT-0012-C1: trace each reading/reader handler → repository → SQL, read the `user_id` + `library_id` predicate in the query text (not from the repo layer — CLAUDE.md Reflex)
+- [x] AUDIT-0012-C2: `VerifyAccessToken` asserts the type on the wired middleware path
+- [x] P12-4: `X-Library-Id` validated against `claims.Libraries` on the wired path
 
 ### G2.3 — gate
-- [ ] no open Critical or High
-- [ ] **report to the maintainer — what's done, what's unresolved, what's risky — and wait.** Do not cross this gate on own judgement (constitution Review gates)
+- [x] no open Critical or High
+- [x] **report to the maintainer — what's done, what's unresolved, what's risky — and wait.** Do not cross this gate on own judgement (constitution Review gates)
 
 ---
 
 ## Close
 
 ### C.1 — exit-criteria walk
-- [ ] walk `roadmap/13-network-access/README.md` Exit criteria box by box; each cites real evidence (test name / file / audit finding)
-- [ ] the "session cookie attributes — N/A" box: record *why* in the walk (ADR 0025 / ADR 0028 §5), not implemented
+- [x] walk `roadmap/13-network-access/README.md` Exit criteria box by box; each cites real evidence (test name / file / audit finding)
+- [x] the "session cookie attributes — N/A" box: record *why* in the walk (ADR 0025 / ADR 0028 §5), not implemented
 
 ### C.2 — phase-12 spec amendment re-confirmations (one at a time, in order)
-- [ ] ADR 0025 (refresh-token lifetime operator-configurable `[1,90]`)
-- [ ] `backend-authentication.md` (login `enrolmentGrant` param + response; access-token `typ` check)
-- [ ] `backend-library-namespaces.md` (`X-Library-Id ∈ claims.Libraries`)
-- [ ] `backend-reading-api.md` (per-user + per-library query-layer enforcement + CI guard)
-- [ ] `backend-reader-content.md` (library-membership check before serving edition bytes)
-- [ ] `backend-configuration.md` FR-4 (six keys) + FR-8 interim note **removed** (`ServeTLS` now exists)
-- [ ] `architecture-backend.md` FR-6 / `backend-http-transport.md` FR-1 — already re-confirmed at Checkpoint 2
+- [x] ADR 0025 (refresh-token lifetime operator-configurable `[1,90]`)
+- [x] `backend-authentication.md` (login `enrolmentGrant` param + response; access-token `typ` check)
+- [x] `backend-library-namespaces.md` (`X-Library-Id ∈ claims.Libraries`)
+- [x] `backend-reading-api.md` (per-user + per-library query-layer enforcement + CI guard)
+- [x] `backend-reader-content.md` (library-membership check before serving edition bytes)
+- [x] `backend-configuration.md` FR-4 (six keys) + FR-8 interim note **removed** (`ServeTLS` now exists)
+- [x] `architecture-backend.md` FR-6 / `backend-http-transport.md` FR-1 — already re-confirmed at Checkpoint 2
 
 ### C.3 — approval
 - [ ] maintainer approval recorded in the phase-13 README header

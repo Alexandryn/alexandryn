@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 1/10/11 reworked and self-reviewed 2026-09-02. Implementation may begin. |
+| **Status** | `VERIFIED` — implemented across Tiers 1–5, certified in Gate 2 security audit `0013`, and verified green by Playwright E2E and unit test suites. |
 | **Phase** | `13-network-access` |
 | **Author** | Claude (Sonnet 5) |
 | **Created** | 2026-09-02 |
-| **Last updated** | 2026-09-02 |
+| **Last updated** | 2026-09-05 |
 | **Reviewed in** | [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) (two independent agents) — Needs rework at review time, findings addressed |
 | **Design reference** | Pure domain types — **no screen renders from this spec**. For context only, the surfaces the pairing flow eventually appears on: `Alexandryn-Web.dc.html` `atConnect`/`atAccess` (**Binding**, outline only) and `Alexandryn-Electron-Admin.dc.html` `sgNetwork` "Advanced" disclosure row (**Binding, contents uncaptured**). `.design-reference/ANALYSIS.md` synced **2026-08-13**, scope-classification pass **2026-08-17**. **Not treated as binding authority for this spec:** the first-run `fr4` step (`ANALYSIS.md` classifies `atFirstRun` **Unclassified**) and `sgDevices` (**no ledger row** — the device-list screen is not classified anywhere). The device-management phase boundary (D-4) is set by the roadmap and ADR 0028 §6 / `implementation-plan.md` C-3, not by `sgDevices`. D-1 (passphrase vs. account login) resolved by ADR 0028 §6. |
 

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 5/6/S-H2/S-H4/S-M3 + the phase-12 hardening prelude reworked and self-reviewed 2026-09-02. Implementation may begin. |
+| **Status** | `VERIFIED` — implemented across Tiers 0–4, certified in Gate 2 security audit `0013`, and verified green by automated test suites. |
 | **Phase** | `13-network-access` |
 | **Author** | Claude (Sonnet 5) |
 | **Created** | 2026-09-02 |
-| **Last updated** | 2026-09-02 |
+| **Last updated** | 2026-09-05 |
 | **Reviewed in** | [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) (two independent agents) — Needs rework at review time, findings addressed |
 | **Design reference** | `N/A` — transport layer, no UI. The configuration surface this spec's keys feed is `sgNetwork`'s "Advanced" disclosure row in `Alexandryn-Electron-Admin.dc.html` — the **one binding, contents-uncaptured** entry for this surface (`.design-reference/ANALYSIS.md` synced 2026-08-13, classified 2026-08-17); `atFirstRun`/`fr4` is Unclassified and is not relied on. Covered by `frontend-network-and-pairing.md`. |
 

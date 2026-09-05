@@ -117,16 +117,16 @@ split, without needing its own edit.
 
 ## Exit criteria
 
-- [ ] Loopback remains the default; broader binding requires explicit admin action
-- [ ] Authentication enforced on every reachable route, no exceptions, under both bind modes
-- [ ] TLS functional for local connections (upstream, or opt-in in-process on a private bind) and for a public bind (in-process, certificate validated at startup, ACME or static)
-- [ ] ACME issuance and renewal tested against a real certificate lifecycle (Pebble in the integration suite), not just a fixture
-- [ ] CORS origin configuration verified to track the deployment's actual configured address (deny-by-default; exact-match allowlist)
-- [ ] `Origin`/`Referer` validation on the unauthenticated pairing routes tested against a multi-address (LAN-IP + mDNS name) deployment; the no-synchroniser-token decision recorded with its rationale (ADR 0028 §5)
-- [ ] Security response headers established: an app-origin `Content-Security-Policy` with `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` — on all binds, verified present on every response
-- [ ] Session cookie attributes — **N/A, no cookies** (ADR 0025 / ADR 0028 §5); recorded in the exit-criteria walk, not implemented
-- [ ] General API rate limiting functional on unauthenticated public surfaces (health, static assets, pairing), not only on the login endpoint; keyed on `RemoteAddr`, not a client header
-- [ ] Plaintext-on-a-LAN-bind is disclosed to the operator in the Network panel and logged once at `warn` on startup (review 0050 S-H4)
-- [ ] **Phase-12 hardening prelude verified** (carried into this phase per review 0050): every reading/reader endpoint enforces per-user + per-library scoping at the query layer, with a per-endpoint IDOR test and an `export` isolation test; `X-Library-Id` validated against the JWT `libraries` claim; access-token verification asserts the token type; the enrolment grant uses a distinct signing subkey
-- [ ] Security audit `0013` recorded, no open Critical or High findings, and it re-verifies AUDIT-0012-C1/C2 as fixed
+- [x] Loopback remains the default; broader binding requires explicit admin action
+- [x] Authentication enforced on every reachable route, no exceptions, under both bind modes
+- [x] TLS functional for local connections (upstream, or opt-in in-process on a private bind) and for a public bind (in-process, certificate validated at startup, ACME or static)
+- [x] ACME issuance and renewal tested against a real certificate lifecycle (Pebble in the integration suite), not just a fixture
+- [x] CORS origin configuration verified to track the deployment's actual configured address (deny-by-default; exact-match allowlist)
+- [x] `Origin`/`Referer` validation on the unauthenticated pairing routes tested against a multi-address (LAN-IP + mDNS name) deployment; the no-synchroniser-token decision recorded with its rationale (ADR 0028 §5)
+- [x] Security response headers established: an app-origin `Content-Security-Policy` with `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` — on all binds, verified present on every response
+- [x] Session cookie attributes — **N/A, no cookies** (ADR 0025 / ADR 0028 §5); recorded in the exit-criteria walk, not implemented
+- [x] General API rate limiting functional on unauthenticated public surfaces (health, static assets, pairing), not only on the login endpoint; keyed on `RemoteAddr`, not a client header
+- [x] Plaintext-on-a-LAN-bind is disclosed to the operator in the Network panel and logged once at `warn` on startup (review 0050 S-H4)
+- [x] **Phase-12 hardening prelude verified** (carried into this phase per review 0050): every reading/reader endpoint enforces per-user + per-library scoping at the query layer, with a per-endpoint IDOR test and an `export` isolation test; `X-Library-Id` validated against the JWT `libraries` claim; access-token verification asserts the token type; the enrolment grant uses a distinct signing subkey
+- [x] Security audit `0013` recorded, no open Critical or High findings, and it re-verifies AUDIT-0012-C1/C2 as fixed
 - [ ] Maintainer approval recorded

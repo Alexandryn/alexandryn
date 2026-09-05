@@ -55,4 +55,6 @@ No phase closes with an open Critical or High finding.
 | [0006](0006-phase06-library.md) | Phase 06 library domain (backend API, frontend screens, collections) | 2026-08-31 | 0 | 0 | Clear |
 | [0007](0007-phase07-metadata.md) | Phase 07 metadata discovery & caching (Open Library client, cover LRU cache, Discover screen) | 2026-08-31 | 0 | 0 | Clear |
 | [0009](0009-phase09-async-jobs.md) | Phase 09 async jobs (PostgreSQL-backed queue, worker pool, retry/backoff, dead-letter, reaper, lifecycle wiring) | 2026-09-01 | 0 | 0 | Clear (2 Low, 2 Informational, all accepted) |
+| [0012](0012-phase12-auth.md) | Phase 12 authentication, RBAC & multi-library namespacing | 2026-09-02 | 0 | 2 | 2 High findings resolved and certified in Phase 13 |
+| [0013](0013-phase13-network-access.md) | Phase 13 network access & device pairing | 2026-09-05 | 0 | 0 | Clear (1 High, 1 Med, 2 Low fixed; 1 Info accepted) |
 

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | `APPROVED` — scope approved at phase-13 Gate 1 (2026-09-02); independent two-agent review [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md), findings 1/2/7/10/S-M1/S-M4 + the phase-12 hardening close gate reworked and self-reviewed 2026-09-02. Implementation may begin. |
+| **Status** | `VERIFIED` — implemented across Tiers 3–4, certified in Gate 2 security audit `0013`, and verified green by integration test suites. |
 | **Phase** | `13-network-access` |
 | **Author** | Claude (Sonnet 5) |
 | **Created** | 2026-09-02 |
-| **Last updated** | 2026-09-02 |
+| **Last updated** | 2026-09-05 |
 | **Reviewed in** | [`0050`](../reviews/0050-phase13-spec-package-and-phase12-authz-review.md) (two independent agents) — Needs rework at review time, findings addressed |
 | **Design reference** | The one **binding** ledger entry for this surface is `sgNetwork`'s "Advanced" disclosure row in `Alexandryn-Electron-Admin.dc.html` (**Binding, contents uncaptured** — `.design-reference/ANALYSIS.md` synced **2026-08-13**, classification pass **2026-08-17**): the endpoint shapes behind it are this spec's to define. The `atConnect`/`atAccess` (Web) pairing/session screens are **Binding**, outline only. **Not relied on as authority:** the first-run `fr4` step (`atFirstRun` is **Unclassified** in the ledger) and `sgDevices` (no ledger row). D-1 (passphrase vs. account login) → ADR 0028 §6; D-2 ("require authentication" toggle) → ADR 0028 §7 (no writable toggle); D-4 (device-management phase split) → roadmap + ADR 0028 §6, not `sgDevices`; D-5 ("allow access from this network" toggle) → ADR 0028 §8 (read-only statement). |
 
