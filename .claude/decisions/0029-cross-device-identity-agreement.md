@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-09-05 |
 | **Deciders** | Luann Moreira |
 | **Supersedes** | — |
