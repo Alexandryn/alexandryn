@@ -57,6 +57,7 @@ type repositories struct {
 	networkSettings    domain.NetworkSettingsRepository
 	enrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
 	networkSweep       *postgres.NetworkSweep
+	readingSync        *postgres.ReadingSyncRepository
 }
 
 // newRepositories constructs every T24 repository implementation
@@ -133,5 +134,6 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		networkSettings:    postgres.NewNetworkSettingsRepository(pool),
 		enrolmentGrantJTIs: postgres.NewEnrolmentGrantJTIRepository(pool),
 		networkSweep:       postgres.NewNetworkSweep(pool),
+		readingSync:        postgres.NewReadingSyncRepository(pool),
 	}
 }

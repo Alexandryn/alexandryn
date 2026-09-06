@@ -2533,6 +2533,116 @@ paths:
                 message: pairing session not found
                 correlationId: "00000000-0000-0000-0000-000000000000"
 
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      summary: List paired devices for authenticated user
+      responses:
+        '200':
+          description: List of paired devices
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListDevicesResponse' }
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/devices/{id}:
+    delete:
+      operationId: revokeDevice
+      summary: Revoke paired device
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Paired device revoked
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Paired device not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Paired device is already revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/sync/reading:
+    get:
+      operationId: syncReading
+      summary: Fetch reading synchronization delta
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+        - name: X-Device-Id
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Incremental reading sync payload
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadingSyncResponse' }
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Unauthorized or device revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/v1/sync/progress:
+    post:
+      operationId: syncProgress
+      summary: Post reading progress report from device
+      parameters:
+        - name: X-Device-Id
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SyncProgressRequest' }
+      responses:
+        '200':
+          description: Progress reconciliation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncProgressResponse' }
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Unauthorized or device revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Work not found in library
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     # Reserved from the start (FR-6); no endpoint requires it until
@@ -3563,6 +3673,122 @@ components:
         hostName: { type: string }
         rememberDeviceDays: { type: integer, minimum: 1, maximum: 90 }
         updatedAt: { type: string, format: date-time }
+
+    DeviceResponse:
+      type: object
+      additionalProperties: false
+      required: [id, label, deviceClass, enrolledVia, createdAt, lastSeenAt]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        deviceClass: { type: string }
+        enrolledVia: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        lastSyncedAt:
+          type: string
+          format: date-time
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ListDevicesResponse:
+      type: object
+      additionalProperties: false
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items: { $ref: '#/components/schemas/DeviceResponse' }
+
+    SyncProgressItem:
+      type: object
+      additionalProperties: false
+      required: [workId, percentage, epoch, deviceId, observedAt, syncSequence]
+      properties:
+        workId: { type: string }
+        percentage: { type: number, minimum: 0, maximum: 1 }
+        epoch: { type: integer, minimum: 0 }
+        precisePosition:
+          $ref: '#/components/schemas/PrecisePosition'
+        deviceId: { type: string }
+        observedAt: { type: string, format: date-time }
+        syncSequence: { type: integer }
+
+    SyncBookmarkItem:
+      type: object
+      additionalProperties: false
+      required: [id, editionId, position, label, createdAt, syncSequence]
+      properties:
+        id: { type: string }
+        editionId: { type: string }
+        position: { type: string }
+        label: { type: string }
+        createdAt: { type: string, format: date-time }
+        syncSequence: { type: integer }
+
+    SyncHighlightItem:
+      type: object
+      additionalProperties: false
+      required: [id, editionId, startPosition, endPosition, note, category, createdAt, syncSequence]
+      properties:
+        id: { type: string }
+        editionId: { type: string }
+        startPosition: { type: string }
+        endPosition: { type: string }
+        note: { type: string }
+        category: { type: string }
+        createdAt: { type: string, format: date-time }
+        syncSequence: { type: integer }
+
+    ReadingSyncResponse:
+      type: object
+      additionalProperties: false
+      required: [cursor, progress, bookmarks, highlights]
+      properties:
+        cursor: { type: integer }
+        progress:
+          type: array
+          items: { $ref: '#/components/schemas/SyncProgressItem' }
+        bookmarks:
+          type: array
+          items: { $ref: '#/components/schemas/SyncBookmarkItem' }
+        highlights:
+          type: array
+          items: { $ref: '#/components/schemas/SyncHighlightItem' }
+
+    SyncPrecisePosition:
+      type: object
+      additionalProperties: false
+      required: [editionId]
+      properties:
+        editionId: { type: string }
+        value: { type: string }
+        cfi: { type: string }
+
+    SyncProgressRequest:
+      type: object
+      additionalProperties: false
+      required: [workId, percentage, observedEpoch, deviceId]
+      properties:
+        workId: { type: string }
+        percentage: { type: number, minimum: 0, maximum: 1 }
+        observedEpoch: { type: integer, minimum: 0 }
+        precisePosition:
+          $ref: '#/components/schemas/SyncPrecisePosition'
+        deviceId: { type: string }
+        reportedAt: { type: string, format: date-time }
+
+    SyncProgressResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, progress, cursor]
+      properties:
+        outcome: { type: string, enum: [advanced, unchanged, rejected] }
+        progress: { $ref: '#/components/schemas/ReadingProgress' }
+        cursor: { type: integer }
 
 # Applied globally so the reserved scheme is visible in the contract;
 # every current operation opts out with `security: []` until phase 12.

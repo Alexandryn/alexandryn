@@ -31,6 +31,7 @@ type PoolRef struct {
 	reader        readerRefs  // phase 11 — see reader_ref.go
 	auth          authRefs    // phase 12 — see auth_ref.go
 	network       networkRefs // phase 13 — see network_ref.go
+	sync          syncRefs    // phase 14 — see sync_ref.go
 }
 
 // Set stores p as the current reference.
