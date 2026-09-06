@@ -377,11 +377,13 @@ type PairedDevice struct {
 	id          DeviceID
 	owner       UserID
 	label       string
-	deviceClass DeviceClass
-	enrolledVia EnrolledVia
-	createdAt   time.Time
-	lastSeenAt  time.Time
-	revokedAt   *time.Time
+	deviceClass  DeviceClass
+	enrolledVia  EnrolledVia
+	createdAt    time.Time
+	lastSeenAt   time.Time
+	revokedAt    *time.Time
+	syncCursor   int64
+	lastSyncedAt *time.Time
 }
 
 // NewPairedDevice constructs a device owned by a known user. label is
@@ -414,6 +416,7 @@ func NewPairedDevice(id DeviceID, owner UserID, label string, deviceClass Device
 		enrolledVia: enrolledVia,
 		createdAt:   now,
 		lastSeenAt:  now,
+		syncCursor:  0,
 	}, nil
 }
 
@@ -427,6 +430,8 @@ func RehydratePairedDevice(
 	enrolledVia EnrolledVia,
 	createdAt, lastSeenAt time.Time,
 	revokedAt *time.Time,
+	syncCursor int64,
+	lastSyncedAt *time.Time,
 ) (*PairedDevice, error) {
 	if strings.TrimSpace(string(id)) == "" || strings.TrimSpace(string(owner)) == "" {
 		return nil, &Error{Category: Internal, Message: "persisted paired device is missing an identifier"}
@@ -440,15 +445,20 @@ func RehydratePairedDevice(
 	if !enrolledVia.valid() {
 		return nil, &Error{Category: Internal, Message: fmt.Sprintf("persisted paired device has an unknown enrolment method %q", enrolledVia)}
 	}
+	if syncCursor < 0 {
+		return nil, &Error{Category: Internal, Message: "persisted paired device has a negative sync cursor"}
+	}
 	return &PairedDevice{
-		id:          id,
-		owner:       owner,
-		label:       label,
-		deviceClass: deviceClass,
-		enrolledVia: enrolledVia,
-		createdAt:   createdAt,
-		lastSeenAt:  lastSeenAt,
-		revokedAt:   revokedAt,
+		id:           id,
+		owner:        owner,
+		label:        label,
+		deviceClass:  deviceClass,
+		enrolledVia:  enrolledVia,
+		createdAt:    createdAt,
+		lastSeenAt:   lastSeenAt,
+		revokedAt:    revokedAt,
+		syncCursor:   syncCursor,
+		lastSyncedAt: lastSyncedAt,
 	}, nil
 }
 
@@ -459,6 +469,8 @@ func (d *PairedDevice) DeviceClass() DeviceClass { return d.deviceClass }
 func (d *PairedDevice) EnrolledVia() EnrolledVia { return d.enrolledVia }
 func (d *PairedDevice) CreatedAt() time.Time     { return d.createdAt }
 func (d *PairedDevice) LastSeenAt() time.Time    { return d.lastSeenAt }
+func (d *PairedDevice) SyncCursor() int64        { return d.syncCursor }
+func (d *PairedDevice) LastSyncedAt() *time.Time { return d.lastSyncedAt }
 
 // RevokedAt is nil for an active device.
 func (d *PairedDevice) RevokedAt() *time.Time { return d.revokedAt }
@@ -484,5 +496,20 @@ func (d *PairedDevice) Touch(now time.Time) error {
 	if now.After(d.lastSeenAt) {
 		d.lastSeenAt = now
 	}
+	return nil
+}
+
+// AdvanceCursor advances the sync cursor to a strictly higher value and records the sync timestamp (FR-5).
+// Fails if the device is revoked or if newCursor <= current.
+func (d *PairedDevice) AdvanceCursor(newCursor int64, at time.Time) error {
+	if d.revokedAt != nil {
+		return &Error{Category: Conflict, Message: "paired device is revoked", Err: ErrDeviceRevoked}
+	}
+	if newCursor <= d.syncCursor {
+		return &Error{Category: InvalidInput, Message: fmt.Sprintf("new sync cursor %d must be strictly greater than current %d", newCursor, d.syncCursor)}
+	}
+	d.syncCursor = newCursor
+	t := at
+	d.lastSyncedAt = &t
 	return nil
 }

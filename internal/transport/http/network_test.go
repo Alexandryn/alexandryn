@@ -1150,6 +1150,16 @@ func (m *memPairedDevices) RevokeByPairingSessionID(_ context.Context, sessID do
 	return d.Revoke(now)
 }
 
+func (m *memPairedDevices) AdvanceCursor(_ context.Context, id domain.DeviceID, newCursor int64, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.byID[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "device not found"}
+	}
+	return d.AdvanceCursor(newCursor, now)
+}
+
 func (m *memPairedDevices) isProvisionalRevoked(id domain.DeviceID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

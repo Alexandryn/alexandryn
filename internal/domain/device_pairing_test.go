@@ -410,13 +410,66 @@ func TestRehydratePairingSession_RevalidatesInvariants(t *testing.T) {
 func TestRehydratePairedDevice_RevalidatesInvariants(t *testing.T) {
 	now := time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC)
 
-	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now, now, nil); err != nil {
+	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now, now, nil, 0, nil); err != nil {
 		t.Fatalf("valid row: %v", err)
 	}
-	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "x", "martian", domain.EnrolledViaPairingCode, now, now, nil); err == nil {
+	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "x", "martian", domain.EnrolledViaPairingCode, now, now, nil, 0, nil); err == nil {
 		t.Fatal("unknown device class must fail rehydration")
 	}
-	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "x", domain.DeviceClassPhone, "telepathy", now, now, nil); err == nil {
+	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "x", domain.DeviceClassPhone, "telepathy", now, now, nil, 0, nil); err == nil {
 		t.Fatal("unknown enrolment method must fail rehydration")
 	}
+	if _, err := domain.RehydratePairedDevice("dev-1", "user-1", "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now, now, nil, -1, nil); err == nil {
+		t.Fatal("negative sync cursor must fail rehydration")
+	}
 }
+
+func TestPairedDevice_AdvanceCursor(t *testing.T) {
+	now := time.Date(2026, 9, 6, 10, 0, 0, 0, time.UTC)
+	dev, err := domain.NewPairedDevice("dev-1", "user-1", "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	if err != nil {
+		t.Fatalf("NewPairedDevice: %v", err)
+	}
+
+	if dev.SyncCursor() != 0 {
+		t.Fatalf("expected initial SyncCursor 0, got %d", dev.SyncCursor())
+	}
+	if dev.LastSyncedAt() != nil {
+		t.Fatalf("expected initial LastSyncedAt nil, got %v", dev.LastSyncedAt())
+	}
+
+	// 1. Forward advance
+	syncTime := now.Add(5 * time.Minute)
+	if err := dev.AdvanceCursor(10, syncTime); err != nil {
+		t.Fatalf("AdvanceCursor forward: %v", err)
+	}
+	if dev.SyncCursor() != 10 {
+		t.Fatalf("expected SyncCursor 10, got %d", dev.SyncCursor())
+	}
+	if dev.LastSyncedAt() == nil || !dev.LastSyncedAt().Equal(syncTime) {
+		t.Fatalf("expected LastSyncedAt %v, got %v", syncTime, dev.LastSyncedAt())
+	}
+
+	// 2. Backward advance (newCursor <= current)
+	if err := dev.AdvanceCursor(5, syncTime.Add(time.Minute)); err == nil {
+		t.Fatal("expected error advancing cursor backward (10 -> 5), got nil")
+	}
+	if err := dev.AdvanceCursor(10, syncTime.Add(time.Minute)); err == nil {
+		t.Fatal("expected error advancing cursor to same value (10 -> 10), got nil")
+	}
+	if dev.SyncCursor() != 10 {
+		t.Fatalf("expected SyncCursor unchanged at 10, got %d", dev.SyncCursor())
+	}
+
+	// 3. Advancing on revoked device must fail
+	if err := dev.Revoke(syncTime.Add(2 * time.Minute)); err != nil {
+		t.Fatalf("Revoke: %v", err)
+	}
+	if err := dev.AdvanceCursor(20, syncTime.Add(3 * time.Minute)); err == nil {
+		t.Fatal("expected error advancing cursor on revoked device, got nil")
+	}
+	if dev.SyncCursor() != 10 {
+		t.Fatalf("expected SyncCursor unchanged after failed advance on revoked device, got %d", dev.SyncCursor())
+	}
+}
+

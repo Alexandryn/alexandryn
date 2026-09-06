@@ -59,6 +59,25 @@ func TestPairedDeviceRepository_CRUD(t *testing.T) {
 	if len(byOwner) != 1 || byOwner[0].ID() != devID {
 		t.Fatalf("expected 1 device, got %d", len(byOwner))
 	}
+	if byOwner[0].SyncCursor() != 0 || byOwner[0].LastSyncedAt() != nil {
+		t.Fatalf("expected initial sync state (0, nil), got (%d, %v)", byOwner[0].SyncCursor(), byOwner[0].LastSyncedAt())
+	}
+
+	// 3b. AdvanceCursor
+	syncTime := now.Add(5 * time.Minute)
+	if err := devRepo.AdvanceCursor(ctx, devID, 42, syncTime); err != nil {
+		t.Fatalf("devRepo.AdvanceCursor: %v", err)
+	}
+	loadedAfterSync, err := devRepo.FindByID(ctx, devID)
+	if err != nil {
+		t.Fatalf("devRepo.FindByID after sync: %v", err)
+	}
+	if loadedAfterSync.SyncCursor() != 42 {
+		t.Fatalf("expected SyncCursor 42, got %d", loadedAfterSync.SyncCursor())
+	}
+	if loadedAfterSync.LastSyncedAt() == nil || !loadedAfterSync.LastSyncedAt().Equal(syncTime) {
+		t.Fatalf("expected LastSyncedAt %v, got %v", syncTime, loadedAfterSync.LastSyncedAt())
+	}
 
 	// 4. Revoke
 	revokeTime := now.Add(10 * time.Minute)
@@ -71,6 +90,11 @@ func TestPairedDeviceRepository_CRUD(t *testing.T) {
 	}
 	if revoked.RevokedAt() == nil {
 		t.Fatal("expected RevokedAt to be set")
+	}
+
+	// AdvanceCursor on revoked device must fail
+	if err := devRepo.AdvanceCursor(ctx, devID, 100, revokeTime.Add(time.Minute)); err == nil {
+		t.Fatal("expected AdvanceCursor on revoked device to fail, got nil")
 	}
 
 	// 5. Provisional insertion and AssignOwnerByPairingSession
