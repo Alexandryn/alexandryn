@@ -274,6 +274,7 @@ type PairedDeviceRepository interface {
 	Revoke(ctx context.Context, id DeviceID, now time.Time) error
 	RevokeByPairingSessionID(ctx context.Context, sessionID PairingSessionID, now time.Time) error
 	AdvanceCursor(ctx context.Context, id DeviceID, newCursor int64, now time.Time) error
+	UpdateLastSeen(ctx context.Context, id DeviceID, now time.Time) error
 }
 
 type NetworkSettingsRepository interface {

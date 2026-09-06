@@ -61,6 +61,24 @@ for f in "${FILES[@]}"; do
 	done
 done
 
+# Verify raw SQL queries in reading_sync_repository.go (GetReadingSyncData) enforce user_id and library_id scoping
+SYNC_REPO="$ROOT/internal/persistence/postgres/reading_sync_repository.go"
+if [ -f "$SYNC_REPO" ]; then
+	for table in reading_progress bookmarks highlights; do
+		query_block=$(awk -v t="$table" '$0 ~ "FROM " t {flag=1} flag; $0 ~ "ORDER BY" {flag=0}' "$SYNC_REPO" | head -n 5)
+		if [ -n "$query_block" ]; then
+			if ! echo "$query_block" | grep -q 'user_id ='; then
+				violations="${violations}reading_sync_repository.go: query on $table in GetReadingSyncData missing user_id scoping
+"
+			fi
+			if ! echo "$query_block" | grep -q 'library_id ='; then
+				violations="${violations}reading_sync_repository.go: query on $table in GetReadingSyncData missing library_id scoping
+"
+			fi
+		fi
+	done
+fi
+
 if [ -n "$violations" ]; then
 	echo "check-user-scoped-reading: violations found:" >&2
 	printf '%s' "$violations" >&2

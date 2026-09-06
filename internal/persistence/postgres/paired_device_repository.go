@@ -158,11 +158,32 @@ func (r *PairedDeviceRepository) RevokeByPairingSessionID(ctx context.Context, s
 
 const pairedDeviceAdvanceCursorSQL = `UPDATE paired_devices
 	SET sync_cursor = $1, last_synced_at = $2
-	WHERE id = $3 AND revoked_at IS NULL`
+	WHERE id = $3 AND revoked_at IS NULL AND sync_cursor < $1`
 
 func (r *PairedDeviceRepository) AdvanceCursor(ctx context.Context, id domain.DeviceID, newCursor int64, now time.Time) error {
 	exec := executorFrom(ctx, r.pool)
 	tag, err := exec.Exec(ctx, pairedDeviceAdvanceCursorSQL, newCursor, now, string(id))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		// Device could be missing/revoked, or its cursor is already >= newCursor (monotonic no-op).
+		dev, err := r.FindByID(ctx, id)
+		if err != nil || dev == nil || dev.RevokedAt() != nil {
+			return &domain.Error{Category: domain.NotFound, Message: "paired device not found or already revoked"}
+		}
+		return nil
+	}
+	return nil
+}
+
+const pairedDeviceUpdateLastSeenSQL = `UPDATE paired_devices
+	SET last_seen_at = $1
+	WHERE id = $2 AND revoked_at IS NULL`
+
+func (r *PairedDeviceRepository) UpdateLastSeen(ctx context.Context, id domain.DeviceID, now time.Time) error {
+	exec := executorFrom(ctx, r.pool)
+	tag, err := exec.Exec(ctx, pairedDeviceUpdateLastSeenSQL, now, string(id))
 	if err != nil {
 		return TranslateError(err)
 	}

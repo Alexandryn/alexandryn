@@ -740,3 +740,26 @@ func TestReadingExport_LogsCountsOnly(t *testing.T) {
 		t.Fatalf("expected an export log record")
 	}
 }
+
+func TestReadingProgressReport_RevokedDeviceRejected(t *testing.T) {
+	api, _ := newReadingAPI()
+	devRepo := newMemPairedDevs()
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	dev, err := domain.NewPairedDevice("3f2504e0-4f89-41d3-9a0c-0305e82c3301", "u-default", "Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dev.Revoke(now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	_ = devRepo.Save(context.Background(), dev)
+	api.Devices = devRepo
+	srv := readingServer(t, api, nil)
+
+	rr := do(t, srv, http.MethodPost, "/api/v1/reading/works/work-1/progress",
+		`{"percentage":0.4,"observedEpoch":0}`, map[string]string{"X-Device-Id": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"})
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+

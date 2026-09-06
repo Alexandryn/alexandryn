@@ -213,8 +213,10 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
 
+	syncMW := transporthttp.LazySyncMiddleware(poolRef)
+
 	mux.Handle("GET /api/v1/reading/works/{workId}/progress", transporthttp.ReadingProgressGetHandler(poolRef))
-	mux.Handle("POST /api/v1/reading/works/{workId}/progress", transporthttp.ReadingProgressReportHandler(poolRef, time.Now))
+	mux.Handle("POST /api/v1/reading/works/{workId}/progress", transporthttp.Chain(transporthttp.ReadingProgressReportHandler(poolRef, time.Now), syncMW))
 	mux.Handle("GET /api/v1/reading/editions/{editionId}/bookmarks", transporthttp.ReadingBookmarksListHandler(poolRef))
 	mux.Handle("POST /api/v1/reading/editions/{editionId}/bookmarks", transporthttp.ReadingBookmarkCreateHandler(poolRef, time.Now))
 	mux.Handle("DELETE /api/v1/reading/bookmarks/{bookmarkId}", transporthttp.ReadingBookmarkDeleteHandler(poolRef))
@@ -282,7 +284,6 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
 
 	// Device Management & Sync routes (Phase 14)
-	syncMW := transporthttp.LazySyncMiddleware(poolRef)
 	mux.Handle("GET /api/v1/devices", transporthttp.Chain(transporthttp.LazyListDevicesHandler(poolRef), syncMW))
 	mux.Handle("DELETE /api/v1/devices/{id}", transporthttp.Chain(transporthttp.LazyRevokeDeviceHandler(poolRef), syncMW))
 	mux.Handle("GET /api/v1/sync/reading", transporthttp.Chain(transporthttp.LazySyncReadingHandler(poolRef), syncMW))

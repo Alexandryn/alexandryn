@@ -54,7 +54,16 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 
 			devID := domain.DeviceID(devIDStr)
 			dev, err := deviceRepo.FindByID(r.Context(), devID)
-			if err != nil || dev.Owner() != user.UserID {
+			if err != nil || dev == nil {
+				if isSyncRoute {
+					WriteError(w, domain.Unauthorized, "unauthorized device", corrID)
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if dev.Owner() != user.UserID {
 				WriteError(w, domain.Unauthorized, "unauthorized device", corrID)
 				return
 			}
@@ -75,9 +84,8 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 				currentTime = now()
 			}
 
-			if err := dev.Touch(currentTime); err == nil {
-				_ = deviceRepo.Save(r.Context(), dev)
-			}
+			_ = dev.Touch(currentTime)
+			_ = deviceRepo.UpdateLastSeen(r.Context(), dev.ID(), currentTime)
 
 			ctx := WithDevice(r.Context(), dev)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -165,7 +173,7 @@ func RevokeDeviceHandler(deviceRepo domain.PairedDeviceRepository, now func() ti
 		}
 
 		dev, err := deviceRepo.FindByID(r.Context(), id)
-		if err != nil || dev.Owner() != user.UserID {
+		if err != nil || dev == nil || dev.Owner() != user.UserID {
 			WriteError(w, domain.NotFound, "paired device not found", corrID)
 			return
 		}
@@ -197,6 +205,7 @@ type ReadingSyncData = postgres.ReadingSyncData
 type SyncStore interface {
 	GetReadingSyncData(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, since int64) (*postgres.ReadingSyncData, error)
 	GetProgressSyncSequence(ctx context.Context, progressID domain.ReadingProgressID) (int64, error)
+	GetSyncSequenceCeiling(ctx context.Context) (int64, error)
 }
 
 // SyncReadingHandler handles GET /api/v1/sync/reading?since=<cursor> (FR-6).
@@ -248,7 +257,8 @@ func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, 
 			currentTime = now()
 		}
 
-		if data.Cursor > dev.SyncCursor() {
+		hasUpdates := len(data.Progress) > 0 || len(data.Bookmarks) > 0 || len(data.Highlights) > 0
+		if hasUpdates && data.Cursor > dev.SyncCursor() {
 			_ = devRepo.AdvanceCursor(r.Context(), dev.ID(), data.Cursor, currentTime)
 		}
 
@@ -363,7 +373,14 @@ func SyncProgressHandler(
 		}
 		repTime := currentTime
 		if req.ReportedAt != nil {
-			repTime = *req.ReportedAt
+			t := req.ReportedAt.UTC()
+			// Constitution §4: validate external input bounds. Client timestamp must not be in
+			// the future or unrealistically stale (> 30 days old). If out of bounds, clamp to server now.
+			if t.After(currentTime.Add(time.Minute)) || t.Before(currentTime.Add(-30*24*time.Hour)) {
+				repTime = currentTime
+			} else {
+				repTime = t
+			}
 		}
 
 		report := domain.ProgressReport{
