@@ -28,7 +28,6 @@ type provDev struct {
 	via       domain.EnrolledVia
 	sessID    domain.PairingSessionID
 	createdAt time.Time
-	revokedAt *time.Time
 }
 
 func newMemPairedDevs() *memPairedDevs {
@@ -399,7 +398,7 @@ func (m *memSyncStore) GetReadingSyncData(_ context.Context, userID domain.UserI
 	}
 
 	res := &transporthttp.ReadingSyncData{Cursor: since}
-	var maxSeq int64 = since
+	maxSeq := since
 	for _, p := range d.Progress {
 		if p.SyncSequence > since {
 			res.Progress = append(res.Progress, p)

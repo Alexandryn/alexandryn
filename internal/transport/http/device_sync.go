@@ -377,7 +377,7 @@ func SyncProgressHandler(
 
 		var res *domain.ReadingProgress
 		var outcome domain.ReconcileOutcome
-		var newCursor int64 = dev.SyncCursor()
+		newCursor := dev.SyncCursor()
 
 		txErr := tx.InTx(r.Context(), func(txCtx context.Context) error {
 			current, err := progressRepo.FindByWorkAndUserForUpdate(txCtx, user.UserID, activeLibID, workID)
