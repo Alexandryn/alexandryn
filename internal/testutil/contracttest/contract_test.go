@@ -855,6 +855,9 @@ func (ctPairedDevices) RevokeByPairingSessionID(_ context.Context, _ domain.Pair
 func (ctPairedDevices) AdvanceCursor(_ context.Context, _ domain.DeviceID, _ int64, _ time.Time) error {
 	return nil
 }
+func (ctPairedDevices) UpdateLastSeen(_ context.Context, _ domain.DeviceID, _ time.Time) error {
+	return nil
+}
 
 type ctNetworkSettings struct {
 	settings *domain.NetworkSettings
@@ -1031,6 +1034,10 @@ func (s *ctSyncStore) GetReadingSyncData(_ context.Context, _ domain.UserID, _ d
 
 func (s *ctSyncStore) GetProgressSyncSequence(_ context.Context, _ domain.ReadingProgressID) (int64, error) {
 	return 10, nil
+}
+
+func (s *ctSyncStore) GetSyncSequenceCeiling(_ context.Context) (int64, error) {
+	return 1000, nil
 }
 
 type ctLibEntriesChecker struct{}

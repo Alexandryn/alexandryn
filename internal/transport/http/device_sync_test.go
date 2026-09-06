@@ -143,6 +143,16 @@ func (m *memPairedDevs) AdvanceCursor(_ context.Context, id domain.DeviceID, new
 	return d.AdvanceCursor(newCursor, now)
 }
 
+func (m *memPairedDevs) UpdateLastSeen(_ context.Context, id domain.DeviceID, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.byID[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "paired device not found or already revoked"}
+	}
+	return d.Touch(now)
+}
+
 func TestListDevicesHandler_OwnerScoped(t *testing.T) {
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 	repo := newMemPairedDevs()
@@ -438,6 +448,12 @@ func (m *memSyncStore) GetProgressSyncSequence(_ context.Context, progressID dom
 	return m.seqCounter, nil
 }
 
+func (m *memSyncStore) GetSyncSequenceCeiling(_ context.Context) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return 1000000, nil
+}
+
 type memProgressRepo struct {
 	mu   sync.Mutex
 	rows map[string]*domain.ReadingProgress
@@ -721,4 +737,186 @@ func TestSyncProgressHandler(t *testing.T) {
 		t.Fatalf("expected 400 for percentage > 1.0, got %d", rrBadPct.Code)
 	}
 }
+
+func TestSyncMiddleware_TouchDoesNotClobberCursor(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	touchTime := now.Add(10 * time.Minute)
+	repo := newMemPairedDevs()
+	user := domain.UserID("u1")
+	dev, _ := domain.NewPairedDevice("dev-1", user, "Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = dev.AdvanceCursor(50, now)
+	_ = repo.Save(context.Background(), dev)
+
+	mw := transporthttp.SyncMiddleware(repo, func() time.Time { return touchTime })
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading", nil)
+	req.Header.Set("X-Device-Id", "dev-1")
+	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: user, Role: domain.RoleReader})
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctx))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+
+	updated, err := repo.FindByID(context.Background(), "dev-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !updated.LastSeenAt().Equal(touchTime) {
+		t.Fatalf("expected lastSeenAt to be %v, got %v", touchTime, updated.LastSeenAt())
+	}
+	if updated.SyncCursor() != 50 {
+		t.Fatalf("expected syncCursor to remain 50, got %d", updated.SyncCursor())
+	}
+}
+
+type nilDevRepo struct{}
+
+func (nilDevRepo) FindByID(_ context.Context, _ domain.DeviceID) (*domain.PairedDevice, error) {
+	return nil, nil // Common Go (nil, nil) not found convention
+}
+func (nilDevRepo) FindByOwner(_ context.Context, _ domain.UserID) ([]*domain.PairedDevice, error) {
+	return nil, nil
+}
+func (nilDevRepo) FindByPairingSessionID(_ context.Context, _ domain.PairingSessionID) (*domain.PairedDevice, error) {
+	return nil, nil
+}
+func (nilDevRepo) InsertProvisional(_ context.Context, _ domain.DeviceID, _ string, _ domain.DeviceClass, _ domain.EnrolledVia, _ domain.PairingSessionID, _ time.Time) error {
+	return nil
+}
+func (nilDevRepo) AssignOwnerByPairingSession(_ context.Context, _ domain.PairingSessionID, _ domain.UserID) error {
+	return nil
+}
+func (nilDevRepo) Save(_ context.Context, _ *domain.PairedDevice) error { return nil }
+func (nilDevRepo) Revoke(_ context.Context, _ domain.DeviceID, _ time.Time) error {
+	return nil
+}
+func (nilDevRepo) RevokeByPairingSessionID(_ context.Context, _ domain.PairingSessionID, _ time.Time) error {
+	return nil
+}
+func (nilDevRepo) AdvanceCursor(_ context.Context, _ domain.DeviceID, _ int64, _ time.Time) error {
+	return nil
+}
+func (nilDevRepo) UpdateLastSeen(_ context.Context, _ domain.DeviceID, _ time.Time) error {
+	return nil
+}
+
+func TestSyncMiddleware_NilDeviceHandling(t *testing.T) {
+	mw := transporthttp.SyncMiddleware(nilDevRepo{}, time.Now)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Sync route with (nil, nil) -> 401 without panic
+	reqSync := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading", nil)
+	reqSync.Header.Set("X-Device-Id", "unknown-dev")
+	ctx := transporthttp.WithUser(reqSync.Context(), &transporthttp.AuthenticatedUser{UserID: "u1", Role: domain.RoleReader})
+	rrSync := httptest.NewRecorder()
+	handler.ServeHTTP(rrSync, reqSync.WithContext(ctx))
+
+	if rrSync.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unknown device on sync route, got %d", rrSync.Code)
+	}
+
+	// Non-sync route with (nil, nil) -> passes through without panic
+	reqNonSync := httptest.NewRequest(http.MethodGet, "/api/v1/devices", nil)
+	reqNonSync.Header.Set("X-Device-Id", "unknown-dev")
+	rrNonSync := httptest.NewRecorder()
+	handler.ServeHTTP(rrNonSync, reqNonSync.WithContext(ctx))
+
+	if rrNonSync.Code != http.StatusOK {
+		t.Fatalf("expected 200 on non-sync route, got %d", rrNonSync.Code)
+	}
+}
+
+func TestRevokeDeviceHandler_NilDeviceHandling(t *testing.T) {
+	handler := transporthttp.RevokeDeviceHandler(nilDevRepo{}, time.Now)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/devices/unknown-dev", nil)
+	req.SetPathValue("id", "unknown-dev")
+	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: "u1", Role: domain.RoleReader})
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctx))
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for (nil, nil) device revocation, got %d", rr.Code)
+	}
+}
+
+func TestSyncProgressHandler_ClampsFutureReportedAt(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+	progressRepo := newMemProgressRepo()
+	libEntries := &memLibraryEntries{
+		works: map[domain.WorkID]domain.LibraryID{
+			"work-1": domain.DefaultLibraryID,
+		},
+	}
+
+	userA := domain.UserID("user-a")
+	devA1, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devRepo.Save(context.Background(), devA1)
+
+	handler := transporthttp.SyncProgressHandler(progressRepo, libEntries, syncStore, devRepo, inlineTx{}, &seqID{}, func() time.Time { return now })
+	ctxA := transporthttp.WithDevice(
+		transporthttp.WithActiveLibrary(
+			transporthttp.WithUser(context.Background(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
+			domain.DefaultLibraryID,
+		),
+		devA1,
+	)
+
+	// Send future timestamp (year 3000)
+	body := `{"workId":"work-1","percentage":0.5,"observedEpoch":0,"deviceId":"dev-a1","reportedAt":"3000-01-01T00:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctxA))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	saved, _ := progressRepo.FindByWorkAndUser(context.Background(), userA, domain.DefaultLibraryID, "work-1")
+	if saved.ObservedAt().After(now.Add(time.Minute)) {
+		t.Fatalf("expected future reportedAt to be clamped to now (%v), got %v", now, saved.ObservedAt())
+	}
+}
+
+func TestSyncReadingHandler_FutureSinceDoesNotAdvancePersistedCursor(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+
+	userA := domain.UserID("user-a")
+	devA1, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devRepo.Save(context.Background(), devA1)
+
+	handler := transporthttp.SyncReadingHandler(syncStore, devRepo, func() time.Time { return now })
+	ctxA := transporthttp.WithDevice(
+		transporthttp.WithActiveLibrary(
+			transporthttp.WithUser(context.Background(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
+			domain.DefaultLibraryID,
+		),
+		devA1,
+	)
+
+	// Send far future cursor when store has no updates
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading?since=9999999", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctxA))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+
+	d, _ := devRepo.FindByID(context.Background(), "dev-a1")
+	if d.SyncCursor() != 0 {
+		t.Fatalf("persisted sync cursor should NOT advance on empty updates, got %d", d.SyncCursor())
+	}
+}
+
 

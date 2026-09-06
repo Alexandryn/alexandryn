@@ -12,14 +12,19 @@ ALTER TABLE paired_devices
     ADD COLUMN last_synced_at TIMESTAMPTZ;
 
 -- 3. Extend reading data tables with sync_sequence
-ALTER TABLE reading_progress
-    ADD COLUMN sync_sequence BIGINT NOT NULL DEFAULT nextval('sync_seq');
+-- Add column without volatile default to avoid table rewrites / sequence burns on insert.
+-- Backfill existing rows, set NOT NULL, and leave column without default (triggers assign it).
+ALTER TABLE reading_progress ADD COLUMN sync_sequence BIGINT;
+UPDATE reading_progress SET sync_sequence = nextval('sync_seq') WHERE sync_sequence IS NULL;
+ALTER TABLE reading_progress ALTER COLUMN sync_sequence SET NOT NULL;
 
-ALTER TABLE bookmarks
-    ADD COLUMN sync_sequence BIGINT NOT NULL DEFAULT nextval('sync_seq');
+ALTER TABLE bookmarks ADD COLUMN sync_sequence BIGINT;
+UPDATE bookmarks SET sync_sequence = nextval('sync_seq') WHERE sync_sequence IS NULL;
+ALTER TABLE bookmarks ALTER COLUMN sync_sequence SET NOT NULL;
 
-ALTER TABLE highlights
-    ADD COLUMN sync_sequence BIGINT NOT NULL DEFAULT nextval('sync_seq');
+ALTER TABLE highlights ADD COLUMN sync_sequence BIGINT;
+UPDATE highlights SET sync_sequence = nextval('sync_seq') WHERE sync_sequence IS NULL;
+ALTER TABLE highlights ALTER COLUMN sync_sequence SET NOT NULL;
 
 -- 4. Triggers to advance sync_sequence on insert or update
 -- +goose StatementBegin

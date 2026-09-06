@@ -138,6 +138,26 @@ Phase 14 delivers cross-device synchronization and host-side device lifecycle ma
 
 ---
 
+## PR #82 Review Findings & Remediation
+
+Following pull request code review on PR #82, ten issues were identified and remediated:
+
+| Finding | Severity | Category | Description & Fix |
+|---|---|---|---|
+| PR82-1 | High | Access Control | Device revocation check was missing on reading progress report endpoint `POST /api/v1/reading/works/{workId}/progress`. Added `Devices domain.PairedDeviceRepository` to `ReadingAPI`, wired device repository in server run, rejected unowned/revoked device IDs with 401, and wrapped route with `syncMW`. |
+| PR82-2 & PR82-6 | High | Data Consistency | Watermark gap under concurrent transaction commits in `GetReadingSyncData`. Wrapped reads in `REPEATABLE READ` read-only transaction and added snapshot low-water mark filter `xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint` across reading sync queries. |
+| PR82-3 | Medium | Concurrency | `SyncMiddleware` executed full `Save(dev)` on heartbeat, clobbering concurrently updated `sync_cursor`. Introduced targeted `UpdateLastSeen(ctx, id, now)` updating only `last_seen_at`. |
+| PR82-4 | Medium | Data Integrity | `AdvanceCursor` lacked database-level monotonicity guard. Added `AND sync_cursor < $1` to update query; treated non-advancement as idempotent success for active devices. |
+| PR82-5 | Medium | Validation | Client-controlled `reportedAt` timestamp in `SyncProgressHandler` lacked bounds checking. Added clamping to server `now` if client timestamp is in the future (> now + 1 min) or stale (> 30 days). |
+| PR82-7 | Medium | Data Integrity | Client-supplied `since` advanced cursor even when server returned no updates or future cursor was queried. Guarded persistence cursor update so it only advances if deltas exist and does not exceed server ceiling. |
+| PR82-8 | Medium | CI / Compliance | `scripts/check-user-scoped-reading.sh` did not cover raw SQL queries in `internal/persistence/postgres/reading_sync_repository.go`. Added verification for `user_id` and `library_id` predicates. |
+| PR82-9 | Low | Reliability | Potential nil pointer dereference when `FindByID` returns `(nil, nil)`. Added explicit nil guards in `SyncMiddleware` and `RevokeDeviceHandler`. |
+| PR82-10 | Low | Database Migration | Migration `00011_phase14_device_sync.sql` used volatile `DEFAULT nextval('sync_seq')` on `ALTER TABLE ... ADD COLUMN`, risking table rewrite locks and double sequence consumption. Split into ADD COLUMN without default, backfill with UPDATE, and set NOT NULL. |
+
+All remediations verified via unit tests, contract tests, and repository guard scripts.
+
+---
+
 ## Residual Risks & Operational Guidance
 
 1. **Access Token Lifespan for Non-Sync Routes (Named Limitation A-13-06)**:

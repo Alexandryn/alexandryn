@@ -205,6 +205,26 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 			return
 		}
 
+		if deps.Devices != nil {
+			dev, err := deps.Devices.FindByID(r.Context(), domain.DeviceID(deviceID))
+			if err == nil && dev != nil {
+				if dev.Owner() != userID {
+					WriteError(w, domain.Unauthorized, "unauthorized device", correlationID)
+					return
+				}
+				if dev.RevokedAt() != nil {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusUnauthorized)
+					_ = json.NewEncoder(w).Encode(errorBody{
+						Code:          "Unauthorized",
+						Message:       "device revoked",
+						CorrelationID: correlationID,
+					})
+					return
+				}
+			}
+		}
+
 		var req wireProgressReport
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, domain.InvalidInput, "request body must be a valid JSON object", correlationID)

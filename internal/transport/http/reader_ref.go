@@ -36,6 +36,7 @@ type ReadingAPI struct {
 	Preferences    domain.ReadingPreferencesRepository
 	Editions       domain.EditionRepository
 	LibraryEntries domain.LibraryEntryRepository
+	Devices        domain.PairedDeviceRepository
 	Transactor     domain.Transactor
 	IDs            domain.IDGenerator
 	Export         ReadingExportStore

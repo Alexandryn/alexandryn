@@ -1160,6 +1160,16 @@ func (m *memPairedDevices) AdvanceCursor(_ context.Context, id domain.DeviceID, 
 	return d.AdvanceCursor(newCursor, now)
 }
 
+func (m *memPairedDevices) UpdateLastSeen(_ context.Context, id domain.DeviceID, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.byID[id]
+	if !ok {
+		return &domain.Error{Category: domain.NotFound, Message: "device not found"}
+	}
+	return d.Touch(now)
+}
+
 func (m *memPairedDevices) isProvisionalRevoked(id domain.DeviceID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -56,7 +56,21 @@ func NewReadingSyncRepository(pool *pgxpool.Pool) *ReadingSyncRepository {
 }
 
 func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, since int64) (*ReadingSyncData, error) {
-	exec := executorFrom(ctx, r.pool)
+	var exec querier = r.pool
+	if _, ok := ctx.Value(txContextKey{}).(pgx.Tx); ok {
+		exec = executorFrom(ctx, r.pool)
+	} else if r.pool != nil {
+		tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{
+			IsoLevel:   pgx.RepeatableRead,
+			AccessMode: pgx.ReadOnly,
+		})
+		if err != nil {
+			return nil, TranslateError(err)
+		}
+		defer tx.Rollback(ctx)
+		defer func() { _ = tx.Commit(ctx) }()
+		exec = tx
+	}
 
 	res := &ReadingSyncData{
 		Cursor:     since,
@@ -66,11 +80,12 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 	}
 	maxSeq := since
 
-	// 1. Reading progress
+	// 1. Reading progress with xmin low-water gate ensuring no in-flight earlier sequence is skipped
 	progressRows, err := exec.Query(ctx, `
 		SELECT work_id, percentage, epoch, precise_position_edition_id, precise_position_value, device_id, observed_at, sync_sequence
 		FROM reading_progress
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
+		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
 		ORDER BY sync_sequence ASC`,
 		string(userID), string(libraryID), since,
 	)
@@ -115,11 +130,12 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		return nil, TranslateError(err)
 	}
 
-	// 2. Bookmarks
+	// 2. Bookmarks with xmin low-water gate
 	bookmarkRows, err := exec.Query(ctx, `
 		SELECT id, edition_id, position, label, created_at, sync_sequence
 		FROM bookmarks
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
+		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
 		ORDER BY sync_sequence ASC`,
 		string(userID), string(libraryID), since,
 	)
@@ -153,11 +169,12 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		return nil, TranslateError(err)
 	}
 
-	// 3. Highlights
+	// 3. Highlights with xmin low-water gate
 	highlightRows, err := exec.Query(ctx, `
 		SELECT id, edition_id, start_position, end_position, note, category, created_at, sync_sequence
 		FROM highlights
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
+		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
 		ORDER BY sync_sequence ASC`,
 		string(userID), string(libraryID), since,
 	)
@@ -208,4 +225,18 @@ func (r *ReadingSyncRepository) GetProgressSyncSequence(ctx context.Context, pro
 		return 0, TranslateError(err)
 	}
 	return syncSeq, nil
+}
+
+func (r *ReadingSyncRepository) GetSyncSequenceCeiling(ctx context.Context) (int64, error) {
+	exec := executorFrom(ctx, r.pool)
+	var lastVal int64
+	var isCalled bool
+	err := exec.QueryRow(ctx, `SELECT last_value, is_called FROM sync_seq`).Scan(&lastVal, &isCalled)
+	if err != nil {
+		return 0, TranslateError(err)
+	}
+	if !isCalled {
+		return 0, nil
+	}
+	return lastVal, nil
 }
