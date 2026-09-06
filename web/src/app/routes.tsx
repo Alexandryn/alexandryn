@@ -15,6 +15,7 @@ import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholde
 import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
 import { NetworkSettings } from '../screens/Settings/NetworkSettings'
+import { DevicesSettings } from '../screens/Settings/DevicesSettings'
 import { ConnectScreen } from '../screens/Network/ConnectScreen'
 import { AccessScreen } from '../screens/Network/AccessScreen'
 
@@ -89,7 +90,16 @@ const shellChildren: RouteObject[] = [
       </RequireCapability>
     ),
   },
+  {
+    path: 'settings/devices',
+    element: (
+      <RequireCapability capability="settings">
+        <DevicesSettings />
+      </RequireCapability>
+    ),
+  },
   { path: 'network', element: <Navigate to="/settings/network" replace /> },
+  { path: 'devices', element: <Navigate to="/settings/devices" replace /> },
   { path: 'settings', element: hostOnly('settings', 'Settings') },
   { path: 'system', element: hostOnly('system', 'System') },
 
