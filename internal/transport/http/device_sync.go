@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -54,7 +55,20 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 
 			devID := domain.DeviceID(devIDStr)
 			dev, err := deviceRepo.FindByID(r.Context(), devID)
-			if err != nil || dev == nil {
+			if err != nil {
+				var domainErr *domain.Error
+				if errors.As(err, &domainErr) && domainErr.Category == domain.NotFound {
+					if isSyncRoute {
+						WriteError(w, domain.Unauthorized, "unauthorized device", corrID)
+						return
+					}
+					next.ServeHTTP(w, r)
+					return
+				}
+				WriteError(w, domain.Internal, "failed to lookup device", corrID)
+				return
+			}
+			if dev == nil {
 				if isSyncRoute {
 					WriteError(w, domain.Unauthorized, "unauthorized device", corrID)
 					return
@@ -234,6 +248,15 @@ func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, 
 				return
 			}
 			since = parsed
+		}
+
+		ceiling, err := store.GetSyncSequenceCeiling(r.Context())
+		if err != nil {
+			WriteError(w, domain.Internal, "failed to check sync ceiling", corrID)
+			return
+		}
+		if since > ceiling {
+			since = ceiling
 		}
 
 		data, err := store.GetReadingSyncData(r.Context(), user.UserID, activeLibID, since)

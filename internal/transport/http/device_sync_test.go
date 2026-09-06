@@ -451,7 +451,25 @@ func (m *memSyncStore) GetProgressSyncSequence(_ context.Context, progressID dom
 func (m *memSyncStore) GetSyncSequenceCeiling(_ context.Context) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return 1000000, nil
+	max := m.seqCounter
+	for _, d := range m.data {
+		for _, p := range d.Progress {
+			if p.SyncSequence > max {
+				max = p.SyncSequence
+			}
+		}
+		for _, b := range d.Bookmarks {
+			if b.SyncSequence > max {
+				max = b.SyncSequence
+			}
+		}
+		for _, h := range d.Highlights {
+			if h.SyncSequence > max {
+				max = h.SyncSequence
+			}
+		}
+	}
+	return max, nil
 }
 
 type memProgressRepo struct {
@@ -613,7 +631,7 @@ func TestSyncReadingHandler(t *testing.T) {
 		t.Fatalf("expected 1 bookmark and 1 highlight, got %d, %d", len(respInc.Bookmarks), len(respInc.Highlights))
 	}
 
-	// 3. Far future cursor (since=100) -> empty delta, cursor unchanged at 100
+	// 3. Far future cursor (since=100) -> empty delta, since clamped to cluster sequence ceiling (40), cursor = 40
 	reqFuture := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading?since=100", nil)
 	rrFuture := httptest.NewRecorder()
 	handler.ServeHTTP(rrFuture, reqFuture.WithContext(ctxA))
@@ -622,8 +640,8 @@ func TestSyncReadingHandler(t *testing.T) {
 		Cursor int64 `json:"cursor"`
 	}
 	_ = json.Unmarshal(rrFuture.Body.Bytes(), &respFuture)
-	if respFuture.Cursor != 100 {
-		t.Fatalf("expected cursor to remain 100, got %d", respFuture.Cursor)
+	if respFuture.Cursor != 40 {
+		t.Fatalf("expected cursor to be clamped to cluster ceiling (40), got %d", respFuture.Cursor)
 	}
 }
 
@@ -916,6 +934,16 @@ func TestSyncReadingHandler_FutureSinceDoesNotAdvancePersistedCursor(t *testing.
 	d, _ := devRepo.FindByID(context.Background(), "dev-a1")
 	if d.SyncCursor() != 0 {
 		t.Fatalf("persisted sync cursor should NOT advance on empty updates, got %d", d.SyncCursor())
+	}
+
+	var resp struct {
+		Cursor int64 `json:"cursor"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Cursor != 0 {
+		t.Fatalf("expected echoed cursor to be clamped to ceiling (0), got %d", resp.Cursor)
 	}
 }
 

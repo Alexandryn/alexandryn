@@ -54,7 +54,7 @@ export function DevicesSettings() {
       <div>
         <h2 className="text-lg font-semibold text-text mb-xs">Devices</h2>
         <p className="text-xs text-text-2 max-w-2xl">
-          Devices that have connected to this host. Revoking a device ends its session immediately.
+          Devices paired with this library. Revoking a device prevents it from syncing reading progress and annotations.
         </p>
       </div>
 
@@ -188,7 +188,7 @@ export function DevicesSettings() {
               Revoke {targetDevice?.label}?
             </RadixDialog.Title>
             <RadixDialog.Description className="text-xs text-text-2 leading-relaxed">
-              Are you sure you want to revoke {targetDevice?.label}? Revoking a device ends its session immediately and prevents it from syncing further reading progress.
+              Are you sure you want to revoke {targetDevice?.label}? Revoking this device prevents it from syncing reading progress and annotations.
             </RadixDialog.Description>
             <div className="flex items-center justify-end gap-sm mt-md pt-sm border-t border-border">
               <Button

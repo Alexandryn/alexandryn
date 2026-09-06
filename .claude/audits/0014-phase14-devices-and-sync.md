@@ -158,9 +158,41 @@ All remediations verified via unit tests, contract tests, and repository guard s
 
 ---
 
+## Follow-Up PR Review Remediations & Integration Proof
+
+Following re-review on branch `feat/phase14-devices-and-sync`, additional hardening and verification steps were implemented:
+
+1. **Transaction Teardown & Linter Cleanliness (Inline 1)**:
+   - Refactored `GetReadingSyncData` to use named return `(res *ReadingSyncData, err error)` with a single deferred rollback on error/panic and explicit `tx.Commit(ctx)`.
+   - Cleared `golangci-lint` (`errcheck`) with 0 issues.
+
+2. **Watermark Gating Documentation & Interleaved Commit Integration Test (Inline 2 / C2 & C6)**:
+   - Added prominent documentation in `reading_sync_repository.go` explaining the `xmin` low-water mark filter and documenting the 32-bit xid wraparound lifetime assumption (~2^31 write transactions).
+   - Added `TestReadingSyncRepository_OutOrderInterleavedCommit_WatermarkGate` in `reading_sync_integration_test.go`: proved against PostgreSQL 16 that an in-flight earlier transaction holds back concurrent commits from advancing the sync sequence watermark prematurely, preventing CDC row skipping.
+
+3. **Ceiling Clamping & Dead Code Removal (Inline 3 & Inline 5 / C7)**:
+   - Wired `store.GetSyncSequenceCeiling` into `SyncReadingHandler`: client-provided `since` parameter is clamped to the server's sequence ceiling, preventing poison cursors (such as max int64) from freezing client sync.
+
+4. **Universal Reading Write Revocation Enforcement (Inline 4 / C1)**:
+   - Created `assertDeviceActive` helper in `internal/transport/http/reading.go`.
+   - Applied active device and ownership validation across all reading write routes: bookmark create/delete, highlight create/patch/delete, and reading preferences PUT.
+   - Wrapped all reading write routes in `syncMW` in `cmd/server/main.go`.
+   - Added `TestReadingAnnotationAndPrefs_RevokedDeviceRejected` unit test suite covering all annotation and preferences write endpoints.
+
+5. **Interface Copy Accuracy (Constitution §11)**:
+   - Reworded device settings header and confirmation dialog in `DevicesSettings.tsx` to state precisely: "Revoking this device prevents it from syncing reading progress and annotations."
+
+6. **SQL-Level Integration Test Proof (C4 & C8)**:
+   - Added `TestPairedDeviceRepository_AdvanceCursor_MonotonicSQL` verifying that PostgreSQL `AND sync_cursor < $1` blocks regressive or equal cursor updates at the database level.
+   - Added `TestReadingSyncRepository_UserAndLibraryScoping` verifying that `GetReadingSyncData` strictly isolates reading progress, bookmarks, and highlights across users and libraries.
+
+---
+
 ## Residual Risks & Operational Guidance
 
 1. **Access Token Lifespan for Non-Sync Routes (Named Limitation A-13-06)**:
-   - `SyncMiddleware` guards `/api/v1/sync/*` and `/api/v1/devices/*`. If a revoked device attempts to make a non-sync read request without `X-Device-Id` before its short-lived access token expires (15 minutes), the token remains cryptographically valid until expiry unless token revocation is triggered. This is an explicit, accepted architectural tradeoff documented in ADR 0029.
+   - `SyncMiddleware` guards `/api/v1/sync/*`, `/api/v1/devices/*`, and all `/api/v1/reading` write routes. If a revoked device attempts to make a non-sync read request without `X-Device-Id` before its short-lived access token expires (15 minutes), the token remains cryptographically valid until expiry unless token revocation is triggered. This is an explicit, accepted architectural tradeoff documented in ADR 0029.
 2. **Device Time Skew**:
    - The active status dot on the client uses a 5-minute threshold relative to current time. Severe clock skew on client machines may show a recently connected device as idle. Server-side timestamps are UTC-anchored via database time.
+3. **Database Transaction Epoch Scaling**:
+   - The `xmin < snapshot_xmin` gate relies on 32-bit xid comparison within the database cluster's first transaction epoch (up to 2.1 billion transactions). Deployments reaching multi-billion write volume should transition to commit-timestamp sequence tracking.

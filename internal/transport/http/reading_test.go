@@ -763,3 +763,56 @@ func TestReadingProgressReport_RevokedDeviceRejected(t *testing.T) {
 	}
 }
 
+func TestReadingAnnotationAndPrefs_RevokedDeviceRejected(t *testing.T) {
+	api, _ := newReadingAPI()
+	devRepo := newMemPairedDevs()
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	dev, err := domain.NewPairedDevice("3f2504e0-4f89-41d3-9a0c-0305e82c3301", "u-default", "Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dev.Revoke(now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	_ = devRepo.Save(context.Background(), dev)
+	api.Devices = devRepo
+	srv := readingServer(t, api, nil)
+	revokedHeader := map[string]string{"X-Device-Id": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"}
+
+	// 1. Bookmark create
+	rr := do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-1/bookmarks", `{"cfi":"epubcfi(/6/4)"}`, revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on bookmark create, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// 2. Bookmark delete
+	rr = do(t, srv, http.MethodDelete, "/api/v1/reading/bookmarks/bm-1", "", revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on bookmark delete, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// 3. Highlight create
+	rr = do(t, srv, http.MethodPost, "/api/v1/reading/editions/ed-1/highlights", `{"startCfi":"epubcfi(/6/2)","endCfi":"epubcfi(/6/4)"}`, revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on highlight create, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// 4. Highlight patch
+	rr = do(t, srv, http.MethodPatch, "/api/v1/reading/highlights/hl-1", `{"note":"test"}`, revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on highlight patch, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// 5. Highlight delete
+	rr = do(t, srv, http.MethodDelete, "/api/v1/reading/highlights/hl-1", "", revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on highlight delete, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// 6. Preferences put
+	rr = do(t, srv, http.MethodPut, "/api/v1/reading/preferences", `{"font":"serif","fontSize":19,"lineSpacing":1.5,"theme":"dark","layoutMode":"paginated","columnWidth":"default"}`, revokedHeader)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "device revoked") {
+		t.Fatalf("expected 401 device revoked on preferences put, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
