@@ -22,6 +22,7 @@ ALTER TABLE highlights
     ADD COLUMN sync_sequence BIGINT NOT NULL DEFAULT nextval('sync_seq');
 
 -- 4. Triggers to advance sync_sequence on insert or update
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION set_sync_sequence()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -29,6 +30,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 CREATE TRIGGER trg_reading_progress_sync_seq
 BEFORE INSERT OR UPDATE ON reading_progress
