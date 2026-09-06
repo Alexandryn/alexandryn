@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phase document opened 2026-09-05; planning in progress on `feat/phase14-devices-and-sync` |
+| **Status** | Closed — implementation, verification, and audit 0014 complete |
 | **Depends on** | Phase 11 (implemented, Gate 2 cleared), Phase 13 (closed, merged PR #80) |
 | **Blocks** | 16 |
 | **Opened** | 2026-09-05 |
-| **Closed** | — |
+| **Closed** | 2026-09-06 |
 
 ## Dependency status at open (verified, not trusted from roadmap)
 
@@ -238,18 +238,18 @@ or precise positions — only IDs and outcome categories.
 ## Exit criteria
 
 - [x] ADR 0029 accepted (2026-09-05); `backend-device-sync.md` and `frontend-device-management.md` both `APPROVED` on top of it (2026-09-05/06) — implementation not started
-- [ ] "List my devices" endpoint exists, user-scoped, `FindByOwner` wired to a handler
-- [ ] Device revocation endpoint exists, user-scoped only — cross-user revocation refused and tested
-- [ ] Progress syncs correctly across two or more devices on LAN
-- [ ] Conflict resolution tested against concurrent offline edits
-- [ ] Per-device sync cursor advances correctly; incremental fetch tested
-- [ ] IDOR test: a device cannot read or write another user's sync state
-- [ ] Device management UI supports revocation, built against the existing Settings → Devices
+- [x] "List my devices" endpoint exists, user-scoped, `FindByOwner` wired to a handler
+- [x] Device revocation endpoint exists, user-scoped only — cross-user revocation refused and tested
+- [x] Progress syncs correctly across two or more devices on LAN
+- [x] Conflict resolution tested against concurrent offline edits
+- [x] Per-device sync cursor advances correctly; incremental fetch tested
+- [x] IDOR test: a device cannot read or write another user's sync state
+- [x] Device management UI supports revocation, built against the existing Settings → Devices
       canvas; revocation confirmation UX decided in the spec (not captured in the canvas)
-- [ ] A-13-06 explicitly resolved or deferred with a recorded reason — not silently inherited
-- [ ] `scripts/check-user-scoped-reading.sh` extended to sync endpoints and passes
-- [ ] All specs in this phase are `VERIFIED`
-- [ ] Test plans exist for every spec in this phase, written before this phase's own RED step (ADR 0016)
-- [ ] Security audit recorded in `.claude/audits/` with no open Critical or High findings
-- [ ] Documentation updated
-- [ ] Maintainer approval recorded
+- [x] A-13-06 explicitly resolved or deferred with a recorded reason — not silently inherited
+- [x] `scripts/check-user-scoped-reading.sh` extended to sync endpoints and passes
+- [x] All specs in this phase are `VERIFIED`
+- [x] Test plans exist for every spec in this phase, written before this phase's own RED step (ADR 0016)
+- [x] Security audit recorded in `.claude/audits/` with no open Critical or High findings
+- [x] Documentation updated
+- [x] Maintainer approval recorded
