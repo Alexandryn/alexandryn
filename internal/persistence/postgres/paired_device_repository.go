@@ -25,16 +25,18 @@ func NewPairedDeviceRepository(pool *pgxpool.Pool) *PairedDeviceRepository {
 var _ domain.PairedDeviceRepository = (*PairedDeviceRepository)(nil)
 
 const pairedDeviceUpsertSQL = `INSERT INTO paired_devices (
-		id, owner_id, label, device_class, enrolled_via, created_at, last_seen_at, revoked_at
+		id, owner_id, label, device_class, enrolled_via, created_at, last_seen_at, revoked_at, sync_cursor, last_synced_at
 	) VALUES (
-		$1, $2, $3, $4, $5, $6, $7, $8
+		$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 	) ON CONFLICT (id) DO UPDATE SET
 		owner_id = EXCLUDED.owner_id,
 		label = EXCLUDED.label,
 		device_class = EXCLUDED.device_class,
 		enrolled_via = EXCLUDED.enrolled_via,
 		last_seen_at = EXCLUDED.last_seen_at,
-		revoked_at = EXCLUDED.revoked_at`
+		revoked_at = EXCLUDED.revoked_at,
+		sync_cursor = EXCLUDED.sync_cursor,
+		last_synced_at = EXCLUDED.last_synced_at`
 
 func (r *PairedDeviceRepository) Save(ctx context.Context, d *domain.PairedDevice) error {
 	exec := executorFrom(ctx, r.pool)
@@ -47,6 +49,8 @@ func (r *PairedDeviceRepository) Save(ctx context.Context, d *domain.PairedDevic
 		d.CreatedAt(),
 		d.LastSeenAt(),
 		d.RevokedAt(),
+		d.SyncCursor(),
+		d.LastSyncedAt(),
 	)
 	if err != nil {
 		return TranslateError(err)
@@ -152,7 +156,23 @@ func (r *PairedDeviceRepository) RevokeByPairingSessionID(ctx context.Context, s
 	return nil
 }
 
-const pairedDeviceSelectColumns = `id, owner_id, label, device_class, enrolled_via, created_at, last_seen_at, revoked_at`
+const pairedDeviceAdvanceCursorSQL = `UPDATE paired_devices
+	SET sync_cursor = $1, last_synced_at = $2
+	WHERE id = $3 AND revoked_at IS NULL`
+
+func (r *PairedDeviceRepository) AdvanceCursor(ctx context.Context, id domain.DeviceID, newCursor int64, now time.Time) error {
+	exec := executorFrom(ctx, r.pool)
+	tag, err := exec.Exec(ctx, pairedDeviceAdvanceCursorSQL, newCursor, now, string(id))
+	if err != nil {
+		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "paired device not found or already revoked"}
+	}
+	return nil
+}
+
+const pairedDeviceSelectColumns = `id, owner_id, label, device_class, enrolled_via, created_at, last_seen_at, revoked_at, sync_cursor, last_synced_at`
 
 const pairedDeviceFindByIDSQL = `SELECT ` + pairedDeviceSelectColumns + `
 	FROM paired_devices WHERE id = $1`
@@ -201,9 +221,10 @@ func (r *PairedDeviceRepository) scanDevice(row pgx.Row) (*domain.PairedDevice, 
 	var id, label, classStr, viaStr string
 	var ownerID *string
 	var createdAt, lastSeenAt time.Time
-	var revokedAt *time.Time
+	var revokedAt, lastSyncedAt *time.Time
+	var syncCursor int64
 
-	err := row.Scan(&id, &ownerID, &label, &classStr, &viaStr, &createdAt, &lastSeenAt, &revokedAt)
+	err := row.Scan(&id, &ownerID, &label, &classStr, &viaStr, &createdAt, &lastSeenAt, &revokedAt, &syncCursor, &lastSyncedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "paired device not found"}
@@ -224,5 +245,7 @@ func (r *PairedDeviceRepository) scanDevice(row pgx.Row) (*domain.PairedDevice, 
 		createdAt,
 		lastSeenAt,
 		revokedAt,
+		syncCursor,
+		lastSyncedAt,
 	)
 }

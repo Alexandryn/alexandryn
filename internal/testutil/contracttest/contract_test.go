@@ -831,6 +831,9 @@ func (ctPairedDevices) Revoke(_ context.Context, _ domain.DeviceID, _ time.Time)
 func (ctPairedDevices) RevokeByPairingSessionID(_ context.Context, _ domain.PairingSessionID, _ time.Time) error {
 	return nil
 }
+func (ctPairedDevices) AdvanceCursor(_ context.Context, _ domain.DeviceID, _ int64, _ time.Time) error {
+	return nil
+}
 
 type ctNetworkSettings struct {
 	settings *domain.NetworkSettings
