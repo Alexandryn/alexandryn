@@ -55,30 +55,61 @@ func NewReadingSyncRepository(pool *pgxpool.Pool) *ReadingSyncRepository {
 	return &ReadingSyncRepository{pool: pool}
 }
 
-func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, since int64) (*ReadingSyncData, error) {
+func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, since int64) (res *ReadingSyncData, err error) {
 	var exec querier = r.pool
+	var tx pgx.Tx
 	if _, ok := ctx.Value(txContextKey{}).(pgx.Tx); ok {
 		exec = executorFrom(ctx, r.pool)
 	} else if r.pool != nil {
-		tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{
+		var txErr error
+		tx, txErr = r.pool.BeginTx(ctx, pgx.TxOptions{
 			IsoLevel:   pgx.RepeatableRead,
 			AccessMode: pgx.ReadOnly,
 		})
-		if err != nil {
-			return nil, TranslateError(err)
+		if txErr != nil {
+			return nil, TranslateError(txErr)
 		}
-		defer tx.Rollback(ctx)
-		defer func() { _ = tx.Commit(ctx) }()
+		defer func() {
+			if p := recover(); p != nil {
+				_ = tx.Rollback(ctx)
+				panic(p)
+			}
+			if err != nil {
+				_ = tx.Rollback(ctx)
+			}
+		}()
 		exec = tx
 	}
 
-	res := &ReadingSyncData{
+	res = &ReadingSyncData{
 		Cursor:     since,
 		Progress:   make([]SyncProgressItem, 0),
 		Bookmarks:  make([]SyncBookmarkItem, 0),
 		Highlights: make([]SyncHighlightItem, 0),
 	}
 	maxSeq := since
+
+	// CDC Watermark Gating and xmin/xid8 wraparound:
+	// To prevent CDC watermark skipping when concurrent transactions commit out-of-order
+	// (e.g. Transaction A acquires sync_seq 10 and remains in-flight while Transaction B
+	// acquires sync_seq 11 and commits, causing a sync reading at sequence 11 to miss sequence 10),
+	// we constrain delta retrieval by the snapshot low-water mark:
+	//
+	//   AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
+	//
+	// pg_snapshot_xmin returns the lowest transaction ID (xid8) that was still active (in-flight)
+	// when the current snapshot was taken. Rows inserted or updated by transactions with xmin >= snapshot_xmin
+	// were either concurrent with or newer than the earliest active transaction, so they are held back until
+	// all earlier transactions have completed.
+	//
+	// LIMITATION & LIFETIME ASSUMPTION:
+	// PostgreSQL's tuple system column `xmin` is a 32-bit `xid`, whereas `pg_snapshot_xmin` returns a 64-bit `xid8`
+	// incorporating the 32-bit wraparound epoch counter. The cast `::text::bigint` compares raw numeric values
+	// and is sound during the cluster's first xid epoch (up to 2^31 ~ 2.1 billion write transactions). In an Alexandryn
+	// single-instance or small-cluster deployment, reaching 2^31 transactions represents decades of typical usage.
+	// Should an instance undergo an xid wraparound epoch, PostgreSQL VACUUM advances frozen xids, but `xmin` resets
+	// to 0 while `xid8` continues to climb. Future phases requiring multi-billion transaction scale should migrate
+	// sync_sequence assignment to an explicit commit-timestamp or 64-bit txid mapping table.
 
 	// 1. Reading progress with xmin low-water gate ensuring no in-flight earlier sequence is skipped
 	progressRows, err := exec.Query(ctx, `
@@ -208,6 +239,12 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 	}
 	if err := highlightRows.Err(); err != nil {
 		return nil, TranslateError(err)
+	}
+
+	if tx != nil {
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			return nil, TranslateError(commitErr)
+		}
 	}
 
 	res.Cursor = maxSeq

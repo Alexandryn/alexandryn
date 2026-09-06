@@ -3,8 +3,10 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
@@ -82,6 +84,45 @@ func assertWorkInLibrary(deps ReadingAPI, r *http.Request, w http.ResponseWriter
 	}
 	if !ok {
 		WriteError(w, domain.NotFound, "no such book in your library", correlationID)
+		return false
+	}
+	return true
+}
+
+// assertDeviceActive verifies that if X-Device-Id is presented on a write route,
+// the device is owned by the caller and has not been revoked (FR-9, AUDIT-0014).
+// If X-Device-Id is absent or device is unknown (e.g. unpaired browser reader), it returns true.
+// If the lookup errors or device is revoked/unowned, it writes 401/error and returns false (fails closed).
+func assertDeviceActive(deps ReadingAPI, r *http.Request, w http.ResponseWriter, userID domain.UserID, correlationID string) bool {
+	devIDStr := strings.TrimSpace(r.Header.Get(deviceIDHeader))
+	if devIDStr == "" || deps.Devices == nil {
+		return true
+	}
+	devID := domain.DeviceID(devIDStr)
+	dev, err := deps.Devices.FindByID(r.Context(), devID)
+	if err != nil {
+		var domainErr *domain.Error
+		if errors.As(err, &domainErr) && domainErr.Category == domain.NotFound {
+			return true
+		}
+		writeDomainError(w, err, correlationID)
+		return false
+	}
+	if dev == nil {
+		return true
+	}
+	if dev.Owner() != userID {
+		WriteError(w, domain.Unauthorized, "unauthorized device", correlationID)
+		return false
+	}
+	if dev.RevokedAt() != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(errorBody{
+			Code:          "Unauthorized",
+			Message:       "device revoked",
+			CorrelationID: correlationID,
+		})
 		return false
 	}
 	return true
@@ -205,24 +246,8 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 			return
 		}
 
-		if deps.Devices != nil {
-			dev, err := deps.Devices.FindByID(r.Context(), domain.DeviceID(deviceID))
-			if err == nil && dev != nil {
-				if dev.Owner() != userID {
-					WriteError(w, domain.Unauthorized, "unauthorized device", correlationID)
-					return
-				}
-				if dev.RevokedAt() != nil {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusUnauthorized)
-					_ = json.NewEncoder(w).Encode(errorBody{
-						Code:          "Unauthorized",
-						Message:       "device revoked",
-						CorrelationID: correlationID,
-					})
-					return
-				}
-			}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
+			return
 		}
 
 		var req wireProgressReport
@@ -360,6 +385,9 @@ func ReadingBookmarkCreateHandler(poolRef *PoolRef, now func() time.Time) http.H
 		if !ok {
 			return
 		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
+			return
+		}
 		if !assertEditionInLibrary(deps, r, w, domain.EditionID(editionID), libID, correlationID) {
 			return
 		}
@@ -407,6 +435,9 @@ func ReadingBookmarkDeleteHandler(poolRef *PoolRef) http.Handler {
 		id := domain.BookmarkID(r.PathValue("bookmarkId"))
 		userID, _, ok := readingScope(r, w, correlationID)
 		if !ok {
+			return
+		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
 			return
 		}
 		if err := deps.Bookmarks.DeleteAndUser(r.Context(), userID, id); err != nil {
@@ -480,6 +511,9 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 		if !ok {
 			return
 		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
+			return
+		}
 		if !assertEditionInLibrary(deps, r, w, domain.EditionID(editionID), libID, correlationID) {
 			return
 		}
@@ -549,6 +583,9 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 		if !ok {
 			return
 		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
+			return
+		}
 		existing, err := deps.Highlights.FindByIDAndUser(r.Context(), userID, id)
 		if err != nil {
 			writeDomainError(w, err, correlationID)
@@ -606,6 +643,9 @@ func ReadingHighlightDeleteHandler(poolRef *PoolRef) http.Handler {
 		id := domain.HighlightID(r.PathValue("highlightId"))
 		userID, _, ok := readingScope(r, w, correlationID)
 		if !ok {
+			return
+		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
 			return
 		}
 		if err := deps.Highlights.DeleteAndUser(r.Context(), userID, id); err != nil {
@@ -709,6 +749,9 @@ func ReadingPreferencesPutHandler(poolRef *PoolRef) http.Handler {
 		}
 		userID, _, ok := readingScope(r, w, correlationID)
 		if !ok {
+			return
+		}
+		if !assertDeviceActive(deps, r, w, userID, correlationID) {
 			return
 		}
 		var req wirePreferences
