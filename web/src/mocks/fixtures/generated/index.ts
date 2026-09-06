@@ -1052,4 +1052,116 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  listDevices: {
+    '200': {
+      devices: [
+        {
+          id: 'dev_1',
+          label: 'MacBook Pro',
+          deviceClass: 'desktop',
+          enrolledVia: 'password_login',
+          createdAt: '2026-09-01T10:00:00Z',
+          lastSeenAt: '2026-09-01T12:00:00Z',
+          lastSyncedAt: '2026-09-01T11:50:00Z',
+          revokedAt: null,
+        },
+      ],
+    },
+    '401': {
+      code: 'unauthorized',
+      message: 'authentication required',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  revokeDevice: {
+    '401': {
+      code: 'Unauthorized',
+      message: 'unauthorized',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'NotFound',
+      message: 'paired device not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '409': {
+      code: 'Conflict',
+      message: 'paired device is already revoked',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  syncReading: {
+    '200': {
+      cursor: 128,
+      progress: [
+        {
+          workId: 'wrk_1',
+          percentage: 0.42,
+          epoch: 0,
+          deviceId: 'dev_2',
+          observedAt: '2026-09-01T12:00:00Z',
+          syncSequence: 127,
+        },
+      ],
+      bookmarks: [
+        {
+          id: 'bmk_1',
+          editionId: 'edn_1',
+          position: 'epubcfi(/6/4!/10)',
+          label: 'the turn',
+          createdAt: '2026-09-01T11:00:00Z',
+          syncSequence: 120,
+        },
+      ],
+      highlights: [
+        {
+          id: 'hl_1',
+          editionId: 'edn_1',
+          startPosition: 'epubcfi(/6/4!/10)',
+          endPosition: 'epubcfi(/6/4!/24)',
+          note: 'worth revisiting',
+          category: 'idea',
+          createdAt: '2026-09-01T11:30:00Z',
+          syncSequence: 124,
+        },
+      ],
+    },
+    '400': {
+      code: 'InvalidInput',
+      message: 'invalid since parameter',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '401': {
+      code: 'Unauthorized',
+      message: 'unauthorized device',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
+  syncProgress: {
+    '200': {
+      outcome: 'advanced',
+      progress: {
+        percentage: 0.51,
+        epoch: 0,
+        precisePosition: null,
+        observedAt: '2026-09-01T12:05:00Z',
+      },
+      cursor: 129,
+    },
+    '400': {
+      code: 'InvalidInput',
+      message: 'workId is required',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '401': {
+      code: 'Unauthorized',
+      message: 'deviceId does not match authenticated device',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'NotFound',
+      message: 'work not found in your library',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
 } as const
