@@ -180,8 +180,8 @@ Secondary decisions (may be ADR addenda or spec FRs depending on weight):
 
 | Spec | Status |
 |---|---|
-| `backend-device-sync.md` | Not yet scoped — blocked on ADR 0029 |
-| `frontend-device-management.md` | Canvas exists (see "Design reference correction" above); spec content being corrected to match, not yet APPROVED |
+| `backend-device-sync.md` | `APPROVED` (2026-09-05) |
+| `frontend-device-management.md` | `APPROVED` (2026-09-06) |
 
 Working decomposition (planning session's decomposition is authoritative if it diverges):
 1. ADR 0029 — drafted and approved first; everything else depends on it.
@@ -237,7 +237,7 @@ or precise positions — only IDs and outcome categories.
 
 ## Exit criteria
 
-- [ ] ADR 0029 approved; sync-protocol spec built on top of it
+- [x] ADR 0029 accepted (2026-09-05); `backend-device-sync.md` and `frontend-device-management.md` both `APPROVED` on top of it (2026-09-05/06) — implementation not started
 - [ ] "List my devices" endpoint exists, user-scoped, `FindByOwner` wired to a handler
 - [ ] Device revocation endpoint exists, user-scoped only — cross-user revocation refused and tested
 - [ ] Progress syncs correctly across two or more devices on LAN
