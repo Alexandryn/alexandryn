@@ -18,16 +18,16 @@ DIR="$ROOT/internal/transport/http"
 # Every non-test handler file on the reading/reader transport surface —
 # a glob, not a fixed list, so a new handler file is covered
 # automatically. Excludes the *_ref.go / *_test.go plumbing.
-mapfile -t FILES < <(cd "$DIR" 2>/dev/null && ls reading*.go reader_content*.go 2>/dev/null | grep -Ev '_test\.go$|_ref\.go$' || true)
+mapfile -t FILES < <(cd "$DIR" 2>/dev/null && ls reading*.go reader_content*.go device_sync*.go 2>/dev/null | grep -Ev '_test\.go$|_ref\.go$' || true)
 
 # Forbidden: `<recv>.<method>(` where recv is a reading-data deps field
 # and method is a non-user-scoped variant. The user-scoped forms
 # (…AndUser, SaveForUser, DeleteAndUser, FindByUserAndDevice) are the
 # only ones a handler may call.
 forbidden=(
-	'deps\.Progress\.FindByWork\('
-	'deps\.Progress\.FindByWorkForUpdate\('
-	'deps\.Progress\.Save\('
+	'(deps\.Progress|progressRepo)\.FindByWork\('
+	'(deps\.Progress|progressRepo)\.FindByWorkForUpdate\('
+	'(deps\.Progress|progressRepo)\.Save\('
 	'deps\.Bookmarks\.FindByID\('
 	'deps\.Bookmarks\.FindByEdition\('
 	'deps\.Bookmarks\.Save\('

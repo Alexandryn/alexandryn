@@ -94,6 +94,11 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/network/status",
 		"/api/v1/network/settings",
 		"/api/v1/network/pair/{id}",
+		// Phase 14 — devices & sync.
+		"/api/v1/devices",
+		"/api/v1/devices/{id}",
+		"/api/v1/sync/reading",
+		"/api/v1/sync/progress",
 	}
 	for _, p := range phasePaths {
 		if doc.Paths.Find(p) == nil {
@@ -805,12 +810,28 @@ func (v ctVerifier) VerifyAndConsume(_ context.Context, _ domain.PairingCode, _ 
 	return v.session, nil
 }
 
-type ctPairedDevices struct{}
+type ctPairedDevices struct {
+	devices map[domain.DeviceID]*domain.PairedDevice
+}
 
-func (ctPairedDevices) FindByID(_ context.Context, _ domain.DeviceID) (*domain.PairedDevice, error) {
+func (d ctPairedDevices) FindByID(_ context.Context, id domain.DeviceID) (*domain.PairedDevice, error) {
+	if d.devices != nil {
+		if dev, ok := d.devices[id]; ok {
+			return dev, nil
+		}
+	}
 	return nil, nil
 }
-func (ctPairedDevices) FindByOwner(_ context.Context, _ domain.UserID) ([]*domain.PairedDevice, error) {
+func (d ctPairedDevices) FindByOwner(_ context.Context, owner domain.UserID) ([]*domain.PairedDevice, error) {
+	if d.devices != nil {
+		var list []*domain.PairedDevice
+		for _, dev := range d.devices {
+			if dev.Owner() == owner {
+				list = append(list, dev)
+			}
+		}
+		return list, nil
+	}
 	return nil, nil
 }
 func (ctPairedDevices) FindByPairingSessionID(_ context.Context, _ domain.PairingSessionID) (*domain.PairedDevice, error) {
@@ -991,4 +1012,143 @@ func TestPhase13ContractResponses(t *testing.T) {
 		}
 	})
 }
+
+type ctSyncStore struct {
+	data *postgres.ReadingSyncData
+}
+
+func (s *ctSyncStore) GetReadingSyncData(_ context.Context, _ domain.UserID, _ domain.LibraryID, _ int64) (*postgres.ReadingSyncData, error) {
+	if s.data != nil {
+		return s.data, nil
+	}
+	return &postgres.ReadingSyncData{
+		Cursor:     10,
+		Progress:   []postgres.SyncProgressItem{},
+		Bookmarks:  []postgres.SyncBookmarkItem{},
+		Highlights: []postgres.SyncHighlightItem{},
+	}, nil
+}
+
+func (s *ctSyncStore) GetProgressSyncSequence(_ context.Context, _ domain.ReadingProgressID) (int64, error) {
+	return 10, nil
+}
+
+type ctLibEntriesChecker struct{}
+
+func (ctLibEntriesChecker) WorkInLibrary(_ context.Context, _ domain.WorkID, _ domain.LibraryID) (bool, error) {
+	return true, nil
+}
+
+type ctTransactor struct{}
+
+func (ctTransactor) InTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
+type ctIDs struct{}
+
+func (ctIDs) NewID() string {
+	return "test-id"
+}
+
+func TestPhase14ContractResponses(t *testing.T) {
+	v := contracttest.New(t)
+	now := func() time.Time { return time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC) }
+
+	dev, err := domain.RehydratePairedDevice(
+		"dev-1", "user-1", "My Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode,
+		now(), now(), nil, 5, nil,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error rehydrating device: %v", err)
+	}
+
+	devRepo := ctPairedDevices{
+		devices: map[domain.DeviceID]*domain.PairedDevice{
+			"dev-1": dev,
+		},
+	}
+
+	t.Run("GET /api/v1/devices → 200 ListDevicesResponse", func(t *testing.T) {
+		h := transporthttp.ListDevicesHandler(devRepo)
+		req := mustRequest(t, "GET", "/api/v1/devices", nil)
+		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("DELETE /api/v1/devices/{id} → 204 No Content", func(t *testing.T) {
+		h := transporthttp.RevokeDeviceHandler(devRepo, now)
+		req := mustRequest(t, "DELETE", "/api/v1/devices/dev-1", nil)
+		req.SetPathValue("id", "dev-1")
+		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusNoContent {
+			t.Errorf("expected 204, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/sync/reading → 200 ReadingSyncResponse", func(t *testing.T) {
+		syncStore := &ctSyncStore{
+			data: &postgres.ReadingSyncData{
+				Cursor: 12,
+				Progress: []postgres.SyncProgressItem{
+					{
+						WorkID:       "work-1",
+						Percentage:   0.45,
+						Epoch:        1,
+						DeviceID:     "dev-1",
+						ObservedAt:   now(),
+						SyncSequence: 12,
+					},
+				},
+				Bookmarks:  []postgres.SyncBookmarkItem{},
+				Highlights: []postgres.SyncHighlightItem{},
+			},
+		}
+		h := transporthttp.SyncReadingHandler(syncStore, devRepo, now)
+		req := mustRequest(t, "GET", "/api/v1/sync/reading?since=0", nil)
+		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+		req = req.WithContext(transporthttp.WithActiveLibrary(req.Context(), "lib-1"))
+		req = req.WithContext(transporthttp.WithDevice(req.Context(), dev))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST /api/v1/sync/progress → 200 SyncProgressResponse", func(t *testing.T) {
+		pct, err := domain.NewPercentage(0.3)
+		if err != nil {
+			t.Fatalf("unexpected error creating percentage: %v", err)
+		}
+		progress := domain.RehydrateReadingProgress("prog-1", "work-1", pct, 0, nil, "dev-1", now())
+		progRepo := ctReadingProgress{p: progress}
+		syncStore := &ctSyncStore{}
+		tx := ctTransactor{}
+		ids := ctIDs{}
+
+		h := transporthttp.SyncProgressHandler(progRepo, ctLibEntriesChecker{}, syncStore, devRepo, tx, ids, now)
+		body := `{"workId":"work-1","percentage":0.5,"observedEpoch":0,"deviceId":"dev-1"}`
+		req := mustRequest(t, "POST", "/api/v1/sync/progress", bytes.NewReader([]byte(body)))
+		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+		req = req.WithContext(transporthttp.WithActiveLibrary(req.Context(), "lib-1"))
+		req = req.WithContext(transporthttp.WithDevice(req.Context(), dev))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+}
+
 

@@ -645,6 +645,17 @@ func run(ctx context.Context, deps runDeps) int {
 		if repos.importerService != nil {
 			poolRef.SetImporterService(repos.importerService)
 		}
+		if repos.pairedDevices != nil && repos.readingSync != nil && repos.readingProgress != nil {
+			poolRef.SetSyncAPI(transporthttp.SyncAPI{
+				Devices:        repos.pairedDevices,
+				Progress:       repos.readingProgress,
+				LibraryEntries: repos.libraryEntries,
+				SyncStore:      repos.readingSync,
+				Transactor:     repos.transactor,
+				IDs:            idgen.New(),
+				Now:            time.Now,
+			})
+		}
 	}
 
 	logger.Info("startup step completed", "step", "pool")

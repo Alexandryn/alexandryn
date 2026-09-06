@@ -281,6 +281,13 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
 	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
 
+	// Device Management & Sync routes (Phase 14)
+	syncMW := transporthttp.LazySyncMiddleware(poolRef)
+	mux.Handle("GET /api/v1/devices", transporthttp.Chain(transporthttp.LazyListDevicesHandler(poolRef), syncMW))
+	mux.Handle("DELETE /api/v1/devices/{id}", transporthttp.Chain(transporthttp.LazyRevokeDeviceHandler(poolRef), syncMW))
+	mux.Handle("GET /api/v1/sync/reading", transporthttp.Chain(transporthttp.LazySyncReadingHandler(poolRef), syncMW))
+	mux.Handle("POST /api/v1/sync/progress", transporthttp.Chain(transporthttp.LazySyncProgressHandler(poolRef), syncMW))
+
 	mux.Handle("GET /api/bootstrap", transporthttp.LazyBootstrapHandler(poolRef))
 
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
