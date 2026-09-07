@@ -1,53 +1,309 @@
 # Phase 15 — Observability
 
-*Outline — expanded to a full phase document when phases 09, 13 close.*
-
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | In progress |
 | **Depends on** | Phase 09, Phase 13 |
 | **Blocks** | 16 |
+| **Opened** | 2026-09-07 |
+| **Closed** | — |
+
+## Dependency status at open (verified, not trusted from roadmap)
+
+**Phase 09 (Async jobs):** The roadmap status line reads "Specs approved,
+implementation not started" — stale. The spec index shows `backend-job-queue.md`
+as `IMPLEMENTED` (branch `feat/phase09-async-jobs`, 2026-09-01; independent
+review `0036`, findings fixed; security audit `0009` clear). Phase 09 commits
+(`993e223`, `c48262d`, `b28ab38`, `b3e0a80` in `origin/main`) confirm the job
+queue, engine, and status API are in `main`. The branch
+`origin/feat/phase09-async-jobs` is not merged (as a Git merge commit) into
+`main` — code arrived via commits that were also merged through subsequent
+phases. Spec status is `IMPLEMENTED`; `VERIFIED` is pending a formal maintainer
+close. **This phase depends on the job queue infrastructure being present and
+tested in `main`, which it is. The open formal-close is not a blocker for phase
+15, but the stale roadmap status line is corrected here for the record.**
+
+**Phase 13 (Network access):** Closed — merged to `main` via PR #80 on
+2026-09-05 (merge commit `369190f`). All exit criteria met; security audit
+`0013` recorded with no open Critical/High findings. Four specs `APPROVED`;
+ADR 0028 `Accepted`. Verified from git. Status confirmed.
+
+**Phase 14 (Devices and sync):** The phase 14 README and exit criteria show
+Closed — implementation, verification, and audit `0014` complete. Phase 14's
+branch `feat/phase14-devices-and-sync` is not yet merged to `main` at the time
+phase 15 is opened (current HEAD is `origin/main` = `454af67`). Phase 14 is not
+a dependency of phase 15, so this does not block this phase. Noted for context.
 
 ## Objective
 
-Observability maturity beyond phase 03's baseline: metrics, queue depth,
-system diagnostics, and the Activity screen — with redaction proven, not
-assumed (Constitution §8).
+Observability maturity beyond phase 03's baseline: structured metrics collection
+(request latency, job queue depth, database pool utilisation), a
+health-and-diagnostics endpoint queryable by the desktop host and operators, the
+Activity screen backed by real system events and job state, and automated proof
+that no credential, session token, reading content, or precise reading position
+ever reaches a log line or a metric label. Redaction is proven by a CI test, not
+assumed.
+
+## Why here
+
+Phase 03 established the baseline: structured logs, request IDs, a `/health`
+endpoint, and useful failure messages from the first line of server code
+(constitution §8). Phases 09–14 added the things worth observing: background
+jobs with state machines (phase 09), LAN exposure with rate limiting and
+security headers (phase 13), device sync events (phase 14). Phase 15 builds the
+surface that ties these together into something an operator and the desktop host
+can see and act on.
+
+Running earlier would have produced a dashboard with nothing in it — no job
+states to show, no sync events, no network-exposure conditions to surface. Phase
+09 must exist for queue-depth metrics to mean anything; phase 13 must exist for
+the Activity screen to show acquisition jobs from LAN-paired sources.
+
+Running later risks phase 16 (security hardening) auditing a surface that
+includes sensitive operational data with no proven redaction discipline. The §8
+test must pass before the hardening phase begins.
 
 ## Scope
 
 **In**
 
-- Metrics collection (latency, queue depth, DB pool), health/diagnostics
-  endpoint
-- Activity log store and UI
-- Automated proof that credentials, tokens, and reading history never reach
-  logs or metrics
+- Metrics collection: request latency (histogram by route), job queue depth by
+  state (`queued`, `running`, `retrying`, `dead_letter`), database pool
+  utilisation — collected in-process, no external telemetry service.
+- A `/api/v1/diagnostics` endpoint, authenticated, admin-only: returns the
+  current snapshot of those metrics plus server uptime, Go runtime stats
+  (goroutine count, memory), and build version. This endpoint powers both the
+  desktop host's own status display and any operator tooling.
+- Activity log store: a `system_events` table recording job lifecycle events
+  (enqueued, started, completed, failed, dead-lettered), import history, and
+  source acquisition events. Admin-only reads. Retention policy: configurable,
+  defaulting to 30 days.
+- Activity screen UI (Electron/Host only, `atActivity` in
+  `Alexandryn-Electron.dc.html`): two-tab layout — Acquisition tab (ACTIVE /
+  QUEUED / FAILED / COMPLETED sections, with Pause-all and Clear-completed
+  actions) and Reading tab (not yet populated — see Design conformance
+  stop-and-ask below). The orange badge dot on the Activity nav item must
+  reflect live state.
+- Automated redaction proof: a CI test that runs the full request path (import
+  job, sync event, authentication) against structured log output and asserts
+  that no credential, session token, home-directory path, reading title, reading
+  position, or percentage value appears in any log line or metric label emitted
+  during that path. This test must fail before the redaction code exists; it is
+  one of the RED tests.
 
-**Candidate (not yet claimed — needs its own spec + scope gate)**
+**Candidate (not yet claimed — maintainer decision required)**
 
-- **Library-visible reading activity.** After a user *finishes* a book,
-  other members of the same library see it marked as read by them, and a
-  per-library **most-read leaderboard** — **without exposing anyone's
-  reading position or progress percentage**. Raised by the maintainer
-  during phase 13 (review 0050). It is a distinct read model layered on
-  the per-user-private reading data: the phase-13 hardening keeps
-  `user_id` + `library_id` on every progress row, so a
-  `WHERE work_id = $1 AND library_id = $2 AND percentage >= 100`
-  aggregate over the shared library is a straightforward addition. The
-  privacy line is load-bearing — "completed" is shareable within a
-  library; position, current chapter, and time-remaining are not
-  (`domain-reading.md`, constitution §8). Deferred here, not designed.
+- **Library-visible reading activity / most-read leaderboard.** See the
+  Leaderboard recommendation section below. Not in scope unless the maintainer
+  approves it here.
 
 **Out**
 
-- Any external telemetry service — self-hosted stays local.
-- Exposing any reading *position* or *progress percentage* to anyone but
-  the reading user — the leaderboard candidate above shares only the
-  binary "finished" fact, per library.
+- Any external telemetry service (Prometheus exporter, OTEL collector, etc.) —
+  this project self-hosts and stays local.
+- Exposing reading position, current chapter, time-remaining, or percentage to
+  anyone but the reading user.
+- The `/api/v1/health` endpoint already built in phase 03 — this phase extends
+  diagnostics alongside it but does not replace it.
+- Mobile or Web-viewer Activity screen — `atActivity` is Electron-only per
+  ANALYSIS.md.
+- Reading tab content — deferred until the stop-and-ask below is resolved.
+
+## Design conformance
+
+**Canvas consulted:** `Alexandryn-Electron.dc.html` (the Electron/Host canvas
+per ADR 0003). Re-read fresh on 2026-09-07. ANALYSIS.md sync date: 2026-08-13,
+byte-identical on the last re-pull per ANALYSIS.md's own statement. The Admin
+canvas (`Alexandryn-Electron-Admin.dc.html`) was also consulted for `atSystem`.
+
+**`atActivity` classification:** Binding for phase 15, per ANALYSIS.md line 109.
+
+**What the canvas shows for `atActivity` (Alexandryn-Electron.dc.html lines
+817–902):**
+
+- Heading: "Activity". Subtitle: "What Alexandryn is fetching from your sources,
+  and what you have been reading."
+- Two-tab layout: "Acquisition" (active, underlined) | "Reading" (secondary
+  colour, inactive — no drawn content).
+- Acquisition tab — four sections:
+  - **ACTIVE** + "Pause all" text action: each row shows cover thumbnail, title,
+    author, source name, format badge, progress bar, "NN% · NNmb of NNmb"
+    label, and an action button (e.g. "Pause").
+  - **QUEUED**: each row shows smaller thumbnail, title, source name, format
+    badge, status text (e.g. "Waiting for source"), "Cancel" text action.
+  - **FAILED**: each row shows thumbnail, title, source name, error dot + error
+    text, "Fix source" link (navigates to Sources), and a "Retry"-style button.
+  - **COMPLETED** + "Clear" text action: each row shows smaller thumbnail, title,
+    source name, format badge, green dot + status text, "Read" action link.
+- The Activity nav item has an orange dot badge (canvas line 106), visible when
+  the route is active.
+
+**`atSystem` in Admin canvas:** This screen (Admin canvas lines 796+) is the
+**Design system** reference (typography, colour, controls) — it is not a server
+diagnostics or metrics screen. There is no drawn UI for operational
+metrics/diagnostics in any captured canvas file.
+
+**Stop-and-ask 1 — Reading tab content (Unclassified):** The "Reading" tab
+label is drawn but its content is not. ANALYSIS.md classifies `atActivity` as
+Binding, but the undrawn tab content within it is Unclassified per the same
+classification rules. **This phase will not design or implement Reading tab
+content without explicit maintainer direction.** The Acquisition tab spec
+proceeds as Binding.
+
+**Stop-and-ask 2 — `/api/v1/diagnostics` endpoint (Unclassified):** There is no
+drawn UI surface for a metrics/diagnostics endpoint or server-health dashboard
+in any canvas. The endpoint is operational infrastructure with no user-facing
+UI. It is not exploratory, and it is not blocked by the canvas gap. But per
+CLAUDE.md and ANALYSIS.md, Unclassified must be surfaced, not silently treated
+as either state. **Question for the maintainer: build the diagnostics endpoint
+as a purely backend concern with no UI (current plan), or is a UI surface
+wanted? If no UI is wanted, this is not a design-conformance issue and we
+proceed. If a UI is wanted, a canvas or an explicit Unclassified waiver is
+needed first.**
+
+## Architecture decisions expected
+
+**ADR 0030 — In-process metrics mechanism given the no-external-telemetry
+constraint.** Options: custom counter/histogram store; `expvar` (stdlib, zero
+dependencies); `prometheus/client_golang` used in-process only. Must state which,
+why not the others, and what breaks if the choice is abandoned.
+
+**ADR 0031 — Activity log store model, retention, and LAN-client read
+access.** Three questions decided together: (a) schema — typed event table or
+JSONB payload; FK relationship to the `jobs` table; (b) retention — who triggers
+expiry and at what schedule; configurable key name and default (30 days); (c)
+LAN-client read access — canvas places `atActivity` on the host only, but the
+spec must state the access decision explicitly rather than inheriting it from
+canvas placement alone.
+
+**ADR 0032 — Redaction-proof test: what it scans for and how it fails CI.**
+Must be decided before the RED step: what constitutes a violation (credential-shaped
+strings, JWT format, home-directory path prefix, book title in a log line during
+import), how the test captures log output (a `zaptest` observer, a buffer plugged
+into the server's logger, or an integration test that reads log files), and what
+`FAIL` looks like (any match → test fails and reports the offending line). The test
+is itself one of the RED tests; ADR 0032 decides its design before implementation
+begins.
+
+## Leaderboard recommendation
+
+**Recommendation: defer the library-visible reading activity / most-read
+leaderboard to its own phase or a named addition to a later phase. Do not claim
+it in phase 15.**
+
+Reasons:
+
+1. **Distinct read model.** A `WHERE work_id = $1 AND library_id = $2 AND
+   percentage >= 100` aggregate is a new feature — not a small addition to the
+   Activity screen. It requires its own endpoint, its own privacy test proving
+   position never leaks, and its own spec review.
+
+2. **No canvas.** There is no drawn UI for a leaderboard or library-visible
+   "finished" indicators in any captured file.
+
+3. **Phase scope.** Metrics, diagnostics, activity log store, Activity screen,
+   and the CI redaction test are already a full phase. Adding a new
+   privacy-sensitive aggregate increases the audit surface at Gate 2 with no
+   offsetting reduction in complexity.
+
+4. **Load-bearing privacy line.** The privacy constraint ("finished" shareable
+   per library; position/chapter/percentage/time-remaining are not) must be a
+   spec acceptance criterion and a named test, not a prose assertion. Deferring
+   ensures it gets that treatment in its own scope.
+
+If the maintainer wants the leaderboard in phase 15, it needs: explicit approval
+here; a canvas or Unclassified waiver; a spec FR proving only the binary
+"finished" fact is shared; and a test attempting to read position from the
+aggregate and asserting it returns nothing. These are not blocking concerns —
+they are normal Gate 1 requirements for a new spec.
+
+## Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Redaction test written after implementation — asserts what the code does rather than what it should do | High | High | ADR 0032 decided before any implementation; test written first (RED step); constitution §2 |
+| Metrics collection adds measurable overhead on the hot request path | Low | Medium | In-process counters only (no network I/O on hot path); latency budget set in spec NFRs |
+| Activity log store grows without bound if reaper is not wired | Medium | Low | Retention reaper wiring is an exit criterion; test confirms rows are purged past the retention window |
+| Reading tab content built without a canvas, inventing design | Medium | High | Stop-and-ask 1 — no Reading tab content built without maintainer direction |
+| `/api/v1/diagnostics` leaks operational data to unprivileged users | Low | High | Admin-only auth guard; audit traces handler → middleware → role check |
+| Metric labels carry user-identifying data (book title, source URL) | Medium | High | Redaction-proof test covers metric labels, not only log lines |
+
+## Test strategy
+
+The hardest thing to test is the redaction invariant across the full call path.
+A job that fetches book content from a source must not emit the source
+credential, the book title, or any position value at any log level. This requires
+capturing log output from a real integration path, not a unit test of an
+individual log call.
+
+| Layer | What it covers |
+|---|---|
+| Unit | Metrics counter/histogram correctness; activity log event serialisation; retention-reaper cutoff calculation; Activity screen component states (active/queued/failed/completed, empty each) |
+| Integration | Job lifecycle → `system_events` row written; `/api/v1/diagnostics` returns correct pool and queue stats; admin-only auth guard on diagnostics; reader-role token → 403; IDOR test |
+| Redaction (RED gate) | Log output for import job, sync event, and auth path scanned for credential/token/title/position patterns — must fail before redaction code exists |
+| Contract | Diagnostics endpoint response shape; Activity screen API response shape |
+| E2E | Activity screen shows an in-flight job; failed acquisition shows with "Fix source" link; "Pause all" disables active acquisitions |
+| Accessibility | Activity screen: keyboard-navigable list, Pause/Cancel/Retry/Clear actions keyboard-reachable, status updates announced, nav badge has accessible name |
+
+## Security considerations
+
+Trust boundaries this phase creates or extends:
+
+1. **`GET /api/v1/diagnostics`**: Authenticated, admin-only. The audit must trace
+   handler → middleware → role assertion → response shape and confirm no path
+   bypasses the role check. Reader-role token must produce 403. Response must not
+   include usernames, email addresses, or any value identifying a specific user.
+
+2. **`system_events` table**: Written by the job engine and import pipeline. The
+   event payload must not include source credentials, session tokens, book
+   content, or reading positions. Write path is internal; the ADR 0031 decision
+   on LAN read access must precede the handler.
+
+3. **Activity screen API**: Admin/host-only consistent with the canvas placement.
+   If it queries `system_events`, the read must be scoped by `library_id`
+   predicate at the SQL layer. Audit traces this from handler to SQL.
+
+4. **Metric labels**: No label may carry a book title, user identifier, or source
+   URL — only route templates, outcome categories, and numeric values.
+
+Constitution §8 governs all of the above. The redaction-proof CI test is a
+security control: failing it at Gate 2 must block the phase.
+
+## Observability
+
+This phase is itself an observability phase. The section covers what it must not
+break:
+
+- Existing `/health` endpoint and request-ID logging (phase 03) continue
+  unchanged.
+- New metrics collection does not suppress or replace existing structured log
+  output.
+- Activity log reaper logs a `warn`-level message if it fails to run, rather than
+  silently allowing unbounded table growth.
 
 ## Exit criteria
 
-- [ ] Activity screen shows real system events, job status, import history
-- [ ] Automated test proves zero sensitive data in logs, metrics, or diagnostics
+- [ ] ADR 0030 (metrics mechanism) accepted
+- [ ] ADR 0031 (activity log store model, retention, LAN access) accepted
+- [ ] ADR 0032 (redaction-proof test design) accepted
+- [ ] Reading tab stop-and-ask (Stop-and-ask 1) resolved by the maintainer before
+      the frontend spec is drafted
+- [ ] Diagnostics endpoint stop-and-ask (Stop-and-ask 2) resolved by the maintainer
+      before the backend spec is drafted
+- [ ] `backend-observability.md` is `VERIFIED`
+- [ ] `frontend-activity-screen.md` is `VERIFIED`
+- [ ] Test plans exist for every spec in this phase, written before this phase's
+      RED step (ADR 0016) — or an explicit deferral is recorded
+- [ ] Redaction-proof CI test exists, was observed to fail before implementation,
+      and passes green
+- [ ] `/api/v1/diagnostics` returns correct metrics, is admin-only, and the auth
+      guard is traced from handler to role check in the audit
+- [ ] Activity screen shows ACTIVE / QUEUED / FAILED / COMPLETED acquisition jobs
+      backed by real system events
+- [ ] Activity screen Acquisition tab: Pause-all, Cancel, Retry, Clear actions
+      functional and keyboard-accessible
+- [ ] Activity-log retention reaper wired and tested
+- [ ] Security audit recorded in `.claude/audits/` with no open Critical or High
+      findings
+- [ ] Documentation updated
 - [ ] Maintainer approval recorded
