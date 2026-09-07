@@ -8,6 +8,15 @@
 | **Opened** | 2026-09-07 |
 | **Closed** | — |
 
+## Gate 0 decisions (2026-09-07, maintainer)
+
+| # | Decision |
+|---|---|
+| G0-1 | Reading tab: remove the tab label entirely until there is drawn content — this phase does not build it. |
+| G0-2 | `/api/v1/diagnostics` endpoint: backend only, no UI. Not a design-conformance question; proceed. |
+| G0-3 | Library-visible leaderboard: include in phase 15 with its own spec and a named privacy test. |
+| G0-4 | Metrics mechanism: Go stdlib `expvar`. ADR 0030 records this as Accepted. |
+
 ## Dependency status at open (verified, not trusted from roadmap)
 
 **Phase 09 (Async jobs):** The roadmap status line reads "Specs approved,
@@ -69,45 +78,42 @@ test must pass before the hardening phase begins.
 
 - Metrics collection: request latency (histogram by route), job queue depth by
   state (`queued`, `running`, `retrying`, `dead_letter`), database pool
-  utilisation — collected in-process, no external telemetry service.
-- A `/api/v1/diagnostics` endpoint, authenticated, admin-only: returns the
-  current snapshot of those metrics plus server uptime, Go runtime stats
-  (goroutine count, memory), and build version. This endpoint powers both the
-  desktop host's own status display and any operator tooling.
+  utilisation — collected in-process using Go stdlib `expvar` (G0-4). No
+  external telemetry service.
+- A `/api/v1/diagnostics` endpoint, authenticated, admin-only, backend only with
+  no UI in this phase (G0-2): returns the current `expvar` snapshot plus server
+  uptime, Go runtime stats, and build version.
 - Activity log store: a `system_events` table recording job lifecycle events
   (enqueued, started, completed, failed, dead-lettered), import history, and
   source acquisition events. Admin-only reads. Retention policy: configurable,
   defaulting to 30 days.
-- Activity screen UI (Electron/Host only, `atActivity` in
-  `Alexandryn-Electron.dc.html`): two-tab layout — Acquisition tab (ACTIVE /
-  QUEUED / FAILED / COMPLETED sections, with Pause-all and Clear-completed
-  actions) and Reading tab (not yet populated — see Design conformance
-  stop-and-ask below). The orange badge dot on the Activity nav item must
-  reflect live state.
-- Automated redaction proof: a CI test that runs the full request path (import
-  job, sync event, authentication) against structured log output and asserts
-  that no credential, session token, home-directory path, reading title, reading
-  position, or percentage value appears in any log line or metric label emitted
-  during that path. This test must fail before the redaction code exists; it is
-  one of the RED tests.
-
-**Candidate (not yet claimed — maintainer decision required)**
-
-- **Library-visible reading activity / most-read leaderboard.** See the
-  Leaderboard recommendation section below. Not in scope unless the maintainer
-  approves it here.
+- Activity screen UI (Electron/Host only, `atActivity`): **Acquisition tab only**
+  (ACTIVE / QUEUED / FAILED / COMPLETED sections, with Pause-all and
+  Clear-completed actions). The Reading tab label is not rendered in this phase
+  (G0-1). The orange nav badge reflects live state.
+- Automated redaction proof: a CI test that captures structured log output over
+  a real import-job and auth path and asserts that no credential, session token,
+  home-directory path, book title, reading position, or percentage value appears
+  in any log line or metric label.
+- **Library-visible reading activity / most-read leaderboard** (G0-3): after a
+  library member finishes a book (`percentage >= 100`), other members of the
+  same library see it marked as read and a per-library most-read count. Only the
+  binary "finished" fact is shared — never reading position, current chapter,
+  percentage, or time-remaining. Requires its own spec and a named privacy test
+  proving position never reaches the aggregate.
 
 **Out**
 
-- Any external telemetry service (Prometheus exporter, OTEL collector, etc.) —
-  this project self-hosts and stays local.
+- Any external telemetry service.
 - Exposing reading position, current chapter, time-remaining, or percentage to
-  anyone but the reading user.
+  anyone but the reading user — the leaderboard shares only "finished", nothing
+  else.
 - The `/api/v1/health` endpoint already built in phase 03 — this phase extends
-  diagnostics alongside it but does not replace it.
+  alongside it.
 - Mobile or Web-viewer Activity screen — `atActivity` is Electron-only per
   ANALYSIS.md.
-- Reading tab content — deferred until the stop-and-ask below is resolved.
+- Reading tab content and label — removed entirely until a canvas exists (G0-1).
+
 
 ## Design conformance
 
@@ -155,35 +161,36 @@ drawn UI surface for a metrics/diagnostics endpoint or server-health dashboard
 in any canvas. The endpoint is operational infrastructure with no user-facing
 UI. It is not exploratory, and it is not blocked by the canvas gap. But per
 CLAUDE.md and ANALYSIS.md, Unclassified must be surfaced, not silently treated
-as either state. **Question for the maintainer: build the diagnostics endpoint
-as a purely backend concern with no UI (current plan), or is a UI surface
-wanted? If no UI is wanted, this is not a design-conformance issue and we
-proceed. If a UI is wanted, a canvas or an explicit Unclassified waiver is
-needed first.**
+as either state.
+
+## Specifications
+
+| Spec | Status |
+|---|---|
+| `backend-observability.md` | Not yet drafted |
+| `frontend-activity-screen.md` | Not yet drafted |
+| `backend-reading-leaderboard.md` | Not yet drafted |
 
 ## Architecture decisions expected
 
-**ADR 0030 — In-process metrics mechanism given the no-external-telemetry
-constraint.** Options: custom counter/histogram store; `expvar` (stdlib, zero
-dependencies); `prometheus/client_golang` used in-process only. Must state which,
-why not the others, and what breaks if the choice is abandoned.
+**ADR 0030 — In-process metrics mechanism (Accepted, G0-4).** Go stdlib `expvar`
+chosen by the maintainer. The ADR records the options considered and the
+reasoning; no further deliberation needed on the mechanism itself.
 
 **ADR 0031 — Activity log store model, retention, and LAN-client read
-access.** Three questions decided together: (a) schema — typed event table or
-JSONB payload; FK relationship to the `jobs` table; (b) retention — who triggers
-expiry and at what schedule; configurable key name and default (30 days); (c)
-LAN-client read access — canvas places `atActivity` on the host only, but the
-spec must state the access decision explicitly rather than inheriting it from
-canvas placement alone.
+access (Proposed).** Three questions decided together: (a) schema — typed event
+table or JSONB payload; FK relationship to the `jobs` table; (b) retention —
+who triggers expiry and at what schedule; configurable key name and default
+(30 days); (c) LAN-client read access — canvas places `atActivity` on the host
+only, but the spec must state the access decision explicitly.
 
-**ADR 0032 — Redaction-proof test: what it scans for and how it fails CI.**
-Must be decided before the RED step: what constitutes a violation (credential-shaped
-strings, JWT format, home-directory path prefix, book title in a log line during
-import), how the test captures log output (a `zaptest` observer, a buffer plugged
-into the server's logger, or an integration test that reads log files), and what
-`FAIL` looks like (any match → test fails and reports the offending line). The test
-is itself one of the RED tests; ADR 0032 decides its design before implementation
-begins.
+**ADR 0032 — Redaction-proof test: what it scans for and how it fails CI
+(Proposed).** Must be decided before the RED step: what patterns constitute a
+violation (credential-shaped strings, JWT format, home-directory path prefix,
+book title in a log line during import, percentage value), how the test captures
+log output (zaptest observer, buffer, or integration test reading log files),
+and what `FAIL` looks like (any match → test fails and reports the offending
+line). The test design precedes all implementation.
 
 ## Leaderboard recommendation
 
