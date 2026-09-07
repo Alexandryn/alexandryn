@@ -129,9 +129,18 @@ type Registry struct {
 
 // NewRegistry constructs a new operational metrics registry.
 func NewRegistry() *Registry {
+	var m *expvar.Map
+	if v := expvar.Get("alexandryn_metrics"); v != nil {
+		if existing, ok := v.(*expvar.Map); ok {
+			m = existing
+		}
+	}
+	if m == nil {
+		m = expvar.NewMap("alexandryn_metrics")
+	}
 	return &Registry{
 		routes:    make(map[string]*LatencyHistogram),
-		expvarMap: expvar.NewMap("alexandryn_metrics"),
+		expvarMap: m,
 	}
 }
 
