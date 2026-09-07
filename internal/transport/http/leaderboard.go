@@ -83,7 +83,7 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 
 		elapsed := time.Since(start)
 		if elapsed > 100*time.Millisecond {
-			slog.WarnContext(ctx, "slow finished works query", "duration_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
+			slog.WarnContext(ctx, "slow finished works query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
 		}
 
 		worksMap := make(map[string][]FinishedUserRef)
@@ -186,7 +186,7 @@ func LibraryLeaderboardHandler(pool *pgxpool.Pool) http.Handler {
 
 		elapsed := time.Since(start)
 		if elapsed > 100*time.Millisecond {
-			slog.WarnContext(ctx, "slow leaderboard query", "duration_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
+			slog.WarnContext(ctx, "slow leaderboard query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
 		}
 
 		items := make([]LeaderboardItem, 0)

@@ -195,7 +195,7 @@ function ActiveRow({ item, onPause }: { item: ActivityItem; onPause: () => void 
     <div className="flex items-center gap-4 p-3.5 px-4 rounded-lg border border-border bg-surface shadow-sm">
       <div className="relative w-[2.125rem] flex-none aspect-[2/3] rounded-5xs overflow-hidden bg-surface-3 flex items-center justify-center font-mono text-5xs text-text-3">
         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-black/25" />
-        EPB
+        {(item.format || 'EPB').slice(0, 3)}
       </div>
 
       <div className="w-[16.25rem] flex-[1_1_200px] min-w-0">
@@ -241,7 +241,7 @@ function QueuedRow({ item, onCancel }: { item: ActivityItem; onCancel: () => voi
   return (
     <div className="flex items-center gap-4 py-2.5 px-4">
       <div className="relative w-[1.625rem] flex-none aspect-[2/3] rounded-5xs overflow-hidden bg-surface-3 flex items-center justify-center font-mono text-[0.5rem] text-text-3">
-        EPB
+        {(item.format || 'EPB').slice(0, 3)}
       </div>
 
       <div className="flex-[0_1_260px] min-w-0 text-xl truncate text-text">{item.title}</div>
@@ -276,7 +276,7 @@ function FailedRow({ item, onRetry }: { item: ActivityItem; onRetry: () => void 
   return (
     <div className="flex items-center gap-4 p-3.5 px-4 rounded-lg border border-border bg-surface">
       <div className="relative w-[2.125rem] flex-none aspect-[2/3] rounded-5xs overflow-hidden bg-surface-3 flex items-center justify-center font-mono text-5xs text-text-3">
-        EPB
+        {(item.format || 'EPB').slice(0, 3)}
       </div>
 
       <div className="flex-[0_1_260px] min-w-0 text-2xl font-medium truncate text-text">
@@ -323,7 +323,7 @@ function CompletedRow({ item }: { item: ActivityItem }) {
   return (
     <div className="flex items-center gap-4 py-2.5 px-4">
       <div className="relative w-[1.625rem] flex-none aspect-[2/3] rounded-5xs overflow-hidden bg-surface-3 flex items-center justify-center font-mono text-[0.5rem] text-text-3">
-        EPB
+        {(item.format || 'EPB').slice(0, 3)}
       </div>
 
       <div className="flex-[0_1_260px] min-w-0 text-xl truncate text-text">{item.title}</div>
