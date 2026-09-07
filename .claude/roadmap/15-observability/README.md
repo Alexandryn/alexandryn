@@ -167,7 +167,7 @@ design-conformance question. Proceed.
 |---|---|
 | `backend-observability.md` | `APPROVED` |
 | `frontend-activity-screen.md` | `APPROVED` |
-| `backend-reading-leaderboard.md` | Not yet drafted |
+| `backend-reading-leaderboard.md` | `APPROVED` |
 
 ## Architecture decisions expected
 
