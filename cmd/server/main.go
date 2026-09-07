@@ -305,6 +305,8 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("POST /api/v1/activity/jobs/{id}/cancel", adminOnly(transporthttp.LazyActivityJobCancelHandler(poolRef)))
 	mux.Handle("POST /api/v1/activity/jobs/{id}/retry", adminOnly(transporthttp.LazyActivityJobRetryHandler(poolRef)))
 	mux.Handle("POST /api/v1/activity/jobs/clear-completed", adminOnly(transporthttp.LazyActivityClearCompletedHandler(poolRef)))
+	mux.Handle("GET /api/v1/library/finished", transporthttp.LazyFinishedWorksHandler(poolRef))
+	mux.Handle("GET /api/v1/library/leaderboard", transporthttp.LazyLibraryLeaderboardHandler(poolRef))
 
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 

@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/observability"
@@ -15,6 +17,18 @@ type observabilityRefs struct {
 	jobQueue   atomic.Pointer[jobs.Queue]
 	jobSystem  atomic.Pointer[jobs.System]
 	metricsReg atomic.Pointer[observability.Registry]
+	dbPool     atomic.Pointer[pgxpool.Pool]
+}
+
+// SetDBPool stores the pgxpool.Pool reference.
+func (r *PoolRef) SetDBPool(p *pgxpool.Pool) {
+	r.observability.dbPool.Store(p)
+}
+
+// GetDBPool returns the pgxpool.Pool reference if set.
+func (r *PoolRef) GetDBPool() (*pgxpool.Pool, bool) {
+	v := r.observability.dbPool.Load()
+	return v, v != nil
 }
 
 // SetEventStore stores the EventStore reference.

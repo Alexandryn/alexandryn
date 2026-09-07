@@ -660,6 +660,7 @@ func run(ctx context.Context, deps runDeps) int {
 			})
 		}
 		if pgxPool, ok := pool.(*pgxpool.Pool); ok {
+			poolRef.SetDBPool(pgxPool)
 			eventStore := observability.NewEventStore(pgxPool, time.Now)
 			poolRef.SetEventStore(eventStore)
 		}
