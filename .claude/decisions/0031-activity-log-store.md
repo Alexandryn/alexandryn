@@ -38,18 +38,30 @@ We use one `system_events` table:
 
 ```sql
 CREATE TABLE system_events (
-    id          BIGSERIAL PRIMARY KEY,
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     event_kind  TEXT NOT NULL,          -- 'job.enqueued', 'job.completed', 'import.started', etc.
-    job_id      BIGINT REFERENCES jobs(id) ON DELETE SET NULL,  -- nullable
-    library_id  UUID REFERENCES libraries(id) ON DELETE CASCADE,
-    user_id     UUID REFERENCES users(id) ON DELETE SET NULL,   -- nullable
+    job_id      TEXT REFERENCES jobs(id) ON DELETE SET NULL,     -- nullable
+    library_id  TEXT REFERENCES libraries(id) ON DELETE CASCADE, -- nullable: host-level events have no library
+    user_id     TEXT REFERENCES users(id) ON DELETE SET NULL,    -- nullable
     payload     JSONB NOT NULL DEFAULT '{}',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     purge_at    TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX ON system_events (library_id, created_at DESC);
+CREATE INDEX ON system_events (created_at DESC) WHERE library_id IS NULL;
 CREATE INDEX ON system_events (purge_at);
 ```
+
+`job_id`, `library_id`, and `user_id` are `TEXT` — every referenced primary key in
+the schema is `TEXT` (`jobs.id`, migration 00006; `libraries.id` and `users.id`,
+migration 00009). A `BIGINT` or `UUID` FK column would fail the migration on a
+type mismatch. `id` is a database-generated identity because the event log is
+append-only and never needs an application-assigned id.
+
+`library_id` is nullable. Host-level events — server start/stop, network rebind,
+reaper failure — belong to no library. The Activity screen query filters for the
+active `library_id` **plus** `library_id IS NULL` when the viewer is the host
+admin; the partial index above serves the host-level feed.
 
 Event kinds are string constants defined in `internal/observability/events.go`.
 Payload fields are event-kind-specific and must not contain credentials, tokens,
@@ -128,8 +140,8 @@ seeing reader B's events). The leaderboard is the right reader-facing surface.
 ## Consequences
 
 **Good:** Single migration, single repository interface, single reaper. The
-Activity screen query is one `SELECT ... ORDER BY created_at DESC LIMIT n` with
-a `library_id` predicate.
+Activity screen query is one `SELECT ... ORDER BY created_at DESC LIMIT n`
+scoped to `library_id = $1 OR library_id IS NULL`.
 
 **Bad:** JSONB payload is not schema-enforced at the SQL layer. The
 `SystemEventWriter` is the only enforcement point; a future caller that bypasses

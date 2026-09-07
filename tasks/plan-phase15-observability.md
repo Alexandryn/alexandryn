@@ -41,10 +41,16 @@ Dependency: ADR 0030 (Accepted), ADR 0031 (Accepted), ADR 0032 (Accepted).
 
 Sub-tasks in order:
 - T1.1 — `expvar` collector: request latency histogram by route (middleware
-  hook), job queue depth gauges (polled from `Queue.ListJobs`), DB pool
-  utilisation (polled from `pgxpool.Pool.Stat()`). Zero new Go modules.
-- T1.2 — `system_events` migration (migration `00012`): event type, job ID FK
-  (nullable), library ID FK (nullable), payload JSONB, created_at, purge_at.
+  hook), job queue depth gauges, DB pool utilisation (polled from
+  `pgxpool.Pool.Stat()`). Zero new Go modules. Queue-depth gauges need a
+  `COUNT(*) ... GROUP BY status` aggregate on the jobs store — `Queue.ListJobs`
+  returns full `[]Job` slices and must not be polled per scrape; the spec adds
+  the count method.
+- T1.2 — `system_events` migration (migration `00012`): event kind, `job_id`
+  `TEXT` FK (nullable, → `jobs.id`), `library_id` `TEXT` FK (nullable, host-level
+  events have none), `user_id` `TEXT` FK (nullable), payload JSONB, created_at,
+  purge_at. All FK types `TEXT` — every referenced PK in the schema is `TEXT`
+  (`jobs.id` 00006; `libraries.id`, `users.id` 00009). See ADR 0031.
 - T1.3 — `SystemEventWriter`: called by the job engine's completion/failure
   hooks and by the import pipeline on enqueue. Writes one row per transition.
   No credential, token, title, or position in any payload field.
