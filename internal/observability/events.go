@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"context"
 	"strings"
 	"time"
 )
@@ -84,5 +85,5 @@ func isProhibitedKey(key string) bool {
 
 // SystemEventWriter writes audit and activity events into storage.
 type SystemEventWriter interface {
-	RecordEvent(ev NewSystemEvent) error
+	RecordEvent(ctx context.Context, ev NewSystemEvent) error
 }
