@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | In progress |
+| **Status** | Closed |
 | **Depends on** | Phase 09, Phase 13 |
 | **Blocks** | 16 |
 | **Opened** | 2026-09-07 |
-| **Closed** | — |
+| **Closed** | 2026-09-07 |
 
 ## Gate 0 decisions (2026-09-07, maintainer)
 
@@ -282,25 +282,25 @@ break:
 ## Exit criteria
 
 - [x] ADR 0030 (metrics mechanism) accepted — G0-4
-- [ ] ADR 0031 (activity log store model, retention, LAN access) accepted
-- [ ] ADR 0032 (redaction-proof test design) accepted
+- [x] ADR 0031 (activity log store model, retention, LAN access) accepted
+- [x] ADR 0032 (redaction-proof test design) accepted
 - [x] Reading tab design question resolved — G0-1 (label removed, Acquisition tab only)
 - [x] Diagnostics endpoint design question resolved — G0-2 (backend-only, no UI)
-- [ ] `backend-observability.md` is `VERIFIED`
-- [ ] `frontend-activity-screen.md` is `VERIFIED`
-- [ ] `backend-reading-leaderboard.md` is `VERIFIED`
-- [ ] Test plans exist for every spec in this phase, written before this phase's
+- [x] `backend-observability.md` is `VERIFIED`
+- [x] `frontend-activity-screen.md` is `VERIFIED`
+- [x] `backend-reading-leaderboard.md` is `VERIFIED`
+- [x] Test plans exist for every spec in this phase, written before this phase's
       RED step (ADR 0016) — or an explicit deferral is recorded
-- [ ] Redaction-proof CI test exists, was observed to fail before implementation,
+- [x] Redaction-proof CI test exists, was observed to fail before implementation,
       and passes green
-- [ ] `/api/v1/diagnostics` returns correct metrics, is admin-only, and the auth
+- [x] `/api/v1/diagnostics` returns correct metrics, is admin-only, and the auth
       guard is traced from handler to role check in the audit
-- [ ] Activity screen shows ACTIVE / QUEUED / FAILED / COMPLETED acquisition jobs
+- [x] Activity screen shows ACTIVE / QUEUED / FAILED / COMPLETED acquisition jobs
       backed by real system events
-- [ ] Activity screen Acquisition tab: Pause-all, Cancel, Retry, Clear actions
+- [x] Activity screen Acquisition tab: Pause-all, Cancel, Retry, Clear actions
       functional and keyboard-accessible
-- [ ] Activity-log retention reaper wired and tested
-- [ ] Security audit recorded in `.claude/audits/` with no open Critical or High
+- [x] Activity-log retention reaper wired and tested
+- [x] Security audit recorded in `.claude/audits/` with no open Critical or High
       findings
-- [ ] Documentation updated
-- [ ] Maintainer approval recorded
+- [x] Documentation updated
+- [x] Maintainer approval recorded
