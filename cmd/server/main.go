@@ -28,8 +28,15 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/logging"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
+	"github.com/Alexandryn/alexandryn/internal/observability"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 	"golang.org/x/time/rate"
+)
+
+var (
+	gitCommit       = "dev"
+	buildTime       = ""
+	serverStartTime = time.Now()
 )
 
 // postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
@@ -291,29 +298,31 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	mux.Handle("GET /api/bootstrap", transporthttp.LazyBootstrapHandler(poolRef))
 
+	// Observability & Activity routes (Phase 15)
+	mux.Handle("GET /api/v1/diagnostics", adminOnly(transporthttp.LazyDiagnosticsHandler(poolRef, serverStartTime, gitCommit, buildTime)))
+	mux.Handle("GET /api/v1/activity/events", adminOnly(transporthttp.LazyActivityEventsHandler(poolRef)))
+	mux.Handle("POST /api/v1/activity/pause-all", adminOnly(transporthttp.LazyActivityPauseAllHandler(poolRef)))
+	mux.Handle("POST /api/v1/activity/jobs/{id}/cancel", adminOnly(transporthttp.LazyActivityJobCancelHandler(poolRef)))
+	mux.Handle("POST /api/v1/activity/jobs/{id}/retry", adminOnly(transporthttp.LazyActivityJobRetryHandler(poolRef)))
+	mux.Handle("POST /api/v1/activity/jobs/clear-completed", adminOnly(transporthttp.LazyActivityClearCompletedHandler(poolRef)))
+
 	mux.Handle("/api/v1/", transporthttp.NotFoundHandler())
 
 	mux.Handle("/", transporthttp.DefaultStaticHandler())
 
+	metricsReg := observability.NewRegistry()
+	poolRef.SetMetricsRegistry(metricsReg)
+
 	// The middleware chain, outermost-in (backend-http-transport.md FR-1
-	// as amended for ADR 0028, architecture-backend.md FR-6):
-	//   recovery -> limits -> logging -> security headers (all binds) ->
+	// as amended for ADR 0028, architecture-backend.md FR-6, backend-observability.md FR-4):
+	//   recovery -> limits -> logging -> metrics -> security headers (all binds) ->
 	//   HSTS (in-process TLS only) -> global rate limit (health probes) ->
 	//   CORS -> auth -> routing.
-	// Recovery stays strictly outermost; limits and logging keep their
-	// phase-03 positions; routing stays innermost. Only the auth slot
-	// grew. The rate limiter sits before CORS so a CORS-preflight-shaped
-	// flood on a health probe is metered before CORS can short-circuit it
-	// with a 204; both sit before auth so an unauthenticated flood is
-	// shed before token verification. Origin validation (FR-7) is a
-	// route-group wrapper on the unauthenticated pairing routes, added at
-	// route registration in Tier 4 — not a global layer. publicLimiter is
-	// owned by run() so its per-IP map eviction is bound to the process
-	// context.
 	return transporthttp.Chain(mux,
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
+		transporthttp.Metrics(metricsReg),
 		transporthttp.SecurityHeaders(),
 		transporthttp.HSTS(cfg.TLSMode() == "static" || cfg.TLSMode() == "acme"),
 		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthProbePath),

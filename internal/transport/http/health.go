@@ -32,6 +32,7 @@ type PoolRef struct {
 	auth          authRefs    // phase 12 — see auth_ref.go
 	network       networkRefs // phase 13 — see network_ref.go
 	sync          syncRefs    // phase 14 — see sync_ref.go
+	observability observabilityRefs // phase 15 — see activity_ref.go
 }
 
 // Set stores p as the current reference.

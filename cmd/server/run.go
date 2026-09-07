@@ -23,10 +23,12 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/importer"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
+	"github.com/Alexandryn/alexandryn/internal/observability"
 	"github.com/Alexandryn/alexandryn/internal/pairing"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
 )
@@ -657,6 +659,10 @@ func run(ctx context.Context, deps runDeps) int {
 				Now:            time.Now,
 			})
 		}
+		if pgxPool, ok := pool.(*pgxpool.Pool); ok {
+			eventStore := observability.NewEventStore(pgxPool, time.Now)
+			poolRef.SetEventStore(eventStore)
+		}
 	}
 
 	logger.Info("startup step completed", "step", "pool")
@@ -670,7 +676,10 @@ func run(ctx context.Context, deps runDeps) int {
 			return 1
 		}
 		if js != nil {
-			if jsConcrete, ok := js.(*jobs.System); ok && repos != nil && repos.importCandidates != nil {
+			if jsConcrete, ok := js.(*jobs.System); ok {
+				poolRef.SetJobSystem(jsConcrete)
+				poolRef.SetJobQueue(jsConcrete.Queue())
+				if repos != nil && repos.importCandidates != nil {
 				sourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
 				olClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
 				matcher := importer.NewMatcher(repos.importCandidates, olClient)
@@ -681,6 +690,7 @@ func run(ctx context.Context, deps runDeps) int {
 				jobEnqueuer := transporthttp.NewJobQueueEnqueuer(jsConcrete.Queue())
 				discoveryCoord := importer.NewDiscoveryCoordinator(sourceChecker, sourceResolver, repos.importCandidates, jobEnqueuer, idgen.New())
 				poolRef.SetDiscoveryCoordinator(discoveryCoord)
+				}
 			}
 			js.Start(ctx)
 			jobSystem = js
