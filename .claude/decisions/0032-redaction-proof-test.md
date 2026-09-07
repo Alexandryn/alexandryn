@@ -49,31 +49,36 @@ A log line or metric label is a violation if it contains any of the following:
   sensitive data — route templates like `/api/v1/reading/:id` are fine).
 
 The violation patterns are encoded as Go `regexp.Regexp` values in a shared
-test helper file (`internal/observability/redaction_test_helpers_test.go` or
-`internal/testutil/redaction.go`) so they can be reused by future tests in
-other packages.
+test helper (`internal/testutil/redaction.go`, alongside `slogspy.go`) so they
+can be reused by future tests in other packages.
 
-### Capture mechanism — `zap.NewDevelopment()` observer in integration test
+### Capture mechanism — `log/slog` spy handler in an integration test
 
-The server's logger is injected via dependency injection (the same `*zap.Logger`
-passed to `NewServer` and to the job engine). In the redaction integration test,
-a `zaptest.NewLogger(t)` or `zap/zaptest/observer` replaces the production
-logger. All log output written by the server, the job engine, the import
-pipeline, and the `SystemEventWriter` flows through the test-injected logger
-and is captured in a slice of `observer.LoggedEntry` values.
+Alexandryn logs through the standard library `log/slog`. The project already has
+the capture primitive: `internal/testutil/slogspy.go` — `testutil.NewSpyHandler()`
+returns a `*SpyHandler` (an `slog.Handler`) that records every `slog.Record` it
+receives instead of writing it anywhere. It exposes `Records() []slog.Record`
+(iterate for regex checks against `r.Message` and each attr value) and
+`Contains(substr string) bool` (the "this exact secret never appears" check).
 
-After the test path runs, the test iterates the captured entries and applies the
-violation patterns to each entry's message and each field value.
+The redaction integration test wires `slog.New(testutil.NewSpyHandler())` as the
+logger passed to the server, the job engine, the import pipeline, and the
+`SystemEventWriter`. After a test path runs, it iterates the spy's records and
+applies the violation patterns to each record's message and each attribute value,
+and asserts `Contains` is false for every injected secret literal.
 
-**Why not a buffer/pipe:** A `bytes.Buffer` or `io.Pipe` would work for text
-logs, but Alexandryn uses structured JSON logs (`go.uber.org/zap`, ADR 0011).
-Parsing log lines from a buffer would be fragile against field-order changes and
-escaping. The `zaptest/observer` captures the structured fields directly, with
-no parsing needed.
+This is an established pattern, not a new one: phase 09 already ships
+`internal/jobs/redaction_integration_test.go`, which uses `testutil.NewSpyHandler()`
+to prove job payloads and errors never reach the log. Phase 15 extends the same
+approach across the credential, auth, import, and `system_events` paths.
 
-**Why not a log file:** Log files depend on a file path, require cleanup, and
-create a test-environment dependency. The observer is in-memory and cleans up
-with the test.
+**Why not a buffer/pipe:** A `bytes.Buffer` behind a `slog.NewJSONHandler` would
+work, but then the test parses JSON lines and is fragile against field-order and
+escaping changes. The spy handler hands back structured `slog.Record` values with
+no parsing.
+
+**Why not a log file:** Log files depend on a path, require cleanup, and create a
+test-environment dependency. The spy is in-memory and goes away with the test.
 
 ### Test paths covered
 
@@ -115,7 +120,7 @@ at the first. The error message includes:
 **Pros:** Exercises the real log path without test-injected infrastructure.
 **Cons:** Requires a writable log file path, a file-format parser, test cleanup.
 Slower (file I/O). Coupling to the log format (line vs. JSON structured).
-**Why not chosen:** The `zaptest/observer` captures the same data with less
+**Why not chosen:** The `slog` spy handler captures the same data with less
 infrastructure and no parsing fragility.
 
 ### Alternative B — Unit tests per logging call site
@@ -161,7 +166,8 @@ test exists and was observed to fail before the implementation was in place.
 
 ## Confidence
 
-High on the capture mechanism (zaptest observer is the canonical Go approach).
+High on the capture mechanism — the `slog` spy handler already exists
+(`internal/testutil/slogspy.go`) and is already used this way in phase 09.
 Medium on the violation patterns — the list above is derived from the spec's
 private-data categories (constitution §8, `domain-reading.md`), but future
 source kinds may introduce new credential shapes that are not yet listed. The

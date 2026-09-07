@@ -32,16 +32,18 @@ close. **This phase depends on the job queue infrastructure being present and
 tested in `main`, which it is. The open formal-close is not a blocker for phase
 15, but the stale roadmap status line is corrected here for the record.**
 
-**Phase 13 (Network access):** Closed — merged to `main` via PR #80 on
-2026-09-05 (merge commit `369190f`). All exit criteria met; security audit
-`0013` recorded with no open Critical/High findings. Four specs `APPROVED`;
-ADR 0028 `Accepted`. Verified from git. Status confirmed.
+**Phase 13 (Network access):** Closed — PR #80, recorded in `main` by
+`454af67` ("docs(roadmap): close phase 13, record its merge to main") on
+2026-09-05. All exit criteria met; security audit `0013` recorded with no open
+Critical/High findings. Four specs `APPROVED`; ADR 0028 `Accepted`. Verified
+from git. Status confirmed. (An earlier draft of this line cited `369190f` as a
+"merge commit" — that commit is an unrelated staticcheck fix; the repo uses
+rebase/squash merges, not merge commits.)
 
-**Phase 14 (Devices and sync):** The phase 14 README and exit criteria show
-Closed — implementation, verification, and audit `0014` complete. Phase 14's
-branch `feat/phase14-devices-and-sync` is not yet merged to `main` at the time
-phase 15 is opened (current HEAD is `origin/main` = `454af67`). Phase 14 is not
-a dependency of phase 15, so this does not block this phase. Noted for context.
+**Phase 14 (Devices and sync):** Closed — PR #82 merged to `main`
+(2026-09-07), including the post-review sync-hardening fixes (`a3b9753`,
+`01ecbb9`) and audit `0014`. Phase 14 is not a dependency of phase 15; noted
+for context.
 
 ## Objective
 
@@ -122,10 +124,10 @@ per ADR 0003). Re-read fresh on 2026-09-07. ANALYSIS.md sync date: 2026-08-13,
 byte-identical on the last re-pull per ANALYSIS.md's own statement. The Admin
 canvas (`Alexandryn-Electron-Admin.dc.html`) was also consulted for `atSystem`.
 
-**`atActivity` classification:** Binding for phase 15, per ANALYSIS.md line 109.
+**`atActivity` classification:** Binding for phase 15, per ANALYSIS.md's
+classification table.
 
-**What the canvas shows for `atActivity` (Alexandryn-Electron.dc.html lines
-817–902):**
+**What the canvas shows for `atActivity`:**
 
 - Heading: "Activity". Subtitle: "What Alexandryn is fetching from your sources,
   and what you have been reading."
@@ -141,27 +143,23 @@ canvas (`Alexandryn-Electron-Admin.dc.html`) was also consulted for `atSystem`.
     text, "Fix source" link (navigates to Sources), and a "Retry"-style button.
   - **COMPLETED** + "Clear" text action: each row shows smaller thumbnail, title,
     source name, format badge, green dot + status text, "Read" action link.
-- The Activity nav item has an orange dot badge (canvas line 106), visible when
-  the route is active.
+- The Activity nav item has an orange dot badge, visible when the route is
+  active.
 
-**`atSystem` in Admin canvas:** This screen (Admin canvas lines 796+) is the
-**Design system** reference (typography, colour, controls) — it is not a server
-diagnostics or metrics screen. There is no drawn UI for operational
-metrics/diagnostics in any captured canvas file.
+**`atSystem` in Admin canvas:** This screen is the **Design system** reference
+(typography, colour, controls) — it is not a server diagnostics or metrics
+screen. There is no drawn UI for operational metrics/diagnostics in any captured
+canvas file.
 
-**Stop-and-ask 1 — Reading tab content (Unclassified):** The "Reading" tab
-label is drawn but its content is not. ANALYSIS.md classifies `atActivity` as
-Binding, but the undrawn tab content within it is Unclassified per the same
-classification rules. **This phase will not design or implement Reading tab
-content without explicit maintainer direction.** The Acquisition tab spec
-proceeds as Binding.
+**Reading tab — resolved by G0-1.** The "Reading" tab label is drawn but its
+content is not; the undrawn content is Unclassified. The maintainer decided
+(G0-1) to remove the tab label entirely this phase. The frontend spec builds the
+Acquisition tab only, as Binding, with no "Reading" tab rendered.
 
-**Stop-and-ask 2 — `/api/v1/diagnostics` endpoint (Unclassified):** There is no
-drawn UI surface for a metrics/diagnostics endpoint or server-health dashboard
-in any canvas. The endpoint is operational infrastructure with no user-facing
-UI. It is not exploratory, and it is not blocked by the canvas gap. But per
-CLAUDE.md and ANALYSIS.md, Unclassified must be surfaced, not silently treated
-as either state.
+**`/api/v1/diagnostics` — resolved by G0-2.** No canvas surface exists for a
+metrics/diagnostics screen. The maintainer decided (G0-2) that the endpoint is
+backend-only operational infrastructure with no UI this phase — not a
+design-conformance question. Proceed.
 
 ## Specifications
 
@@ -188,41 +186,33 @@ only, but the spec must state the access decision explicitly.
 (Proposed).** Must be decided before the RED step: what patterns constitute a
 violation (credential-shaped strings, JWT format, home-directory path prefix,
 book title in a log line during import, percentage value), how the test captures
-log output (zaptest observer, buffer, or integration test reading log files),
-and what `FAIL` looks like (any match → test fails and reports the offending
-line). The test design precedes all implementation.
+log output (the `log/slog` spy handler at `internal/testutil/slogspy.go`, the
+same primitive phase 09's `internal/jobs/redaction_integration_test.go` already
+uses), and what `FAIL` looks like (any match → test fails and reports the
+offending line). The test design precedes all implementation.
 
-## Leaderboard recommendation
+## Leaderboard (G0-3 — in scope, own spec)
 
-**Recommendation: defer the library-visible reading activity / most-read
-leaderboard to its own phase or a named addition to a later phase. Do not claim
-it in phase 15.**
+The maintainer decided (G0-3) to include the library-visible reading activity /
+most-read leaderboard in phase 15, as its own spec (`backend-reading-leaderboard.md`)
+with a named privacy test.
 
-Reasons:
-
-1. **Distinct read model.** A `WHERE work_id = $1 AND library_id = $2 AND
-   percentage >= 100` aggregate is a new feature — not a small addition to the
-   Activity screen. It requires its own endpoint, its own privacy test proving
-   position never leaks, and its own spec review.
-
-2. **No canvas.** There is no drawn UI for a leaderboard or library-visible
-   "finished" indicators in any captured file.
-
-3. **Phase scope.** Metrics, diagnostics, activity log store, Activity screen,
-   and the CI redaction test are already a full phase. Adding a new
-   privacy-sensitive aggregate increases the audit surface at Gate 2 with no
-   offsetting reduction in complexity.
-
-4. **Load-bearing privacy line.** The privacy constraint ("finished" shareable
-   per library; position/chapter/percentage/time-remaining are not) must be a
-   spec acceptance criterion and a named test, not a prose assertion. Deferring
-   ensures it gets that treatment in its own scope.
-
-If the maintainer wants the leaderboard in phase 15, it needs: explicit approval
-here; a canvas or Unclassified waiver; a spec FR proving only the binary
-"finished" fact is shared; and a test attempting to read position from the
-aggregate and asserting it returns nothing. These are not blocking concerns —
-they are normal Gate 1 requirements for a new spec.
+- **What is shared:** after a library member finishes a book
+  (`percentage >= 100`), other members of the same library see it marked as read
+  and a per-library most-read count.
+- **What is never shared:** reading position, current chapter, percentage, or
+  time-remaining — for anyone but the reading user. The aggregate read model is
+  layered over the per-user-private reading data (`user_id` + `library_id` on
+  every progress row, phase 13 hardening); the query is
+  `WHERE library_id = $1 AND percentage >= 100` and selects `work_id` + finisher
+  identity only.
+- **Design:** no canvas exists for a leaderboard surface. This is an Unclassified
+  UI gap the frontend spec must flag at its own Gate 1; the backend read model
+  does not depend on it.
+- **Privacy test (RED):** a test that attempts to read a position/percentage
+  value through the leaderboard endpoint and asserts it returns nothing, plus a
+  test that a member at `percentage = 99` is absent from the aggregate. Written
+  before the endpoint exists.
 
 ## Risks
 
@@ -231,7 +221,8 @@ they are normal Gate 1 requirements for a new spec.
 | Redaction test written after implementation — asserts what the code does rather than what it should do | High | High | ADR 0032 decided before any implementation; test written first (RED step); constitution §2 |
 | Metrics collection adds measurable overhead on the hot request path | Low | Medium | In-process counters only (no network I/O on hot path); latency budget set in spec NFRs |
 | Activity log store grows without bound if reaper is not wired | Medium | Low | Retention reaper wiring is an exit criterion; test confirms rows are purged past the retention window |
-| Reading tab content built without a canvas, inventing design | Medium | High | Stop-and-ask 1 — no Reading tab content built without maintainer direction |
+| A "Reading" tab is rendered despite G0-1 | Low | Medium | Frontend spec + component test assert the Acquisition tab is the only tab; no "Reading" label in the DOM |
+| Leaderboard aggregate leaks a position or percentage value | Low | High | G0-3 privacy test (RED): read-position attempt returns nothing; `percentage = 99` member absent; audit traces handler → SQL predicate |
 | `/api/v1/diagnostics` leaks operational data to unprivileged users | Low | High | Admin-only auth guard; audit traces handler → middleware → role check |
 | Metric labels carry user-identifying data (book title, source URL) | Medium | High | Redaction-proof test covers metric labels, not only log lines |
 
@@ -290,15 +281,14 @@ break:
 
 ## Exit criteria
 
-- [ ] ADR 0030 (metrics mechanism) accepted
+- [x] ADR 0030 (metrics mechanism) accepted — G0-4
 - [ ] ADR 0031 (activity log store model, retention, LAN access) accepted
 - [ ] ADR 0032 (redaction-proof test design) accepted
-- [ ] Reading tab stop-and-ask (Stop-and-ask 1) resolved by the maintainer before
-      the frontend spec is drafted
-- [ ] Diagnostics endpoint stop-and-ask (Stop-and-ask 2) resolved by the maintainer
-      before the backend spec is drafted
+- [x] Reading tab design question resolved — G0-1 (label removed, Acquisition tab only)
+- [x] Diagnostics endpoint design question resolved — G0-2 (backend-only, no UI)
 - [ ] `backend-observability.md` is `VERIFIED`
 - [ ] `frontend-activity-screen.md` is `VERIFIED`
+- [ ] `backend-reading-leaderboard.md` is `VERIFIED`
 - [ ] Test plans exist for every spec in this phase, written before this phase's
       RED step (ADR 0016) — or an explicit deferral is recorded
 - [ ] Redaction-proof CI test exists, was observed to fail before implementation,
