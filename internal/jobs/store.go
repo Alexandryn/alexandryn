@@ -301,6 +301,36 @@ func (s *Store) ListJobs(ctx context.Context, filter JobFilter) ([]Job, error) {
 	return out, nil
 }
 
+// CountByState returns the count of jobs grouped by status. Every state is present
+// in the returned map even if its count is zero.
+func (s *Store) CountByState(ctx context.Context) (map[State]int, error) {
+	rows, err := s.pool.Query(ctx, `SELECT status, COUNT(*) FROM jobs GROUP BY status`)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	defer rows.Close()
+
+	counts := map[State]int{
+		StateQueued:     0,
+		StateRunning:    0,
+		StateRetrying:   0,
+		StateCompleted:  0,
+		StateDeadLetter: 0,
+	}
+	for rows.Next() {
+		var (
+			st    string
+			count int
+		)
+		if err := rows.Scan(&st, &count); err != nil {
+			return nil, translateError(err)
+		}
+		counts[State(st)] = count
+	}
+	return counts, rows.Err()
+}
+
+
 type scannable interface {
 	Scan(dest ...any) error
 }
