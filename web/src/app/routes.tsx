@@ -3,6 +3,7 @@ import type { Capability } from '../data/bootstrap'
 import { AcceptInviteScreen } from '../screens/Auth/AcceptInviteScreen'
 import { LoginScreen } from '../screens/Auth/LoginScreen'
 import { SetupScreen } from '../screens/Auth/SetupScreen'
+import { ActivityScreen } from '../screens/Activity'
 import { CollectionDetail } from '../screens/CollectionDetail'
 import { Collections } from '../screens/Collections'
 import { Discover, DiscoverWorkDetail } from '../screens/Discover'
@@ -44,7 +45,7 @@ const shellChildren: RouteObject[] = [
   { path: 'collection/:id', element: <CollectionDetail /> },
   { path: 'discover', element: <Discover /> },
   { path: 'discover/works/:openLibraryId', element: <DiscoverWorkDetail /> },
-  { path: 'activity', element: <ScreenPlaceholder title="Activity" /> },
+  { path: 'activity', element: <ActivityScreen /> },
   { path: 'more', element: <ScreenPlaceholder title="More" /> },
 
   // Multi-library administration (Phase 12)

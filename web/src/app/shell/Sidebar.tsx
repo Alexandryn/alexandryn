@@ -1,4 +1,7 @@
+import { useContext } from 'react'
 import { NavLink } from 'react-router-dom'
+import { QueryClientContext } from '@tanstack/react-query'
+import { useActivityBadge } from '../../data/activity'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { NAV_ITEMS } from './navItems'
@@ -9,6 +12,18 @@ const LINK_BASE = cx(
   FOCUS_RING,
 )
 
+function ActivityBadge() {
+  const { hasActiveOrFailed } = useActivityBadge()
+  if (!hasActiveOrFailed) return null
+  return (
+    <span
+      role="status"
+      aria-label="Activity — action required"
+      className="w-2 h-2 rounded-full bg-[var(--warm)] flex-none"
+    />
+  )
+}
+
 /**
  * The persistent desktop navigation rail
  * (frontend-shell-and-routing.md FR-3). A real <nav> landmark, not a
@@ -16,6 +31,8 @@ const LINK_BASE = cx(
  * breakpoint; below it the <MobileTabBar> replaces it entirely.
  */
 export function Sidebar() {
+  const hasQueryClient = Boolean(useContext(QueryClientContext))
+
   return (
     <nav
       aria-label="Primary"
@@ -33,7 +50,8 @@ export function Sidebar() {
                 cx(LINK_BASE, isActive && 'bg-surface-3 text-text font-medium')
               }
             >
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.to === '/activity' && hasQueryClient && <ActivityBadge />}
             </NavLink>
           </li>
         ))}
