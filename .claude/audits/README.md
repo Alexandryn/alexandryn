@@ -57,4 +57,6 @@ No phase closes with an open Critical or High finding.
 | [0009](0009-phase09-async-jobs.md) | Phase 09 async jobs (PostgreSQL-backed queue, worker pool, retry/backoff, dead-letter, reaper, lifecycle wiring) | 2026-09-01 | 0 | 0 | Clear (2 Low, 2 Informational, all accepted) |
 | [0012](0012-phase12-auth.md) | Phase 12 authentication, RBAC & multi-library namespacing | 2026-09-02 | 0 | 2 | 2 High findings resolved and certified in Phase 13 |
 | [0013](0013-phase13-network-access.md) | Phase 13 network access & device pairing | 2026-09-05 | 0 | 0 | Clear (1 High, 1 Med, 2 Low fixed; 1 Info accepted) |
+| [0014](0014-phase14-devices-and-sync.md) | Phase 14 devices and sync | 2026-09-06 | 0 | 0 | Clear |
+| [0015](0015-phase15-observability.md) | Phase 15 observability | 2026-09-07 | 0 | 0 | Clear (1 Med, 2 Low, all resolved) |
 
