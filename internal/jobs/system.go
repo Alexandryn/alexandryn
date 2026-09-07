@@ -42,3 +42,12 @@ func (s *System) Start(ctx context.Context) { s.engine.Start(ctx) }
 // still-running job for the reaper (FR-10). It is called between the
 // HTTP server's shutdown and the connection pool's close (FR-6).
 func (s *System) Shutdown(ctx context.Context) error { return s.engine.Shutdown(ctx) }
+
+// Pause halts worker claiming of new jobs.
+func (s *System) Pause() { s.engine.Pause() }
+
+// Resume resumes worker claiming of new jobs.
+func (s *System) Resume() { s.engine.Resume() }
+
+// IsPaused reports whether workers are paused.
+func (s *System) IsPaused() bool { return s.engine.IsPaused() }

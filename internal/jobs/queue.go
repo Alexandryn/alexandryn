@@ -97,3 +97,19 @@ func (q *Queue) CountByState(ctx context.Context) (map[State]int, error) {
 	return q.store.CountByState(ctx)
 }
 
+// CancelJob cancels a queued or running job, moving it to dead_letter.
+func (q *Queue) CancelJob(ctx context.Context, id ID) error {
+	return q.store.CancelJob(ctx, id, q.clock.Now())
+}
+
+// RetryJob re-enqueues a job by inserting a new record with attempts = 0.
+func (q *Queue) RetryJob(ctx context.Context, id ID) (ID, error) {
+	newID := ID(q.ids.NewID())
+	return q.store.RetryJob(ctx, id, newID, q.clock.Now())
+}
+
+// ClearCompleted deletes completed jobs older than cutoff.
+func (q *Queue) ClearCompleted(ctx context.Context, olderThan time.Time) (int64, error) {
+	return q.store.ClearCompleted(ctx, olderThan)
+}
+
