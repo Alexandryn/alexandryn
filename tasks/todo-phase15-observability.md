@@ -23,8 +23,8 @@ Branch: `feat/phase15-observability`. Never `main`.
 - [x] `backend-observability.md` drafted, self-reviewed, marked APPROVED
 - [x] State `frontend-activity-screen.md` scope → wait (approved 2026-09-07)
 - [x] `frontend-activity-screen.md` drafted, self-reviewed, marked APPROVED
-- [ ] State `backend-reading-leaderboard.md` scope → wait
-- [ ] `backend-reading-leaderboard.md` drafted, self-reviewed, marked APPROVED
+- [x] State `backend-reading-leaderboard.md` scope → wait (approved 2026-09-07)
+- [x] `backend-reading-leaderboard.md` drafted, self-reviewed, marked APPROVED
 
 ### Test plans (before RED — ADR 0016)
 
