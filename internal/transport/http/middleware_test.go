@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Alexandryn/alexandryn/internal/observability"
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
@@ -353,3 +354,34 @@ func TestCorrelationIDFromContext_EmptyWhenNoneSet(t *testing.T) {
 		t.Fatalf("CorrelationIDFromContext(bare context) = %q, want empty", got)
 	}
 }
+
+func TestMetrics_ObservesRouteLatencyAndIgnoresAssets(t *testing.T) {
+	reg := observability.NewRegistry()
+	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := transporthttp.Metrics(reg)(endpoint)
+
+	// API request
+	req1 := httptest.NewRequest(http.MethodGet, "/api/v1/library", nil)
+	req1.Pattern = "GET /api/v1/library"
+	handler.ServeHTTP(httptest.NewRecorder(), req1)
+
+	// Static asset request
+	req2 := httptest.NewRequest(http.MethodGet, "/assets/index.js", nil)
+	handler.ServeHTTP(httptest.NewRecorder(), req2)
+
+	snap, err := reg.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if hist, ok := snap.Latencies["GET /api/v1/library"]; !ok || hist.Count != 1 {
+		t.Errorf("Latencies[GET /api/v1/library] = %+v, want count 1", hist)
+	}
+	if _, ok := snap.Latencies["/assets/index.js"]; ok {
+		t.Errorf("expected /assets/index.js to be ignored in metrics")
+	}
+}
+

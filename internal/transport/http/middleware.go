@@ -9,9 +9,11 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
+	"github.com/Alexandryn/alexandryn/internal/observability"
 )
 
 // Middleware wraps a handler with another layer of behavior — direct
@@ -168,3 +170,26 @@ func Logging(logger *slog.Logger, newID func() string) Middleware {
 		})
 	}
 }
+
+// Metrics records request latency per route template in the given registry (FR-2).
+// Static assets under /assets/* are ignored.
+func Metrics(reg *observability.Registry) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if reg == nil || strings.HasPrefix(r.URL.Path, "/assets/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			duration := time.Since(start)
+
+			route := r.Pattern
+			if route == "" {
+				route = r.URL.Path
+			}
+			reg.ObserveRequest(route, duration)
+		})
+	}
+}
+

@@ -91,3 +91,9 @@ func (q *Queue) GetJob(ctx context.Context, id ID) (Job, error) {
 func (q *Queue) ListJobs(ctx context.Context, filter JobFilter) ([]Job, error) {
 	return q.store.ListJobs(ctx, filter)
 }
+
+// CountByState returns current job counts grouped by status.
+func (q *Queue) CountByState(ctx context.Context) (map[State]int, error) {
+	return q.store.CountByState(ctx)
+}
+

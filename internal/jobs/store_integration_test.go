@@ -417,3 +417,41 @@ type errStringT string
 func (e errStringT) Error() string { return string(e) }
 
 func errString(s string) error { return errStringT(s) }
+
+func TestStore_CountByState(t *testing.T) {
+	pool := migratedPool(t)
+	s := jobs.NewStore(pool, seqIDs(), testLease)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	counts, err := s.CountByState(ctx)
+	if err != nil {
+		t.Fatalf("CountByState on empty store: %v", err)
+	}
+	if counts[jobs.StateQueued] != 0 || counts[jobs.StateRunning] != 0 {
+		t.Fatalf("expected 0 counts on empty store, got %v", counts)
+	}
+
+	_ = s.Enqueue(ctx, jobs.NewJob{ID: "j1", Kind: "k", Payload: []byte(`{}`), MaxAttempts: 3, AvailableAt: now})
+	_ = s.Enqueue(ctx, jobs.NewJob{ID: "j2", Kind: "k", Payload: []byte(`{}`), MaxAttempts: 3, AvailableAt: now})
+
+	claimed, err := s.ClaimNext(ctx, "w1", []jobs.Kind{"k"}, now)
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimNext: %v", err)
+	}
+
+	counts, err = s.CountByState(ctx)
+	if err != nil {
+		t.Fatalf("CountByState: %v", err)
+	}
+	if counts[jobs.StateQueued] != 1 {
+		t.Errorf("queued = %d, want 1", counts[jobs.StateQueued])
+	}
+	if counts[jobs.StateRunning] != 1 {
+		t.Errorf("running = %d, want 1", counts[jobs.StateRunning])
+	}
+	if counts[jobs.StateRetrying] != 0 || counts[jobs.StateDeadLetter] != 0 {
+		t.Errorf("expected 0 for retrying and dead_letter, got %v", counts)
+	}
+}
+
