@@ -14,6 +14,9 @@ export interface SystemEventPayload {
   format?: string
   file_format?: string
   progress_percent?: number
+  // Note: progress percentage fields (percentage, pct) are stripped server-side in
+  // SanitizedPayload (Constitution §8, ADR 0031) to protect reading privacy and prevent
+  // leaking granular positions. Kept here defensively for event payload typing.
   percentage?: number
   pct?: number
   progress_text?: string

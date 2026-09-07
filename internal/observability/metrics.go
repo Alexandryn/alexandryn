@@ -61,7 +61,9 @@ func (h *LatencyHistogram) Observe(d time.Duration) {
 	if len(h.samples) < 2048 {
 		h.samples = append(h.samples, ms)
 	} else {
-		// Reservoir sampling replacement when full
+		// Note: Bounded round-robin replacement when capacity is reached.
+		// While not uniformly random once the buffer wraps around, this preserves
+		// a rolling window of recent samples for operational p50/p95/p99 latency estimation.
 		h.samples[h.count%int64(len(h.samples))] = ms
 	}
 }
@@ -172,6 +174,9 @@ func (r *Registry) ObserveRequest(route string, d time.Duration) {
 }
 
 // Snapshot gathers point-in-time metrics across routes, queue, and database pool.
+// It returns a non-nil error only if unrecoverable provider failures occur;
+// transient queue depth retrieval errors are handled with empty fallback data
+// so operational metrics collection degrades gracefully.
 func (r *Registry) Snapshot(ctx context.Context) (MetricsSnapshot, error) {
 	r.mu.RLock()
 	routesCopy := make(map[string]*LatencyHistogram, len(r.routes))
