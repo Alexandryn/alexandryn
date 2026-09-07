@@ -14,13 +14,13 @@ Branch: `feat/phase15-observability`. Never `main`.
 ### Tier 0 — ADRs
 
 - [x] ADR 0030 drafted and accepted (`0030-expvar-metrics.md`) — G0-4
-- [ ] ADR 0031 drafted (`0031-activity-log-store.md`) — Proposed, surfaces at Gate 1
-- [ ] ADR 0032 drafted (`0032-redaction-proof-test.md`) — Proposed, surfaces at Gate 1
+- [x] ADR 0031 drafted and accepted (`0031-activity-log-store.md`) — Gate 1
+- [x] ADR 0032 drafted and accepted (`0032-redaction-proof-test.md`) — Gate 1
 
 ### Gate 1 — Spec scope approval (one per spec; wait before drafting)
 
-- [ ] State `backend-observability.md` scope + ADR 0031 + ADR 0032 → wait
-- [ ] `backend-observability.md` drafted, self-reviewed, marked APPROVED
+- [x] State `backend-observability.md` scope + ADR 0031 + ADR 0032 → wait (approved 2026-09-07)
+- [x] `backend-observability.md` drafted, self-reviewed, marked APPROVED
 - [ ] State `frontend-activity-screen.md` scope → wait
 - [ ] `frontend-activity-screen.md` drafted, self-reviewed, marked APPROVED
 - [ ] State `backend-reading-leaderboard.md` scope → wait

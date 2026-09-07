@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-09-07 |
-| **Deciders** | — (surfaces at Gate 1, alongside backend-observability.md scope) |
+| **Deciders** | Maintainer (Gate 1, 2026-09-07) |
 | **Supersedes** | — |
 | **Superseded by** | — |
 
