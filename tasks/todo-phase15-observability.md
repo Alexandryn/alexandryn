@@ -28,9 +28,9 @@ Branch: `feat/phase15-observability`. Never `main`.
 
 ### Test plans (before RED — ADR 0016)
 
-- [ ] `backend-observability` test plan written
-- [ ] `frontend-activity-screen` test plan written
-- [ ] `backend-reading-leaderboard` test plan written
+- [x] `backend-observability` test plan written
+- [x] `frontend-activity-screen` test plan written
+- [x] `backend-reading-leaderboard` test plan written
 
 ### Tier 1 — Backend observability
 
