@@ -455,3 +455,108 @@ func TestStore_CountByState(t *testing.T) {
 	}
 }
 
+func TestStore_CancelJob(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	mustEnqueue(t, s, "j-cancel-1", "k", 3, now, now)
+
+	// Cancel queued job
+	if err := s.CancelJob(ctx, "j-cancel-1", now); err != nil {
+		t.Fatalf("CancelJob: %v", err)
+	}
+
+	job, err := s.GetJob(ctx, "j-cancel-1")
+	if err != nil {
+		t.Fatalf("GetJob: %v", err)
+	}
+	if job.State != jobs.StateDeadLetter {
+		t.Errorf("state = %v, want dead_letter", job.State)
+	}
+	if string(job.LastError) != "cancelled_by_admin" {
+		t.Errorf("last_error = %v, want cancelled_by_admin", job.LastError)
+	}
+
+	// Cancelling already dead_letter job returns conflict
+	err = s.CancelJob(ctx, "j-cancel-1", now)
+	if err == nil {
+		t.Fatal("expected conflict error when cancelling terminal job")
+	}
+
+	// Cancelling non-existent job returns not found
+	err = s.CancelJob(ctx, "j-missing", now)
+	if err == nil {
+		t.Fatal("expected not found error")
+	}
+}
+
+func TestStore_RetryJob(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	mustEnqueue(t, s, "j-retry-src", "k", 3, now, now)
+	_ = s.CancelJob(ctx, "j-retry-src", now)
+
+	newID, err := s.RetryJob(ctx, "j-retry-src", "j-retry-new", now)
+	if err != nil {
+		t.Fatalf("RetryJob: %v", err)
+	}
+	if newID != "j-retry-new" {
+		t.Errorf("newID = %s, want j-retry-new", newID)
+	}
+
+	newJob, err := s.GetJob(ctx, newID)
+	if err != nil {
+		t.Fatalf("GetJob(new): %v", err)
+	}
+	if newJob.State != jobs.StateQueued {
+		t.Errorf("state = %v, want queued", newJob.State)
+	}
+	if newJob.Attempts != 0 {
+		t.Errorf("attempts = %d, want 0", newJob.Attempts)
+	}
+
+	mustEnqueue(t, s, "j-running", "k", 3, now, now)
+	for {
+		cl, err := s.ClaimNext(ctx, "w1", []jobs.Kind{"k"}, now)
+		if err != nil || cl == nil {
+			t.Fatalf("failed to claim j-running: %v", err)
+		}
+		if cl.ID == "j-running" {
+			break
+		}
+	}
+	_, err = s.RetryJob(ctx, "j-running", "j-running-retry", now)
+	if err == nil {
+		t.Fatal("expected conflict when retrying running job")
+	}
+}
+
+func TestStore_ClearCompleted(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	mustEnqueue(t, s, "j-comp-1", "k", 3, now, now)
+	j, _ := s.ClaimNext(ctx, "w1", []jobs.Kind{"k"}, now)
+	oldTime := now.Add(-2 * time.Hour)
+	_, _ = s.Complete(ctx, j.ID, j.LeaseToken, oldTime)
+
+	// Clear older than 1 hour ago
+	cutoff := now.Add(-1 * time.Hour)
+	cleared, err := s.ClearCompleted(ctx, cutoff)
+	if err != nil {
+		t.Fatalf("ClearCompleted: %v", err)
+	}
+	if cleared != 1 {
+		t.Errorf("cleared = %d, want 1", cleared)
+	}
+
+	_, err = s.GetJob(ctx, "j-comp-1")
+	if err == nil {
+		t.Error("expected completed job to be deleted")
+	}
+}
+

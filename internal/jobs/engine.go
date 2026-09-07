@@ -41,6 +41,22 @@ type Engine struct {
 	wg        sync.WaitGroup
 	mu        sync.Mutex // guards cancel
 	cancel    context.CancelFunc
+	paused    atomic.Bool
+}
+
+// Pause halts claiming of new jobs by pollers.
+func (e *Engine) Pause() {
+	e.paused.Store(true)
+}
+
+// Resume resumes claiming of new jobs by pollers.
+func (e *Engine) Resume() {
+	e.paused.Store(false)
+}
+
+// IsPaused reports whether worker pollers are paused.
+func (e *Engine) IsPaused() bool {
+	return e.paused.Load()
 }
 
 // NewEngine builds a worker pool. Any zero field of cfg is filled from
@@ -156,6 +172,9 @@ func (e *Engine) poller(ctx context.Context, workerID string) {
 // pollOnce claims and runs at most one job. It returns whether a job was
 // claimed.
 func (e *Engine) pollOnce(ctx context.Context, workerID string, kinds []Kind) bool {
+	if e.paused.Load() {
+		return false
+	}
 	job, err := e.store.ClaimNext(ctx, workerID, kinds, e.clock.Now())
 	if err != nil {
 		if ctx.Err() == nil {

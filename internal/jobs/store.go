@@ -330,6 +330,93 @@ func (s *Store) CountByState(ctx context.Context) (map[State]int, error) {
 	return counts, rows.Err()
 }
 
+// CancelJob transitions a queued or running job to dead_letter with last_error = "cancelled_by_admin".
+func (s *Store) CancelJob(ctx context.Context, id ID, now time.Time) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return translateError(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var status string
+	err = tx.QueryRow(ctx, `SELECT status FROM jobs WHERE id = $1 FOR UPDATE`, string(id)).Scan(&status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return notFound()
+		}
+		return translateError(err)
+	}
+
+	st := State(status)
+	if st.IsTerminal() {
+		return &domain.Error{Category: domain.Conflict, Message: "job is already in a terminal state"}
+	}
+
+	const cancelReason = "cancelled_by_admin"
+	_, err = tx.Exec(ctx, `UPDATE jobs
+		SET status = 'dead_letter', last_error = $1, completed_at = $2, locked_until = NULL, updated_at = $2
+		WHERE id = $3`, cancelReason, now, string(id))
+	if err != nil {
+		return translateError(err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+// RetryJob reads a failed/dead_letter job, inserts a new job record with fresh ID, attempts = 0, available_at = now.
+func (s *Store) RetryJob(ctx context.Context, id ID, newID ID, now time.Time) (ID, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", translateError(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var (
+		kind        string
+		payload     []byte
+		status      string
+		maxAttempts int
+	)
+	err = tx.QueryRow(ctx, `SELECT kind, payload, status, max_attempts FROM jobs WHERE id = $1`, string(id)).
+		Scan(&kind, &payload, &status, &maxAttempts)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", notFound()
+		}
+		return "", translateError(err)
+	}
+
+	if status == string(StateRunning) {
+		return "", &domain.Error{Category: domain.Conflict, Message: "cannot retry a running job"}
+	}
+
+	if len(payload) == 0 {
+		payload = []byte("null")
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO jobs
+		(id, kind, payload, status, attempts, max_attempts, available_at, created_at, updated_at)
+		VALUES ($1, $2, $3, 'queued', 0, $4, $5, $6, $6)`,
+		string(newID), kind, payload, maxAttempts, now, now)
+	if err != nil {
+		return "", translateError(err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", translateError(err)
+	}
+	return newID, nil
+}
+
+// ClearCompleted deletes completed jobs older than cutoff.
+func (s *Store) ClearCompleted(ctx context.Context, olderThan time.Time) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM jobs
+		WHERE status = 'completed' AND (completed_at <= $1 OR (completed_at IS NULL AND updated_at <= $1))`, olderThan)
+	if err != nil {
+		return 0, translateError(err)
+	}
+	return tag.RowsAffected(), nil
+}
 
 type scannable interface {
 	Scan(dest ...any) error
