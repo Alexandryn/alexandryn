@@ -12,7 +12,7 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { cx } from '../../lib/cx'
 
 export function ActivityScreen() {
-  const { data: events = [], isLoading, isError, refetch } = useActivityEvents()
+  const { data: events = [], isLoading, isError, refetch } = useActivityEvents({ active: true })
   const pauseAll = usePauseAll()
   const cancelJob = useCancelJob()
   const retryJob = useRetryJob()

@@ -146,14 +146,44 @@ function eventToItem(ev: SystemEvent, id: string): ActivityItem {
 
 export const ACTIVITY_QUERY_KEY = ['activity', 'events'] as const
 
-export function useActivityEvents() {
+// Polling cadence (audit 0016 #102): the badge lives in the always-mounted
+// sidebar, so a fixed 10s interval meant every desktop client hit
+// /activity/events every 10s for the whole session, idle or backgrounded.
+// Now: no polling while the tab is hidden, 5s while a job is active, and a
+// slow 60s floor otherwise so a job started elsewhere still surfaces
+// within a minute. The Activity screen passes `active: true` for the
+// faster cadence while it is open.
+const ACTIVE_POLL_MS = 5000
+const IDLE_POLL_MS = 60000
+
+/**
+ * The adaptive polling cadence (audit 0016 #102): stop while the tab is
+ * hidden, poll fast while a job is running or the Activity screen is
+ * open, and fall back to a slow floor otherwise.
+ */
+export function activityPollInterval(
+  events: SystemEvent[] | undefined,
+  opts: { active?: boolean },
+  hidden: boolean,
+): number | false {
+  if (hidden) return false
+  if (parseActivityEvents(events ?? []).active.length > 0) return ACTIVE_POLL_MS
+  return opts.active ? ACTIVE_POLL_MS : IDLE_POLL_MS
+}
+
+export function useActivityEvents(opts: { active?: boolean } = {}) {
   return useQuery({
     queryKey: ACTIVITY_QUERY_KEY,
     queryFn: async () => {
       const data = await getJson<ActivityEventsResponse>('/api/v1/activity/events?limit=50')
       return data.events || []
     },
-    refetchInterval: 10000,
+    refetchInterval: (query) =>
+      activityPollInterval(
+        query.state.data,
+        opts,
+        typeof document !== 'undefined' && document.visibilityState === 'hidden',
+      ),
     refetchOnWindowFocus: true,
   })
 }
