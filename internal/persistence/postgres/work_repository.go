@@ -12,7 +12,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-
 // WorkRepository is internal/persistence/postgres's domain.WorkRepository
 // implementation (T24, R4). A Work spans five physical tables (works,
 // work_authors, work_subjects, work_external_references, and the rows of
@@ -315,301 +314,105 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 		}
 	}
 
+	const workPoolCTE = `WITH work_pool AS (
+			SELECT
+				w.id,
+				w.title,
+				w.subtitle,
+				EXISTS (
+					SELECT 1 FROM editions e
+					JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $3
+					WHERE e.work_id = w.id
+				) AS is_owned,
+				COALESCE(
+					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $3 WHERE e.work_id = w.id),
+					(SELECT max(cm.added_at) FROM collection_members cm JOIN collections c ON c.id = cm.collection_id AND c.library_id = $3 WHERE cm.work_id = w.id)
+				) AS effective_added_at
+			FROM works w
+			WHERE
+				(
+					($1 = 'owned' AND EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $3
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'wanted' AND EXISTS (
+						SELECT 1 FROM collection_members cm
+						JOIN collections c ON c.id = cm.collection_id AND c.library_id = $3
+						WHERE cm.work_id = w.id
+					) AND NOT EXISTS (
+						SELECT 1 FROM editions e
+						JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $3
+						WHERE e.work_id = w.id
+					))
+					OR ($1 = 'all' AND (
+						EXISTS (
+							SELECT 1 FROM editions e
+							JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $3
+							WHERE e.work_id = w.id
+						) OR EXISTS (
+							SELECT 1 FROM collection_members cm
+							JOIN collections c ON c.id = cm.collection_id AND c.library_id = $3
+							WHERE cm.work_id = w.id
+						)
+					))
+				)
+				AND (
+					$2 = ''
+					OR w.search_vector @@ plainto_tsquery('simple', $2)
+					OR EXISTS (
+						SELECT 1 FROM work_authors wa
+						JOIN authors a ON a.id = wa.author_id
+						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
+					)
+				)
+		)
+		SELECT
+			p.id,
+			p.title,
+			p.subtitle,
+			p.is_owned,
+			p.effective_added_at,
+			COALESCE((
+				SELECT json_agg(a.name ORDER BY wa.author_id)
+				FROM work_authors wa
+				JOIN authors a ON a.id = wa.author_id
+				WHERE wa.work_id = p.id
+			), '[]'::json) AS authors,
+			COALESCE((
+				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
+				FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id
+				WHERE cm.work_id = p.id AND c.library_id = $3
+			), '[]'::json) AS collections
+		FROM work_pool p
+		`
+
+	// The four variants share workPoolCTE (every library_entries and
+	// collection reference scoped to $3, the active library -- audit 0016
+	// #88) and differ only in the ORDER BY / cursor predicate / LIMIT tail.
+	// Cursor params, when present: $4 primary sort key, $5 id, $6 limit.
 	const (
-		queryAddedAtNoCursor = `WITH work_pool AS (
-			SELECT
-				w.id,
-				w.title,
-				w.subtitle,
-				EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				) AS is_owned,
-				COALESCE(
-					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-				) AS effective_added_at
-			FROM works w
-			WHERE
-				(
-					($1 = 'owned' AND EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'wanted' AND EXISTS (
-						SELECT 1 FROM collection_members cm
-						WHERE cm.work_id = w.id
-					) AND NOT EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'all' AND (
-						EXISTS (
-							SELECT 1 FROM editions e
-							JOIN library_entries le ON le.edition_id = e.id
-							WHERE e.work_id = w.id
-						) OR EXISTS (
-							SELECT 1 FROM collection_members cm
-							WHERE cm.work_id = w.id
-						)
-					))
-				)
-				AND (
-					$2 = ''
-					OR w.search_vector @@ plainto_tsquery('simple', $2)
-					OR EXISTS (
-						SELECT 1 FROM work_authors wa
-						JOIN authors a ON a.id = wa.author_id
-						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
-					)
-				)
-		)
-		SELECT
-			p.id,
-			p.title,
-			p.subtitle,
-			p.is_owned,
-			p.effective_added_at,
-			COALESCE((
-				SELECT json_agg(a.name ORDER BY wa.author_id)
-				FROM work_authors wa
-				JOIN authors a ON a.id = wa.author_id
-				WHERE wa.work_id = p.id
-			), '[]'::json) AS authors,
-			COALESCE((
-				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-				FROM collection_members cm
-				JOIN collections c ON c.id = cm.collection_id
-				WHERE cm.work_id = p.id
-			), '[]'::json) AS collections
-		FROM work_pool p
-		ORDER BY p.effective_added_at DESC, p.id DESC
-		LIMIT $3`
-
-		queryAddedAtWithCursor = `WITH work_pool AS (
-			SELECT
-				w.id,
-				w.title,
-				w.subtitle,
-				EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				) AS is_owned,
-				COALESCE(
-					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-				) AS effective_added_at
-			FROM works w
-			WHERE
-				(
-					($1 = 'owned' AND EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'wanted' AND EXISTS (
-						SELECT 1 FROM collection_members cm
-						WHERE cm.work_id = w.id
-					) AND NOT EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'all' AND (
-						EXISTS (
-							SELECT 1 FROM editions e
-							JOIN library_entries le ON le.edition_id = e.id
-							WHERE e.work_id = w.id
-						) OR EXISTS (
-							SELECT 1 FROM collection_members cm
-							WHERE cm.work_id = w.id
-						)
-					))
-				)
-				AND (
-					$2 = ''
-					OR w.search_vector @@ plainto_tsquery('simple', $2)
-					OR EXISTS (
-						SELECT 1 FROM work_authors wa
-						JOIN authors a ON a.id = wa.author_id
-						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
-					)
-				)
-		)
-		SELECT
-			p.id,
-			p.title,
-			p.subtitle,
-			p.is_owned,
-			p.effective_added_at,
-			COALESCE((
-				SELECT json_agg(a.name ORDER BY wa.author_id)
-				FROM work_authors wa
-				JOIN authors a ON a.id = wa.author_id
-				WHERE wa.work_id = p.id
-			), '[]'::json) AS authors,
-			COALESCE((
-				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-				FROM collection_members cm
-				JOIN collections c ON c.id = cm.collection_id
-				WHERE cm.work_id = p.id
-			), '[]'::json) AS collections
-		FROM work_pool p
-		WHERE (p.effective_added_at < $3 OR (p.effective_added_at = $3 AND p.id < $4))
-		ORDER BY p.effective_added_at DESC, p.id DESC
-		LIMIT $5`
-
-		queryTitleNoCursor = `WITH work_pool AS (
-			SELECT
-				w.id,
-				w.title,
-				w.subtitle,
-				EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				) AS is_owned,
-				COALESCE(
-					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-				) AS effective_added_at
-			FROM works w
-			WHERE
-				(
-					($1 = 'owned' AND EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'wanted' AND EXISTS (
-						SELECT 1 FROM collection_members cm
-						WHERE cm.work_id = w.id
-					) AND NOT EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'all' AND (
-						EXISTS (
-							SELECT 1 FROM editions e
-							JOIN library_entries le ON le.edition_id = e.id
-							WHERE e.work_id = w.id
-						) OR EXISTS (
-							SELECT 1 FROM collection_members cm
-							WHERE cm.work_id = w.id
-						)
-					))
-				)
-				AND (
-					$2 = ''
-					OR w.search_vector @@ plainto_tsquery('simple', $2)
-					OR EXISTS (
-						SELECT 1 FROM work_authors wa
-						JOIN authors a ON a.id = wa.author_id
-						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
-					)
-				)
-		)
-		SELECT
-			p.id,
-			p.title,
-			p.subtitle,
-			p.is_owned,
-			p.effective_added_at,
-			COALESCE((
-				SELECT json_agg(a.name ORDER BY wa.author_id)
-				FROM work_authors wa
-				JOIN authors a ON a.id = wa.author_id
-				WHERE wa.work_id = p.id
-			), '[]'::json) AS authors,
-			COALESCE((
-				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-				FROM collection_members cm
-				JOIN collections c ON c.id = cm.collection_id
-				WHERE cm.work_id = p.id
-			), '[]'::json) AS collections
-		FROM work_pool p
-		ORDER BY p.title ASC, p.id ASC
-		LIMIT $3`
-
-		queryTitleWithCursor = `WITH work_pool AS (
-			SELECT
-				w.id,
-				w.title,
-				w.subtitle,
-				EXISTS (
-					SELECT 1 FROM editions e
-					JOIN library_entries le ON le.edition_id = e.id
-					WHERE e.work_id = w.id
-				) AS is_owned,
-				COALESCE(
-					(SELECT min(le.added_at) FROM editions e JOIN library_entries le ON le.edition_id = e.id WHERE e.work_id = w.id),
-					(SELECT max(cm.added_at) FROM collection_members cm WHERE cm.work_id = w.id)
-				) AS effective_added_at
-			FROM works w
-			WHERE
-				(
-					($1 = 'owned' AND EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'wanted' AND EXISTS (
-						SELECT 1 FROM collection_members cm
-						WHERE cm.work_id = w.id
-					) AND NOT EXISTS (
-						SELECT 1 FROM editions e
-						JOIN library_entries le ON le.edition_id = e.id
-						WHERE e.work_id = w.id
-					))
-					OR ($1 = 'all' AND (
-						EXISTS (
-							SELECT 1 FROM editions e
-							JOIN library_entries le ON le.edition_id = e.id
-							WHERE e.work_id = w.id
-						) OR EXISTS (
-							SELECT 1 FROM collection_members cm
-							WHERE cm.work_id = w.id
-						)
-					))
-				)
-				AND (
-					$2 = ''
-					OR w.search_vector @@ plainto_tsquery('simple', $2)
-					OR EXISTS (
-						SELECT 1 FROM work_authors wa
-						JOIN authors a ON a.id = wa.author_id
-						WHERE wa.work_id = w.id AND a.name_vector @@ plainto_tsquery('simple', $2)
-					)
-				)
-		)
-		SELECT
-			p.id,
-			p.title,
-			p.subtitle,
-			p.is_owned,
-			p.effective_added_at,
-			COALESCE((
-				SELECT json_agg(a.name ORDER BY wa.author_id)
-				FROM work_authors wa
-				JOIN authors a ON a.id = wa.author_id
-				WHERE wa.work_id = p.id
-			), '[]'::json) AS authors,
-			COALESCE((
-				SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'added_at', cm.added_at) ORDER BY cm.added_at DESC)
-				FROM collection_members cm
-				JOIN collections c ON c.id = cm.collection_id
-				WHERE cm.work_id = p.id
-			), '[]'::json) AS collections
-		FROM work_pool p
-		WHERE (p.title > $3 OR (p.title = $3 AND p.id > $4))
-		ORDER BY p.title ASC, p.id ASC
-		LIMIT $5`
+		queryAddedAtNoCursor = workPoolCTE + `
+			ORDER BY p.effective_added_at DESC, p.id DESC
+			LIMIT $4`
+		queryAddedAtWithCursor = workPoolCTE + `
+			WHERE (p.effective_added_at < $4 OR (p.effective_added_at = $4 AND p.id < $5))
+			ORDER BY p.effective_added_at DESC, p.id DESC
+			LIMIT $6`
+		queryTitleNoCursor = workPoolCTE + `
+			ORDER BY p.title ASC, p.id ASC
+			LIMIT $4`
+		queryTitleWithCursor = workPoolCTE + `
+			WHERE (p.title > $4 OR (p.title = $4 AND p.id > $5))
+			ORDER BY p.title ASC, p.id ASC
+			LIMIT $6`
 	)
+
+	libraryID := string(q.LibraryID)
+	if libraryID == "" {
+		libraryID = string(domain.DefaultLibraryID)
+	}
 
 	var (
 		queryToExec string
@@ -619,18 +422,18 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 	if sort == domain.SortTitle {
 		if hasCursor {
 			queryToExec = queryTitleWithCursor
-			args = []any{string(filter), q.Q, cursorTitle, cursorID, limit + 1}
+			args = []any{string(filter), q.Q, libraryID, cursorTitle, cursorID, limit + 1}
 		} else {
 			queryToExec = queryTitleNoCursor
-			args = []any{string(filter), q.Q, limit + 1}
+			args = []any{string(filter), q.Q, libraryID, limit + 1}
 		}
 	} else {
 		if hasCursor {
 			queryToExec = queryAddedAtWithCursor
-			args = []any{string(filter), q.Q, cursorAddedAt, cursorID, limit + 1}
+			args = []any{string(filter), q.Q, libraryID, cursorAddedAt, cursorID, limit + 1}
 		} else {
 			queryToExec = queryAddedAtNoCursor
-			args = []any{string(filter), q.Q, limit + 1}
+			args = []any{string(filter), q.Q, libraryID, limit + 1}
 		}
 	}
 
@@ -642,7 +445,6 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 	defer rows.Close()
 
 	type workRow struct {
-
 		id               string
 		title            string
 		subtitle         string
@@ -739,9 +541,17 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 
 // FindWorkDetail loads one Work's detail including owned editions and
 // collection memberships (backend-library-api.md FR-5).
-func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID, libraryID domain.LibraryID) (*domain.WorkDetail, error) {
 	exec := executorFrom(ctx, r.pool)
 
+	lib := string(libraryID)
+	if lib == "" {
+		lib = string(domain.DefaultLibraryID)
+	}
+
+	// $2 is the active library. Owned editions and collection memberships
+	// are scoped to it, and a work with neither in this library is a 404 —
+	// no cross-library holdings disclosure (audit 0016 #88).
 	query := `SELECT
 		w.id,
 		w.title,
@@ -776,7 +586,7 @@ func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (
 				ORDER BY le.added_at DESC
 			)
 			FROM editions e
-			JOIN library_entries le ON le.edition_id = e.id
+			JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $2
 			WHERE e.work_id = w.id
 		), '[]'::json) AS owned_editions,
 		COALESCE((
@@ -789,17 +599,29 @@ func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (
 				ORDER BY cm.added_at DESC
 			)
 			FROM collection_members cm
-			JOIN collections c ON c.id = cm.collection_id
+			JOIN collections c ON c.id = cm.collection_id AND c.library_id = $2
 			WHERE cm.work_id = w.id
 		), '[]'::json) AS collections
 	FROM works w
-	WHERE w.id = $1`
+	WHERE w.id = $1
+		AND (
+			EXISTS (
+				SELECT 1 FROM editions e
+				JOIN library_entries le ON le.edition_id = e.id AND le.library_id = $2
+				WHERE e.work_id = w.id
+			)
+			OR EXISTS (
+				SELECT 1 FROM collection_members cm
+				JOIN collections c ON c.id = cm.collection_id AND c.library_id = $2
+				WHERE cm.work_id = w.id
+			)
+		)`
 
 	var workID, title, subtitle string
 	var originalLanguage *string
 	var authorsJSON, subjectsJSON, editionsJSON, collectionsJSON []byte
 
-	err := exec.QueryRow(ctx, query, string(id)).Scan(
+	err := exec.QueryRow(ctx, query, string(id), lib).Scan(
 		&workID,
 		&title,
 		&subtitle,

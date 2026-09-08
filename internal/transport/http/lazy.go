@@ -62,12 +62,12 @@ func (l *LazyWorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQ
 	return repo.QueryLibrary(ctx, q)
 }
 
-func (l *LazyWorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+func (l *LazyWorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID, libraryID domain.LibraryID) (*domain.WorkDetail, error) {
 	repo, err := l.get()
 	if err != nil {
 		return nil, err
 	}
-	return repo.FindWorkDetail(ctx, id)
+	return repo.FindWorkDetail(ctx, id, libraryID)
 }
 
 // LazyCollectionRepository delegates to the domain.CollectionRepository stored on

@@ -57,7 +57,7 @@ func (r *fakeWorkRepository) QueryLibrary(_ context.Context, _ domain.LibraryQue
 	return &domain.LibraryPage{Works: []*domain.WorkSummary{}}, nil
 }
 
-func (r *fakeWorkRepository) FindWorkDetail(_ context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+func (r *fakeWorkRepository) FindWorkDetail(_ context.Context, id domain.WorkID, _ domain.LibraryID) (*domain.WorkDetail, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	w, ok := r.works[id]
