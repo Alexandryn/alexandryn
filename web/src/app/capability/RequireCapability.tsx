@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Capability } from '../../data/bootstrap'
+import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { Spinner } from '../../components/Spinner/Spinner'
 import { useCapability } from './CapabilityContext'
 
@@ -21,6 +22,16 @@ export function RequireCapability({ capability, children, loading }: RequireCapa
 
   if (state.status === 'loading') {
     return <>{loading ?? <Spinner label="Checking what this device can do" className="m-3xl" />}</>
+  }
+
+  if (state.status === 'error') {
+    return (
+      <ErrorState
+        title="Couldn't load what this device can do"
+        description="The app needs to reach the server to know which screens to show. Check your connection and try again."
+        onRetry={state.retry}
+      />
+    )
   }
 
   // Unreachable this phase (the mock grants everything); the branch keeps
