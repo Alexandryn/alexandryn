@@ -8,7 +8,13 @@ import type { Capability } from '../../data/bootstrap'
  * call-site change (spec State transitions).
  */
 export type CapabilityState =
-  { status: 'loading' } | { status: 'granted'; can: (capability: Capability) => boolean }
+  | { status: 'loading' }
+  | { status: 'granted'; can: (capability: Capability) => boolean }
+  // The bootstrap fetch failed. This is NOT `granted` — the fail-closed
+  // property holds (host-only content still never renders) — but the UI
+  // shows a recoverable error with `retry` instead of an eternal spinner
+  // (audit 0016 #92).
+  | { status: 'error'; retry: () => void }
 
 export const CapabilityContext = createContext<CapabilityState | null>(null)
 

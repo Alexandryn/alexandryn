@@ -35,9 +35,10 @@ describe('useCapability', () => {
 
   // Fail-closed: a failed bootstrap fetch must never degrade to an
   // optimistic `granted` (audit 0004, F26 / T5 — the load-bearing
-  // security property of architecture-frontend.md FR-3). `data ===
-  // undefined` covers both the initial load and a rejected request.
-  it('stays loading when the bootstrap fetch fails — never optimistic granted', async () => {
+  // security property of architecture-frontend.md FR-3). It now surfaces
+  // a recoverable error instead of an eternal spinner (audit 0016 #92),
+  // but host-only content still never renders.
+  it('shows a recoverable error when the bootstrap fetch fails — never optimistic granted', async () => {
     server.use(http.get('*/api/bootstrap', () => HttpResponse.error()))
 
     wrap(
@@ -46,10 +47,8 @@ describe('useCapability', () => {
       </RequireCapability>,
     )
 
-    for (let i = 0; i < 8; i++) {
-      await Promise.resolve()
-    }
-    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument()
   })
 })
