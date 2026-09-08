@@ -1,24 +1,34 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import type { Capability } from '../data/bootstrap'
-import { AcceptInviteScreen } from '../screens/Auth/AcceptInviteScreen'
-import { LoginScreen } from '../screens/Auth/LoginScreen'
-import { SetupScreen } from '../screens/Auth/SetupScreen'
-import { ActivityScreen } from '../screens/Activity'
-import { CollectionDetail } from '../screens/CollectionDetail'
-import { Collections } from '../screens/Collections'
-import { Discover, DiscoverWorkDetail } from '../screens/Discover'
-import { Import } from '../screens/Import'
+
+// Eager — on the Library-first-paint path or cheap enough that a second
+// network round-trip would cost more than it saves.
 import { Library } from '../screens/Library'
-import { LibraryManagement } from '../screens/Libraries/LibraryManagement'
-import { NotFound } from '../screens/NotFound'
-import { Reader } from '../screens/Reader'
-import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
-import { Sources, SourceDetail } from '../screens/Sources'
 import { WorkDetail } from '../screens/WorkDetail'
-import { NetworkSettings } from '../screens/Settings/NetworkSettings'
-import { DevicesSettings } from '../screens/Settings/DevicesSettings'
-import { ConnectScreen } from '../screens/Network/ConnectScreen'
-import { AccessScreen } from '../screens/Network/AccessScreen'
+import { Collections } from '../screens/Collections'
+import { CollectionDetail } from '../screens/CollectionDetail'
+import { Discover, DiscoverWorkDetail } from '../screens/Discover'
+import { NotFound } from '../screens/NotFound'
+import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholder'
+import { SettingsIndex } from '../screens/Settings/SettingsIndex'
+import { MoreScreen } from '../screens/shell/MoreScreen'
+
+// Lazy route components — see lazyScreens.ts (audit 0016 issue 100).
+import {
+  AccessScreen,
+  AcceptInviteScreen,
+  ActivityScreen,
+  ConnectScreen,
+  DevicesSettings,
+  Import,
+  LibraryManagement,
+  LoginScreen,
+  NetworkSettings,
+  Reader,
+  SetupScreen,
+  SourceDetail,
+  Sources,
+} from './lazyScreens'
 
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireCapability } from './capability'
@@ -46,7 +56,7 @@ const shellChildren: RouteObject[] = [
   { path: 'discover', element: <Discover /> },
   { path: 'discover/works/:openLibraryId', element: <DiscoverWorkDetail /> },
   { path: 'activity', element: <ActivityScreen /> },
-  { path: 'more', element: <ScreenPlaceholder title="More" /> },
+  { path: 'more', element: <MoreScreen /> },
 
   // Multi-library administration (Phase 12)
   {
@@ -101,7 +111,7 @@ const shellChildren: RouteObject[] = [
   },
   { path: 'network', element: <Navigate to="/settings/network" replace /> },
   { path: 'devices', element: <Navigate to="/settings/devices" replace /> },
-  { path: 'settings', element: hostOnly('settings', 'Settings') },
+  { path: 'settings', element: <SettingsIndex /> },
   { path: 'system', element: hostOnly('system', 'System') },
 
   // Viewer surface (Phase 13)
@@ -128,9 +138,6 @@ export const routes: RouteObject[] = [
         <AppShell />
       </RequireAuth>
     ),
-    children: [
-      { errorElement: <RouteError />, children: shellChildren },
-    ],
+    children: [{ errorElement: <RouteError />, children: shellChildren }],
   },
 ]
-

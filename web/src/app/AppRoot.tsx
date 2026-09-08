@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { RouterProvider } from 'react-router-dom'
+import { Spinner } from '../components/Spinner/Spinner'
 import { CapabilityProvider } from './capability'
 import { AppProviders } from './providers'
 import { router } from './router'
@@ -13,7 +15,9 @@ export function AppRoot() {
   return (
     <AppProviders>
       <CapabilityProvider>
-        <RouterProvider router={router} />
+        <Suspense fallback={<Spinner label="Loading" className="m-3xl" />}>
+          <RouterProvider router={router} />
+        </Suspense>
       </CapabilityProvider>
     </AppProviders>
   )
