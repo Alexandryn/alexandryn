@@ -311,6 +311,77 @@ func TestWorkRepository_QueryLibrary_FiltersAndPagination(t *testing.T) {
 	}
 }
 
+// TestWorkRepository_LibraryScoping is the audit 0016 #88 regression: a
+// member of library A must never see library B's holdings via
+// GET /api/v1/library or GET /api/v1/works/{id}.
+func TestWorkRepository_LibraryScoping(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+	repo := postgres.NewWorkRepository(pool)
+
+	const libA = "00000000-0000-0000-0000-000000000001" // default
+	const libB = "00000000-0000-0000-0000-0000000000b0"
+
+	mustExecPool(t, pool, `
+		INSERT INTO libraries (id, name, allow_reader_uploads, created_at, updated_at)
+			VALUES ('`+libB+`', 'Library B', FALSE, now(), now());
+		INSERT INTO works (id, title) VALUES ('wa', 'A Only Book'), ('wb', 'B Only Book');
+		INSERT INTO editions (id, work_id, language) VALUES ('ea', 'wa', 'en'), ('eb', 'wb', 'en');
+		INSERT INTO library_entries (id, edition_id, library_id, added_at) VALUES
+			('lea', 'ea', '`+libA+`', '2026-02-01T10:00:00Z'),
+			('leb', 'eb', '`+libB+`', '2026-02-02T10:00:00Z');
+		INSERT INTO collections (id, name, library_id) VALUES ('cb', 'B Shelf', '`+libB+`');
+		INSERT INTO collection_members (collection_id, work_id, added_at) VALUES ('cb', 'wb', '2026-02-03T10:00:00Z');
+	`)
+
+	// Library A sees only wa.
+	pageA, err := repo.QueryLibrary(ctx, domain.LibraryQuery{Filter: domain.FilterAll, Limit: 10, LibraryID: libA})
+	if err != nil {
+		t.Fatalf("QueryLibrary(A): %v", err)
+	}
+	if len(pageA.Works) != 1 || pageA.Works[0].ID != "wa" {
+		t.Fatalf("library A page = %+v, want [wa] only (no cross-library disclosure)", ids(pageA.Works))
+	}
+
+	// Library B sees only wb.
+	pageB, err := repo.QueryLibrary(ctx, domain.LibraryQuery{Filter: domain.FilterAll, Limit: 10, LibraryID: libB})
+	if err != nil {
+		t.Fatalf("QueryLibrary(B): %v", err)
+	}
+	if len(pageB.Works) != 1 || pageB.Works[0].ID != "wb" {
+		t.Fatalf("library B page = %+v, want [wb] only", ids(pageB.Works))
+	}
+
+	// FindWorkDetail: A cannot read wb's owned-edition detail.
+	if _, err := repo.FindWorkDetail(ctx, "wb", libA); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("FindWorkDetail(wb, libA) err = %v, want NotFound", err)
+	}
+	// B can, and sees the edition + collection.
+	det, err := repo.FindWorkDetail(ctx, "wb", libB)
+	if err != nil {
+		t.Fatalf("FindWorkDetail(wb, libB): %v", err)
+	}
+	if len(det.OwnedEditions) != 1 || len(det.Collections) != 1 {
+		t.Fatalf("wb detail in B = %d editions, %d collections; want 1 and 1", len(det.OwnedEditions), len(det.Collections))
+	}
+	// A reading wa's detail must not surface B's collection membership.
+	detA, err := repo.FindWorkDetail(ctx, "wa", libA)
+	if err != nil {
+		t.Fatalf("FindWorkDetail(wa, libA): %v", err)
+	}
+	if len(detA.Collections) != 0 {
+		t.Fatalf("wa detail in A leaked %d collections", len(detA.Collections))
+	}
+}
+
+func ids(ws []*domain.WorkSummary) []string {
+	out := make([]string, len(ws))
+	for i, w := range ws {
+		out[i] = string(w.ID)
+	}
+	return out
+}
+
 func TestWorkRepository_QueryLibrary_CursorStability(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
@@ -451,7 +522,7 @@ func TestWorkRepository_FindWorkDetail(t *testing.T) {
 		INSERT INTO collection_members (collection_id, work_id, added_at) VALUES ('c-det1', 'w-det', '2026-01-11T12:00:00Z');
 	`)
 
-	detail, err := repo.FindWorkDetail(ctx, "w-det")
+	detail, err := repo.FindWorkDetail(ctx, "w-det", domain.DefaultLibraryID)
 	if err != nil {
 		t.Fatalf("FindWorkDetail: %v", err)
 	}
@@ -480,7 +551,7 @@ func TestWorkRepository_FindWorkDetail(t *testing.T) {
 	}
 
 	// 404 test
-	_, err = repo.FindWorkDetail(ctx, "nonexistent-work")
+	_, err = repo.FindWorkDetail(ctx, "nonexistent-work", domain.DefaultLibraryID)
 	if domain.CategoryOf(err) != domain.NotFound {
 		t.Errorf("FindWorkDetail(nonexistent) error category = %v, want NotFound", domain.CategoryOf(err))
 	}

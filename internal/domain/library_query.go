@@ -30,6 +30,10 @@ type LibraryQuery struct {
 	Q      string
 	Filter LibraryFilter
 	Sort   LibrarySort
+	// LibraryID is the active library the request is scoped to. Empty
+	// means the default library. Every library_entries / collection
+	// reference in the resulting query is filtered by it (audit 0016 #88).
+	LibraryID LibraryID
 }
 
 // WorkSummary is one Work in the /api/v1/library response list.

@@ -34,7 +34,7 @@ func (m *mockWorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQ
 	}
 	return &domain.LibraryPage{Works: []*domain.WorkSummary{}}, nil
 }
-func (m *mockWorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID) (*domain.WorkDetail, error) {
+func (m *mockWorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID, _ domain.LibraryID) (*domain.WorkDetail, error) {
 	if m.findWorkDetailFunc != nil {
 		return m.findWorkDetailFunc(ctx, id)
 	}
@@ -42,6 +42,22 @@ func (m *mockWorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkI
 }
 
 var _ domain.WorkRepository = (*mockWorkRepository)(nil)
+
+// withLibraryUser attaches an authenticated user and active library to a
+// request, as AuthMiddleware does in production — the catalog handlers
+// resolve both and verify membership (audit 0016 #88).
+func withLibraryUser(req *http.Request, lib domain.LibraryID) *http.Request {
+	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{
+		UserID:    "user-test",
+		Username:  "tester",
+		Role:      domain.RoleReader,
+		Libraries: []domain.LibraryID{lib},
+	})
+	ctx = transporthttp.WithActiveLibrary(ctx, lib)
+	return req.WithContext(ctx)
+}
+
+const testLib = domain.DefaultLibraryID
 
 func TestLibraryHandler_Validation(t *testing.T) {
 	repo := &mockWorkRepository{}
@@ -110,7 +126,7 @@ func TestLibraryHandler_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/api/v1/library"+tt.query, nil)
+			req := withLibraryUser(httptest.NewRequest("GET", "/api/v1/library"+tt.query, nil), testLib)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, req)
 
@@ -164,7 +180,7 @@ func TestLibraryHandler_OpenAPIContract(t *testing.T) {
 	}
 
 	handler := transporthttp.LibraryHandler(repo)
-	req := httptest.NewRequest("GET", "/api/v1/library", nil)
+	req := withLibraryUser(httptest.NewRequest("GET", "/api/v1/library", nil), testLib)
 
 	rr := validator.ValidateResponse(t, handler, req)
 	if rr.Code != http.StatusOK {
@@ -217,21 +233,21 @@ func TestWorkDetailHandler_OpenAPIContract(t *testing.T) {
 	mux.Handle("GET /api/v1/works/{id}", transporthttp.WorkDetailHandler(repo))
 
 	// 1. Success 200
-	req := httptest.NewRequest("GET", "/api/v1/works/work-1", nil)
+	req := withLibraryUser(httptest.NewRequest("GET", "/api/v1/works/work-1", nil), testLib)
 	rr := validator.ValidateResponse(t, mux, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body: %s)", rr.Code, rr.Body.String())
 	}
 
 	// 2. Not found 404
-	req404 := httptest.NewRequest("GET", "/api/v1/works/nonexistent", nil)
+	req404 := withLibraryUser(httptest.NewRequest("GET", "/api/v1/works/nonexistent", nil), testLib)
 	rr404 := validator.ValidateResponse(t, mux, req404)
 	if rr404.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rr404.Code)
 	}
 
 	// 3. Malformed ID 400
-	req400 := httptest.NewRequest("GET", "/api/v1/works/"+strings.Repeat("x", 2000), nil)
+	req400 := withLibraryUser(httptest.NewRequest("GET", "/api/v1/works/"+strings.Repeat("x", 2000), nil), testLib)
 	rr400 := validator.ValidateResponse(t, mux, req400)
 	if rr400.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rr400.Code)

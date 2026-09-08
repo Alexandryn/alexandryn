@@ -53,10 +53,34 @@ type wireWorkDetail struct {
 	Collections      []wireCollectionRef `json:"collections"`
 }
 
+// activeLibraryScoped resolves the authenticated user and the active
+// library, and verifies the user is a member of it. It mirrors the
+// leaderboard/reading pattern so the catalog handlers (audit 0016 #88)
+// carry the same defence-in-depth check the middleware already enforces.
+// On failure it writes the response and returns ok=false.
+func activeLibraryScoped(w http.ResponseWriter, r *http.Request, corrID string) (domain.LibraryID, bool) {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		WriteError(w, domain.Unauthorized, "missing or invalid authorization token", corrID)
+		return "", false
+	}
+	activeLib := ActiveLibraryFromContext(r.Context())
+	if activeLib == "" || !libraryInClaims(activeLib, user.Libraries) {
+		writeForbidden(w, "you are not a member of that library", corrID)
+		return "", false
+	}
+	return activeLib, true
+}
+
 // LibraryHandler returns the HTTP handler for GET /api/v1/library (backend-library-api.md FR-1–FR-4).
 func LibraryHandler(repo domain.WorkRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
+
+		activeLib, ok := activeLibraryScoped(w, r, id)
+		if !ok {
+			return
+		}
 
 		// Constitution §4: line-1 validation of all query parameters.
 		limitStr := r.URL.Query().Get("limit")
@@ -119,11 +143,12 @@ func LibraryHandler(repo domain.WorkRepository) http.Handler {
 		}
 
 		page, err := repo.QueryLibrary(r.Context(), domain.LibraryQuery{
-			Cursor: cursor,
-			Limit:  limit,
-			Q:      q,
-			Filter: filter,
-			Sort:   sort,
+			Cursor:    cursor,
+			Limit:     limit,
+			Q:         q,
+			Filter:    filter,
+			Sort:      sort,
+			LibraryID: activeLib,
 		})
 		if err != nil {
 			WriteError(w, domain.CategoryOf(err), err.Error(), id)
@@ -173,6 +198,11 @@ func WorkDetailHandler(repo domain.WorkRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
 
+		activeLib, ok := activeLibraryScoped(w, r, id)
+		if !ok {
+			return
+		}
+
 		workID := r.PathValue("id")
 		if workID == "" && strings.HasPrefix(r.URL.Path, "/api/v1/works/") {
 			workID = strings.TrimPrefix(r.URL.Path, "/api/v1/works/")
@@ -184,7 +214,7 @@ func WorkDetailHandler(repo domain.WorkRepository) http.Handler {
 			return
 		}
 
-		detail, err := repo.FindWorkDetail(r.Context(), domain.WorkID(workID))
+		detail, err := repo.FindWorkDetail(r.Context(), domain.WorkID(workID), activeLib)
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
 				WriteError(w, domain.NotFound, "no work with that id", id)

@@ -40,8 +40,10 @@ type WorkRepository interface {
 	QueryLibrary(ctx context.Context, q LibraryQuery) (*LibraryPage, error)
 
 	// FindWorkDetail returns one Work's detail including owned editions and
-	// collection memberships (backend-library-api.md FR-5).
-	FindWorkDetail(ctx context.Context, id WorkID) (*WorkDetail, error)
+	// collection memberships (backend-library-api.md FR-5), scoped to
+	// libraryID: only that library's editions/memberships, and NotFound
+	// when the work is in no form present in that library (audit 0016 #88).
+	FindWorkDetail(ctx context.Context, id WorkID, libraryID LibraryID) (*WorkDetail, error)
 }
 
 type AuthorRepository interface {
@@ -286,4 +288,3 @@ type EnrolmentGrantJTIRepository interface {
 	Record(ctx context.Context, jti string, spentAt time.Time) error
 	Exists(ctx context.Context, jti string) (bool, error)
 }
-
