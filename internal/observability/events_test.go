@@ -34,6 +34,53 @@ func TestNewSystemEvent_SanitizesPayload(t *testing.T) {
 	}
 }
 
+// audit 0016 #296: nested maps/slices and the "note" key must be
+// sanitized too — reading position lives under a nested "detail" object
+// and highlight text lives under "note".
+func TestNewSystemEvent_SanitizesNestedPayload(t *testing.T) {
+	ev := observability.NewSystemEvent{
+		EventKind: "reading.progress",
+		Payload: map[string]any{
+			"workId": "w1",
+			"detail": map[string]any{
+				"cfi":        "epubcfi(/6/4!/10)",
+				"percentage": 55,
+				"safe":       "keep",
+			},
+			"note": "the highlighted passage text",
+			"events": []any{
+				map[string]any{"token": "leak", "kind": "ok"},
+			},
+		},
+		RetentionDays: 30,
+	}
+
+	s := ev.SanitizedPayload()
+	if _, ok := s["note"]; ok {
+		t.Error("top-level note not stripped")
+	}
+	detail, ok := s["detail"].(map[string]any)
+	if !ok {
+		t.Fatalf("detail missing or wrong type: %T", s["detail"])
+	}
+	if _, ok := detail["cfi"]; ok {
+		t.Error("nested cfi not stripped")
+	}
+	if _, ok := detail["percentage"]; ok {
+		t.Error("nested percentage not stripped")
+	}
+	if detail["safe"] != "keep" {
+		t.Errorf("nested safe key lost: %v", detail["safe"])
+	}
+	evs, ok := s["events"].([]any)
+	if !ok || len(evs) != 1 {
+		t.Fatalf("events slice missing: %v", s["events"])
+	}
+	if _, ok := evs[0].(map[string]any)["token"]; ok {
+		t.Error("token inside a slice element not stripped")
+	}
+}
+
 func TestRetention_PurgeAtCalculatedCorrectly(t *testing.T) {
 	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
 	ev := observability.NewSystemEvent{
