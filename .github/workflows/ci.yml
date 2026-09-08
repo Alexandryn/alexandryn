@@ -5,6 +5,15 @@ on:
   push:
     branches: [main]
 
+# Least privilege for GITHUB_TOKEN (audit 0016 #123): this workflow only
+# reads the repo and passes artifacts between its own jobs — it never
+# writes contents, comments, checks, or packages. Declared here so a
+# future step that needs more must ask for it explicitly, and every job
+# below restates `contents: read` so an added job does not silently
+# inherit a wider default.
+permissions:
+  contents: read
+
 # backend-test-harness.md FR-8 fixes nine ordered stages for this
 # workflow. All nine are real as of this workflow (phase 04): stage 1
 # (web/ build, ADR 0008) runs in its own frontend job below; stage 6 is
@@ -28,6 +37,8 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         # web/ is an npm workspace member (ADR 0008, package.json at repo
@@ -35,9 +46,9 @@ jobs:
         # from here; only `npm ci` (below) must run at the workspace root.
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -143,7 +154,7 @@ jobs:
         run: npx playwright test
 
       - name: Upload web/dist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: web-dist
           path: web/dist
@@ -151,6 +162,8 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: frontend
     services:
       postgres:
@@ -166,15 +179,15 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download web/dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: web-dist
           path: web/dist
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
 
@@ -189,13 +202,20 @@ jobs:
       # <root>/bin/alexandryn-server). Built here so the Electron E2E
       # runs against a genuine binary, not a stub.
       - name: Build server binary for the desktop job
-        run: CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
+        run: |
+          CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
+          # audit 0016 #205: the desktop job downloads and executes this
+          # binary. Record a checksum here so that job verifies it got
+          # exactly what this job built, not a substituted artifact.
+          sha256sum bin/alexandryn-server > bin/alexandryn-server.sha256
 
       - name: Upload server binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: server-binary
-          path: bin/alexandryn-server
+          path: |
+            bin/alexandryn-server
+            bin/alexandryn-server.sha256
 
       # Stage 3 — go vet and lint, including the import-boundary check
       # (architecture-backend.md FR-3, FR-7; ADR 0018).
@@ -271,14 +291,20 @@ jobs:
           echo "Contract test stage is a placeholder: architecture-contracts.md FR-3's tool isn't chosen yet (D3, tasks/plan.md)."
           echo "This step exists so the stage is visible in CI, not silently absent — see backend-test-harness.md FR-8."
 
-      # Stage 7 — coverage reporting. No tool or threshold is fixed yet
-      # (open question); this only proves the stage exists and its
-      # output is captured.
+      # Stage 7 — coverage reporting plus a non-regression floor
+      # (ADR 0033, audit 0016 #131): fail if unit coverage drops more
+      # than 1 point below scripts/coverage-baseline.txt.
       - name: Coverage summary
         run: go tool cover -func=coverage.out
 
+      - name: Coverage floor self-test
+        run: bash scripts/check-coverage_test.sh
+
+      - name: Coverage floor
+        run: bash scripts/check-coverage.sh .
+
       - name: Upload coverage profile
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage
           path: coverage.out
@@ -287,6 +313,13 @@ jobs:
       # FR-5).
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
+      # Static security analysis (audit 0016 #125). Scoped to
+      # high-severity, high-confidence findings — low-noise, and the tree
+      # is clean at this bar today, so a new finding here is a real
+      # regression, not a style nit.
+      - name: gosec
+        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -quiet -severity high -confidence high ./...
 
       # Stage 9 — container-target test (deployment-container-packaging.md
       # FR-10, ADR 0015). Runs in this same job rather than a separate
@@ -324,11 +357,13 @@ jobs:
   desktop:
     name: Desktop
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [frontend, backend]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -338,10 +373,16 @@ jobs:
         run: npm ci
 
       - name: Download server binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: server-binary
           path: bin
+
+      # audit 0016 #205: verify the binary matches the checksum the
+      # backend job recorded before this job executes it.
+      - name: Verify server binary checksum
+        working-directory: bin
+        run: sha256sum --check alexandryn-server.sha256
 
       - name: Mark server binary executable
         run: chmod +x bin/alexandryn-server
