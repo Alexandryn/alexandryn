@@ -124,11 +124,47 @@ func CreateLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.Libra
 	})
 }
 
+// callerIsLibraryMember reports whether the authenticated user may read
+// library libID: a global admin, a library named in the token claims, or
+// (claims can lag a just-accepted invitation) a live membership row.
+func callerIsLibraryMember(r *http.Request, memRepo domain.LibraryMembershipRepository, libID domain.LibraryID) bool {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		return false
+	}
+	if user.Role == domain.RoleAdmin || libraryInClaims(libID, user.Libraries) {
+		return true
+	}
+	m, err := memRepo.FindMembership(r.Context(), libID, user.UserID)
+	return err == nil && m != nil
+}
+
+// callerIsLibraryAdmin reports whether the authenticated user administers
+// library libID: a global admin, or a member whose role in that library
+// is admin (FR-2).
+func callerIsLibraryAdmin(r *http.Request, memRepo domain.LibraryMembershipRepository, libID domain.LibraryID) bool {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		return false
+	}
+	if user.Role == domain.RoleAdmin {
+		return true
+	}
+	m, err := memRepo.FindMembership(r.Context(), libID, user.UserID)
+	return err == nil && m != nil && m.Role() == domain.RoleAdmin
+}
+
 // GetLibraryHandler returns details for one library (FR-1).
-func GetLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
+func GetLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.LibraryMembershipRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 		id := domain.LibraryID(r.PathValue("id"))
+
+		if !callerIsLibraryMember(r, memRepo, id) {
+			// Not a member: 404, not 403 — no "does library X exist" oracle.
+			WriteError(w, domain.NotFound, "library not found", corrID)
+			return
+		}
 
 		lib, err := libRepo.FindByID(r.Context(), id)
 		if err != nil {
@@ -238,6 +274,14 @@ func ListMembersHandler(memRepo domain.LibraryMembershipRepository, userRepo dom
 		corrID := CorrelationIDFromContext(r.Context())
 		id := domain.LibraryID(r.PathValue("id"))
 
+		// FR-2: the member list (usernames + emails) is admin-only. Any
+		// authenticated reader could previously enumerate every member of
+		// any library (audit 0016 #262).
+		if !callerIsLibraryAdmin(r, memRepo, id) {
+			writeForbidden(w, "you must be an admin of that library", corrID)
+			return
+		}
+
 		mems, err := memRepo.FindByLibrary(r.Context(), id)
 		if err != nil {
 			WriteError(w, domain.CategoryOf(err), "failed to list members", corrID)
@@ -269,22 +313,23 @@ func ListMembersHandler(memRepo domain.LibraryMembershipRepository, userRepo dom
 }
 
 // CreateInvitationHandler generates an invitation token for a library (FR-2).
-func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, idGen domain.IDGenerator) http.Handler {
+func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo domain.LibraryMembershipRepository, idGen domain.IDGenerator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 		user := UserFromContext(r.Context())
-		if user == nil || user.Role != domain.RoleAdmin {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(errorBody{
-				Code:          "Forbidden",
-				Message:       "only admins can invite users",
-				CorrelationID: corrID,
-			})
+		if user == nil {
+			WriteError(w, domain.Unauthorized, "unauthorized", corrID)
 			return
 		}
 
 		libID := domain.LibraryID(r.PathValue("id"))
+
+		// FR-2: only an admin OF THIS LIBRARY may invite to it — not any
+		// global admin, and never a plain reader (audit 0016 #262).
+		if !callerIsLibraryAdmin(r, memRepo, libID) {
+			writeForbidden(w, "you must be an admin of that library to invite members", corrID)
+			return
+		}
 
 		var req struct {
 			Email string `json:"email"`

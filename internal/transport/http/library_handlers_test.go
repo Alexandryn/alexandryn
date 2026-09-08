@@ -91,11 +91,11 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/libraries", transporthttp.ListLibrariesHandler(libs, mems))
 	mux.Handle("POST /api/v1/libraries", transporthttp.CreateLibraryHandler(libs, mems, idGen))
-	mux.Handle("GET /api/v1/libraries/{id}", transporthttp.GetLibraryHandler(libs))
+	mux.Handle("GET /api/v1/libraries/{id}", transporthttp.GetLibraryHandler(libs, mems))
 	mux.Handle("PATCH /api/v1/libraries/{id}", transporthttp.UpdateLibraryHandler(libs))
 	mux.Handle("DELETE /api/v1/libraries/{id}", transporthttp.DeleteLibraryHandler(libs))
 	mux.Handle("GET /api/v1/libraries/{id}/members", transporthttp.ListMembersHandler(mems, users))
-	mux.Handle("POST /api/v1/libraries/{id}/invitations", transporthttp.CreateInvitationHandler(invs, idGen))
+	mux.Handle("POST /api/v1/libraries/{id}/invitations", transporthttp.CreateInvitationHandler(invs, mems, idGen))
 	mux.Handle("POST /api/v1/invitations/{token}/accept", transporthttp.AcceptInvitationHandler(invs, mems, idGen))
 
 	var createdLibID string
@@ -202,6 +202,57 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 		mem, err := mems.FindMembership(context.Background(), domain.LibraryID(createdLibID), "u-reader")
 		if err != nil || mem.Role() != domain.RoleReader {
 			t.Fatalf("expected reader membership, got: %+v, err: %v", mem, err)
+		}
+	})
+
+	// audit 0016 #262: a non-admin non-member must not be able to read a
+	// library's details or enumerate its members (usernames + emails).
+	t.Run("outsider cannot read library or members", func(t *testing.T) {
+		outsider := &transporthttp.AuthenticatedUser{UserID: "u-outsider", Role: domain.RoleReader}
+		uOut, _ := domain.NewUser("u-outsider", "outsider", "outsider@x.local", domain.RoleReader, time.Now(), time.Now())
+		_ = users.Save(context.Background(), uOut)
+
+		getReq := httptest.NewRequest("GET", "/api/v1/libraries/"+createdLibID, nil)
+		getReq = getReq.WithContext(transporthttp.WithUser(getReq.Context(), outsider))
+		getRec := httptest.NewRecorder()
+		mux.ServeHTTP(getRec, getReq)
+		if getRec.Code != http.StatusNotFound {
+			t.Fatalf("GET library as outsider = %d, want 404", getRec.Code)
+		}
+
+		memReq := httptest.NewRequest("GET", "/api/v1/libraries/"+createdLibID+"/members", nil)
+		memReq = memReq.WithContext(transporthttp.WithUser(memReq.Context(), outsider))
+		memRec := httptest.NewRecorder()
+		mux.ServeHTTP(memRec, memReq)
+		if memRec.Code != http.StatusForbidden {
+			t.Fatalf("GET members as outsider = %d, want 403", memRec.Code)
+		}
+
+		invReq := httptest.NewRequest("POST", "/api/v1/libraries/"+createdLibID+"/invitations",
+			bytes.NewReader([]byte(`{"email":"x@y.z","role":"reader"}`)))
+		invReq = invReq.WithContext(transporthttp.WithUser(invReq.Context(), outsider))
+		invRec := httptest.NewRecorder()
+		mux.ServeHTTP(invRec, invReq)
+		if invRec.Code != http.StatusForbidden {
+			t.Fatalf("POST invitation as outsider = %d, want 403", invRec.Code)
+		}
+	})
+
+	// The library's own admin (member with admin role, not a global admin)
+	// can list members.
+	t.Run("library admin can list members", func(t *testing.T) {
+		libAdmin := &transporthttp.AuthenticatedUser{UserID: "u-libadmin", Role: domain.RoleReader}
+		uLA, _ := domain.NewUser("u-libadmin", "libadmin", "la@x.local", domain.RoleReader, time.Now(), time.Now())
+		_ = users.Save(context.Background(), uLA)
+		m, _ := domain.NewLibraryMembership("mem-la", domain.LibraryID(createdLibID), "u-libadmin", domain.RoleAdmin, time.Now())
+		_ = mems.Save(context.Background(), m)
+
+		req := httptest.NewRequest("GET", "/api/v1/libraries/"+createdLibID+"/members", nil)
+		req = req.WithContext(transporthttp.WithUser(req.Context(), libAdmin))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET members as library admin = %d, want 200: %s", rec.Code, rec.Body.String())
 		}
 	})
 }

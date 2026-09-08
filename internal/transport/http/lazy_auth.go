@@ -171,7 +171,7 @@ func LazyGetLibraryHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		GetLibraryHandler(api.Libraries).ServeHTTP(w, r)
+		GetLibraryHandler(api.Libraries, api.LibraryMemberships).ServeHTTP(w, r)
 	})
 }
 
@@ -215,7 +215,7 @@ func LazyCreateInvitationHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		CreateInvitationHandler(api.LibraryInvitations, api.IDs).ServeHTTP(w, r)
+		CreateInvitationHandler(api.LibraryInvitations, api.LibraryMemberships, api.IDs).ServeHTTP(w, r)
 	})
 }
 
