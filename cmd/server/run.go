@@ -669,6 +669,11 @@ func run(ctx context.Context, deps runDeps) int {
 			poolRef.SetDBPool(pgxPool)
 			eventStore := observability.NewEventStore(pgxPool, time.Now)
 			poolRef.SetEventStore(eventStore)
+			// system_events retention reaper (ADR 0031, Constitution §8).
+			// Each row carries its own purge_at; this deletes rows past it
+			// on an hourly sweep. Without this wiring the ledger grows
+			// without bound and nothing is ever purged (audit 0016 #294).
+			observability.NewReaper(eventStore, time.Hour, logger).Start(ctx)
 		}
 	}
 

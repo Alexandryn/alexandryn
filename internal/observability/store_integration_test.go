@@ -130,6 +130,42 @@ func TestEventStore_PurgeExpired(t *testing.T) {
 	}
 }
 
+// TestReaper_Start_PurgesOnTick is the audit 0016 #294 regression: the
+// reaper's ticker loop (the thing cmd/server wires) actually deletes an
+// expired row, not just the directly-called RunSweep.
+func TestReaper_Start_PurgesOnTick(t *testing.T) {
+	pool := migratedPool(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	libID := "00000000-0000-0000-0000-000000000001"
+	staleClock := time.Now().Add(-31 * 24 * time.Hour)
+	staleStore := observability.NewEventStore(pool, func() time.Time { return staleClock })
+	if err := staleStore.RecordEvent(ctx, observability.NewSystemEvent{
+		EventKind:     "stale.event",
+		LibraryID:     &libID,
+		RetentionDays: 30, // purge_at ~= now - 1 day
+	}); err != nil {
+		t.Fatalf("RecordEvent: %v", err)
+	}
+
+	store := observability.NewEventStore(pool, time.Now)
+	observability.NewReaper(store, 25*time.Millisecond, slog.New(testutil.NewSpyHandler())).Start(ctx)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		events, err := store.ListEvents(ctx, &libID, 50)
+		if err != nil {
+			t.Fatalf("ListEvents: %v", err)
+		}
+		if len(events) == 0 {
+			return // reaped
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatal("stale event still present after the reaper ran for 5s")
+}
+
 func TestReaper_RunSweep(t *testing.T) {
 	pool := migratedPool(t)
 	ctx := context.Background()
