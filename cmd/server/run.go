@@ -620,6 +620,11 @@ func run(ctx context.Context, deps runDeps) int {
 			// ticker, same as publicLimiter (previously this map only grew).
 			authLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/5), 10, 15*time.Minute)
 			authLimiter.StartEviction(ctx)
+			// Per-user MFA-verification throttle (audit 0016 #89): 5 burst,
+			// then 1/min, evicted after an hour idle. Not evadable by
+			// rotating source addresses the way the per-IP limiter is.
+			mfaUserLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute), 5, time.Hour)
+			mfaUserLimiter.StartEviction(ctx)
 			poolRef.SetAuthAPI(transporthttp.AuthAPI{
 				Users:              repos.users,
 				Credentials:        repos.credentials,
@@ -633,6 +638,7 @@ func run(ctx context.Context, deps runDeps) int {
 				Signer:             auth.NewJWTSigner(jwtSubkey, "alexandryn"),
 				TOTPEngine:         auth.NewTOTPEngine("Alexandryn"),
 				Limiter:            authLimiter,
+				MFAUserLimiter:     mfaUserLimiter,
 				MasterKey:          mfaSubkey,
 				IDs:                idgen.New(),
 				PairedDevices:      repos.pairedDevices,

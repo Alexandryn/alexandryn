@@ -25,6 +25,7 @@ type AuthAPI struct {
 	Signer             auth.TokenSigner
 	TOTPEngine         *auth.TOTPEngine
 	Limiter            *auth.IPRateLimiter
+	MFAUserLimiter     *auth.IPRateLimiter
 	MasterKey          []byte
 	IDs                domain.IDGenerator
 	PairedDevices      domain.PairedDeviceRepository

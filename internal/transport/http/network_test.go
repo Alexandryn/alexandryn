@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1616,7 +1617,7 @@ func TestTOTPVerify_WithEnrolmentGrant(t *testing.T) {
 	}
 
 	verifyHandler := transporthttp.TOTPVerifyHandler(
-		mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey,
+		mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, nil,
 		transporthttp.WithEnrolmentGrant(grantSigner, devRepo, jtiRepo, nil),
 	)
 
@@ -1648,6 +1649,73 @@ func TestTOTPVerify_WithEnrolmentGrant(t *testing.T) {
 	if err != nil || !exists {
 		t.Errorf("expected jti to be recorded as spent, exists=%v, err=%v", exists, err)
 	}
+}
+
+// TestTOTPVerify_RateLimited is the audit 0016 #89 regression: an
+// attacker with the victim's password must not be able to grind the TOTP
+// space. The per-IP limiter throttles a single address; the per-user
+// limiter throttles the account even as the address rotates.
+func TestTOTPVerify_RateLimited(t *testing.T) {
+	users := newMemUsers()
+	mfaRepo := newMemMFA()
+	mems := newMemMemberships()
+	rtRepo := newMemRefreshTokens()
+	signer := auth.NewJWTSigner([]byte("test-jwt-secret-at-least-32-bytes!"), "alexandryn")
+	idGen := &fakeIDGen{val: "id-fixed-rl-1"}
+	totpEngine := auth.NewTOTPEngine("Alexandryn")
+	masterKey := []byte("totp-master-key-32-bytes-long!!")
+
+	user, _ := domain.NewUser("user-rl-1", "rluser1", "rluser1@example.com", domain.RoleReader, time.Now(), time.Now())
+	_ = users.Save(context.Background(), user)
+
+	secret, _ := totpEngine.GenerateSecret()
+	encryptedSecret, _ := auth.EncryptSecret([]byte(secret), masterKey)
+	confirmedAt := time.Now()
+	totpSettings, _ := domain.NewTOTPSettings(user.ID(), encryptedSecret, nil, true, &confirmedAt, time.Now())
+	_ = mfaRepo.Save(context.Background(), totpSettings)
+
+	now := time.Now().UTC()
+
+	post := func(h http.Handler, remoteAddr string) int {
+		ticket, _ := signer.SignMFATicket(user.ID(), now.Add(5*time.Minute))
+		body, _ := json.Marshal(map[string]string{"mfaTicket": ticket, "code": "000000"})
+		req := httptest.NewRequest("POST", "/api/v1/auth/mfa/totp/verify", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = remoteAddr
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	t.Run("per-IP limiter trips", func(t *testing.T) {
+		ipLimiter := auth.NewIPRateLimiter(rate.Every(time.Hour), 3, time.Hour)
+		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, ipLimiter, nil)
+		var got429 bool
+		for i := 0; i < 10; i++ {
+			if post(h, "203.0.113.9:1234") == http.StatusTooManyRequests {
+				got429 = true
+				break
+			}
+		}
+		if !got429 {
+			t.Fatal("per-IP limiter never returned 429 over 10 attempts")
+		}
+	})
+
+	t.Run("per-user limiter trips across rotating IPs", func(t *testing.T) {
+		userLimiter := auth.NewIPRateLimiter(rate.Every(time.Hour), 3, time.Hour)
+		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, userLimiter)
+		var got429 bool
+		for i := 0; i < 10; i++ {
+			if post(h, "198.51.100."+strconv.Itoa(i)+":5555") == http.StatusTooManyRequests {
+				got429 = true
+				break
+			}
+		}
+		if !got429 {
+			t.Fatal("per-user limiter never returned 429 despite rotating source addresses")
+		}
+	})
 }
 
 func TestLogin_WithRememberDeviceDays(t *testing.T) {
@@ -1785,10 +1853,3 @@ func TestRefresh_WithRememberDeviceDays(t *testing.T) {
 		t.Errorf("expected refresh token expiry in ~7 days, got: %v (diff %v)", newRT.ExpiresAt(), diff)
 	}
 }
-
-
-
-
-
-
-

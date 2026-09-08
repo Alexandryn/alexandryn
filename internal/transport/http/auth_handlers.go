@@ -706,7 +706,23 @@ func TOTPConfirmHandler(mfaRepo domain.MFARepository, totpEngine *auth.TOTPEngin
 	})
 }
 
-// TOTPVerifyHandler verifies MFA during login (ADR 0027).
+// writeTooManyRequests writes the shared 429 body used by every
+// brute-force-throttled auth endpoint.
+func writeTooManyRequests(w http.ResponseWriter, corrID, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_ = json.NewEncoder(w).Encode(errorBody{
+		Code:          "TooManyRequests",
+		Message:       message,
+		CorrelationID: corrID,
+	})
+}
+
+// TOTPVerifyHandler verifies MFA during login (ADR 0027). ipLimiter
+// throttles per source address (parity with LoginHandler); userLimiter
+// throttles per user id so an attacker who has a password cannot grind
+// the ~10^6 TOTP space by rotating addresses (audit 0016 #89). Both are
+// nil-safe.
 func TOTPVerifyHandler(
 	mfaRepo domain.MFARepository,
 	userRepo domain.UserRepository,
@@ -716,6 +732,8 @@ func TOTPVerifyHandler(
 	signer auth.TokenSigner,
 	idGen domain.IDGenerator,
 	masterKey []byte,
+	ipLimiter *auth.IPRateLimiter,
+	userLimiter *auth.IPRateLimiter,
 	opts ...LoginOption,
 ) http.Handler {
 	var cfg authConfig
@@ -727,6 +745,11 @@ func TOTPVerifyHandler(
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
+
+		if ipLimiter != nil && !ipLimiter.Allow(clientIP(r)) {
+			writeTooManyRequests(w, corrID, "too many MFA attempts, please try again later")
+			return
+		}
 
 		var req struct {
 			MFATicket      string `json:"mfaTicket"`
@@ -743,6 +766,11 @@ func TOTPVerifyHandler(
 		userID, err := signer.VerifyMFATicket(req.MFATicket, now)
 		if err != nil {
 			WriteError(w, domain.Unauthorized, "invalid or expired MFA ticket", corrID)
+			return
+		}
+
+		if userLimiter != nil && !userLimiter.Allow(string(userID)) {
+			writeTooManyRequests(w, corrID, "too many MFA attempts for this account, please try again later")
 			return
 		}
 
