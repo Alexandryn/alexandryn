@@ -23,7 +23,7 @@ func TestClient_RedirectIsNeverFollowed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false)
+	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
 	_, ferr := c.get(context.Background(), srv.URL+"/redirect")
 	if ferr == nil || ferr.detail != sources.DetailHTTP3xxUnsupported {
 		t.Fatalf("redirect: ferr = %v, want http-3xx-unsupported", ferr)
@@ -43,7 +43,7 @@ func TestClient_BodySizeCap(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false)
+	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
 	_, ferr := c.get(context.Background(), srv.URL)
 	if ferr == nil || ferr.detail != sources.DetailUnparseable {
 		t.Fatalf("oversize body: ferr = %v, want unparseable", ferr)
@@ -57,7 +57,7 @@ func TestClient_Timeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false)
+	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
 	c.hc.Timeout = 200 * time.Millisecond
 	_, ferr := c.get(context.Background(), srv.URL)
 	if ferr == nil || ferr.detail != sources.DetailTimeout {
@@ -81,7 +81,7 @@ func TestClient_StatusClassification(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(tc.status)
 		}))
-		c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false)
+		c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
 		_, ferr := c.get(context.Background(), srv.URL)
 		srv.Close()
 		if ferr == nil || ferr.detail != tc.want {
@@ -100,7 +100,7 @@ func TestClient_SendsBasicAuthWhenConfigured(t *testing.T) {
 	defer srv.Close()
 
 	cred, _ := sources.NewCredential("reader", "p@ss word")
-	c := newHTTPClient(sources.NewSemaphore(50), cred, true)
+	c := newHTTPClient(sources.NewSemaphore(50), cred, true, true)
 	if _, ferr := c.get(context.Background(), srv.URL); ferr != nil {
 		t.Fatalf("get: %v", ferr)
 	}
@@ -110,7 +110,7 @@ func TestClient_SendsBasicAuthWhenConfigured(t *testing.T) {
 
 	// No credential → no header.
 	gotAuth = ""
-	c2 := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false)
+	c2 := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
 	_, _ = c2.get(context.Background(), srv.URL)
 	if gotAuth != "" {
 		t.Fatalf("unauthenticated request still sent Authorization: %q", gotAuth)
@@ -125,7 +125,7 @@ func TestClient_SemaphoreFullRejectsImmediately(t *testing.T) {
 	if !sem.TryAcquire() {
 		t.Fatal("could not pre-fill the semaphore")
 	}
-	c := newHTTPClient(sem, sources.Credential{}, false)
+	c := newHTTPClient(sem, sources.Credential{}, false, true)
 
 	start := time.Now()
 	_, ferr := c.get(context.Background(), srv.URL)

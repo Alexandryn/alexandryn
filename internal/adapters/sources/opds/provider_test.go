@@ -50,11 +50,12 @@ func (s *opdsServer) serveFixture(path, name, contentType string) {
 func newProvider(t *testing.T, base, searchTemplate string) *Provider {
 	t.Helper()
 	return New(Config{
-		SourceID:       "src-opds",
-		BaseURL:        base,
-		SearchTemplate: searchTemplate,
-		Semaphore:      sources.NewSemaphore(50),
-		Codec:          testCodec(),
+		SourceID:              "src-opds",
+		BaseURL:               base,
+		SearchTemplate:        searchTemplate,
+		Semaphore:             sources.NewSemaphore(50),
+		Codec:                 testCodec(),
+		AllowPrivateAddresses: true,
 	})
 }
 
@@ -122,6 +123,31 @@ func TestProvider_Probe_Unreachable(t *testing.T) {
 	res := newProvider(t, srv.URL+"/opds", "").Probe(context.Background())
 	if res.Status != sources.HealthUnreachable || res.Detail != sources.DetailHTTP5xx {
 		t.Fatalf("res = %+v, want unreachable/http-5xx", res)
+	}
+}
+
+// TestProvider_SSRF_BlocksPrivateByDefault is the audit 0016 #86
+// regression: without AllowPrivateAddresses the outbound client refuses
+// to connect to a loopback / private target, so a source pointed at an
+// internal service cannot reflect its body into the browse view.
+func TestProvider_SSRF_BlocksPrivateByDefault(t *testing.T) {
+	srv := newOPDSServer(t) // httptest — binds 127.0.0.1
+	srv.serveFixture("/opds", "opds12_acquisition.xml", "application/atom+xml")
+
+	p := New(Config{
+		SourceID:  "src-opds",
+		BaseURL:   srv.URL + "/opds",
+		Semaphore: sources.NewSemaphore(50),
+		Codec:     testCodec(),
+		// AllowPrivateAddresses defaults to false.
+	})
+	res := p.Probe(context.Background())
+	if res.Status != sources.HealthUnreachable {
+		t.Fatalf("Probe to a loopback source = %+v, want unreachable (SSRF guard)", res)
+	}
+
+	if _, err := p.Resolve(context.Background(), domain.FileReference{ReferenceID: srv.URL + "/opds/book.epub"}); err == nil {
+		t.Fatal("Resolve to a loopback source succeeded, want a guard rejection")
 	}
 }
 

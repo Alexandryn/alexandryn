@@ -52,10 +52,11 @@ type httpClient struct {
 	hasAuth bool
 }
 
-func newHTTPClient(sem *sources.Semaphore, cred sources.Credential, hasAuth bool) *httpClient {
+func newHTTPClient(sem *sources.Semaphore, cred sources.Credential, hasAuth, allowPrivate bool) *httpClient {
 	return &httpClient{
 		hc: &http.Client{
-			Timeout: requestTimeout,
+			Timeout:   requestTimeout,
+			Transport: sources.GuardedTransport(allowPrivate),
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 				return http.ErrUseLastResponse
 			},

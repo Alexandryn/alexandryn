@@ -29,6 +29,12 @@ type Config struct {
 	Semaphore      *sources.Semaphore
 	Codec          *sources.CursorCodec
 	Logger         *slog.Logger
+	// AllowPrivateAddresses permits the outbound client to reach loopback
+	// and RFC 1918 / ULA addresses (SOURCE_ALLOW_PRIVATE_ADDRESSES). Off
+	// by default: a source base URL is attacker-chosen input (§4), so the
+	// dialer blocks non-public targets and defends DNS rebinding.
+	// Link-local, CGNAT, and multicast are blocked regardless.
+	AllowPrivateAddresses bool
 }
 
 // Provider implements sources.Provider for an OPDS catalog.
@@ -48,7 +54,7 @@ func New(cfg Config) *Provider {
 	return &Provider{
 		sourceID:       cfg.SourceID,
 		baseURL:        cfg.BaseURL,
-		client:         newHTTPClient(cfg.Semaphore, cfg.Credential, cfg.HasCredential),
+		client:         newHTTPClient(cfg.Semaphore, cfg.Credential, cfg.HasCredential, cfg.AllowPrivateAddresses),
 		codec:          cfg.Codec,
 		logger:         cfg.Logger,
 		searchTemplate: cfg.SearchTemplate,

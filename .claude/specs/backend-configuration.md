@@ -122,6 +122,7 @@ file format, where it lives, or the actual validation each key needs.
   | `ACME_CACHE_DIR` | filesystem path | Optional | `acme/` under the per-user data directory (`architecture-persistence.md` FR-1) | ADR 0028 §2. `autocert.DirCache`, created `0700` — holds the ACME account key and issued certificate keys. |
   | `CORS_ALLOWED_ORIGINS` | comma-separated list of `scheme://host[:port]` | Optional | — (empty ⇒ no cross-origin request is ever honoured; the same-origin SPA is unaffected) | ADR 0028 §4, `backend-network-transport.md` FR-6. A malformed entry (path present, no scheme) is a validation error. |
   | `DEVICE_PAIRING_SECRET` | string, redacted type (FR-7) | Optional | — (empty ⇒ `pair/initiate` requires only an admin token) | ADR 0028 §6, `backend-network-api.md` FR-1. An *additional* factor on `pair/initiate`; never a login credential and never accepted in place of one. |
+  | `SOURCE_ALLOW_PRIVATE_ADDRESSES` | boolean | Optional | `false` | Phase 16 audit `0016` #86 (SSRF). Off by default the outbound OPDS client refuses to connect to loopback or RFC 1918 / IPv6-ULA addresses and re-checks the resolved IP at dial time (DNS-rebinding defence). A self-hoster whose OPDS server runs on the same machine or their own LAN sets this `true`. Link-local (169.254.169.254 cloud metadata, `fe80::/10`), carrier-grade NAT (`100.64.0.0/10`), and multicast stay blocked regardless of this key. |
 
   This table is the authoritative key list at the time this spec is
   written; a later phase adding a key extends this table rather than

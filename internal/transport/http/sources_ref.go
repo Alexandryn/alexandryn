@@ -27,6 +27,22 @@ type sourceRefs struct {
 	records atomic.Pointer[postgres.SourceRecordRepository]
 	removal atomic.Pointer[domain.SourceRemovalService]
 	crypto  atomic.Pointer[SourceCrypto]
+	// allowPrivateAddrs mirrors config.SourceAllowPrivateAddresses. When
+	// false (the default) the outbound OPDS client refuses loopback and
+	// RFC 1918 / ULA targets and re-checks the resolved IP at dial time
+	// (audit 0016 #86 — SSRF / DNS rebinding).
+	allowPrivateAddrs atomic.Bool
+}
+
+// SetSourceAllowPrivateAddresses records whether outbound source requests
+// may reach loopback / private addresses (SOURCE_ALLOW_PRIVATE_ADDRESSES).
+func (r *PoolRef) SetSourceAllowPrivateAddresses(allow bool) {
+	r.sources.allowPrivateAddrs.Store(allow)
+}
+
+// SourceAllowPrivateAddresses reports the recorded value (default false).
+func (r *PoolRef) SourceAllowPrivateAddresses() bool {
+	return r.sources.allowPrivateAddrs.Load()
 }
 
 // SetSourceRecordRepository stores the source-record repository.

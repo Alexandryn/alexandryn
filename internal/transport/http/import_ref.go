@@ -202,13 +202,14 @@ func (r *SourceProviderResolver) ProviderFor(ctx context.Context, sourceID strin
 			}
 		}
 		return opds.New(opds.Config{
-			SourceID:       sourceID,
-			BaseURL:        rec.ConfigBaseURL,
-			Credential:     cred,
-			HasCredential:  rec.HasCredential(),
-			SearchTemplate: rec.SearchLinkURL,
-			Codec:          sc.Codec,
-			Logger:         r.logger,
+			SourceID:              sourceID,
+			BaseURL:               rec.ConfigBaseURL,
+			Credential:            cred,
+			HasCredential:         rec.HasCredential(),
+			SearchTemplate:        rec.SearchLinkURL,
+			Codec:                 sc.Codec,
+			Logger:                r.logger,
+			AllowPrivateAddresses: r.poolRef.SourceAllowPrivateAddresses(),
 		}), nil
 	}
 
