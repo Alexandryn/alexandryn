@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/hkdf"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,13 +57,26 @@ type TokenSigner interface {
 
 type JWTSigner struct {
 	secret []byte
-	issuer string
+	// mfaTicketSecret signs and verifies MFA tickets only — a distinct
+	// HKDF subkey of `secret`, so a signature-valid access token cannot
+	// verify as an MFA ticket even if the type assertion were bypassed
+	// (audit 0016 #106, reflex from review 0050 / audit 0012-C2).
+	mfaTicketSecret []byte
+	issuer          string
 }
 
 func NewJWTSigner(secret []byte, issuer string) *JWTSigner {
+	mfaKey, err := hkdf.Key(sha256.New, secret, nil, "mfa-ticket-signing-v1", 32)
+	if err != nil {
+		// HKDF-Expand only fails for an absurd output length; 32 bytes
+		// from SHA-256 never does. Fall back to the base secret rather
+		// than panic — still type-asserted, just not key-separated.
+		mfaKey = secret
+	}
 	return &JWTSigner{
-		secret: secret,
-		issuer: issuer,
+		secret:          secret,
+		mfaTicketSecret: mfaKey,
+		issuer:          issuer,
 	}
 }
 
@@ -116,13 +131,25 @@ func (s *JWTSigner) SignMFATicket(userID domain.UserID, expiresAt time.Time) (st
 		ExpiresAt: expiresAt.Unix(),
 		Issuer:    s.issuer,
 	}
-	return s.Sign(claims)
+	// Signed with the dedicated MFA-ticket subkey (audit 0016 #106), not
+	// s.secret — the access-token path cannot produce or accept this.
+	return hs256Sign(s.mfaTicketSecret, claims)
 }
 
 func (s *JWTSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, error) {
-	claims, err := s.Verify(ticketString, now)
+	claimsJSON, err := hs256VerifiedClaims(s.mfaTicketSecret, ticketString)
 	if err != nil {
 		return "", err
+	}
+	var claims Claims
+	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
+		return "", errors.New("auth/jwt: invalid claims JSON")
+	}
+	if claims.ExpiresAt <= now.Unix() {
+		return "", errors.New("auth/jwt: token expired")
+	}
+	if s.issuer != "" && claims.Issuer != s.issuer {
+		return "", fmt.Errorf("auth/jwt: issuer mismatch, expected %s", s.issuer)
 	}
 	if claims.Type != TokenTypeMFATicket {
 		return "", errors.New("auth/jwt: invalid token type for MFA ticket")
