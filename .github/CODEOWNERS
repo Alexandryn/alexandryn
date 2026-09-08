@@ -11,6 +11,8 @@
 /SECURITY.md            @luannmoreira
 /.github/               @luannmoreira
 /package.json           @luannmoreira
-/pnpm-lock.yaml         @luannmoreira
+/web/package.json       @luannmoreira
+/electron/package.json  @luannmoreira
+/package-lock.json      @luannmoreira
 /go.mod                 @luannmoreira
 /go.sum                 @luannmoreira

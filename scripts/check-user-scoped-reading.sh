@@ -61,6 +61,30 @@ for f in "${FILES[@]}"; do
 	done
 done
 
+# Catalog surface (audit 0016 #88, #133). GET /api/v1/library and
+# GET /api/v1/works/{id} serve holdings scoped to the active library.
+# The handlers MUST resolve it, and work_repository.go's QueryLibrary /
+# FindWorkDetail SQL MUST carry a library_id predicate — the exact seam
+# audit 0012's per-phase certification missed.
+LIBRARY_HANDLER="$ROOT/internal/transport/http/library.go"
+if [ -f "$LIBRARY_HANDLER" ]; then
+	if ! grep -q 'ActiveLibraryFromContext' "$LIBRARY_HANDLER"; then
+		violations="${violations}library.go: catalog handlers do not resolve ActiveLibraryFromContext — GET /library and GET /works/{id} must be library-scoped (audit 0016 #88)
+"
+	fi
+fi
+
+WORK_REPO="$ROOT/internal/persistence/postgres/work_repository.go"
+if [ -f "$WORK_REPO" ]; then
+	for fn in QueryLibrary FindWorkDetail; do
+		block=$(awk -v f="func (r *WorkRepository) $fn" 'index($0,f){flag=1} flag{print} flag && /^}/{exit}' "$WORK_REPO")
+		if [ -n "$block" ] && ! grep -qE 'library_id = \$' <<<"$block"; then
+			violations="${violations}work_repository.go: $fn has no 'library_id = \$N' predicate — cross-library holdings disclosure (audit 0016 #88)
+"
+		fi
+	done
+fi
+
 # Verify raw SQL queries in reading_sync_repository.go (GetReadingSyncData) enforce user_id and library_id scoping
 SYNC_REPO="$ROOT/internal/persistence/postgres/reading_sync_repository.go"
 if [ -f "$SYNC_REPO" ]; then

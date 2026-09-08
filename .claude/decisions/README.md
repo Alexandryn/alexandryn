@@ -82,6 +82,8 @@ deserves to know they were already weighed.
 | [0030](0030-expvar-metrics.md) | In-process metrics collection uses Go stdlib `expvar`; no new dependency, no external telemetry service | Accepted |
 | [0031](0031-activity-log-store.md) | Activity log store: single `system_events` table with JSONB payload and `event_kind` discriminator; application-level retention reaper seeded by `purge_at`; admin-role-only read access | Accepted |
 | [0032](0032-redaction-proof-test.md) | Redaction-proof CI test: `log/slog` capture via `internal/testutil/slogspy.go`, five violation-pattern categories, integration paths covering credential + auth + import + `system_events` payload, per-violation `t.Errorf` fail mode | Accepted |
+| [0033](0033-go-coverage-threshold.md) | Go unit-test coverage: CI enforces a non-regression floor (1-point tolerance below `scripts/coverage-baseline.txt`), not a fixed target; interim until the integration profile is merged in (audit 0016 #131) | Accepted |
+| [0034](0034-ci-supply-chain-posture.md) | CI workflow supply-chain posture: third-party actions SHA-pinned with Dependabot bumps, least-privilege `GITHUB_TOKEN` (`contents: read`), `gosec` at high/high in-CI, SHA-256 checksum on the cross-job server binary (audit 0016 #121/#123/#125/#205) | Accepted |
 
 ## Open questions not yet ADRs
 
@@ -94,6 +96,7 @@ Things known to need deciding, with the phase that will force the question:
 | ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
 | ~~How the reader renders EPUB, and in what sandbox~~ — resolved by ADR 0023 (`foliate-js` rendering engine, pinned through npm; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`; `blob:`-URL default not used) and ADR 0024 (server-side HTML sanitisation with `bluemonday`, hand-written CSS scan, `Content-Security-Policy: default-src 'self'; script-src 'none'...`), formalising `frontend-reader.md` FR-1 and `backend-reader-content.md` FR-6/FR-9 | Phase 11 |
 | Credential storage on the host | Phase 12 |
+| ~~Go test-coverage tool and threshold~~ — resolved by ADR 0033: CI enforces a non-regression floor via `scripts/check-coverage.sh`, not a fixed target; superseded when the integration profile is merged into the reported number | Phase 03 (deferred), Phase 16 |
 | ~~CSRF protection for state-changing requests, once sessions are cookie-based~~ — moot: phase 12 chose Bearer-token sessions (ADR 0025), not cookies, so there is no ambient credential to forge. ADR 0028 §5 records no CSRF token machinery, `Origin`/`Referer` validation on the unauthenticated pairing routes only, and the rationale | Phase 12/13 |
 | ~~Open-redirect protection for any post-authentication redirect target~~ — resolved in phase 12 (`backend-authentication.md` FR-9: `redirect`/`returnTo` must be a relative path starting with a single `/`) | Phase 12 |
 | ~~Transport security on the LAN~~ — resolved by ADR 0028: TLS mode derived from the resolved bind address + certificate/ACME state (never a flag), in-process TLS 1.2+/1.3 with a fixed AEAD cipher list for a public bind, ACME via `autocert` (no new module), fail-closed at bind. `backend-network-transport.md` implements it | Phase 13 |

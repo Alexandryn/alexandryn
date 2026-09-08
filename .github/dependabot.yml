@@ -15,7 +15,9 @@ updates:
     # Major version bumps stay ungrouped, one PR each — a major can carry
     # a breaking API change and deserves its own review, not a batch.
 
-  # GitHub Actions used by the CI workflow(s).
+  # GitHub Actions used by the CI workflow(s). Actions are pinned to
+  # commit SHAs (audit 0016 #121); Dependabot bumps the SHA and the
+  # trailing `# vX` comment together.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -27,10 +29,22 @@ updates:
           - "minor"
           - "patch"
 
+  # npm — the workspace root lockfile (package-lock.json), which covers
+  # every workspace member (web/, electron/). Added in phase 16
+  # (audit 0016 #126); those manifests did not exist when this file was
+  # first written.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
 # Security updates run on their own, independent of the schedule above —
 # that's Dependabot's own separate "security updates" mechanism (a
 # repository setting, not something this file configures), and it's left
 # to run on its own trigger rather than waiting for Monday.
-#
-# npm/pnpm ecosystems (web/, electron/) are not added yet: those
-# manifests don't exist until phase 04.
