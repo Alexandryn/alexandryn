@@ -203,7 +203,7 @@ func RevokeDeviceHandler(deviceRepo domain.PairedDeviceRepository, now func() ti
 		}
 
 		if err := deviceRepo.Revoke(r.Context(), id, currentTime); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 
