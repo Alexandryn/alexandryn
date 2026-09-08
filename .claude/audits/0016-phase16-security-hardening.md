@@ -7,9 +7,47 @@
 | **Threat model** | Four-Attacker (Constitution §10) + STRIDE, applied to the application as a whole across the three phase-01 trust boundaries: Renderer/Main, Host/LAN, System/Source. |
 | **Date** | 2026-09-07 |
 | **Commit** | `1c60608` |
-| **Verdict** | **Findings open** — 120 findings filed as GitHub issues (#86–#304, deduplicated). 0 Critical, 16 High. Includes the `/code-review ultra` cross-check (#293–#304) and post-filing verification corrections. Phase does not close until every Critical/High issue is resolved. Awaiting the maintainer finding-review gate. |
+| **Verdict** | **HIGH remediation complete (2026-09-08)** — 120 findings filed as GitHub issues (#86–#304, deduplicated). 0 Critical. All **16 High** resolved RED → GREEN, one commit per issue (see the Remediation section below and `tasks/todo-phase16-security.md`). 95 Medium/Low/Informational triaged: a handful fixed opportunistically (#106, #119, #198), the rest scheduled to Phase 17 / post-release, each recorded against its issue. CI/CD hardened (ADR 0033, ADR 0034). Awaiting the maintainer phase-close gate. |
 
 ---
+
+## Remediation (2026-09-08)
+
+The maintainer directed the 16 actionable High findings and the named
+CI/CD gaps to be worked directly. Each fix is its own commit on
+`feat/phase16-security-hardening`, failing-first test then implementation,
+with an integration test and (for tenant-scoped endpoints) a cross-tenant
+negative test where the finding warranted one.
+
+| Finding | Fix | Verification |
+|---|---|---|
+| #86 SSRF | `sources.GuardedTransport` — dialer `Control` hook rejects the resolved peer IP after DNS resolution (rebinding defence); link-local/CGNAT/multicast always blocked, loopback/RFC1918 blocked unless `SOURCE_ALLOW_PRIVATE_ADDRESSES` | `IsBlockedDialIP` table; transport refuses loopback; OPDS `Probe`+`Resolve` to a loopback source rejected by default |
+| #88 catalog scoping | `domain.LibraryQuery.LibraryID` + `FindWorkDetail(…, libraryID)`; `work_repository.go` refactored to one shared CTE with `le.library_id = $3` / `c.library_id = $N` on every join; handlers resolve + re-check membership | `TestWorkRepository_LibraryScoping` — two-library isolation across list + detail incl. collection membership |
+| #89 MFA brute-force | per-IP limiter (parity with login) + per-user `MFAUserLimiter` (5 burst, 1/min) checked after the ticket resolves the user | `TestTOTPVerify_RateLimited` — per-IP trips; per-user trips across rotating source addresses |
+| #90 sync cursor | push endpoint advances the device pull cursor only when `seq == cursor+1`; the returned `cursor` is then safe to persist | `TestSyncProgressHandler_PushCursorNotUsableAsPullCursor` (fails with cursor=7 before the fix) |
+| #262 library authz | `callerIsLibraryMember` / `callerIsLibraryAdmin`; `GetLibraryHandler` 404s non-members, `ListMembersHandler` + `CreateInvitationHandler` are library-admin only | outsider gets 404/403/403; a member with the admin role (not a global admin) can list members |
+| #294 reaper | `observability.NewReaper(...).Start(ctx)` wired into `run.go` next to the event store | `TestReaper_Start_PurgesOnTick` — the ticker loop deletes an expired row |
+| #296 nested redaction | `sanitizeMap`/`sanitizeValue` recurse into maps and slices; `note` added to `prohibitedPayloadKeys` | `TestNewSystemEvent_SanitizesNestedPayload` + redaction-proof integration test extended (nested `detail`, `note`, token-in-slice) |
+| #91 web 401 | `QueryCache`/`MutationCache` `onError` → one shared `refreshSession()` → refetch or `clearSession()` + `/login?next=`; 4xx never retries (#227) | `queryClient.test.ts` — 404 not retried; 401 → one refresh, token cleared, redirect |
+| #92 capability spinner | `CapabilityState` gains an `error` variant with `retry()`; fail-closed preserved (never `granted` on failure) | `capability.test.tsx` — failed bootstrap shows an alert + retry, no host-only content |
+| #93 placeholder routes | real `SettingsIndex` + `MoreScreen` on a shared `NavList` | `SettingsIndex.test.tsx` — both link to their real targets |
+| #94 auth tokens | auth screens + Titlebar + Libraries + DevicesSettings ported to the real `@theme` token set | `check:token-styling` + `tokens:check-contrast` clean; build green |
+| #95 invite token | `AcceptInviteScreen` Sign In carries `state.from`; `LoginScreen` honours `from` → `?next=` → `/library` | folded into `queryClient.test.ts` / manual flow |
+| #97 MFA modal a11y | both MFA modals rebuilt on the shared Radix `Modal`; `inputMode="numeric"` + `autoComplete="one-time-code"`, focus on the code field | `MfaPromptModal.test.tsx` — dialog role + name, focus, OTP hints, Escape |
+| #99 export bypass | `http.ts` `getBlob()` (auth headers) + `useReadingExport` mutation; Reader shows pending / inline error | `reading.test.tsx` — export request carries `Authorization` + `X-Library-Id` |
+| #100 code splitting | `React.lazy` per route (`lazyScreens.ts`) behind `Suspense`; initial chunk 597→442 KB (179→135 KB gzip) | `npm run build` chunk report; route table test green through Suspense |
+| #102 feed polling | `activityPollInterval` — off when hidden, 5s active, 60s idle floor | `activity.pollInterval.test.ts` |
+
+CI/CD: #121 (SHA-pin), #123 (`permissions`), #125 (`gosec`), #126 (npm
+Dependabot), #128 (CODEOWNERS), #133 (guard widened), #198 (artifact
+version align), #205 (artifact checksum) — ADR 0033 (coverage floor),
+ADR 0034 (supply-chain posture).
+
+Opportunistic Medium/Low: #106 (MFA-ticket HKDF subkey), #119
+(`import.go`/`device_sync.go` → `writeDomainError`).
+
+Everything else is triaged in `tasks/todo-phase16-security.md` with a
+Phase 17 / post-release destination per issue.
 
 ## Scope and method
 
