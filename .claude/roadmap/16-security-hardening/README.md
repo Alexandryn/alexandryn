@@ -178,10 +178,11 @@ and is covered by the redaction-proof test before this phase closes.
 - [x] Every finding filed as an individual GitHub issue with a severity, an
       `area:` label, and the `phase-16` label — 108 issues, #86–#292,
       deduplicated to one per finding; the audit doc's findings table links each.
-- [ ] Zero open Critical or High findings — **0 Critical, 16 High open**
-      (14 from the sweep + 2 from the ultra pass; #262 upgraded Medium→High on
-      verification, #87 downgraded High→Medium). Remediation is follow-up work,
-      one issue at a time, after the maintainer finding-review gate.
+- [x] Zero open Critical or High findings — **0 Critical, 0 High**
+      (all 16 resolved 2026-09-08, RED → GREEN, one commit per issue; see
+      `tasks/todo-phase16-security.md` Tier 3). #262 was upgraded
+      Medium→High on verification and is included; #87 downgraded
+      High→Medium and deferred as latent.
 - [x] `govulncheck` (0 called vulnerabilities) and `npm audit --audit-level=high`
       (0) clean; license audit recorded in the audit doc — Go and npm trees are
       fully permissive, no GPL/AGPL/LGPL; automated license gate filed as #204,
@@ -193,15 +194,22 @@ and is covered by the redaction-proof test before this phase closes.
 - [x] CI workflow audited — SHA pinning (#121), `GITHUB_TOKEN` permissions
       (#123), cross-job artifact trust (#205), no SAST (#125), Dependabot npm
       gap (#126), CODEOWNERS lockfile gap (#128), no branch protection (#202)
-      all filed.
+      all filed. #121/#123/#125/#126/#128/#133/#198/#205 **remediated
+      2026-09-08** — actions SHA-pinned with Dependabot bumps, top-level
+      `permissions: contents: read`, `gosec` at high/high, npm Dependabot,
+      CODEOWNERS fixed, guard script widened, artifact checksum. ADR 0034.
+      Branch protection (#202) is a repo setting, deferred.
 - [x] Test-coverage analysis recorded — no coverage threshold (#131), guard
       script too narrow (#133), no cross-tenant negative tests (#135), no sync
-      concurrency test (#137), CI-skipped mechanisms (#210) all filed.
+      concurrency test (#137), CI-skipped mechanisms (#210) all filed. #131
+      resolved via **ADR 0033** (non-regression floor); #133 resolved
+      (guard widened to the catalog surface); cross-tenant negative tests
+      added for the catalog (#88) and library-membership (#262) surfaces.
 - [x] `/code-review ultra` cross-check pass completed — 15 findings, 12 filed
       new (#293–#304), 3 cross-validated existing. Surfaced 4 Phase 15
       deliverables certified but never wired (retention reaper #294, nested
       redaction #296, diagnostics providers #295, expvar map #302).
-- [~] Documentation updated (this README, the audit doc, audit README index,
-      roadmap README, task list). ADRs on CI supply-chain posture and the
-      coverage threshold are owed as their issues are worked.
+- [x] Documentation updated (this README, the audit doc, audit README index,
+      roadmap README, task list). ADR 0033 (coverage threshold) and ADR 0034
+      (CI supply-chain posture) written.
 - [ ] Maintainer approval recorded
