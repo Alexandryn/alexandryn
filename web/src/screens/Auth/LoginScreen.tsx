@@ -7,8 +7,20 @@ import { MfaPromptModal } from './MfaPromptModal'
 export function LoginScreen() {
   const navigate = useNavigate()
   const location = useLocation()
-  const routerState = location.state as { enrolmentGrant?: string; hostName?: string } | null
+  const routerState = location.state as
+    | { enrolmentGrant?: string; hostName?: string; from?: { pathname?: string; search?: string } }
+    | null
   const enrolmentGrant = routerState?.enrolmentGrant
+
+  // Where to land after a successful sign-in: an explicit router `from`
+  // (RequireAuth), a ?next= query param (the global 401 redirect), or the
+  // library (audit 0016 #91, #95).
+  const fromState = routerState?.from
+  const nextParam = new URLSearchParams(location.search).get('next')
+  const returnTo =
+    (fromState?.pathname ? fromState.pathname + (fromState.search ?? '') : null) ??
+    nextParam ??
+    '/library'
 
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +38,7 @@ export function LoginScreen() {
       if (res.mfaRequired && res.mfaTicket) {
         setMfaTicket(res.mfaTicket)
       } else {
-        navigate('/library', { replace: true })
+        navigate(returnTo, { replace: true })
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')
@@ -94,7 +106,7 @@ export function LoginScreen() {
           enrolmentGrant={enrolmentGrant}
           onSuccess={() => {
             setMfaTicket(null)
-            navigate('/library', { replace: true })
+            navigate(returnTo, { replace: true })
           }}
           onCancel={() => setMfaTicket(null)}
         />
