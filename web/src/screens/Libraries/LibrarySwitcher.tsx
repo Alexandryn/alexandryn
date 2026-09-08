@@ -42,14 +42,14 @@ function LibrarySwitcherInner() {
 
   return (
     <div className="flex items-center gap-xs text-xs">
-      <label htmlFor="library-switcher" className="text-text-muted font-medium sr-only">
+      <label htmlFor="library-switcher" className="text-text-3 font-medium sr-only">
         Active Library:
       </label>
       <select
         id="library-switcher"
         value={activeId}
         onChange={handleSelect}
-        className="px-sm py-xs bg-bg-surface border border-border-subtle rounded text-text-primary focus:outline-none focus:border-accent cursor-pointer"
+        className="px-sm py-xs bg-surface border border-border rounded text-text focus:outline-none focus:border-accent cursor-pointer"
       >
         {libraries.map((l: Library) => (
           <option key={l.id} value={l.id}>
