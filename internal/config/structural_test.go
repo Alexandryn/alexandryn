@@ -30,6 +30,8 @@ func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
 		"ACME_CACHE_DIR":        categoryOptionalNoDefault,
 		"CORS_ALLOWED_ORIGINS":  categoryOptionalNoDefault,
 		"DEVICE_PAIRING_SECRET": categoryOptionalNoDefault,
+		// Phase 16 (audit 0016 #86 — SSRF guard opt-out).
+		"SOURCE_ALLOW_PRIVATE_ADDRESSES": categoryOptionalDefault,
 	}
 
 	got := map[string]category{}

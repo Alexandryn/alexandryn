@@ -250,6 +250,10 @@ func CreateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 				WriteError(w, domain.InvalidInput, err.Error(), id)
 				return
 			}
+			if err := sources.RejectBlockedLiteralHost(baseURL, poolRef.SourceAllowPrivateAddresses()); err != nil {
+				WriteError(w, domain.InvalidInput, err.Error(), id)
+				return
+			}
 			if req.Credential != nil {
 				c, err := sources.NewCredential(req.Credential.Username, req.Credential.Password)
 				if err != nil {
@@ -273,13 +277,14 @@ func CreateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 			prov = p
 		} else {
 			prov = opds.New(opds.Config{
-				SourceID:      sourceID,
-				BaseURL:       baseURL,
-				Credential:    cred,
-				HasCredential: hasCred,
-				Semaphore:     sem,
-				Codec:         sc.Codec,
-				Logger:        logger,
+				AllowPrivateAddresses: poolRef.SourceAllowPrivateAddresses(),
+				SourceID:              sourceID,
+				BaseURL:               baseURL,
+				Credential:            cred,
+				HasCredential:         hasCred,
+				Semaphore:             sem,
+				Codec:                 sc.Codec,
+				Logger:                logger,
 			})
 		}
 
@@ -440,6 +445,10 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 					WriteError(w, domain.InvalidInput, err.Error(), id)
 					return
 				}
+				if err := sources.RejectBlockedLiteralHost(newBaseURL, poolRef.SourceAllowPrivateAddresses()); err != nil {
+					WriteError(w, domain.InvalidInput, err.Error(), id)
+					return
+				}
 			}
 		}
 
@@ -512,14 +521,15 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 			prov = p
 		} else {
 			prov = opds.New(opds.Config{
-				SourceID:       sourceID,
-				BaseURL:        newBaseURL,
-				Credential:     cred,
-				HasCredential:  hasCred,
-				SearchTemplate: rec.SearchLinkURL,
-				Semaphore:      sem,
-				Codec:          sc.Codec,
-				Logger:         logger,
+				AllowPrivateAddresses: poolRef.SourceAllowPrivateAddresses(),
+				SourceID:              sourceID,
+				BaseURL:               newBaseURL,
+				Credential:            cred,
+				HasCredential:         hasCred,
+				SearchTemplate:        rec.SearchLinkURL,
+				Semaphore:             sem,
+				Codec:                 sc.Codec,
+				Logger:                logger,
 			})
 		}
 
@@ -645,14 +655,15 @@ func HealthCheckSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem
 				}
 			} else {
 				p := opds.New(opds.Config{
-					SourceID:       sourceID,
-					BaseURL:        rec.ConfigBaseURL,
-					Credential:     cred,
-					HasCredential:  hasCred,
-					SearchTemplate: rec.SearchLinkURL,
-					Semaphore:      sem,
-					Codec:          sc.Codec,
-					Logger:         logger,
+					AllowPrivateAddresses: poolRef.SourceAllowPrivateAddresses(),
+					SourceID:              sourceID,
+					BaseURL:               rec.ConfigBaseURL,
+					Credential:            cred,
+					HasCredential:         hasCred,
+					SearchTemplate:        rec.SearchLinkURL,
+					Semaphore:             sem,
+					Codec:                 sc.Codec,
+					Logger:                logger,
 				})
 				probeResult = p.Probe(r.Context())
 			}
@@ -753,14 +764,15 @@ func BrowseSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 				cred = c
 			}
 			prov = opds.New(opds.Config{
-				SourceID:       sourceID,
-				BaseURL:        rec.ConfigBaseURL,
-				Credential:     cred,
-				HasCredential:  hasCred,
-				SearchTemplate: rec.SearchLinkURL,
-				Semaphore:      sem,
-				Codec:          sc.Codec,
-				Logger:         logger,
+				AllowPrivateAddresses: poolRef.SourceAllowPrivateAddresses(),
+				SourceID:              sourceID,
+				BaseURL:               rec.ConfigBaseURL,
+				Credential:            cred,
+				HasCredential:         hasCred,
+				SearchTemplate:        rec.SearchLinkURL,
+				Semaphore:             sem,
+				Codec:                 sc.Codec,
+				Logger:                logger,
 			})
 		} else {
 			WriteError(w, domain.InvalidInput, "unsupported source kind", id)
@@ -865,14 +877,15 @@ func SearchSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 				cred = c
 			}
 			prov = opds.New(opds.Config{
-				SourceID:       sourceID,
-				BaseURL:        rec.ConfigBaseURL,
-				Credential:     cred,
-				HasCredential:  hasCred,
-				SearchTemplate: rec.SearchLinkURL,
-				Semaphore:      sem,
-				Codec:          sc.Codec,
-				Logger:         logger,
+				AllowPrivateAddresses: poolRef.SourceAllowPrivateAddresses(),
+				SourceID:              sourceID,
+				BaseURL:               rec.ConfigBaseURL,
+				Credential:            cred,
+				HasCredential:         hasCred,
+				SearchTemplate:        rec.SearchLinkURL,
+				Semaphore:             sem,
+				Codec:                 sc.Codec,
+				Logger:                logger,
 			})
 		} else {
 			WriteError(w, domain.InvalidInput, "unsupported source kind", id)

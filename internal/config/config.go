@@ -92,6 +92,15 @@ type Config struct {
 	// value.
 	DevicePairingSecret RedactedString
 
+	// SourceAllowPrivateAddresses permits outbound source (OPDS) requests
+	// to reach loopback and RFC 1918 / IPv6-ULA private addresses. Off by
+	// default: a source base URL is attacker-chosen input (§4), and the
+	// outbound client blocks non-public targets and defends DNS rebinding.
+	// A self-hoster whose OPDS server runs on the same machine or their
+	// own LAN sets this true. Link-local (cloud metadata), CGNAT, and
+	// multicast stay blocked regardless.
+	SourceAllowPrivateAddresses bool
+
 	// DesktopParentPID is optional: when set by the Electron desktop host
 	// (architecture-desktop-host.md FR-8, desktop-host-process-model.md FR-6),
 	// the server watches this PID for termination and self-exits if the parent dies.
@@ -242,6 +251,12 @@ var fields = []fieldSpec{
 		apply:    func(cfg *Config, v any) { cfg.TLSKeyFile = v.(string) },
 	},
 	{
+		key:      "SOURCE_ALLOW_PRIVATE_ADDRESSES",
+		category: categoryOptionalDefault,
+		parse:    parseBool,
+		apply:    func(cfg *Config, v any) { cfg.SourceAllowPrivateAddresses = v.(bool) },
+	},
+	{
 		key:      "DESKTOP_PARENT_PID",
 		category: categoryOptionalNoDefault,
 		parse:    parseInt,
@@ -290,15 +305,16 @@ var fields = []fieldSpec{
 // three HTTP_*_TIMEOUT/HTTP_MAX_BODY_BYTES values are provisional
 // placeholders — see the Config field comments above.
 var defaults = map[string]any{
-	"LOG_LEVEL":             "info",
-	"SHUTDOWN_GRACE_PERIOD": 10 * time.Second,
-	"DB_POOL_MAX_CONNS":     10,
-	"HTTP_MAX_BODY_BYTES":   int64(10 << 20),
-	"HTTP_READ_TIMEOUT":     15 * time.Second,
-	"HTTP_WRITE_TIMEOUT":    15 * time.Second,
-	"HTTP_IDLE_TIMEOUT":     60 * time.Second,
-	"BIND_ADDRESS":          "127.0.0.1:0",
-	"ACME_ENABLED":          false,
+	"LOG_LEVEL":                      "info",
+	"SHUTDOWN_GRACE_PERIOD":          10 * time.Second,
+	"DB_POOL_MAX_CONNS":              10,
+	"HTTP_MAX_BODY_BYTES":            int64(10 << 20),
+	"HTTP_READ_TIMEOUT":              15 * time.Second,
+	"HTTP_WRITE_TIMEOUT":             15 * time.Second,
+	"HTTP_IDLE_TIMEOUT":              60 * time.Second,
+	"BIND_ADDRESS":                   "127.0.0.1:0",
+	"ACME_ENABLED":                   false,
+	"SOURCE_ALLOW_PRIVATE_ADDRESSES": false,
 }
 
 // Load resolves and validates every configuration key and returns a

@@ -196,6 +196,9 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	sourceRepo := transporthttp.NewLazySourceRecordRepository(poolRef)
 	sourceSem := sources.NewSemaphore(sources.DefaultOutboundLimit)
+	// audit 0016 #86 — the outbound OPDS client blocks non-public targets
+	// unless the operator opts in for a source on their own machine / LAN.
+	poolRef.SetSourceAllowPrivateAddresses(cfg.SourceAllowPrivateAddresses)
 
 	adminOnly := transporthttp.RequireRole(domain.RoleAdmin)
 

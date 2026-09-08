@@ -150,6 +150,7 @@ func testSourceCrypto(t *testing.T) transporthttp.SourceCrypto {
 func TestSources_Create_Line1Validation(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	poolRef.SetSourceCrypto(testSourceCrypto(t))
 	sem := sources.NewSemaphore(50)
 	logger := slog.New(slog.NewTextHandler(ioDiscard{}, nil))
@@ -209,6 +210,7 @@ func TestSources_Create_SuccessAndUnhealthy(t *testing.T) {
 
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -371,6 +373,7 @@ func TestSources_Update_And_Delete(t *testing.T) {
 	tempDir := t.TempDir()
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -436,6 +439,7 @@ func TestSources_Update_And_Delete(t *testing.T) {
 func TestSources_Browse_ValidationAndLimits(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -485,6 +489,7 @@ func TestSources_Browse_ValidationAndLimits(t *testing.T) {
 func TestSources_Search_CanSearchConflict(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -549,6 +554,7 @@ func TestSources_Search_CanSearchConflict(t *testing.T) {
 func TestSources_HealthCheck(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -610,6 +616,7 @@ func TestSources_HealthCheck(t *testing.T) {
 func TestSources_Browse_ForgedOffOriginCursor(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -649,6 +656,7 @@ func TestSources_Browse_ForgedOffOriginCursor(t *testing.T) {
 func TestSources_Browse_DecryptFailureReturns503(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -686,6 +694,7 @@ func TestSources_Logging_NoCredentialsOrSecrets(t *testing.T) {
 
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	sc := testSourceCrypto(t)
 	poolRef.SetSourceCrypto(sc)
 	sem := sources.NewSemaphore(50)
@@ -721,6 +730,7 @@ func TestSources_Logging_NoCredentialsOrSecrets(t *testing.T) {
 func TestSources_CorrelationIDPropagation(t *testing.T) {
 	repo := newMockSourceRecordRepo()
 	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetSourceAllowPrivateAddresses(true)
 	poolRef.SetSourceCrypto(testSourceCrypto(t))
 	sem := sources.NewSemaphore(50)
 	logger := slog.New(slog.NewTextHandler(ioDiscard{}, nil))
