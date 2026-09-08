@@ -10,6 +10,10 @@ export interface ModalProps {
   title: string
   description?: string
   children?: ReactNode
+  /** Extra classes for the dialog panel — e.g. a narrower max-width. */
+  contentClassName?: string
+  /** When false, the corner close button is hidden (Escape/overlay still close). */
+  showClose?: boolean
 }
 
 /**
@@ -18,7 +22,16 @@ export interface ModalProps {
  * (aria-hidden via the `aria-hidden` package) all come from Radix, not
  * reimplemented by hand.
  */
-export function Modal({ open, onOpenChange, trigger, title, description, children }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  trigger,
+  title,
+  description,
+  children,
+  contentClassName,
+  showClose = true,
+}: ModalProps) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <RadixDialog.Trigger asChild>{trigger}</RadixDialog.Trigger>}
@@ -34,6 +47,7 @@ export function Modal({ open, onOpenChange, trigger, title, description, childre
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
             'rounded-lg bg-surface p-xl shadow-lg max-w-3xl w-full',
             'transition-opacity data-[state=closed]:opacity-0 data-[state=open]:opacity-100 motion-reduce:transition-none',
+            contentClassName,
           )}
         >
           <RadixDialog.Title className="text-lg font-ui text-text">{title}</RadixDialog.Title>
@@ -43,12 +57,14 @@ export function Modal({ open, onOpenChange, trigger, title, description, childre
             </RadixDialog.Description>
           )}
           {children}
-          <RadixDialog.Close
-            aria-label="Close"
-            className={cx('absolute top-md right-md text-text-2', FOCUS_RING)}
-          >
-            <span aria-hidden="true">×</span>
-          </RadixDialog.Close>
+          {showClose && (
+            <RadixDialog.Close
+              aria-label="Close"
+              className={cx('absolute top-md right-md text-text-2', FOCUS_RING)}
+            >
+              <span aria-hidden="true">×</span>
+            </RadixDialog.Close>
+          )}
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>

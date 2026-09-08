@@ -21,7 +21,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('makeQueryClient (audit 0016 #91, #227)', () => {
+describe('makeQueryClient (audit 0016 issues 91 and 227)', () => {
   it('does not retry a 4xx response', async () => {
     let calls = 0
     server.use(

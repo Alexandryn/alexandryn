@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { getAccessToken, setActiveLibraryId } from '../../data/auth'
 import { acceptLibraryInvitation } from '../../data/libraries'
@@ -7,6 +7,7 @@ import { acceptLibraryInvitation } from '../../data/libraries'
 export function AcceptInviteScreen() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const isAuthenticated = !!getAccessToken()
@@ -28,21 +29,23 @@ export function AcceptInviteScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-canvas p-md">
-      <div className="w-full max-w-md bg-bg-surface p-xl rounded-lg border border-border-subtle shadow-lg text-center">
-        <h1 className="text-2xl font-serif font-bold text-text-primary mb-xs">Library Invitation</h1>
-        <p className="text-sm text-text-muted mb-lg">You have been invited to join an Alexandryn library namespace.</p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-md">
+      <div className="w-full max-w-md bg-surface p-xl rounded-lg border border-border shadow-lg text-center">
+        <h1 className="text-2xl font-serif font-bold text-text mb-xs">Library Invitation</h1>
+        <p className="text-sm text-text-3 mb-lg">You have been invited to join an Alexandryn library namespace.</p>
 
         {error && (
-          <div className="mb-md p-sm rounded bg-red-950/40 border border-red-800 text-red-300 text-sm" role="alert">
+          <div className="mb-md rounded border border-error bg-surface p-sm text-sm text-error" role="alert">
             {error}
           </div>
         )}
 
         {!isAuthenticated ? (
           <div className="flex flex-col gap-md">
-            <p className="text-sm text-text-secondary">Please sign in to your Alexandryn account to accept this invitation.</p>
-            <Button onClick={() => navigate('/login')}>Sign In</Button>
+            <p className="text-sm text-text-2">Please sign in to your Alexandryn account to accept this invitation.</p>
+            {/* Preserve the invite URL so login returns here and the token
+                is not lost (audit 0016 #95). */}
+            <Button onClick={() => navigate('/login', { state: { from: location } })}>Sign In</Button>
           </div>
         ) : (
           <div className="flex flex-col gap-md">

@@ -12,7 +12,7 @@ function ev(kind: string, jobId: string): SystemEvent {
   }
 }
 
-describe('activityPollInterval (audit 0016 #102)', () => {
+describe('activityPollInterval (audit 0016 issue 102)', () => {
   it('stops entirely while the tab is hidden', () => {
     expect(activityPollInterval([ev('job.running', 'j1')], { active: true }, true)).toBe(false)
   })

@@ -40,7 +40,7 @@ export function Titlebar() {
           <span>{user.username}</span>
           <button
             onClick={handleLogout}
-            className="text-text-3 hover:text-text-1 underline cursor-pointer"
+            className="text-text-3 hover:text-text underline cursor-pointer"
           >
             Sign Out
           </button>

@@ -106,7 +106,7 @@ export function DevicesSettings() {
       )}
 
       {!isLoading && !error && activeDevices.length > 0 && (
-        <div className="border border-border rounded-xl bg-surface overflow-hidden divide-y divide-border-subtle">
+        <div className="border border-border rounded-xl bg-surface overflow-hidden divide-y divide-border">
           {activeDevices.map((device) => {
             const active = isActiveDot(device.lastSeenAt)
             return (
