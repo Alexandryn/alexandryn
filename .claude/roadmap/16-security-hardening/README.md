@@ -178,16 +178,18 @@ and is covered by the redaction-proof test before this phase closes.
 - [x] Every finding filed as an individual GitHub issue with a severity, an
       `area:` label, and the `phase-16` label — 108 issues, #86–#292,
       deduplicated to one per finding; the audit doc's findings table links each.
-- [ ] Zero open Critical or High findings — **0 Critical, 14 High open.**
-      Remediation is follow-up work, one issue at a time, after the maintainer
-      finding-review gate.
+- [ ] Zero open Critical or High findings — **0 Critical, 16 High open**
+      (14 from the sweep + 2 from the ultra pass; #262 upgraded Medium→High on
+      verification, #87 downgraded High→Medium). Remediation is follow-up work,
+      one issue at a time, after the maintainer finding-review gate.
 - [x] `govulncheck` (0 called vulnerabilities) and `npm audit --audit-level=high`
       (0) clean; license audit recorded in the audit doc — Go and npm trees are
       fully permissive, no GPL/AGPL/LGPL; automated license gate filed as #204,
       CC-BY-4.0 attribution check as #257.
-- [~] CSP reviewed (style-src `'unsafe-inline'` #191; no CSP on the served SPA
-      HTML #159). **Electron fuse configuration not found — filed as #260, an
-      open exit-criteria blocker.**
+- [x] CSP reviewed (style-src `'unsafe-inline'` #191; no CSP on the served SPA
+      HTML #159). Electron fuses (#260) **re-scoped to Phase 99** — there is no
+      packaging pipeline yet to set them on; not a Phase 16 blocker (the
+      original outline scoped CSP review, not fuses).
 - [x] CI workflow audited — SHA pinning (#121), `GITHUB_TOKEN` permissions
       (#123), cross-job artifact trust (#205), no SAST (#125), Dependabot npm
       gap (#126), CODEOWNERS lockfile gap (#128), no branch protection (#202)
@@ -195,8 +197,10 @@ and is covered by the redaction-proof test before this phase closes.
 - [x] Test-coverage analysis recorded — no coverage threshold (#131), guard
       script too narrow (#133), no cross-tenant negative tests (#135), no sync
       concurrency test (#137), CI-skipped mechanisms (#210) all filed.
-- [ ] `/code-review ultra` cross-check pass completed and its findings merged
-      into the issue set — **maintainer-run, not yet done.**
+- [x] `/code-review ultra` cross-check pass completed — 15 findings, 12 filed
+      new (#293–#304), 3 cross-validated existing. Surfaced 4 Phase 15
+      deliverables certified but never wired (retention reaper #294, nested
+      redaction #296, diagnostics providers #295, expvar map #302).
 - [~] Documentation updated (this README, the audit doc, audit README index,
       roadmap README, task list). ADRs on CI supply-chain posture and the
       coverage threshold are owed as their issues are worked.

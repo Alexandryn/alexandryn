@@ -7,7 +7,7 @@
 | **Threat model** | Four-Attacker (Constitution §10) + STRIDE, applied to the application as a whole across the three phase-01 trust boundaries: Renderer/Main, Host/LAN, System/Source. |
 | **Date** | 2026-09-07 |
 | **Commit** | `1c60608` |
-| **Verdict** | **Findings open** — 108 findings filed as GitHub issues (#86–#292, deduplicated). 0 Critical, 14 High. Phase does not close until every Critical/High issue is resolved. Awaiting the maintainer finding-review gate and the `/code-review ultra` cross-check. |
+| **Verdict** | **Findings open** — 120 findings filed as GitHub issues (#86–#304, deduplicated). 0 Critical, 16 High. Includes the `/code-review ultra` cross-check (#293–#304) and post-filing verification corrections. Phase does not close until every Critical/High issue is resolved. Awaiting the maintainer finding-review gate. |
 
 ---
 
@@ -77,15 +77,20 @@ Worked explicitly per Constitution §10, against the whole application:
 
 ## Findings
 
-108 findings filed as individual GitHub issues (labels `severity:*`, `area:*`,
-`phase-16`), deduplicated to one issue per finding. Each issue carries the
-finding, location, impact, reproduction, and recommended fix. This table is the
-index. Severity is rated for impact **in this system**, not the textbook worst
-case (Constitution §10); for non-security findings the `severity:` label is a
-priority proxy.
+120 findings filed as individual GitHub issues (#86–#304, labels `severity:*`,
+`area:*`, `phase-16`), deduplicated to one issue per finding. Each issue carries
+the finding, location, impact, reproduction, and recommended fix. Severity is
+rated for impact **in this system**, not the textbook worst case (Constitution
+§10); for non-security findings the `severity:` label is a priority proxy.
 
-**Counts:** 0 Critical · 14 High · 43 Medium · 43 Low · 8 Informational.
-**By area:** web 46 · backend 34 · ci 12 · tests 9 · deps 4 · electron 2 · docs 1.
+The table below is the index for the sweep (#86–#292). The `/code-review ultra`
+additions (#293–#304) and the three verification corrections are in the two
+sections after the reconciliation notes. The `#` column is the sweep's running
+number; two cells (#87, #262) carry their corrected severity with a note.
+
+**Counts (after the ultra pass and the verification corrections):** 0 Critical ·
+16 High · 48 Medium · 47 Low · 9 Informational — 120 total (#86–#304).
+**By area:** web 47 · backend 47 · ci 13 · tests 9 · deps 4 · electron 2 · docs 1.
 
 Six findings (#260, #262, #264, #265, #267, and the guard-script coverage gap)
 record surfaces the sweep did **not** fully reach — they are filed as findings
@@ -95,7 +100,7 @@ finding") and must be closed by completing the review, not by assertion.
 | # | Severity | Area | Title | Issue | Origin |
 |---|---|---|---|---|---|
 | 1 | High | backend | SSRF: source base URL / OPDS client has no private-IP guard or DNS-rebinding defense | [#86](https://github.com/Alexandryn/alexandryn/issues/86) | backend BE-01, security SEC-07, tests TEST-09 |
-| 2 | High | backend | Collections API has no library/tenant scoping (cross-library read and destructive tamper) | [#87](https://github.com/Alexandryn/alexandryn/issues/87) | security SEC-01, tests TEST-02 |
+| 2 | Medium | backend | Collections API has no library/tenant scoping (latent — write path does not set library_id) | [#87](https://github.com/Alexandryn/alexandryn/issues/87) | security SEC-01, tests TEST-02; downgraded on verification |
 | 3 | High | backend | GET /api/v1/library and GET /api/v1/works/{id} are not library-scoped (cross-library holdings disclosure) | [#88](https://github.com/Alexandryn/alexandryn/issues/88) | security SEC-03, tests TEST-01 |
 | 4 | High | backend | TOTP MFA verification endpoint has no rate limiting (MFA brute-force / bypass) | [#89](https://github.com/Alexandryn/alexandryn/issues/89) | security SEC-02 |
 | 5 | High | backend | Device sync push cursor is unsafe as a pull cursor (silent cross-device data loss) | [#90](https://github.com/Alexandryn/alexandryn/issues/90) | backend BE-02, tests TEST-08; prior-session memory note re PR #82 watermark concern |
@@ -118,7 +123,7 @@ finding") and must be closed by completing the review, not by assertion.
 | 22 | Medium | backend | No usable index for the leaderboard / finished-works hot path | [#116](https://github.com/Alexandryn/alexandryn/issues/116) | backend BE-06 |
 | 23 | Medium | backend | COALESCE(col,'') = COALESCE($,'') scoping predicate is index-defeating and NULL-owner-matching | [#118](https://github.com/Alexandryn/alexandryn/issues/118) | backend BE-08 |
 | 24 | Medium | backend | Raw err.Error() text is written into HTTP response bodies | [#119](https://github.com/Alexandryn/alexandryn/issues/119) | backend BE-10 |
-| 25 | Medium | backend | Library invitation / membership authorization path not traced to SQL — needs a dedicated review | [#262](https://github.com/Alexandryn/alexandryn/issues/262) | security SEC 'what could not reach', tests TEST-04 |
+| 25 | **High** | backend | GetLibraryHandler / ListMembersHandler have no authz — member email disclosure to any reader (trace completed) | [#262](https://github.com/Alexandryn/alexandryn/issues/262) | security SEC 'what could not reach', tests TEST-04; upgraded on verification |
 | 26 | Medium | backend | cmd/pg-supervisor / Postgres spawn surface not audited | [#264](https://github.com/Alexandryn/alexandryn/issues/264) | security SEC 'what could not reach', tests TEST-12 |
 | 27 | Medium | ci | GitHub Actions are pinned to mutable major tags, not commit SHAs | [#121](https://github.com/Alexandryn/alexandryn/issues/121) | ci CI-01, security SEC-06 |
 | 28 | Medium | ci | CI workflow has no permissions: block (default GITHUB_TOKEN scope) | [#123](https://github.com/Alexandryn/alexandryn/issues/123) | ci CI-02, security SEC-06 |
@@ -126,7 +131,7 @@ finding") and must be closed by completing the review, not by assertion.
 | 30 | Medium | ci | package-lock.json is not in CODEOWNERS; pnpm-lock.yaml (which does not exist) is listed instead | [#128](https://github.com/Alexandryn/alexandryn/issues/128) | ci CI-05 |
 | 31 | Medium | deps | Dependabot does not watch npm (web/, electron/, the root lockfile) | [#126](https://github.com/Alexandryn/alexandryn/issues/126) | ci CI-04, security SEC-06 |
 | 32 | Medium | docs | No LICENSE file in the repository | [#130](https://github.com/Alexandryn/alexandryn/issues/130) | deps DEP-02 |
-| 33 | Medium | electron | Electron fuses configuration not found — verify @electron/fuses at package time (phase-16 exit criterion) | [#260](https://github.com/Alexandryn/alexandryn/issues/260) | security SEC 'what could not reach', frontend FE 'what could not reach' |
+| 33 | Medium | electron | Electron fuses configuration not found — **re-scoped to Phase 99** (no packaging pipeline yet) | [#260](https://github.com/Alexandryn/alexandryn/issues/260) | security SEC 'what could not reach'; removed from Phase 16 close gate |
 | 34 | Medium | tests | No coverage tool or threshold in CI (open since phase 03); frontend runs no coverage at all | [#131](https://github.com/Alexandryn/alexandryn/issues/131) | tests TEST-07, security SEC-12 |
 | 35 | Medium | tests | check-user-scoped-reading.sh has a narrow glob, is trivially bypassed, and its SQL branch has no self-test | [#133](https://github.com/Alexandryn/alexandryn/issues/133) | tests TEST-06, security SEC-12 |
 | 36 | Medium | tests | No cross-tenant / negative test for collections, library, works, or import endpoints | [#135](https://github.com/Alexandryn/alexandryn/issues/135) | tests TEST-01/02/03/05 (meta), security SEC-12 |
@@ -223,6 +228,72 @@ the higher of the two with both readings recorded on the issue:
   found specific call sites (`import.go`, `device_sync.go`) that bypass
   `writeDomainError` and pass a raw non-domain error. Both are correct; the
   finding stands for the bypassing call sites.
+
+## `/code-review ultra` cross-check pass (2026-09-07)
+
+Run against `main...HEAD` — a diff-scoped review, so its depth is on the
+Phase 14 (device sync) and Phase 15 (observability) code, not the whole
+application. 15 findings; 3 duplicated the sweep (sync cursor #90, leaderboard
+slow-query timer #182, raw `err.Error()` #119 — cross-validation comments added
+to each), 12 filed new as **#293–#304**. The reviewer reproduced the metrics
+`r.Pattern` bug with a standalone Go test.
+
+**The material outcome: four Phase 15 deliverables were certified but never
+wired.** Phase 15 closed 2026-09-07 with audit `0015` "Clear" and all exit
+criteria checked. Verified by grep and code trace during this pass:
+
+| # | Phase 15 claim | Reality |
+|---|---|---|
+| #294 | Exit criterion "Activity-log retention reaper wired and tested" (task T1.4) | `observability.NewReaper` has zero callers in `cmd/`. The reaper is tested but never started. `system_events` is never purged — Constitution §8 / ADR 0031 retention is not enforced. |
+| #296 | Audit `0015` "Clear"; redaction-proof CI test passes | `SanitizedPayload` strips only top-level keys; nested maps and the `note` key pass through. Reading content / position can reach `system_events` and the activity feed. The redaction-proof test evidently only exercises top-level keys. |
+| #295 | Exit criterion `/api/v1/diagnostics` "returns correct metrics" | `SetPoolStatsProvider` / `SetQueueDepthProvider` are never called; diagnostics always reports zeroed pool stats and empty queue depth — a false "healthy" signal. |
+| #302 | ADR 0030: metrics via `expvar` | The `expvar.NewMap("alexandryn_metrics")` is registered empty and never populated or served; `LatencyHistogram` bucket counts are dead; no overflow bucket above 10 s. |
+
+These do not reopen Phase 15 on their own, but they are the same
+"happy-path passed, definition of done not met" failure the constitution warns
+about, and they are recorded here (as the Phase 14 PR #82 concerns were) so the
+next close is done against the wired code. #293 (metrics cardinality leak via
+empty `r.Pattern`), #298 (`RetryJob` re-runs completed jobs → duplicate
+imports), #299 (`CancelJob` doesn't stop the worker), and #300 (Activity
+"Pause" button actually cancels irreversibly) are correctness/UX findings in the
+same code.
+
+## Post-filing verification corrections
+
+Spot-checking the filed issues against the code turned up three that were
+mis-rated or mis-scoped at filing:
+
+- **#87 (collections IDOR) — High → Medium.** `CreateCollectionHandler` →
+  `INSERT INTO collections (id, name)` never writes `library_id`; every
+  collection lands in the default library via the column default. Multi-library
+  collections are not wired (the Phase 12 FR-4 retrofit covered reading data
+  only). Real spec-conformance / defence-in-depth gap, but **latent** — there is
+  no cross-library collection data to leak today. The same applies to the
+  `sources` API (all `adminOnly`, no `library_id` predicate; per-library sources
+  are "future" per `backend-library-namespaces.md` FR-5) — folded here rather
+  than filed separately.
+- **#262 (invitation/membership trace) — Medium → High, trace completed.**
+  `GetLibraryHandler` and `ListMembersHandler` (`library_handlers.go:127,235`)
+  perform **no authorization at all** and are wired with no `adminOnly` wrapper.
+  `ListMembersHandler` returns username + email + role for **every member of any
+  library** to any authenticated reader — spec FR-2 requires library admin. Live
+  High: user/email enumeration, LAN-exposed post-Phase-13. `CreateInvitationHandler`
+  and the library-mutation handlers check the *global* admin role, not the
+  library-membership role (also an FR-1/FR-2 violation).
+- **#260 (Electron fuses) — re-scoped to Phase 99, removed from the Phase 16
+  close gate.** `electron/` has only build tooling — no `@electron/fuses`,
+  electron-builder, or Forge config; there is no packaging pipeline to set fuses
+  on, and packaging is Phase 99 (release). The Phase 16 roadmap outline scoped
+  "CSP review", not fuses; adding "Electron fuse configuration reviewed" to the
+  expanded exit criteria was scope creep and is corrected here.
+
+Confirmed accurate and correctly attributed against the code:
+#86, #88 (`LibraryHandler` never reads `ActiveLibraryFromContext`; multi-library
+book placement *is* wired at `library_entry_repository.go:91`, so this one is
+live), #89, #90, #94, #106, #119, #128, #130, #131, #149 (§11 quotes verbatim),
+#191. The multi-library premise is legitimate — `backend-library-namespaces.md`
+is `APPROVED` and explicitly requires these surfaces scoped; the `libraryInClaims`
+middleware check (FR-3) is now shipped (`auth_middleware.go:144`).
 
 ## Severity guide
 
