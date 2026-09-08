@@ -7,7 +7,7 @@
 | **Threat model** | Four-Attacker (Constitution §10) + STRIDE, applied to the application as a whole across the three phase-01 trust boundaries: Renderer/Main, Host/LAN, System/Source. |
 | **Date** | 2026-09-07 |
 | **Commit** | `1c60608` |
-| **Verdict** | **In progress** — sweep running; findings filed as GitHub issues as they are confirmed. |
+| **Verdict** | **Findings open** — 108 findings filed as GitHub issues (#86–#292, deduplicated). 0 Critical, 14 High. Phase does not close until every Critical/High issue is resolved. Awaiting the maintainer finding-review gate and the `/code-review ultra` cross-check. |
 
 ---
 
@@ -77,12 +77,152 @@ Worked explicitly per Constitution §10, against the whole application:
 
 ## Findings
 
-Filed as GitHub issues; this table is the index. Severity rated per the guide
-below — impact in this system, not the textbook worst case.
+108 findings filed as individual GitHub issues (labels `severity:*`, `area:*`,
+`phase-16`), deduplicated to one issue per finding. Each issue carries the
+finding, location, impact, reproduction, and recommended fix. This table is the
+index. Severity is rated for impact **in this system**, not the textbook worst
+case (Constitution §10); for non-security findings the `severity:` label is a
+priority proxy.
 
-| ID | Severity | Title | Issue | Status |
-|---|---|---|---|---|
-| _(populated as the sweep confirms findings)_ | | | | |
+**Counts:** 0 Critical · 14 High · 43 Medium · 43 Low · 8 Informational.
+**By area:** web 46 · backend 34 · ci 12 · tests 9 · deps 4 · electron 2 · docs 1.
+
+Six findings (#260, #262, #264, #265, #267, and the guard-script coverage gap)
+record surfaces the sweep did **not** fully reach — they are filed as findings
+per the phase strategy ("boundaries with no negative test are themselves a
+finding") and must be closed by completing the review, not by assertion.
+
+| # | Severity | Area | Title | Issue | Origin |
+|---|---|---|---|---|---|
+| 1 | High | backend | SSRF: source base URL / OPDS client has no private-IP guard or DNS-rebinding defense | [#86](https://github.com/Alexandryn/alexandryn/issues/86) | backend BE-01, security SEC-07, tests TEST-09 |
+| 2 | High | backend | Collections API has no library/tenant scoping (cross-library read and destructive tamper) | [#87](https://github.com/Alexandryn/alexandryn/issues/87) | security SEC-01, tests TEST-02 |
+| 3 | High | backend | GET /api/v1/library and GET /api/v1/works/{id} are not library-scoped (cross-library holdings disclosure) | [#88](https://github.com/Alexandryn/alexandryn/issues/88) | security SEC-03, tests TEST-01 |
+| 4 | High | backend | TOTP MFA verification endpoint has no rate limiting (MFA brute-force / bypass) | [#89](https://github.com/Alexandryn/alexandryn/issues/89) | security SEC-02 |
+| 5 | High | backend | Device sync push cursor is unsafe as a pull cursor (silent cross-device data loss) | [#90](https://github.com/Alexandryn/alexandryn/issues/90) | backend BE-02, tests TEST-08; prior-session memory note re PR #82 watermark concern |
+| 6 | High | web | No global auth-failure handling; token expiry puts the whole app in an unrecoverable dead state | [#91](https://github.com/Alexandryn/alexandryn/issues/91) | frontend FE-01; compounded by FE-21 (retry on client errors) |
+| 7 | High | web | CapabilityProvider renders an infinite spinner on any bootstrap fetch failure | [#92](https://github.com/Alexandryn/alexandryn/issues/92) | frontend FE-02 |
+| 8 | High | web | /settings and /more routes are bare placeholders; primary nav dead-ends, mobile loses half the app | [#93](https://github.com/Alexandryn/alexandryn/issues/93) | frontend FE-03 |
+| 9 | High | web | Auth/entry screens built against an undefined design-token vocabulary; styling and contrast broken | [#94](https://github.com/Alexandryn/alexandryn/issues/94) | frontend FE-04 |
+| 10 | High | web | Invitation-acceptance flow loses the token when the user is not signed in | [#95](https://github.com/Alexandryn/alexandryn/issues/95) | frontend FE-05; related FE-08 (LoginScreen return dest) |
+| 11 | High | web | MFA modals are hand-rolled divs: no dialog role, focus trap, Escape, or focus return | [#97](https://github.com/Alexandryn/alexandryn/issues/97) | frontend FE-06 |
+| 12 | High | web | downloadReadingExport bypasses the HTTP layer: no auth header, silent failure | [#99](https://github.com/Alexandryn/alexandryn/issues/99) | frontend FE-07 |
+| 13 | High | web | Entire app ships as one JS chunk; no route-level code splitting | [#100](https://github.com/Alexandryn/alexandryn/issues/100) | web-performance PERF-01 |
+| 14 | High | web | Activity feed polls every 10s forever from the always-mounted sidebar badge | [#102](https://github.com/Alexandryn/alexandryn/issues/102) | web-performance PERF-04 |
+| 15 | Medium | backend | Import candidate endpoints are not library-scoped (cross-library enumerate / sabotage / confirm) | [#104](https://github.com/Alexandryn/alexandryn/issues/104) | backend BE-03, tests TEST-05 |
+| 16 | Medium | backend | MFA ticket is signed with the access-token HKDF subkey, not its own | [#106](https://github.com/Alexandryn/alexandryn/issues/106) | backend BE-09, security SEC-13 |
+| 17 | Medium | backend | MFA can be re-enrolled or silently disabled with only an access token (no password / step-up) | [#107](https://github.com/Alexandryn/alexandryn/issues/107) | security SEC-04 |
+| 18 | Medium | backend | Sync progress path cannot carry a backward progress correction (epoch clamp) | [#109](https://github.com/Alexandryn/alexandryn/issues/109) | backend BE-04 |
+| 19 | Medium | backend | Sync progress accepts an unvalidated precise-position edition id | [#111](https://github.com/Alexandryn/alexandryn/issues/111) | backend BE-11 |
+| 20 | Medium | backend | GET /api/v1/library/finished runs an unbounded, unpaginated query | [#112](https://github.com/Alexandryn/alexandryn/issues/112) | backend BE-05 |
+| 21 | Medium | backend | GET /api/v1/sync/reading delta queries have no LIMIT and 'since' defaults to 0 | [#114](https://github.com/Alexandryn/alexandryn/issues/114) | backend BE-07 |
+| 22 | Medium | backend | No usable index for the leaderboard / finished-works hot path | [#116](https://github.com/Alexandryn/alexandryn/issues/116) | backend BE-06 |
+| 23 | Medium | backend | COALESCE(col,'') = COALESCE($,'') scoping predicate is index-defeating and NULL-owner-matching | [#118](https://github.com/Alexandryn/alexandryn/issues/118) | backend BE-08 |
+| 24 | Medium | backend | Raw err.Error() text is written into HTTP response bodies | [#119](https://github.com/Alexandryn/alexandryn/issues/119) | backend BE-10 |
+| 25 | Medium | backend | Library invitation / membership authorization path not traced to SQL — needs a dedicated review | [#262](https://github.com/Alexandryn/alexandryn/issues/262) | security SEC 'what could not reach', tests TEST-04 |
+| 26 | Medium | backend | cmd/pg-supervisor / Postgres spawn surface not audited | [#264](https://github.com/Alexandryn/alexandryn/issues/264) | security SEC 'what could not reach', tests TEST-12 |
+| 27 | Medium | ci | GitHub Actions are pinned to mutable major tags, not commit SHAs | [#121](https://github.com/Alexandryn/alexandryn/issues/121) | ci CI-01, security SEC-06 |
+| 28 | Medium | ci | CI workflow has no permissions: block (default GITHUB_TOKEN scope) | [#123](https://github.com/Alexandryn/alexandryn/issues/123) | ci CI-02, security SEC-06 |
+| 29 | Medium | ci | No SAST / security linter in CI | [#125](https://github.com/Alexandryn/alexandryn/issues/125) | ci CI-03 |
+| 30 | Medium | ci | package-lock.json is not in CODEOWNERS; pnpm-lock.yaml (which does not exist) is listed instead | [#128](https://github.com/Alexandryn/alexandryn/issues/128) | ci CI-05 |
+| 31 | Medium | deps | Dependabot does not watch npm (web/, electron/, the root lockfile) | [#126](https://github.com/Alexandryn/alexandryn/issues/126) | ci CI-04, security SEC-06 |
+| 32 | Medium | docs | No LICENSE file in the repository | [#130](https://github.com/Alexandryn/alexandryn/issues/130) | deps DEP-02 |
+| 33 | Medium | electron | Electron fuses configuration not found — verify @electron/fuses at package time (phase-16 exit criterion) | [#260](https://github.com/Alexandryn/alexandryn/issues/260) | security SEC 'what could not reach', frontend FE 'what could not reach' |
+| 34 | Medium | tests | No coverage tool or threshold in CI (open since phase 03); frontend runs no coverage at all | [#131](https://github.com/Alexandryn/alexandryn/issues/131) | tests TEST-07, security SEC-12 |
+| 35 | Medium | tests | check-user-scoped-reading.sh has a narrow glob, is trivially bypassed, and its SQL branch has no self-test | [#133](https://github.com/Alexandryn/alexandryn/issues/133) | tests TEST-06, security SEC-12 |
+| 36 | Medium | tests | No cross-tenant / negative test for collections, library, works, or import endpoints | [#135](https://github.com/Alexandryn/alexandryn/issues/135) | tests TEST-01/02/03/05 (meta), security SEC-12 |
+| 37 | Medium | tests | No concurrency test on the phase-14 sync surface | [#137](https://github.com/Alexandryn/alexandryn/issues/137) | tests TEST-08, backend BE-02 |
+| 38 | Medium | web | Switching the active library leaves stale cross-library data cached; one invalidation key is wrong | [#138](https://github.com/Alexandryn/alexandryn/issues/138) | frontend FE-09 |
+| 39 | Medium | web | DevicePairingModal: prefers-reduced-motion disables the functional expiry countdown and SR announcements | [#140](https://github.com/Alexandryn/alexandryn/issues/140) | frontend FE-10 |
+| 40 | Medium | web | Fire-and-forget destructive mutations swallow failures (revoke device, delete source, revoke pairing) | [#142](https://github.com/Alexandryn/alexandryn/issues/142) | frontend FE-11 |
+| 41 | Medium | web | NetworkSettings form never loads the actual current settings | [#143](https://github.com/Alexandryn/alexandryn/issues/143) | frontend FE-12 |
+| 42 | Medium | web | Reader claims to restore reading position but only restores the chapter, never the scroll offset | [#145](https://github.com/Alexandryn/alexandryn/issues/145) | frontend FE-13 |
+| 43 | Medium | web | Reader highlight creation always sends a zero-length range (start === end); the feature does not work | [#147](https://github.com/Alexandryn/alexandryn/issues/147) | frontend FE-14 |
+| 44 | Medium | web | Interface copy: marketing voice, apologising, pervasive Title Case (Constitution §11) | [#149](https://github.com/Alexandryn/alexandryn/issues/149) | frontend FE-15 |
+| 45 | Medium | web | RouteError boundary covers only shell children, not public routes, RequireAuth, or AppShell | [#150](https://github.com/Alexandryn/alexandryn/issues/150) | frontend FE-16 |
+| 46 | Medium | web | Pagination and page navigation lose keyboard focus | [#152](https://github.com/Alexandryn/alexandryn/issues/152) | frontend FE-17 |
+| 47 | Medium | web | AccessScreen decodes the JWT client-side to make authz/UI decisions inside a screen component | [#154](https://github.com/Alexandryn/alexandryn/issues/154) | frontend FE-18 |
+| 48 | Medium | web | Status queries fail silently: whole sections vanish with no error or retry | [#156](https://github.com/Alexandryn/alexandryn/issues/156) | frontend FE-19 |
+| 49 | Medium | web | Multi-step pairing/enrolment flow carried entirely in router state; breaks on reload | [#157](https://github.com/Alexandryn/alexandryn/issues/157) | frontend FE-20 |
+| 50 | Medium | web | No Content-Security-Policy on the served web app HTML | [#159](https://github.com/Alexandryn/alexandryn/issues/159) | frontend FE-31; related to the style-src finding |
+| 51 | Medium | web | LoginScreen ignores the post-login return destination and offers no password reset | [#161](https://github.com/Alexandryn/alexandryn/issues/161) | frontend FE-08; related FE-05 |
+| 52 | Medium | web | qrcode (~52 KB raw) is eagerly bundled for a rare host-only modal | [#163](https://github.com/Alexandryn/alexandryn/issues/163) | web-performance PERF-02 |
+| 53 | Medium | web | Radix UI primitives are duplicated across packages in the bundle | [#164](https://github.com/Alexandryn/alexandryn/issues/164) | web-performance PERF-03 |
+| 54 | Medium | web | No request cancellation anywhere; http.ts never forwards AbortSignal | [#166](https://github.com/Alexandryn/alexandryn/issues/166) | web-performance PERF-05 |
+| 55 | Medium | web | WorkGrid 'virtualization' only grows; it never windows or unmounts rows | [#168](https://github.com/Alexandryn/alexandryn/issues/168) | web-performance PERF-06 |
+| 56 | Medium | web | Import screen polls queued candidates every 2s unconditionally | [#169](https://github.com/Alexandryn/alexandryn/issues/169) | web-performance PERF-08 |
+| 57 | Medium | web | Import candidate covers are delivered as inline base64 in JSON, and the incoming data: prefix is trusted | [#171](https://github.com/Alexandryn/alexandryn/issues/171) | web-performance PERF-09, frontend FE-22 |
+| 58 | Low | backend | VerifyAccessToken still accepts an empty typ claim | [#173](https://github.com/Alexandryn/alexandryn/issues/173) | backend BE-12 |
+| 59 | Low | backend | Sync side-effect errors are silently discarded | [#175](https://github.com/Alexandryn/alexandryn/issues/175) | backend BE-13 |
+| 60 | Low | backend | local.Provider.Resolve does not re-check the file extension | [#176](https://github.com/Alexandryn/alexandryn/issues/176) | backend BE-14 |
+| 61 | Low | backend | Activity job control is global, keyed on the global user role only | [#178](https://github.com/Alexandryn/alexandryn/issues/178) | backend BE-15, tests TEST-14 |
+| 62 | Low | backend | openlibrary.GetWork has no aggregate deadline over ~22 sequential calls | [#180](https://github.com/Alexandryn/alexandryn/issues/180) | backend BE-16 |
+| 63 | Low | backend | FinishedWorksHandler slow-query timer measures nothing | [#182](https://github.com/Alexandryn/alexandryn/issues/182) | backend BE-17 |
+| 64 | Low | backend | Highlight PATCH always writes, burning a sync sequence | [#183](https://github.com/Alexandryn/alexandryn/issues/183) | backend BE-18 |
+| 65 | Low | backend | JSON responses are not error-checked after WriteHeader | [#185](https://github.com/Alexandryn/alexandryn/issues/185) | backend BE-21 |
+| 66 | Low | backend | Login endpoint leaks account existence via response timing | [#187](https://github.com/Alexandryn/alexandryn/issues/187) | security SEC-05 |
+| 67 | Low | backend | MFA ticket is replayable within its 5-minute TTL | [#189](https://github.com/Alexandryn/alexandryn/issues/189) | security SEC-09 |
+| 68 | Low | backend | App CSP still ships style-src 'unsafe-inline' (phase-16 TODO left in shipped code) | [#191](https://github.com/Alexandryn/alexandryn/issues/191) | security SEC-08 |
+| 69 | Low | backend | Per-IP rate limiting degrades to global behind a reverse proxy; IPv6 /64 rotation is free | [#195](https://github.com/Alexandryn/alexandryn/issues/195) | security SEC-17 |
+| 70 | Low | ci | upload-artifact@v7 paired with download-artifact@v8 | [#198](https://github.com/Alexandryn/alexandryn/issues/198) | ci CI-07 |
+| 71 | Low | ci | No job-level timeout-minutes; no concurrency group | [#200](https://github.com/Alexandryn/alexandryn/issues/200) | ci CI-08 |
+| 72 | Low | ci | No branch protection on main; 'never commit to main' is unenforced | [#202](https://github.com/Alexandryn/alexandryn/issues/202) | ci CI-06 |
+| 73 | Low | ci | No automated license gate in CI | [#204](https://github.com/Alexandryn/alexandryn/issues/204) | deps DEP-03, tests TEST-11 |
+| 74 | Low | ci | Cross-job artifact trust chain is implicit | [#205](https://github.com/Alexandryn/alexandryn/issues/205) | ci CI-09 |
+| 75 | Low | ci | npm audit ignores moderate advisories | [#207](https://github.com/Alexandryn/alexandryn/issues/207) | tests TEST-11, security SEC-06 |
+| 76 | Low | ci | Bundle-size CI check cannot see the monolith | [#225](https://github.com/Alexandryn/alexandryn/issues/225) | web-performance PERF-15 |
+| 77 | Low | deps | golang.org/x/crypto v0.55.0 carries 3 advisories (not on any call path) | [#197](https://github.com/Alexandryn/alexandryn/issues/197) | deps DEP-01, security SEC-10 |
+| 78 | Low | electron | Electron recovering-banner injects executeJavaScript via string interpolation | [#193](https://github.com/Alexandryn/alexandryn/issues/193) | security SEC-11, frontend FE-30 |
+| 79 | Low | tests | Playwright has no forbidOnly; CI retries can mask flake | [#209](https://github.com/Alexandryn/alexandryn/issues/209) | tests TEST-10 |
+| 80 | Low | tests | The real bundled-Postgres spawn and ACME issuance are skipped on every CI run | [#210](https://github.com/Alexandryn/alexandryn/issues/210) | tests TEST-12 |
+| 81 | Low | tests | ~15 integration tests use real-clock time.Sleep for synchronization | [#212](https://github.com/Alexandryn/alexandryn/issues/212) | tests TEST-13 |
+| 82 | Low | tests | api/openapi.yaml contract vs actual response shapes — over-disclosure check not performed | [#265](https://github.com/Alexandryn/alexandryn/issues/265) | tests (contract), security SEC 'what could not reach' |
+| 83 | Low | tests | check-parameterized-queries.sh / check-import-boundaries.sh not audited for bypass | [#267](https://github.com/Alexandryn/alexandryn/issues/267) | tests, security SEC 'what could not reach' |
+| 84 | Low | web | parseActivityEvents recomputed on every render (badge + screen) | [#214](https://github.com/Alexandryn/alexandryn/issues/214) | web-performance PERF-07 |
+| 85 | Low | web | CapabilityProvider context value and can() closure recreated every render | [#216](https://github.com/Alexandryn/alexandryn/issues/216) | web-performance PERF-10 |
+| 86 | Low | web | allWorks rebuilt with a fresh array identity every Library render | [#217](https://github.com/Alexandryn/alexandryn/issues/217) | web-performance PERF-11 |
+| 87 | Low | web | Discover result covers are all loading=lazy; no priority hint for the first row | [#219](https://github.com/Alexandryn/alexandryn/issues/219) | web-performance PERF-12 |
+| 88 | Low | web | No content-visibility on long scrolling regions | [#222](https://github.com/Alexandryn/alexandryn/issues/222) | web-performance PERF-13 |
+| 89 | Low | web | Design fonts are referenced but never loaded or preloaded (latent CLS) | [#223](https://github.com/Alexandryn/alexandryn/issues/223) | web-performance PERF-14 |
+| 90 | Low | web | retry: 2 default applies to auth and client errors | [#227](https://github.com/Alexandryn/alexandryn/issues/227) | frontend FE-21 |
+| 91 | Low | web | Dismissed-import-failure IDs accumulate in localStorage unbounded | [#229](https://github.com/Alexandryn/alexandryn/issues/229) | frontend FE-23 |
+| 92 | Low | web | deleteRequest throws on a 200 response with an empty body | [#230](https://github.com/Alexandryn/alexandryn/issues/230) | frontend FE-24 |
+| 93 | Low | web | AppProviders creates a module-level singleton QueryClient, contradicting its own contract | [#232](https://github.com/Alexandryn/alexandryn/issues/232) | frontend FE-25 |
+| 94 | Low | web | Reader iframe load handler registers scroll/selectionchange listeners with no cleanup | [#234](https://github.com/Alexandryn/alexandryn/issues/234) | frontend FE-26 |
+| 95 | Low | web | Titlebar 'search' is a link styled as a text field | [#236](https://github.com/Alexandryn/alexandryn/issues/236) | frontend FE-27 |
+| 96 | Low | web | Reader TOC entries pointing at non-linear or unmatched sections silently do nothing | [#237](https://github.com/Alexandryn/alexandryn/issues/237) | frontend FE-28 |
+| 97 | Low | web | Redundant aria-label duplicating the visible label on search inputs | [#239](https://github.com/Alexandryn/alexandryn/issues/239) | frontend FE-29 |
+| 98 | Low | web | Rejecting an import candidate is irreversible with no confirmation | [#241](https://github.com/Alexandryn/alexandryn/issues/241) | frontend FE-32 |
+| 99 | Low | web | Post-navigation focus lands on a container with no announced heading on some routes/states | [#243](https://github.com/Alexandryn/alexandryn/issues/243) | frontend FE-33 |
+| 100 | Low | web | SourceFormDialog validation errors are not tied to fields and don't move focus | [#245](https://github.com/Alexandryn/alexandryn/issues/245) | frontend FE-34 |
+| 101 | Info | backend | Active library falls back to the default without a membership check | [#246](https://github.com/Alexandryn/alexandryn/issues/246) | backend BE-19 |
+| 102 | Info | backend | GetSyncSequenceCeiling reads a non-transactional sequence value | [#248](https://github.com/Alexandryn/alexandryn/issues/248) | backend BE-20 |
+| 103 | Info | backend | Enrolment-grant single-use check is TOCTOU | [#250](https://github.com/Alexandryn/alexandryn/issues/250) | security SEC-14 |
+| 104 | Info | backend | Open Library client follows HTTP redirects unrestricted | [#251](https://github.com/Alexandryn/alexandryn/issues/251) | security SEC-15 |
+| 105 | Info | backend | Reader HTML sanitizer allows data: URIs on <a href> | [#253](https://github.com/Alexandryn/alexandryn/issues/253) | security SEC-16 |
+| 106 | Info | ci | Postgres service container uses a trivial password | [#259](https://github.com/Alexandryn/alexandryn/issues/259) | ci (inline) |
+| 107 | Info | deps | npm deprecation warnings in the install tree | [#255](https://github.com/Alexandryn/alexandryn/issues/255) | deps DEP-04 |
+| 108 | Info | deps | Three CC-BY-4.0 npm packages need attribution verification | [#257](https://github.com/Alexandryn/alexandryn/issues/257) | deps DEP-03 |
+
+### Reconciliation notes
+
+Where two reviewers rated the same finding differently, the filed severity is
+the higher of the two with both readings recorded on the issue:
+
+- **SSRF (#86):** security-auditor rated Low (admin-gated source creation);
+  backend reviewer rated High (`Provider.Resolve` reachable by any user with an
+  offering from that source, plus DNS rebinding). Filed **High**.
+- **`GET /library` / `/works/{id}` scoping (#88):** security-auditor Medium
+  (read-only); test-engineer High (horizontal IDOR on catalog data). Filed
+  **High**.
+- **MFA-ticket subkey (#106):** backend reviewer Medium (explicit reflex
+  violation, review 0050 / audit 0012-C2); security-auditor Informational
+  (defence-in-depth). Filed **Medium**.
+- **Raw `err.Error()` in response bodies (#119):** the security-auditor's
+  four-attacker pass concluded `(*domain.Error).Error()` returns only the
+  curated message, so the domain-error path does not leak. The backend reviewer
+  found specific call sites (`import.go`, `device_sync.go`) that bypass
+  `writeDomainError` and pass a raw non-domain error. Both are correct; the
+  finding stands for the bypassing call sites.
 
 ## Severity guide
 
@@ -98,7 +238,122 @@ Non-security findings (code quality, user-flow, workflow, test-coverage) are
 filed with the same `severity:` labels used as a priority proxy and an
 `area:` label, per G0-1/G0-3.
 
+## Threat-model consolidation, per boundary
+
+### Renderer → Main (Electron IPC)
+
+**Held.** `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`.
+The preload exposes exactly three argument-less operations, each Zod-validated
+in the main process. External navigation is blocked and links are forced to the
+system browser with scheme validation. Server config is written mode 0600 in a
+0700 `mkdtemp` dir. One Low finding: the recovering-banner is injected via
+`executeJavaScript` string interpolation (#193) — safe today, fragile pattern.
+**Not verified:** the packaged binary's Electron fuses (#260) — no
+`@electron/fuses` config was found; this is a phase-16 exit-criteria item.
+`serverLifecycle.ts` / `serverProcess.ts` / `serverBinary.ts` binary-path
+resolution and integrity were not read.
+
+### LAN client → Host (HTTP API)
+
+**Mostly held, with a cross-phase seam.** Loopback-default bind with a
+fail-closed public-bind TLS gate checked against the actual address class, never
+a flag. `AuthMiddleware` on every `/api/v1/` route with token-*type* assertion
+and `X-Library-Id` validated against claims. Bearer (not cookie) auth makes the
+API CSRF-safe by construction; the three unauthenticated state-changing POSTs
+carry `OriginValidation`. Deny-by-default CORS with no `Allow-Credentials`.
+Security headers on every response. The **reading / bookmarks / highlights /
+preferences / sync / device / leaderboard** surfaces were traced
+handler → repository → SQL and **are** genuinely `user_id` + `library_id`
+scoped, with foreign/missing rows returning `NotFound` (no existence oracle),
+and CI enforces it for that surface.
+
+**The seam:** the phase-12 multi-library scoping was never extended to the
+earlier **collections** (#87) and **library catalog / work detail** (#88) code,
+and the **import candidate** endpoints (#104) authorise "may ingest" without
+checking candidate ownership. `GetLibraryHandler` / `ListMembersHandler`
+perform no authorization at all (folded into #88's cluster and #262). The CI
+guard meant to prevent an IDOR recurrence (`check-user-scoped-reading.sh`) does
+not scan any of these files (#133). This is audit 0012's miss (review 0050)
+recurring on a wider surface, and it is the single most important outcome of
+this sweep.
+
+Auth-path findings: MFA verify has no rate limit (#89, High), MFA ticket shares
+the access subkey (#106) and is replayable (#189), MFA can be re-enrolled with
+only an access token (#107), the login timing oracle (#187), per-IP limiting
+collapses behind a proxy (#195). The **invitation / membership** authorization
+path was not fully traced (#262) and needs its own review.
+
+### System → Source / book file
+
+**Held.** Redirects disabled on the OPDS client, 5 MiB / 5 s caps, `SameOrigin`
+on every response-derived URL. Local-folder traversal and symlink escape are
+handled. Zip-bomb / entry-count / decompressed-size caps are enforced in the
+extract path; EPUB/CBZ entries are read in memory with no `filepath.Join` /
+`os.Create`, so no zip-slip. The gap is **SSRF** (#86, High): neither the OPDS
+client nor the Open Library client (#251) screens the target IP for
+private/loopback/link-local, and there is no DNS-rebinding defense. The
+`local.Provider.Resolve` path does not re-check the file extension (#176). The
+`cmd/pg-supervisor` spawn surface was not read (#264) and its E2E test is
+skipped on every CI run (#210).
+
+### CI job → CI job / dependency tree
+
+`npm audit` and `govulncheck` (symbol level) are clean. Licenses are all
+permissive (no GPL/AGPL/LGPL). The findings are hardening gaps, not active
+vulnerabilities: actions pinned to mutable tags (#121), no `permissions:` block
+(#123), no SAST (#125), Dependabot blind to npm (#126), the real lockfile
+outside CODEOWNERS (#128), no branch protection (#202), no LICENSE file (#130),
+no coverage threshold (#131), and the bundled-DB / ACME paths unverified in CI
+(#210).
+
+### Malformed / absent input
+
+**Held.** Body caps (`limits.go`), `http.MaxBytesReader` defense-in-depth, panic
+recovery with no stack/message leak to clients, `TranslateError` collapsing all
+driver errors to a fixed generic message. The exception is the set of import /
+sync handler call sites that bypass `writeDomainError` and pass a raw
+`err.Error()` into the response body (#119).
+
 ## What was not examined
 
-_(Recorded honestly at the end of the sweep — boundaries, files, or scenarios
-that time or tooling did not reach.)_
+Recorded honestly. Each item below is also filed as a finding so it is closed by
+work, not by assertion.
+
+- **No runtime / dynamic testing.** Every finding is from static code reading, one
+  `vite build`, `npm audit`, `govulncheck`, and `go run github.com/google/go-licenses`.
+  No server was started, no request sent, no browser driven. The Playwright
+  benchmark project exists and was not run. "Fails today" claims on the IDOR
+  findings are inferred from the absent SQL predicate and the absent
+  `UserFromContext` call — high confidence, not executed.
+- **Electron packaging / fuses** (#260) — no `@electron/fuses` / `electron-builder`
+  / Forge config found; `serverLifecycle.ts`, `serverProcess.ts`,
+  `serverBinary.ts`, `singleInstance.ts`, `jobObject.ts`, `healthPoller.ts` not read.
+- **Library invitation & membership authorization** (#262) — `AcceptInvitationHandler`,
+  `LazyCreateInvitationHandler`, and the membership repository were not traced to
+  SQL; a token-forgery or missing "admin of X can only invite to X" check would
+  be High.
+- **`cmd/pg-supervisor` / Postgres spawn surface** (#264) — argv construction,
+  binary-path trust, data-dir permissions, port selection, and the
+  `DATABASE_URL`-absent bundled-spawn path.
+- **API contract vs. actual response shapes** (#265) — `api/openapi.yaml` was not
+  diffed against real responses for over-disclosure; CI stage 6 is a named no-op.
+- **`check-parameterized-queries.sh` / `check-import-boundaries.sh`** (#267) — not
+  adversarially tested for bypass.
+- **Repositories not individually traced to SQL:** `paired_device_repository.go`,
+  `pairing_session_repository.go` (encrypted-index lookup),
+  `network_settings_repository.go`, `reading_preferences_repository.go`,
+  `reading_export_repository.go`, `auth_repository.go` (refresh-token /
+  password-reset queries), `source_repository.go` credential encryption at rest.
+- **Migrations** not reviewed for nullability / FK / unique-constraint gaps.
+- **`internal/jobs/` engine internals** — queue fairness, `CancelJob` / `RetryJob`
+  transaction semantics, backoff — only the HTTP-facing surface was read.
+- **`internal/importer/extract/*` parsers** — have dedicated `adversarial_test.go`;
+  the 250 MiB / entry-count caps were confirmed wired, but the parsers were not
+  independently re-audited.
+- **`web/src` DOM-XSS sinks** (`dangerouslySetInnerHTML`), token storage location,
+  and the reader iframe `sandbox` attribute value were not verified against a
+  running renderer.
+- **Concurrency** was reasoned about from code structure only, not exercised
+  (#137 files the missing sync concurrency test).
+- **The `/code-review ultra` cross-check** (maintainer-run) has not yet been
+  completed; its findings will be merged into this issue set.

@@ -169,24 +169,35 @@ and is covered by the redaction-proof test before this phase closes.
 
 ## Exit criteria
 
-- [ ] Consolidated threat model + adversarial audit recorded in
-      `.claude/audits/0016-phase16-security-hardening.md`, applying the mandatory
-      handler → repository → SQL trace to every tenant-scoped endpoint
-- [ ] Every finding filed as an individual GitHub issue with a severity, an
-      `area:` label, and the `phase-16` label; the audit doc's findings table
-      links each one
-- [ ] Zero open Critical or High findings (Medium/Low/Informational may be
-      scheduled forward, each recorded against its issue)
-- [ ] `govulncheck` and `npm audit --audit-level=high` clean; a license audit of
-      all direct and transitive dependencies recorded
-- [ ] CSP and Electron fuse configuration reviewed against current guidance,
-      findings filed
-- [ ] CI workflow audited: action pinning, `GITHUB_TOKEN` permissions,
-      cross-job artifact trust, secret-exposure surface; findings filed
-- [ ] Test-coverage analysis recorded: security-relevant paths without a
-      negative test are enumerated as findings
+- [x] Consolidated threat model + adversarial audit recorded in
+      `.claude/audits/0016-phase16-security-hardening.md`, with a per-boundary
+      threat-model consolidation. The mandatory handler → repository → SQL trace
+      was applied to the reading/sync surface (confirmed scoped) and exposed the
+      collections / library-catalog / import seam; the invitation/membership
+      path is filed as an unfinished trace (#262).
+- [x] Every finding filed as an individual GitHub issue with a severity, an
+      `area:` label, and the `phase-16` label — 108 issues, #86–#292,
+      deduplicated to one per finding; the audit doc's findings table links each.
+- [ ] Zero open Critical or High findings — **0 Critical, 14 High open.**
+      Remediation is follow-up work, one issue at a time, after the maintainer
+      finding-review gate.
+- [x] `govulncheck` (0 called vulnerabilities) and `npm audit --audit-level=high`
+      (0) clean; license audit recorded in the audit doc — Go and npm trees are
+      fully permissive, no GPL/AGPL/LGPL; automated license gate filed as #204,
+      CC-BY-4.0 attribution check as #257.
+- [~] CSP reviewed (style-src `'unsafe-inline'` #191; no CSP on the served SPA
+      HTML #159). **Electron fuse configuration not found — filed as #260, an
+      open exit-criteria blocker.**
+- [x] CI workflow audited — SHA pinning (#121), `GITHUB_TOKEN` permissions
+      (#123), cross-job artifact trust (#205), no SAST (#125), Dependabot npm
+      gap (#126), CODEOWNERS lockfile gap (#128), no branch protection (#202)
+      all filed.
+- [x] Test-coverage analysis recorded — no coverage threshold (#131), guard
+      script too narrow (#133), no cross-tenant negative tests (#135), no sync
+      concurrency test (#137), CI-skipped mechanisms (#210) all filed.
 - [ ] `/code-review ultra` cross-check pass completed and its findings merged
-      into the issue set
-- [ ] Documentation updated (this README, the audit doc, any ADR the phase
-      produces)
+      into the issue set — **maintainer-run, not yet done.**
+- [~] Documentation updated (this README, the audit doc, audit README index,
+      roadmap README, task list). ADRs on CI supply-chain posture and the
+      coverage threshold are owed as their issues are worked.
 - [ ] Maintainer approval recorded
