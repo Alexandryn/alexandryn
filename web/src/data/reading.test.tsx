@@ -74,11 +74,17 @@ describe('reading data layer (frontend-reader.md)', () => {
     expect(result.current.data?.preferences.theme).toBe('light')
   })
 
-  it('downloads the export as a JSON file', async () => {
+  it('downloads the export as a JSON file, sending the auth headers (audit 0016 #99)', async () => {
+    window.localStorage.setItem('alexandryn_access_token', 'tok-123')
+    window.localStorage.setItem('alexandryn_active_library', 'lib-9')
+    let auth: string | null = null
+    let lib: string | null = null
     server.use(
-      http.get('*/api/v1/reading/export', () =>
-        HttpResponse.json({ schemaVersion: 1, exportedAt: 'x', works: [], editions: [] }),
-      ),
+      http.get('*/api/v1/reading/export', ({ request }) => {
+        auth = request.headers.get('Authorization')
+        lib = request.headers.get('X-Library-Id')
+        return HttpResponse.json({ schemaVersion: 1, exportedAt: 'x', works: [], editions: [] })
+      }),
     )
     let clicked = false
     const realCreate = document.createElement.bind(document)
@@ -90,6 +96,8 @@ describe('reading data layer (frontend-reader.md)', () => {
 
     await downloadReadingExport()
     expect(clicked).toBe(true)
+    expect(auth).toBe('Bearer tok-123')
+    expect(lib).toBe('lib-9')
     spy.mockRestore()
   })
 })

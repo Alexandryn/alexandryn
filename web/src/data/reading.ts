@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { deleteRequest, getJson, postJson, putJson } from './http'
+import { deleteRequest, getBlob, getJson, postJson, putJson } from './http'
 
 const DEVICE_ID_KEY = 'alexandryn.reader.deviceId'
 
@@ -240,22 +240,25 @@ export function useSavePreferences() {
 // --- export ---------------------------------------------------
 
 /**
- * Fetches the reading-data export document and hands it to the browser as
- * a file download (reading-data-export.md). Web/LAN client only — the
- * Electron-native save dialog is a later phase.
+ * Fetches the reading-data export document — through the authenticated
+ * HTTP layer, so the bearer token and X-Library-Id are sent (audit 0016
+ * #99) — and hands it to the browser as a file download
+ * (reading-data-export.md). Web/LAN client only; the Electron-native save
+ * dialog is a later phase.
  */
 export async function downloadReadingExport(): Promise<void> {
-  const res = await fetch('/api/v1/reading/export', { headers: { Accept: 'application/json' } })
-  if (!res.ok) {
-    throw new Error('Export failed')
-  }
-  const blob = await res.blob()
+  const { blob, filename } = await getBlob('/api/v1/reading/export')
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'alexandryn-reading-export.json'
+  a.download = filename ?? 'alexandryn-reading-export.json'
   document.body.appendChild(a)
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
+}
+
+/** Mutation wrapper so the Reader can show pending/error state (audit 0016 #99). */
+export function useReadingExport() {
+  return useMutation({ mutationFn: downloadReadingExport })
 }

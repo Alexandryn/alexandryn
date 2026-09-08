@@ -64,6 +64,26 @@ export async function getJson<T>(path: string, headers: ExtraHeaders = {}): Prom
   return handleResponse<T>(res)
 }
 
+/**
+ * Fetches a resource as a Blob through the same auth/library headers as
+ * every other call (audit 0016 #99 — the reading export used a bare
+ * fetch with no bearer token). Returns the blob and the server's
+ * suggested filename, if any.
+ */
+export async function getBlob(
+  path: string,
+  headers: ExtraHeaders = {},
+): Promise<{ blob: Blob; filename: string | undefined }> {
+  const res = await fetch(apiUrl(path), { headers: { ...defaultHeaders(), ...headers } })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
+    throw new ApiError(res.status, body)
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const match = /filename="?([^"]+)"?/.exec(disposition)
+  return { blob: await res.blob(), filename: match?.[1] }
+}
+
 /** Fetches a resource as text — the reader's sanitised chapter content. */
 export async function getText(path: string): Promise<string> {
   const res = await fetch(apiUrl(path), { headers: defaultHeaders() })

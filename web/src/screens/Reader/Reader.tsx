@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import {
-  downloadReadingExport,
+  useReadingExport,
   useBookmarks,
   useCreateBookmark,
   useCreateHighlight,
@@ -58,6 +58,7 @@ export function Reader() {
   const savePreferences = useSavePreferences()
   const createBookmark = useCreateBookmark(editionId)
   const createHighlight = useCreateHighlight(editionId)
+  const readingExport = useReadingExport()
 
   const [sectionIndex, setSectionIndex] = useState(0)
   const [panel, setPanel] = useState<Panel>(null)
@@ -429,11 +430,17 @@ export function Reader() {
             <button
               type="button"
               className={cx('text-xs opacity-70', FOCUS_RING)}
-              onClick={() => void downloadReadingExport()}
+              onClick={() => readingExport.mutate()}
+              disabled={readingExport.isPending}
             >
-              Export
+              {readingExport.isPending ? 'Exporting…' : 'Export'}
             </button>
           </div>
+          {readingExport.isError && (
+            <p role="alert" className="text-xs text-error">
+              Couldn't export your reading data. Check your connection and try again.
+            </p>
+          )}
 
           <button
             type="button"
