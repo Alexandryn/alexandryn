@@ -26,37 +26,32 @@ could live in (audit 0012 / review 0050).
 
 ## Tiers
 
-### Tier 0 — Scaffold (this commit)
+### Tier 0 — Scaffold  ✅
 
 - [x] Branch cut from `origin/main`
 - [x] Roadmap outline expanded to full phase document
 - [x] Audit scaffold `0016-phase16-security-hardening.md` created
 - [x] This plan + the task list
-- [ ] Labels created (`severity:*`, `area:*`, `phase-16`)
-- [ ] Draft PR opened
+- [x] Labels created (`severity:*`, `area:*`, `phase-16`)
+- [x] Draft PR opened — #85
 
-### Tier 1 — Review fan-out
+### Tier 1 — Review fan-out  ✅ (ultra pass still owed)
 
-- [ ] `security-auditor` subagent — three trust boundaries, four-attacker pass
-- [ ] `code-reviewer` subagent — correctness, readability, architecture across
-      `internal/`, `web/src/`, `electron/src/`
-- [ ] `test-engineer` subagent — coverage gaps, missing negative/cross-tenant
-      tests, skipped/flaky tests, the unset coverage threshold
-- [ ] `web-performance-auditor` subagent — `web/src/` structural performance
-- [ ] `security-and-hardening` skill inline — input validation, auth, storage,
-      third-party integration surfaces
-- [ ] `ci-cd-and-automation` skill inline — `.github/workflows/ci.yml` +
-      `scripts/check-*`
-- [ ] Dependency scan: `govulncheck`, `npm audit`, license pass
+- [x] `security-auditor` subagent — three trust boundaries, four-attacker pass
+- [x] `code-reviewer` subagent ×2 — backend `internal/`+`cmd/`; `web/src/`+`electron/src/`
+- [x] `test-engineer` subagent — coverage gaps, missing negative/cross-tenant tests
+- [x] `web-performance-auditor` subagent — `web/src/` structural performance
+- [x] CI/CD + dependency + license audit — inline
+- [x] Dependency scan: `govulncheck` (0 called), `npm audit` (0), `go-licenses`, npm license scan
 - [ ] Maintainer runs `/code-review ultra`; findings merged in
 
-### Tier 2 — Consolidation
+### Tier 2 — Consolidation  ✅
 
-- [ ] Every confirmed finding filed as a GitHub issue with severity + area +
-      `phase-16` labels
-- [ ] Audit doc Findings table populated with issue links
-- [ ] Threat-model consolidation section written per boundary
-- [ ] "What was not examined" filled honestly
+- [x] Every finding filed as a GitHub issue with severity + area + `phase-16`
+      labels — 108 issues, #86–#292, deduplicated to one per finding
+- [x] Audit doc Findings table populated with issue links
+- [x] Threat-model consolidation section written per boundary
+- [x] "What was not examined" filled honestly — 6 coverage gaps filed as issues
 
 ### Gate — Maintainer review (STOP)
 
