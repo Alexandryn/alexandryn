@@ -127,7 +127,7 @@ func LazyTOTPVerifyHandler(ref *PoolRef) http.Handler {
 		if api.EnrolmentSigner != nil && api.PairedDevices != nil && api.EnrolmentGrantJTIs != nil {
 			opts = append(opts, WithEnrolmentGrant(api.EnrolmentSigner, api.PairedDevices, api.EnrolmentGrantJTIs, api.Logger))
 		}
-		TOTPVerifyHandler(api.MFA, api.Users, api.RefreshTokens, api.LibraryMemberships, api.TOTPEngine, api.Signer, api.IDs, api.MasterKey, opts...).ServeHTTP(w, r)
+		TOTPVerifyHandler(api.MFA, api.Users, api.RefreshTokens, api.LibraryMemberships, api.TOTPEngine, api.Signer, api.IDs, api.MasterKey, api.Limiter, api.MFAUserLimiter, opts...).ServeHTTP(w, r)
 	})
 }
 
