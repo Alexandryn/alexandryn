@@ -43,7 +43,7 @@ for what's currently true.
 | [13](13-network-access/)       | Network access       | LAN exposure, binding, pairing, transport security                      | Closed — merged via PR #80, 2026-09-05                                                    |
 | [14](14-devices-and-sync/)     | Devices and sync     | Device management, progress across devices                              | Closed — implementation, verification, and audit 0014 complete                            |
 | [15](15-observability/)        | Observability        | Metrics, queue visibility, diagnostics, Activity                        | Closed — implementation, verification, and audit 0015 complete                            |
-| [16](16-security-hardening/)   | Security hardening   | Threat model consolidation, external-review readiness                   | Not started                                                                               |
+| [16](16-security-hardening/)   | Security hardening   | Threat model consolidation, external-review readiness                   | In progress — whole-app adversarial sweep opened 2026-09-07; audit 0016, findings filed as issues |
 | [17](17-accessibility-and-qa/) | Accessibility and QA | Conformance, the full test matrix, regression suite                     | Not started                                                                               |
 | [99](99-release/)              | Release              | Packaging, versioning, release process, `docs`/`website` repos stood up | Not started                                                                               |
 
