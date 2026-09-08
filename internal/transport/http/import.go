@@ -107,7 +107,9 @@ func ImportDiscoverHandler(runner DiscoveryRunner) http.Handler {
 				WriteError(w, domain.InvalidInput, err.Error(), id)
 				return
 			}
-			WriteError(w, domain.Internal, fmt.Sprintf("discovery failed: %v", err), id)
+			// Not a domain error at this point — never echo its text
+			// (audit 0016 #119); the correlation ID ties it to the log.
+			WriteError(w, domain.Internal, "could not start discovery for that source", id)
 			return
 		}
 
@@ -141,7 +143,7 @@ func ImportCandidatesListHandler(repo ImportCandidateLister) http.Handler {
 
 		list, err := repo.List(r.Context(), sourceIDPtr, statusPtr)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -209,7 +211,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 				return
 			}
 			if err := svc.ConfirmAttachExisting(r.Context(), candidateID, strings.TrimSpace(*body.EditionID), now); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 
@@ -222,7 +224,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 
 			cand, err := repo.Get(r.Context(), candidateID)
 			if err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 
@@ -240,14 +242,14 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			}
 
 			if err := svc.ConfirmOpenLibraryMatch(r.Context(), candidateID, workKey, meta, olDetail, now); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 
 		case "create_new":
 			cand, err := repo.Get(r.Context(), candidateID)
 			if err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 
@@ -279,7 +281,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			}
 
 			if err := svc.ConfirmCreateNew(r.Context(), candidateID, meta, now); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 
@@ -290,7 +292,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 
 		updated, err := repo.Get(r.Context(), candidateID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -312,13 +314,13 @@ func ImportCandidateRejectHandler(svc ImporterService, repo ImportCandidateListe
 
 		now := time.Now().UTC()
 		if err := svc.Reject(r.Context(), candidateID, now); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
 		updated, err := repo.Get(r.Context(), candidateID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
