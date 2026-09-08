@@ -756,6 +756,59 @@ func TestSyncProgressHandler(t *testing.T) {
 	}
 }
 
+// TestSyncProgressHandler_PushCursorNotUsableAsPullCursor is the audit
+// 0016 #90 regression. Device A's pull position is 5. Another device
+// writes a highlight at sequence 6. Device A then pushes progress, which
+// lands at sequence 7. The push response's `cursor` must NOT jump to 7 —
+// if A persisted 7 as its next `since`, the highlight at 6 would never be
+// delivered.
+func TestSyncProgressHandler_PushCursorNotUsableAsPullCursor(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+	progressRepo := newMemProgressRepo()
+	libEntries := &memLibraryEntries{works: map[domain.WorkID]domain.LibraryID{"work-1": "lib-a"}}
+
+	userA := domain.UserID("user-a")
+	libA := domain.LibraryID("lib-a")
+	devA, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devA.AdvanceCursor(5, now) // A has pulled up to sequence 5
+	_ = devRepo.Save(context.Background(), devA)
+
+	// A's own progress write will resolve to sequence 7 — sequence 6 was
+	// another device's highlight, written in the gap.
+	syncStore.progressSeqs["test-id-123"] = 7
+	syncStore.seqCounter = 7
+
+	handler := transporthttp.SyncProgressHandler(
+		progressRepo, libEntries, syncStore, devRepo,
+		testTransactor{}, testIDGen{}, func() time.Time { return now },
+	)
+
+	body := `{"workId":"work-1","percentage":0.5,"observedEpoch":0,"deviceId":"dev-a1","reportedAt":"2026-09-06T12:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader})
+	ctx = transporthttp.WithActiveLibrary(ctx, libA)
+	ctx = transporthttp.WithDevice(ctx, devA)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctx))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	var resp struct {
+		Cursor int64 `json:"cursor"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp.Cursor != 5 {
+		t.Fatalf("push response cursor = %d, want 5 (must not jump past the unpulled sequence 6)", resp.Cursor)
+	}
+	updated, _ := devRepo.FindByID(context.Background(), "dev-a1")
+	if updated.SyncCursor() != 5 {
+		t.Fatalf("device cursor advanced to %d, want it left at 5", updated.SyncCursor())
+	}
+}
+
 func TestSyncMiddleware_TouchDoesNotClobberCursor(t *testing.T) {
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 	touchTime := now.Add(10 * time.Minute)

@@ -443,9 +443,17 @@ func SyncProgressHandler(
 				}
 			}
 
-			// Determine sequence for cursor advance
+			// Advance the device's pull cursor past this write ONLY when
+			// the write is provably the very next sequence on the global
+			// timeline (audit 0016 #90). sync_seq is one shared sequence
+			// across progress, bookmarks and highlights of every device;
+			// jumping the cursor to an arbitrary later value would place it
+			// above rows another device wrote in the gap, which the next
+			// GET /sync/reading?since=<cursor> would then never deliver.
+			// seq == cursor+1 means there is no gap to skip over — only
+			// this device's own echo — so the advance is safe.
 			seq, err := syncStore.GetProgressSyncSequence(txCtx, res.ID())
-			if err == nil && seq > dev.SyncCursor() {
+			if err == nil && seq == dev.SyncCursor()+1 {
 				if aerr := devRepo.AdvanceCursor(txCtx, dev.ID(), seq, currentTime); aerr == nil {
 					newCursor = seq
 				}
@@ -458,6 +466,11 @@ func SyncProgressHandler(
 			return
 		}
 
+		// cursor is the device's pull position AFTER this write — either
+		// unchanged, or advanced by exactly one to skip this write's own
+		// echo (see the advance guard above). It is never a jump to an
+		// arbitrary later sequence, so a client may safely persist it as
+		// the next `since` for GET /sync/reading (audit 0016 #90).
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"outcome":  string(outcome),
