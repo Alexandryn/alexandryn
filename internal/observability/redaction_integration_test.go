@@ -138,10 +138,19 @@ func TestRedaction_EndToEndExercisesSensitivePaths(t *testing.T) {
 		LibraryID: &libID,
 		Payload: map[string]any{
 			"status": "failed",
-			// Try injecting sensitive keys into event payload
+			// Try injecting sensitive keys into event payload — at the top
+			// level, nested in an object, and inside a slice (audit 0016 #296).
 			"password":   userPassCanary,
 			"token":      syntheticJWT,
 			"book_title": bookTitleCanary,
+			"note":       bookTitleCanary,
+			"detail": map[string]any{
+				"cfi":        "epubcfi(/6/4!/10)" + syntheticJWT,
+				"percentage": 55,
+			},
+			"trail": []any{
+				map[string]any{"token": syntheticJWT},
+			},
 		},
 		RetentionDays: 30,
 	})
@@ -163,6 +172,24 @@ func TestRedaction_EndToEndExercisesSensitivePaths(t *testing.T) {
 		}
 		if _, ok := ev.Payload["token"]; ok {
 			t.Errorf("system_events payload leaked token")
+		}
+		if _, ok := ev.Payload["note"]; ok {
+			t.Errorf("system_events payload leaked note (highlight text)")
+		}
+		if d, ok := ev.Payload["detail"].(map[string]any); ok {
+			if _, ok := d["cfi"]; ok {
+				t.Errorf("system_events payload leaked nested cfi (reading position)")
+			}
+			if _, ok := d["percentage"]; ok {
+				t.Errorf("system_events payload leaked nested percentage")
+			}
+		}
+		if tr, ok := ev.Payload["trail"].([]any); ok && len(tr) > 0 {
+			if m, ok := tr[0].(map[string]any); ok {
+				if _, ok := m["token"]; ok {
+					t.Errorf("system_events payload leaked token inside a slice")
+				}
+			}
 		}
 	}
 

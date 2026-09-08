@@ -24,7 +24,7 @@ const DefaultRetentionDays = 30
 var prohibitedPayloadKeys = []string{
 	"password", "passwd", "token", "secret", "apikey", "api_key",
 	"authorization", "position", "cfi", "location", "percentage",
-	"pct", "chapter",
+	"pct", "chapter", "note",
 }
 
 // SystemEvent represents an immutable row in the system_events ledger.
@@ -58,19 +58,43 @@ func (e NewSystemEvent) CalculatePurgeAt(now time.Time) time.Time {
 	return now.Add(time.Duration(days) * 24 * time.Hour)
 }
 
-// SanitizedPayload returns a copy of the payload with prohibited sensitive keys removed.
+// SanitizedPayload returns a deep copy of the payload with every
+// prohibited sensitive key removed at any nesting depth. Recursion
+// matters: a reading-progress event carries its cfi/percentage inside a
+// nested "detail" object, and a highlight event carries the highlighted
+// passage under "note" — a top-level-only strip let both through into
+// system_events and the activity feed (audit 0016 #296).
 func (e NewSystemEvent) SanitizedPayload() map[string]any {
 	if e.Payload == nil {
 		return map[string]any{}
 	}
-	clean := make(map[string]any, len(e.Payload))
-	for k, v := range e.Payload {
+	return sanitizeMap(e.Payload)
+}
+
+func sanitizeMap(m map[string]any) map[string]any {
+	clean := make(map[string]any, len(m))
+	for k, v := range m {
 		if isProhibitedKey(k) {
 			continue
 		}
-		clean[k] = v
+		clean[k] = sanitizeValue(v)
 	}
 	return clean
+}
+
+func sanitizeValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		return sanitizeMap(t)
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = sanitizeValue(e)
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 func isProhibitedKey(key string) bool {
