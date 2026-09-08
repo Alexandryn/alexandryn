@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { cx } from '../../lib/cx'
+import { Spinner } from '../../components/Spinner/Spinner'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { ContentPane } from './ContentPane'
 import { MobileTabBar } from './MobileTabBar'
@@ -38,7 +40,9 @@ export function AppShell() {
       <div className={cx('flex min-h-0 flex-1', layout === 'tabbar' && 'flex-col')}>
         {layout === 'sidebar' && <Sidebar />}
         <ContentPane>
-          <Outlet />
+          <Suspense fallback={<Spinner label="Loading" className="m-3xl" />}>
+            <Outlet />
+          </Suspense>
         </ContentPane>
         {layout === 'tabbar' && <MobileTabBar />}
       </div>
