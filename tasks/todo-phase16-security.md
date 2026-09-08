@@ -28,20 +28,22 @@ Stop at the **Gate** (maintainer review of findings) before any remediation.
 - [x] `web-performance-auditor` — `web/src/` (15 findings)
 - [x] CI/CD + dependency + license audit — inline (13 findings)
 - [x] `govulncheck` + `npm audit` + `go-licenses` + npm license scan
-- [ ] `/code-review ultra` (maintainer-run) findings merged
+- [x] `/code-review ultra` — run; 12 new issues #293–#304, 3 cross-validated
 
 ### Tier 2 — Consolidation
 
-- [x] Issues filed, one per finding — 108 issues, #86–#292 (deduplicated)
+- [x] Issues filed, one per finding — 120 issues, #86–#304 (deduplicated)
 - [x] Audit Findings table populated with issue links
 - [x] Threat-model consolidation written (per boundary)
 - [x] "What was not examined" filled — 6 gap findings filed as issues
+- [x] Post-filing verification — #87 High→Med (latent), #262 Med→High
+      (traced: live email disclosure), #260 re-scoped to Phase 99
+- [x] Ultra findings merged — 4 Phase 15 deliverables found unwired (#294–#296, #302)
 
 ### Gate — Maintainer review of findings (STOP — awaiting maintainer)
 
 - [ ] Findings report delivered
 - [ ] Remediation order + forward-scheduling decisions recorded
-- [ ] `/code-review ultra` launched by maintainer and its findings merged
 
 ### Tier 3 — Remediation
 
@@ -51,10 +53,10 @@ Stop at the **Gate** (maintainer review of findings) before any remediation.
 
 - [ ] Consolidated audit recorded with mandatory handler → repository → SQL traces
 - [ ] Every finding filed as an issue with labels; audit table links each
-- [ ] Zero open Critical or High findings
-- [ ] `govulncheck` + `npm audit --audit-level=high` clean; license audit recorded
-- [ ] CSP + Electron fuses reviewed, findings filed
-- [ ] CI workflow audited, findings filed
+- [ ] Zero open Critical or High findings — 16 High open
+- [x] `govulncheck` + `npm audit --audit-level=high` clean; license audit recorded
+- [x] CSP reviewed, findings filed; Electron fuses re-scoped to Phase 99 (#260)
+- [x] CI workflow audited, findings filed
 - [ ] Test-coverage analysis recorded
 - [ ] `/code-review ultra` cross-check completed and merged
 - [ ] Documentation updated
