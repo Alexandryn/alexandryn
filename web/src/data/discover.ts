@@ -51,7 +51,10 @@ export interface DiscoverSearchParams {
   offset?: number
 }
 
-export function fetchDiscoverSearch(params: DiscoverSearchParams): Promise<NormalisedSearchResponse> {
+export function fetchDiscoverSearch(
+  params: DiscoverSearchParams,
+  signal?: AbortSignal,
+): Promise<NormalisedSearchResponse> {
   const search = new URLSearchParams()
   search.set('q', params.q.trim())
   if (params.limit !== undefined && params.limit > 0) {
@@ -63,7 +66,7 @@ export function fetchDiscoverSearch(params: DiscoverSearchParams): Promise<Norma
 
   const qs = search.toString()
   const path = `/api/v1/discover${qs ? `?${qs}` : ''}`
-  return getJson<NormalisedSearchResponse>(path)
+  return getJson<NormalisedSearchResponse>(path, {}, { signal })
 }
 
 /**
@@ -81,11 +84,14 @@ export function useDiscoverSearch(params: {
 
   return useQuery({
     queryKey: ['discover', 'search', { q, limit, offset }],
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (!q) {
         return Promise.reject(new Error('q is required'))
       }
-      return fetchDiscoverSearch({ q, limit, offset })
+      // A superseded search (the user kept typing) or an unmount aborts
+      // the in-flight request rather than letting it complete unseen
+      // (audit 0016 #166).
+      return fetchDiscoverSearch({ q, limit, offset }, signal)
     },
     enabled: Boolean(q && q !== ''),
   })

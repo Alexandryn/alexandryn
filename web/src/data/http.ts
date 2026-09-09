@@ -46,21 +46,40 @@ async function handleResponse<T>(res: Response): Promise<T> {
 /** Extra request headers — used by the reader for `X-Device-Id`, etc. */
 export type ExtraHeaders = Record<string, string>
 
+/**
+ * Per-call options beyond headers. `signal` lets a caller (most often a
+ * TanStack Query `queryFn`, which is handed an AbortSignal that fires on
+ * unmount or when the query is superseded) cancel the in-flight request
+ * (audit 0016 #166).
+ */
+export interface RequestOptions {
+  signal?: AbortSignal
+}
+
 function defaultHeaders(): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' }
-  const token = typeof window !== 'undefined' ? localStorage.getItem('alexandryn_access_token') : null
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('alexandryn_access_token') : null
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
-  const activeLib = typeof window !== 'undefined' ? localStorage.getItem('alexandryn_active_library') : null
+  const activeLib =
+    typeof window !== 'undefined' ? localStorage.getItem('alexandryn_active_library') : null
   if (activeLib) {
     headers['X-Library-Id'] = activeLib
   }
   return headers
 }
 
-export async function getJson<T>(path: string, headers: ExtraHeaders = {}): Promise<T> {
-  const res = await fetch(apiUrl(path), { headers: { ...defaultHeaders(), ...headers } })
+export async function getJson<T>(
+  path: string,
+  headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
+): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    headers: { ...defaultHeaders(), ...headers },
+    signal: opts.signal,
+  })
   return handleResponse<T>(res)
 }
 
@@ -73,8 +92,12 @@ export async function getJson<T>(path: string, headers: ExtraHeaders = {}): Prom
 export async function getBlob(
   path: string,
   headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
 ): Promise<{ blob: Blob; filename: string | undefined }> {
-  const res = await fetch(apiUrl(path), { headers: { ...defaultHeaders(), ...headers } })
+  const res = await fetch(apiUrl(path), {
+    headers: { ...defaultHeaders(), ...headers },
+    signal: opts.signal,
+  })
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
     throw new ApiError(res.status, body)
@@ -85,8 +108,8 @@ export async function getBlob(
 }
 
 /** Fetches a resource as text — the reader's sanitised chapter content. */
-export async function getText(path: string): Promise<string> {
-  const res = await fetch(apiUrl(path), { headers: defaultHeaders() })
+export async function getText(path: string, opts: RequestOptions = {}): Promise<string> {
+  const res = await fetch(apiUrl(path), { headers: defaultHeaders(), signal: opts.signal })
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
     throw new ApiError(res.status, body)
@@ -98,6 +121,7 @@ export async function postJson<T>(
   path: string,
   body?: unknown,
   headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
 ): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: 'POST',
@@ -107,6 +131,7 @@ export async function postJson<T>(
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: opts.signal,
   })
   return handleResponse<T>(res)
 }
@@ -115,6 +140,7 @@ export async function putJson<T>(
   path: string,
   body?: unknown,
   headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
 ): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: 'PUT',
@@ -124,11 +150,17 @@ export async function putJson<T>(
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: opts.signal,
   })
   return handleResponse<T>(res)
 }
 
-export async function patchJson<T>(path: string, body?: unknown, headers: ExtraHeaders = {}): Promise<T> {
+export async function patchJson<T>(
+  path: string,
+  body?: unknown,
+  headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
+): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: 'PATCH',
     headers: {
@@ -137,15 +169,20 @@ export async function patchJson<T>(path: string, body?: unknown, headers: ExtraH
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: opts.signal,
   })
   return handleResponse<T>(res)
 }
 
-export async function deleteRequest(path: string, headers: ExtraHeaders = {}): Promise<void> {
+export async function deleteRequest(
+  path: string,
+  headers: ExtraHeaders = {},
+  opts: RequestOptions = {},
+): Promise<void> {
   const res = await fetch(apiUrl(path), {
     method: 'DELETE',
     headers: { ...defaultHeaders(), ...headers },
+    signal: opts.signal,
   })
   return handleResponse<void>(res)
 }
-
