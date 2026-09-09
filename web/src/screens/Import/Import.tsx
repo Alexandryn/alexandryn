@@ -323,11 +323,13 @@ export function Import() {
 
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getDismissedIds())
 
-  // In-flight progress query (FR-6) polling every 2s
+  // In-flight progress query (FR-6): adaptive polling — 2s while items
+  // are queued, 20s when the queue is empty, off while the tab is hidden
+  // (audit 0016 #169).
   const { data: queuedData } = useImportCandidates({
     sourceId: sourceIdParam,
     status: 'queued',
-    refetchInterval: 2000,
+    refetchInterval: true,
   })
   const queuedCount = queuedData?.candidates.length ?? 0
 

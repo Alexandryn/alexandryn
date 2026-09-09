@@ -65,7 +65,22 @@ export interface ImportConfirmRequest {
 export interface UseImportCandidatesOptions {
   sourceId?: string
   status?: ImportCandidateStatus
-  refetchInterval?: number | false
+  /**
+   * `true` turns on adaptive polling: fast (2s) while there is at least
+   * one candidate in this status, a slow floor (20s) when the list is
+   * empty, and stopped entirely while the tab is hidden (audit 0016
+   * #169). A number/false is still honoured for a fixed cadence.
+   */
+  refetchInterval?: number | false | true
+}
+
+const IMPORT_POLL_FAST_MS = 2000
+const IMPORT_POLL_IDLE_MS = 20000
+
+/** Adaptive import-poll cadence — see UseImportCandidatesOptions. */
+export function importPollInterval(candidateCount: number, hidden: boolean): number | false {
+  if (hidden) return false
+  return candidateCount > 0 ? IMPORT_POLL_FAST_MS : IMPORT_POLL_IDLE_MS
 }
 
 export function useImportCandidates(options: UseImportCandidatesOptions = {}) {
@@ -80,7 +95,15 @@ export function useImportCandidates(options: UseImportCandidatesOptions = {}) {
   return useQuery<{ candidates: ImportCandidate[] }>({
     queryKey,
     queryFn: ({ signal }) => getJson<{ candidates: ImportCandidate[] }>(url, {}, { signal }),
-    refetchInterval,
+    refetchInterval:
+      refetchInterval === true
+        ? (query) =>
+            importPollInterval(
+              query.state.data?.candidates.length ?? 0,
+              typeof document !== 'undefined' && document.visibilityState === 'hidden',
+            )
+        : refetchInterval,
+    refetchOnWindowFocus: refetchInterval === true ? true : undefined,
   })
 }
 
