@@ -79,7 +79,7 @@ export function useImportCandidates(options: UseImportCandidatesOptions = {}) {
 
   return useQuery<{ candidates: ImportCandidate[] }>({
     queryKey,
-    queryFn: () => getJson<{ candidates: ImportCandidate[] }>(url),
+    queryFn: ({ signal }) => getJson<{ candidates: ImportCandidate[] }>(url, {}, { signal }),
     refetchInterval,
   })
 }
