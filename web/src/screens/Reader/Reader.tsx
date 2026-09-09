@@ -75,10 +75,13 @@ export function Reader() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [restored, setRestored] = useState(false)
-  // The saved intra-chapter scroll offset is applied once, when the
-  // restored chapter's document first loads (audit 0016 #145); later
-  // chapter navigation still opens at the top.
+  // The saved intra-chapter scroll offset is applied once, after the
+  // restored chapter's document has loaded (audit 0016 #145); later
+  // chapter navigation still opens at the top. loadedSection tracks which
+  // spine index the iframe currently holds a loaded document for, so the
+  // restore fires whether or not restoreTarget changed sectionIndex.
   const scrollRestoreDone = useRef(false)
+  const [loadedSection, setLoadedSection] = useState<number | null>(null)
 
   const preferences = preferencesQuery.data?.preferences ?? DEFAULT_READING_PREFERENCES
   const sections = bookQuery.data?.sections ?? []
@@ -151,17 +154,10 @@ export function Reader() {
     if (!win || !doc) return
     applyPreferences(doc)
 
-    // Apply the saved intra-chapter offset once, after the restored
-    // chapter loads; every other chapter load opens at the top.
-    let scrollFraction = 0
-    if (!scrollRestoreDone.current && !progressQuery.isPending) {
-      scrollRestoreDone.current = true
-      const saved = progressQuery.data?.progress
-      if (saved) {
-        scrollFraction = sectionScrollFraction(saved.percentage, sectionIndex, sections.length)
-      }
-    }
-    restoreScroll(win, scrollFraction)
+    // Every load opens at the top; the one-shot intra-chapter restore is
+    // applied by the effect below once this section's document is in.
+    restoreScroll(win, 0)
+    setLoadedSection(sectionIndex)
 
     const onScroll = () => {
       const el = doc.scrollingElement ?? doc.documentElement
@@ -187,15 +183,23 @@ export function Reader() {
     doc.addEventListener('selectionchange', onSelect)
 
     setRatio(progressRatio(sectionIndex, sections.length, 0))
-  }, [
-    applyPreferences,
-    sectionIndex,
-    sections.length,
-    reportPosition,
-    currentSection,
-    progressQuery.isPending,
-    progressQuery.data,
-  ])
+  }, [applyPreferences, sectionIndex, sections.length, reportPosition, currentSection])
+
+  // One-shot intra-chapter scroll restore (audit 0016 #145). Runs after
+  // the restored section's document is loaded — covers both the case
+  // where restoreTarget moved sectionIndex (a fresh load fires) and the
+  // case where the target was the section already on screen (no reload,
+  // so handleIframeLoad never runs again).
+  useEffect(() => {
+    if (!restored || scrollRestoreDone.current) return
+    if (progressQuery.isPending || loadedSection !== sectionIndex) return
+    scrollRestoreDone.current = true
+    const win = iframeRef.current?.contentWindow
+    const saved = progressQuery.data?.progress
+    if (win && saved) {
+      restoreScroll(win, sectionScrollFraction(saved.percentage, sectionIndex, sections.length))
+    }
+  }, [restored, loadedSection, sectionIndex, sections.length, progressQuery.isPending, progressQuery.data])
 
   // Re-apply typography whenever preferences change without reloading.
   useEffect(() => {
