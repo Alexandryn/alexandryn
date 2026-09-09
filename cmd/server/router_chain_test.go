@@ -39,6 +39,22 @@ func TestChain_SecurityHeadersOnEveryResponse(t *testing.T) {
 	if csp := rec.Header().Get("Content-Security-Policy"); csp == "" {
 		t.Error("no Content-Security-Policy on /healthz")
 	}
+	// audit 0016 #159: the served SPA HTML document, not only /api and
+	// /healthz, must carry the CSP — it is the framing/injection target.
+	spaRec := httptest.NewRecorder()
+	chainTestRouter(t, nil).ServeHTTP(spaRec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if !strings.HasPrefix(spaRec.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("GET / content-type = %q, want text/html", spaRec.Header().Get("Content-Type"))
+	}
+	spaCSP := spaRec.Header().Get("Content-Security-Policy")
+	for _, want := range []string{"default-src 'self'", "script-src 'self'", "frame-ancestors 'none'"} {
+		if !strings.Contains(spaCSP, want) {
+			t.Errorf("SPA CSP %q missing %q", spaCSP, want)
+		}
+	}
+	if spaRec.Header().Get("X-Frame-Options") != "DENY" {
+		t.Errorf("SPA X-Frame-Options = %q, want DENY", spaRec.Header().Get("X-Frame-Options"))
+	}
 	if rec.Header().Get("X-Frame-Options") != "DENY" {
 		t.Errorf("X-Frame-Options = %q", rec.Header().Get("X-Frame-Options"))
 	}
