@@ -51,7 +51,7 @@ func TestIsBlockedDialIP(t *testing.T) {
 
 func TestGuardedTransport_RefusesLoopback(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("secret internal body"))
+		_, _ = w.Write([]byte("secret internal body"))
 	}))
 	defer srv.Close()
 
