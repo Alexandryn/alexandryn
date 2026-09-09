@@ -3824,6 +3824,12 @@ components:
         workId: { type: string }
         percentage: { type: number, minimum: 0, maximum: 1 }
         observedEpoch: { type: integer, minimum: 0 }
+        override:
+          type: boolean
+          description: >-
+            Deliberate correction (a re-read or a jump back to an earlier
+            chapter). Bumps the canonical epoch so a lower percentage is
+            accepted instead of rejected as a stale automatic report.
         precisePosition:
           $ref: '#/components/schemas/SyncPrecisePosition'
         deviceId: { type: string }
@@ -3834,7 +3840,7 @@ components:
       additionalProperties: false
       required: [outcome, progress, cursor]
       properties:
-        outcome: { type: string, enum: [advanced, unchanged, rejected] }
+        outcome: { type: string, enum: [advanced, unchanged, rejected, overridden] }
         progress: { $ref: '#/components/schemas/ReadingProgress' }
         cursor: { type: integer }
 

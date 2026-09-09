@@ -1078,3 +1078,63 @@ func TestSyncProgressHandler_RejectsForeignEditionInPrecisePosition(t *testing.T
 		t.Fatalf("status = %d, want 400 for a precise position tagged with a foreign edition; body %s", rr.Code, rr.Body.String())
 	}
 }
+
+// #109: a sync push with override=true applies a backward correction (a
+// re-read) instead of rejecting it as a stale automatic report.
+func TestSyncProgressHandler_OverrideAppliesBackwardCorrection(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+	progressRepo := newMemProgressRepo()
+	libEntries := &memLibraryEntries{works: map[domain.WorkID]domain.LibraryID{"work-1": "lib-a"}}
+	editions := &memEditions{byID: map[domain.EditionID]*domain.Edition{}}
+
+	userA := domain.UserID("user-a")
+	libA := domain.LibraryID("lib-a")
+	devA, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devRepo.Save(context.Background(), devA)
+
+	handler := transporthttp.SyncProgressHandler(
+		progressRepo, libEntries, editions, syncStore, devRepo,
+		testTransactor{}, testIDGen{}, func() time.Time { return now },
+	)
+	ctxA := transporthttp.WithDevice(
+		transporthttp.WithActiveLibrary(
+			transporthttp.WithUser(context.Background(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
+			libA,
+		),
+		devA,
+	)
+	post := func(body string) map[string]any {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req.WithContext(ctxA))
+		if rr.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+		}
+		var out map[string]any
+		_ = json.Unmarshal(rr.Body.Bytes(), &out)
+		return out
+	}
+
+	post(`{"workId":"work-1","percentage":0.8,"observedEpoch":0,"deviceId":"dev-a1"}`)
+
+	// Plain backward report is rejected, canonical unchanged.
+	plain := post(`{"workId":"work-1","percentage":0.3,"observedEpoch":0,"deviceId":"dev-a1"}`)
+	if prog := plain["progress"].(map[string]any); prog["percentage"].(float64) != 0.8 {
+		t.Fatalf("plain backward report changed canonical to %v, want 0.8", prog["percentage"])
+	}
+
+	// Override backward report wins.
+	ov := post(`{"workId":"work-1","percentage":0.3,"observedEpoch":0,"override":true,"deviceId":"dev-a1"}`)
+	if ov["outcome"] != "overridden" {
+		t.Fatalf("outcome = %v, want overridden", ov["outcome"])
+	}
+	prog := ov["progress"].(map[string]any)
+	if prog["percentage"].(float64) != 0.3 {
+		t.Fatalf("override canonical = %v, want 0.3", prog["percentage"])
+	}
+	if prog["epoch"].(float64) != 1 {
+		t.Fatalf("override epoch = %v, want 1", prog["epoch"])
+	}
+}
