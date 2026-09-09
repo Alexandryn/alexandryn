@@ -361,7 +361,7 @@ func TestMetrics_ObservesRouteLatencyAndIgnoresAssets(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := transporthttp.Metrics(reg)(endpoint)
+	handler := transporthttp.Metrics(reg, nil)(endpoint)
 
 	// API request
 	req1 := httptest.NewRequest(http.MethodGet, "/api/v1/library", nil)
@@ -382,6 +382,53 @@ func TestMetrics_ObservesRouteLatencyAndIgnoresAssets(t *testing.T) {
 	}
 	if _, ok := snap.Latencies["/assets/index.js"]; ok {
 		t.Errorf("expected /assets/index.js to be ignored in metrics")
+	}
+}
+
+// audit 0016 #293: with a mux, the route label is the registered pattern
+// regardless of whether r.Pattern was populated, so a path with a
+// per-request id does not spawn a fresh histogram, and an unmatched path
+// is bucketed rather than labelled with its raw URL.
+func TestMetrics_LabelsByRegisteredPatternNotRawPath(t *testing.T) {
+	reg := observability.NewRegistry()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/works/{id}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Metrics wraps a middleware that strips r.Pattern, standing in for
+	// the real chain's WithContext layers between Metrics and the mux.
+	stripPattern := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r2 := r.Clone(r.Context())
+			r2.Pattern = ""
+			next.ServeHTTP(w, r2)
+		})
+	}
+	handler := transporthttp.Metrics(reg, mux)(stripPattern(mux))
+
+	for _, id := range []string{"w-1", "w-2", "w-3"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/works/"+id, nil)
+		handler.ServeHTTP(httptest.NewRecorder(), req)
+	}
+	unmatched := httptest.NewRequest(http.MethodGet, "/api/v1/does-not-exist/xyz", nil)
+	handler.ServeHTTP(httptest.NewRecorder(), unmatched)
+
+	snap, err := reg.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	if hist, ok := snap.Latencies["GET /api/v1/works/{id}"]; !ok || hist.Count != 3 {
+		t.Fatalf("Latencies[GET /api/v1/works/{id}] = %+v, want count 3", hist)
+	}
+	if _, ok := snap.Latencies["/api/v1/works/w-1"]; ok {
+		t.Fatal("a raw per-id path was recorded as its own metric label")
+	}
+	if _, ok := snap.Latencies["unmatched"]; !ok {
+		t.Fatal("an unmatched path was not bucketed under \"unmatched\"")
+	}
+	if len(snap.Latencies) != 2 {
+		t.Fatalf("recorded %d distinct route labels, want 2 (bounded)", len(snap.Latencies))
 	}
 }
 

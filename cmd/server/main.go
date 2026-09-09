@@ -327,7 +327,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 		transporthttp.Recovery(logger, newCorrelationID),
 		transporthttp.Limits(cfg.HTTPMaxBodyBytes),
 		transporthttp.Logging(logger, newCorrelationID),
-		transporthttp.Metrics(metricsReg),
+		transporthttp.Metrics(metricsReg, mux),
 		transporthttp.SecurityHeaders(),
 		transporthttp.HSTS(cfg.TLSMode() == "static" || cfg.TLSMode() == "acme"),
 		transporthttp.PublicRateLimit(publicLimiter, transporthttp.HealthProbePath),
