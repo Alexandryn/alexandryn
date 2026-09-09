@@ -4,6 +4,8 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -265,5 +267,192 @@ func TestReadingSyncRepository_DeltaIsPageBounded(t *testing.T) {
 	}
 	if len(third.Bookmarks) != 0 {
 		t.Fatalf("third page returned %d bookmarks, want 0", len(third.Bookmarks))
+	}
+}
+
+// TestReadingSyncRepository_ConcurrentPushPull is audit 0016 #137: many
+// devices writing reading progress while others poll the sync delta must
+// not lose a write, must each get a distinct sync_sequence, and a pull
+// from cursor 0 must eventually deliver every write with no permanent
+// gap.
+func TestReadingSyncRepository_ConcurrentPushPull(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('u-cc', 'cc', 'cc@example.com', 'reader', now(), now())`)
+	mustExecPool(t, pool, `INSERT INTO libraries (id, name, created_at, updated_at)
+		VALUES ('lib-cc', 'CC Lib', now(), now())`)
+	const nWorks = 24
+	mustExecPool(t, pool, `INSERT INTO works (id, title)
+		SELECT 'wc-' || g, 'W' || g FROM generate_series(1, 24) g`)
+
+	progRepo := postgres.NewReadingProgressRepository(pool)
+	syncRepo := postgres.NewReadingSyncRepository(pool)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	// Readers poll the delta continuously while the writes land.
+	stopPull := make(chan struct{})
+	var readers sync.WaitGroup
+	pullErr := make(chan error, 6)
+	for i := 0; i < 6; i++ {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			for {
+				select {
+				case <-stopPull:
+					return
+				default:
+				}
+				if _, err := syncRepo.GetReadingSyncData(ctx, "u-cc", "lib-cc", 0); err != nil {
+					pullErr <- err
+					return
+				}
+			}
+		}()
+	}
+
+	// One writer per work, all firing at once.
+	var writers sync.WaitGroup
+	writeErr := make(chan error, nWorks)
+	for i := 1; i <= nWorks; i++ {
+		writers.Add(1)
+		go func(n int) {
+			defer writers.Done()
+			pct, _ := domain.NewPercentage(0.5)
+			p := domain.RehydrateReadingProgress(
+				domain.ReadingProgressID(fmt.Sprintf("rp-cc-%d", n)),
+				domain.WorkID(fmt.Sprintf("wc-%d", n)), pct, 1, nil, "d", now,
+			)
+			if err := progRepo.SaveForUser(ctx, "u-cc", "lib-cc", p); err != nil {
+				writeErr <- err
+			}
+		}(i)
+	}
+
+	writers.Wait()
+	close(stopPull)
+	readers.Wait()
+
+	select {
+	case err := <-writeErr:
+		t.Fatalf("a concurrent write failed: %v", err)
+	default:
+	}
+	select {
+	case err := <-pullErr:
+		t.Fatalf("a concurrent pull failed: %v", err)
+	default:
+	}
+
+	var rows, distinctSeq int
+	if err := pool.QueryRow(ctx,
+		`SELECT count(*), count(DISTINCT sync_sequence) FROM reading_progress WHERE user_id = 'u-cc' AND library_id = 'lib-cc'`,
+	).Scan(&rows, &distinctSeq); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	if rows != nWorks {
+		t.Fatalf("persisted %d progress rows, want %d — a concurrent write was lost", rows, nWorks)
+	}
+	if distinctSeq != nWorks {
+		t.Fatalf("%d distinct sync_sequence values across %d rows — a sequence was reused", distinctSeq, rows)
+	}
+
+	// Page through from the start; every write must be delivered exactly
+	// once, in strictly increasing sequence order.
+	seen := map[domain.WorkID]bool{}
+	var lastSeq int64
+	cursor := int64(0)
+	for {
+		data, err := syncRepo.GetReadingSyncData(ctx, "u-cc", "lib-cc", cursor)
+		if err != nil {
+			t.Fatalf("drain GetReadingSyncData: %v", err)
+		}
+		if len(data.Progress) == 0 {
+			break
+		}
+		for _, item := range data.Progress {
+			if item.SyncSequence <= lastSeq {
+				t.Fatalf("sync_sequence not monotonic: %d after %d", item.SyncSequence, lastSeq)
+			}
+			lastSeq = item.SyncSequence
+			if seen[item.WorkID] {
+				t.Fatalf("work %s delivered twice", item.WorkID)
+			}
+			seen[item.WorkID] = true
+		}
+		if data.Cursor <= cursor {
+			t.Fatalf("cursor did not advance: %d -> %d", cursor, data.Cursor)
+		}
+		cursor = data.Cursor
+	}
+	if len(seen) != nWorks {
+		t.Fatalf("drained %d distinct works, want %d — a committed write was skipped by the watermark gate", len(seen), nWorks)
+	}
+}
+
+// TestReadingProgressRepository_ConcurrentSameWorkReconcile is #137's
+// contention half: many devices reporting progress for the SAME work
+// under SELECT ... FOR UPDATE must serialise, so the canonical row ends
+// at the highest reported value with no lost update.
+func TestReadingProgressRepository_ConcurrentSameWorkReconcile(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('u-rc', 'rc', 'rc@example.com', 'reader', now(), now())`)
+	mustExecPool(t, pool, `INSERT INTO libraries (id, name, created_at, updated_at)
+		VALUES ('lib-rc', 'RC Lib', now(), now())`)
+	mustExecPool(t, pool, `INSERT INTO works (id, title) VALUES ('w-rc', 'Contended')`)
+
+	repo := postgres.NewReadingProgressRepository(pool)
+	transactor := postgres.NewTransactor(pool)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	zero, _ := domain.NewPercentage(0)
+	if err := repo.SaveForUser(ctx, "u-rc", "lib-rc",
+		domain.RehydrateReadingProgress("rp-rc", "w-rc", zero, 1, nil, "seed", now)); err != nil {
+		t.Fatalf("seed canonical row: %v", err)
+	}
+
+	targets := []float64{0.10, 0.90, 0.30, 1.00, 0.55, 0.20, 0.75, 0.40, 0.65, 0.85}
+	var wg sync.WaitGroup
+	errs := make(chan error, len(targets))
+	for _, tgt := range targets {
+		wg.Add(1)
+		go func(target float64) {
+			defer wg.Done()
+			err := transactor.InTx(ctx, func(txCtx context.Context) error {
+				current, err := repo.FindByWorkAndUserForUpdate(txCtx, "u-rc", "lib-rc", "w-rc")
+				if err != nil {
+					return err
+				}
+				if target <= float64(current.Percentage()) {
+					return nil // a higher value already won
+				}
+				next, _ := domain.NewPercentage(target)
+				return repo.SaveForUser(txCtx, "u-rc", "lib-rc",
+					domain.RehydrateReadingProgress(current.ID(), "w-rc", next, current.Epoch(), nil, "d", now))
+			})
+			if err != nil {
+				errs <- err
+			}
+		}(tgt)
+	}
+	wg.Wait()
+
+	select {
+	case err := <-errs:
+		t.Fatalf("a reconcile transaction failed: %v", err)
+	default:
+	}
+
+	final, err := repo.FindByWorkAndUser(ctx, "u-rc", "lib-rc", "w-rc")
+	if err != nil {
+		t.Fatalf("read final: %v", err)
+	}
+	if float64(final.Percentage()) != 1.00 {
+		t.Fatalf("canonical percentage = %v, want 1.00 — a higher report was lost under contention", float64(final.Percentage()))
 	}
 }
