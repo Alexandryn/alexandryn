@@ -532,6 +532,26 @@ func TestStore_RetryJob(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected conflict when retrying running job")
 	}
+
+	// #298: a queued job must not be retried — it would put a duplicate
+	// copy on the queue.
+	mustEnqueue(t, s, "j-queued", "k", 3, now, now)
+	if _, err := s.RetryJob(ctx, "j-queued", "j-queued-retry", now); domain.CategoryOf(err) != domain.Conflict {
+		t.Fatalf("retry of a queued job: category = %v, want Conflict", domain.CategoryOf(err))
+	}
+
+	// #298: a completed job must not be retried — it has already run.
+	mustEnqueue(t, s, "j-done", "k2", 3, now, now)
+	claimed, err := s.ClaimNext(ctx, "w-done", []jobs.Kind{"k2"}, now)
+	if err != nil || claimed == nil || claimed.ID != "j-done" {
+		t.Fatalf("claim j-done: job=%v err=%v", claimed, err)
+	}
+	if ok, err := s.Complete(ctx, "j-done", claimed.LeaseToken, now); err != nil || !ok {
+		t.Fatalf("Complete(j-done): ok=%v err=%v", ok, err)
+	}
+	if _, err := s.RetryJob(ctx, "j-done", "j-done-retry", now); domain.CategoryOf(err) != domain.Conflict {
+		t.Fatalf("retry of a completed job: category = %v, want Conflict", domain.CategoryOf(err))
+	}
 }
 
 func TestStore_ClearCompleted(t *testing.T) {
