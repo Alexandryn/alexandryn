@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { login } from '../../data/auth'
+import { clearPendingEnrolment, getPendingEnrolment } from '../../data/pendingEnrolment'
 import { MfaPromptModal } from './MfaPromptModal'
 
 export function LoginScreen() {
@@ -15,7 +16,9 @@ export function LoginScreen() {
         passwordReset?: boolean
       }
     | null
-  const enrolmentGrant = routerState?.enrolmentGrant
+  // Router state is lost on a reload; fall back to the sessionStorage
+  // mirror ConnectScreen wrote (audit 0016 #157).
+  const enrolmentGrant = routerState?.enrolmentGrant ?? getPendingEnrolment()?.enrolmentGrant
 
   // Where to land after a successful sign-in: an explicit router `from`
   // (RequireAuth), a ?next= / ?returnTo= query param (the global 401
@@ -45,6 +48,7 @@ export function LoginScreen() {
       if (res.mfaRequired && res.mfaTicket) {
         setMfaTicket(res.mfaTicket)
       } else {
+        clearPendingEnrolment()
         navigate(returnTo, { replace: true })
       }
     } catch (err: unknown) {
@@ -125,6 +129,7 @@ export function LoginScreen() {
           enrolmentGrant={enrolmentGrant}
           onSuccess={() => {
             setMfaTicket(null)
+            clearPendingEnrolment()
             navigate(returnTo, { replace: true })
           }}
           onCancel={() => setMfaTicket(null)}

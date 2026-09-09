@@ -226,17 +226,21 @@ describe('RouteError (errorElement, FR-5/FR-7)', () => {
   })
 
   // audit 0016 #150: a public route that throws is caught by the root
-  // errorElement, not React Router's raw overlay.
+  // errorElement, not React Router's raw overlay. The real route tree
+  // mirrors this shape: public routes as siblings of the shell under a
+  // root route that carries errorElement.
   it('catches an error thrown by a public route', async () => {
     media = mockMatchMedia(true)
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const brokenRoutes = routes.map((r) => ({
-      ...r,
-      children: r.children?.map((c) =>
-        'path' in c && c.path === '/login' ? { ...c, element: <Boom /> } : c,
-      ),
-    }))
-    const router = createMemoryRouter(brokenRoutes, { initialEntries: ['/login'] })
+    const router = createMemoryRouter(
+      [
+        {
+          errorElement: <RouteError />,
+          children: [{ path: '/login', element: <Boom /> }],
+        },
+      ],
+      { initialEntries: ['/login'] },
+    )
     render(
       <QueryClientProvider client={client}>
         <CapabilityProvider>
@@ -247,5 +251,11 @@ describe('RouteError (errorElement, FR-5/FR-7)', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Go to your library' })).toBeInTheDocument()
+  })
+
+  // Guard: the production route tree actually has a top-level errorElement
+  // (not only the nested shell one), so nothing is left uncovered.
+  it('the route tree has a top-level errorElement', () => {
+    expect(routes[0]?.errorElement).toBeDefined()
   })
 })

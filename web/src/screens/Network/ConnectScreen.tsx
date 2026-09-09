@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { useVerifyPairing } from '../../data/network'
+import { setPendingEnrolment } from '../../data/pendingEnrolment'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
@@ -75,7 +76,11 @@ export function ConnectScreen() {
         label: label.trim() || undefined,
       })
 
-      // Navigate to /login with enrolmentGrant + hostName in router state, NOT in URL
+      // Carry enrolmentGrant + hostName to /login in router state, and
+      // also mirror them into sessionStorage so a reload on /login does
+      // not lose the in-progress enrolment (audit 0016 #157). Never the
+      // URL — the grant is a bearer secret.
+      setPendingEnrolment({ enrolmentGrant: res.enrolmentGrant, hostName: res.hostName })
       navigate('/login', {
         state: {
           enrolmentGrant: res.enrolmentGrant,

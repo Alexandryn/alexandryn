@@ -38,7 +38,10 @@ async function signIn() {
 }
 
 describe('LoginScreen (audit 0016 #161)', () => {
-  afterEach(() => localStorage.clear())
+  afterEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
 
   it('offers a Forgot your password link to /forgot-password', () => {
     renderLogin('/login')
@@ -88,5 +91,33 @@ describe('LoginScreen (audit 0016 #161)', () => {
     await signIn()
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('loc')).toHaveTextContent('/login')
+  })
+
+  // audit 0016 #157: after a reload on /login the pairing enrolment grant
+  // is gone from router state, but the sessionStorage mirror recovers it,
+  // and it is cleared once the login completes.
+  it('recovers the enrolment grant from sessionStorage after a reload', async () => {
+    let sentGrant: string | undefined
+    server.use(
+      http.post('*/api/v1/auth/login', async ({ request }) => {
+        sentGrant = ((await request.json()) as { enrolmentGrant?: string }).enrolmentGrant
+        return HttpResponse.json({
+          user: { id: 'u', username: 'librarian', email: 'a@b.c', role: 'admin' },
+          accessToken: 'a',
+          refreshToken: 'r',
+        })
+      }),
+    )
+    sessionStorage.setItem(
+      'alexandryn_pending_enrolment',
+      JSON.stringify({ enrolmentGrant: 'grant-xyz', hostName: 'home.local' }),
+    )
+
+    renderLogin('/login') // no router state — simulates the reload
+    await signIn()
+
+    await waitFor(() => expect(sentGrant).toBe('grant-xyz'))
+    await waitFor(() => expect(screen.getByTestId('library-page')).toBeInTheDocument())
+    expect(sessionStorage.getItem('alexandryn_pending_enrolment')).toBeNull()
   })
 })
