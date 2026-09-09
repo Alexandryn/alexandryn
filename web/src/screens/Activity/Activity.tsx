@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   parseActivityEvents,
@@ -8,6 +9,8 @@ import {
   useRetryJob,
   type ActivityItem,
 } from '../../data/activity'
+import { Button } from '../../components/Button'
+import { Modal } from '../../components/Modal'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { cx } from '../../lib/cx'
 
@@ -17,6 +20,11 @@ export function ActivityScreen() {
   const cancelJob = useCancelJob()
   const retryJob = useRetryJob()
   const clearCompleted = useClearCompleted()
+
+  // Cancelling an in-progress download cannot be undone, so it goes
+  // through an explicit confirmation rather than firing on the first
+  // click (audit 0016 #300).
+  const [pendingCancel, setPendingCancel] = useState<ActivityItem | null>(null)
 
   const grouped = parseActivityEvents(events)
   const isEmpty =
@@ -89,9 +97,7 @@ export function ActivityScreen() {
                   <ActiveRow
                     key={item.id}
                     item={item}
-                    onPause={() => {
-                      if (item.jobId) cancelJob.mutate(item.jobId)
-                    }}
+                    onCancel={() => setPendingCancel(item)}
                   />
                 ))}
               </div>
@@ -185,11 +191,43 @@ export function ActivityScreen() {
           )}
         </>
       )}
+
+      <Modal
+        open={pendingCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingCancel(null)
+        }}
+        title="Cancel this download?"
+        description={
+          pendingCancel
+            ? `"${pendingCancel.title}" will stop downloading. Progress so far is discarded and you will need to start it again.`
+            : undefined
+        }
+        contentClassName="max-w-md"
+      >
+        <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
+          <Button variant="ghost" size="sm" onClick={() => setPendingCancel(null)}>
+            Keep downloading
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="bg-error hover:bg-error/90 text-white"
+            onClick={() => {
+              if (pendingCancel?.jobId) cancelJob.mutate(pendingCancel.jobId)
+              setPendingCancel(null)
+            }}
+            disabled={cancelJob.isPending}
+          >
+            Cancel download
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }
 
-function ActiveRow({ item, onPause }: { item: ActivityItem; onPause: () => void }) {
+function ActiveRow({ item, onCancel }: { item: ActivityItem; onCancel: () => void }) {
   const pct = item.progressPercent ?? 0
   return (
     <div className="flex items-center gap-4 p-3.5 px-4 rounded-lg border border-border bg-surface shadow-sm">
@@ -225,13 +263,14 @@ function ActiveRow({ item, onPause }: { item: ActivityItem; onPause: () => void 
 
       <button
         type="button"
-        onClick={onPause}
+        onClick={onCancel}
+        aria-label={`Cancel ${item.title}`}
         className={cx(
-          'flex-none inline-flex items-center h-7 px-3 rounded-2xs border border-border text-xs text-text-2 hover:text-text cursor-pointer bg-surface',
+          'flex-none inline-flex items-center h-7 px-3 rounded-2xs border border-border text-xs text-text-2 hover:text-error cursor-pointer bg-surface',
           FOCUS_RING,
         )}
       >
-        Pause
+        Cancel
       </button>
     </div>
   )

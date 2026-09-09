@@ -164,6 +164,41 @@ describe('ActivityScreen (Phase 15, frontend-activity-screen.md)', () => {
     expect(clearCalled).toBe(true)
   })
 
+  // audit 0016 #300: the active-download control cancels (it does not
+  // pause), and cancelling an in-progress download needs confirmation.
+  it('confirms before cancelling an in-progress download', async () => {
+    let cancelledId = ''
+    server.use(
+      http.get('*/api/v1/activity/events', () => HttpResponse.json({ events: mockEvents })),
+      http.post('*/api/v1/activity/jobs/:id/cancel', ({ params }) => {
+        cancelledId = params.id as string
+        return HttpResponse.json({ cancelled: true })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<ActivityScreen />, { routerEntries: ['/activity'] })
+
+    // The active row's control is a Cancel, not a Pause.
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
+    const activeCancel = await screen.findByRole('button', { name: 'Cancel Moby Dick' })
+    await user.click(activeCancel)
+
+    // Nothing is sent yet — a confirmation dialog is shown.
+    expect(cancelledId).toBe('')
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel this download?' })
+    expect(dialog).toBeInTheDocument()
+
+    // Backing out sends nothing.
+    await user.click(screen.getByRole('button', { name: 'Keep downloading' }))
+    expect(cancelledId).toBe('')
+
+    // Reopening and confirming sends the cancel for the active job.
+    await user.click(await screen.findByRole('button', { name: 'Cancel Moby Dick' }))
+    await user.click(await screen.findByRole('button', { name: 'Cancel download' }))
+    await waitFor(() => expect(cancelledId).toBe('job-active-1'))
+  })
+
   it('renders indicator dot badge on Activity navigation rail item when active or failed items exist', async () => {
     server.use(http.get('*/api/v1/activity/events', () => HttpResponse.json({ events: mockEvents })))
 
