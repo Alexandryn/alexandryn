@@ -51,6 +51,20 @@ func TestLocateBinaries_MissingPostgresNamesWhichBinary(t *testing.T) {
 	}
 }
 
+// audit 0016 #264: if PATH contains a relative or current-directory
+// entry, exec.LookPath can resolve "postgres" to a relative path. Running
+// that would execute a binary from an attacker-controlled directory —
+// refuse it.
+func TestLocateBinaries_RejectsNonAbsoluteResolution(t *testing.T) {
+	lookup := func(file string) (string, error) {
+		return "./" + file, nil
+	}
+
+	if _, err := supervisor.LocateBinaries(lookup); err == nil {
+		t.Fatal("LocateBinaries accepted a relative binary path, want an error")
+	}
+}
+
 func TestLocateBinaries_MissingInitDBNamesWhichBinary(t *testing.T) {
 	lookupErr := errors.New("exec: \"initdb\": executable file not found in $PATH")
 	lookup := func(file string) (string, error) {
