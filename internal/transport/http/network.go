@@ -455,6 +455,55 @@ type NetworkSettingsResponseWire struct {
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
+// defaultNetworkSettings is the row the update handler synthesises when
+// none is saved yet; GetNetworkSettingsHandler returns the same shape so
+// the settings form has real values to pre-fill (audit 0016 #143).
+func defaultNetworkSettings(now func() time.Time) *domain.NetworkSettings {
+	return &domain.NetworkSettings{
+		HostName:           "alexandryn.local",
+		RememberDeviceDays: 30,
+		UpdatedAt:          now().UTC(),
+	}
+}
+
+// GetNetworkSettingsHandler serves GET /api/v1/network/settings (FR-5).
+// Admin only. Returns the saved runtime-safe settings, or the defaults
+// when none has been saved.
+func GetNetworkSettingsHandler(settingsRepo domain.NetworkSettingsRepository, now func() time.Time) http.Handler {
+	if now == nil {
+		now = time.Now
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		corrID := CorrelationIDFromContext(r.Context())
+		user := UserFromContext(r.Context())
+		if user == nil {
+			WriteError(w, domain.Unauthorized, "unauthorized", corrID)
+			return
+		}
+		if user.Role != domain.RoleAdmin {
+			writeForbidden(w, "insufficient permissions for this resource", corrID)
+			return
+		}
+
+		settings, err := settingsRepo.Get(r.Context())
+		if err != nil {
+			if domain.CategoryOf(err) == domain.NotFound {
+				settings = defaultNetworkSettings(now)
+			} else {
+				WriteError(w, domain.CategoryOf(err), "failed to read network settings", corrID)
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(NetworkSettingsResponseWire{
+			HostName:           settings.HostName,
+			RememberDeviceDays: settings.RememberDeviceDays,
+			UpdatedAt:          settings.UpdatedAt,
+		})
+	})
+}
+
 // UpdateNetworkSettingsHandler updates runtime-safe network settings (FR-5).
 // Admin only. Strictly allows hostName and rememberDeviceDays; any other key
 // (or restart-only keys) returns 400 InvalidInput.
@@ -522,11 +571,7 @@ func UpdateNetworkSettingsHandler(
 		existing, err := settingsRepo.Get(r.Context())
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
-				existing = &domain.NetworkSettings{
-					HostName:           "alexandryn.local",
-					RememberDeviceDays: 30,
-					UpdatedAt:          now().UTC(),
-				}
+				existing = defaultNetworkSettings(now)
 			} else {
 				WriteError(w, domain.CategoryOf(err), "failed to read network settings", corrID)
 				return

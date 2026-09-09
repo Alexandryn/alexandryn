@@ -138,6 +138,18 @@ func LazyUpdateNetworkSettingsHandler(ref *PoolRef) http.Handler {
 	})
 }
 
+// LazyGetNetworkSettingsHandler creates a handler for GET /api/v1/network/settings.
+func LazyGetNetworkSettingsHandler(ref *PoolRef) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		api, ok := ref.GetNetworkAPI()
+		if !ok {
+			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
+			return
+		}
+		GetNetworkSettingsHandler(api.NetworkSettings, api.Now).ServeHTTP(w, r)
+	})
+}
+
 // LazyDeletePairingHandler creates a handler for DELETE /api/v1/network/pair/{id}.
 func LazyDeletePairingHandler(ref *PoolRef) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

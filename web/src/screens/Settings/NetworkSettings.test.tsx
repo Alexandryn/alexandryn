@@ -115,6 +115,37 @@ describe('NetworkSettings screen (Phase 13 T5.3)', () => {
     expect(screen.getByText(/Subject to Let's Encrypt Terms of Service/i)).toBeInTheDocument()
   })
 
+  // audit 0016 #143: the form pre-fills from GET /api/v1/network/settings,
+  // not from hardcoded defaults.
+  it('pre-fills the form from the saved network settings', async () => {
+    server.use(
+      http.get('*/api/v1/network/status', () =>
+        HttpResponse.json({
+          reachability: 'local_network',
+          tlsMode: 'none',
+          authRequired: true,
+          address: 'http://192.168.1.50:4000',
+          addresses: [{ scope: 'local', url: 'http://192.168.1.50:4000' }],
+          hostName: 'alexandryn.local',
+        }),
+      ),
+      http.get('*/api/v1/network/settings', () =>
+        HttpResponse.json({
+          hostName: 'my-library.local',
+          rememberDeviceDays: 7,
+          updatedAt: '2026-09-05T12:00:00Z',
+        }),
+      ),
+    )
+
+    renderWithProviders(<NetworkSettings />)
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Local Network Name/i)).toHaveValue('my-library.local'),
+    )
+    expect(screen.getByLabelText(/Remember Devices/i)).toHaveValue(7)
+  })
+
   it('saves settings with optimistic update and rollback on error', async () => {
     let patched = false
     server.use(

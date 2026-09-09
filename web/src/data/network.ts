@@ -92,6 +92,10 @@ export function fetchNetworkStatus(): Promise<NetworkStatus> {
   return getJson<NetworkStatus>('/api/v1/network/status')
 }
 
+export function fetchNetworkSettings(signal?: AbortSignal): Promise<NetworkSettings> {
+  return getJson<NetworkSettings>('/api/v1/network/settings', {}, { signal })
+}
+
 export function updateNetworkSettings(data: UpdateNetworkSettingsInput): Promise<NetworkSettings> {
   return patchJson<NetworkSettings>('/api/v1/network/settings', data)
 }
@@ -105,6 +109,7 @@ export function deletePairing(id: string): Promise<void> {
 export const networkKeys = {
   all: ['network'] as const,
   status: () => [...networkKeys.all, 'status'] as const,
+  settings: () => [...networkKeys.all, 'settings'] as const,
   pair: (id: string) => [...networkKeys.all, 'pair', id] as const,
   pairQR: (id: string) => [...networkKeys.pair(id), 'qr'] as const,
 }
@@ -113,6 +118,17 @@ export function useNetworkStatus() {
   return useQuery({
     queryKey: networkKeys.status(),
     queryFn: fetchNetworkStatus,
+  })
+}
+
+/** The saved runtime-safe network settings, so the settings form can
+ * pre-fill real values instead of hardcoded defaults (audit 0016 #143).
+ * 403 for a non-admin — the caller treats that as "no editable form". */
+export function useNetworkSettings(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: networkKeys.settings(),
+    queryFn: ({ signal }) => fetchNetworkSettings(signal),
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -145,8 +161,9 @@ export function useUpdateNetworkSettings() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: UpdateNetworkSettingsInput) => updateNetworkSettings(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: networkKeys.status() })
+    onSuccess: (saved) => {
+      queryClient.setQueryData(networkKeys.settings(), saved)
+      void queryClient.invalidateQueries({ queryKey: networkKeys.status() })
     },
   })
 }

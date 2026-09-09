@@ -1853,3 +1853,67 @@ func TestRefresh_WithRememberDeviceDays(t *testing.T) {
 		t.Errorf("expected refresh token expiry in ~7 days, got: %v (diff %v)", newRT.ExpiresAt(), diff)
 	}
 }
+
+// audit 0016 #143: GET /api/v1/network/settings returns the saved
+// settings for an admin, and 403 for a non-admin.
+func TestNetworkSettings_GetForAdmin(t *testing.T) {
+	repo := newMemNetworkSettings()
+	_ = repo.Upsert(context.Background(), &domain.NetworkSettings{
+		HostName: "shelf.local", RememberDeviceDays: 12, UpdatedAt: time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC),
+	})
+	handler := transporthttp.GetNetworkSettingsHandler(repo, time.Now)
+
+	req := httptest.NewRequest("GET", "/api/v1/network/settings", nil)
+	req = req.WithContext(transporthttp.WithUser(req.Context(), adminUser()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body %s", rec.Code, rec.Body.String())
+	}
+	var resp transporthttp.NetworkSettingsResponseWire
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.HostName != "shelf.local" || resp.RememberDeviceDays != 12 {
+		t.Fatalf("resp = %+v, want shelf.local / 12", resp)
+	}
+}
+
+func TestNetworkSettings_GetForbiddenForReader(t *testing.T) {
+	handler := transporthttp.GetNetworkSettingsHandler(newMemNetworkSettings(), time.Now)
+	req := httptest.NewRequest("GET", "/api/v1/network/settings", nil)
+	req = req.WithContext(transporthttp.WithUser(req.Context(), readerUser()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+// A NotFound from the repository is served as the default settings, not
+// an error (the update handler synthesises the same defaults).
+func TestNetworkSettings_GetDefaultsWhenUnset(t *testing.T) {
+	repo := &notFoundNetworkSettings{}
+	now := time.Date(2026, 9, 9, 0, 0, 0, 0, time.UTC)
+	handler := transporthttp.GetNetworkSettingsHandler(repo, func() time.Time { return now })
+
+	req := httptest.NewRequest("GET", "/api/v1/network/settings", nil)
+	req = req.WithContext(transporthttp.WithUser(req.Context(), adminUser()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var resp transporthttp.NetworkSettingsResponseWire
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.HostName != "alexandryn.local" || resp.RememberDeviceDays != 30 {
+		t.Fatalf("resp = %+v, want the defaults", resp)
+	}
+}
+
+type notFoundNetworkSettings struct{}
+
+func (notFoundNetworkSettings) Get(context.Context) (*domain.NetworkSettings, error) {
+	return nil, &domain.Error{Category: domain.NotFound, Message: "no settings"}
+}
+func (notFoundNetworkSettings) Upsert(context.Context, *domain.NetworkSettings) error { return nil }
