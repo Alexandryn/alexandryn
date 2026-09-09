@@ -126,22 +126,31 @@ const shellChildren: RouteObject[] = [
 ]
 
 export const routes: RouteObject[] = [
-  // Public unauthenticated routes
-  { path: '/setup', element: <SetupScreen /> },
-  { path: '/login', element: <LoginScreen /> },
-  { path: '/forgot-password', element: <ForgotPasswordScreen /> },
-  { path: '/reset-password', element: <ResetPasswordScreen /> },
-  { path: '/invite/:token', element: <AcceptInviteScreen /> },
-  { path: '/connect', element: <ConnectScreen /> },
-
-  // Authenticated shell
   {
-    path: '/',
-    element: (
-      <RequireAuth>
-        <AppShell />
-      </RequireAuth>
-    ),
-    children: [{ errorElement: <RouteError />, children: shellChildren }],
+    // A render or thrown error anywhere — a public screen, RequireAuth,
+    // or the shell itself — surfaces here instead of React Router's raw
+    // error overlay (audit 0016 #150). The inner errorElement on
+    // shellChildren still catches a screen error inside the shell chrome.
+    errorElement: <RouteError />,
+    children: [
+      // Public unauthenticated routes
+      { path: '/setup', element: <SetupScreen /> },
+      { path: '/login', element: <LoginScreen /> },
+      { path: '/forgot-password', element: <ForgotPasswordScreen /> },
+      { path: '/reset-password', element: <ResetPasswordScreen /> },
+      { path: '/invite/:token', element: <AcceptInviteScreen /> },
+      { path: '/connect', element: <ConnectScreen /> },
+
+      // Authenticated shell
+      {
+        path: '/',
+        element: (
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        ),
+        children: [{ errorElement: <RouteError />, children: shellChildren }],
+      },
+    ],
   },
 ]
