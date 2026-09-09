@@ -386,6 +386,7 @@ type memSyncStore struct {
 	data         map[string]*transporthttp.ReadingSyncData
 	progressSeqs map[domain.ReadingProgressID]int64
 	seqCounter   int64
+	gotSince     int64 // last `since` GetReadingSyncData was called with
 }
 
 func newMemSyncStore() *memSyncStore {
@@ -402,6 +403,7 @@ func (m *memSyncStore) key(userID domain.UserID, libraryID domain.LibraryID) str
 func (m *memSyncStore) GetReadingSyncData(_ context.Context, userID domain.UserID, libraryID domain.LibraryID, since int64) (*transporthttp.ReadingSyncData, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.gotSince = since
 	d, ok := m.data[m.key(userID, libraryID)]
 	if !ok {
 		return &transporthttp.ReadingSyncData{Cursor: since}, nil
@@ -609,7 +611,10 @@ func TestSyncReadingHandler(t *testing.T) {
 		t.Fatalf("expected device cursor 30, got %d", devCheck.SyncCursor())
 	}
 
-	// 2. Incremental sync (since=20) -> returns only records with sync_sequence > 20 (bookmarks, highlights)
+	// 2. After step 1 the device cursor is 30. An incremental sync that
+	//    asks with a stale since=20 is floored to the device's own cursor
+	//    (#114), so it returns nothing — the device already has every row
+	//    up to sequence 30.
 	reqInc := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading?since=20", nil)
 	rrInc := httptest.NewRecorder()
 	handler.ServeHTTP(rrInc, reqInc.WithContext(ctxA))
@@ -624,11 +629,9 @@ func TestSyncReadingHandler(t *testing.T) {
 		Highlights []transporthttp.SyncHighlightItem `json:"highlights"`
 	}
 	_ = json.Unmarshal(rrInc.Body.Bytes(), &respInc)
-	if len(respInc.Progress) != 0 {
-		t.Fatalf("expected 0 progress records for since=20, got %d", len(respInc.Progress))
-	}
-	if len(respInc.Bookmarks) != 1 || len(respInc.Highlights) != 1 {
-		t.Fatalf("expected 1 bookmark and 1 highlight, got %d, %d", len(respInc.Bookmarks), len(respInc.Highlights))
+	if len(respInc.Progress) != 0 || len(respInc.Bookmarks) != 0 || len(respInc.Highlights) != 0 {
+		t.Fatalf("expected an empty delta for a stale since below the device cursor, got (%d, %d, %d)",
+			len(respInc.Progress), len(respInc.Bookmarks), len(respInc.Highlights))
 	}
 
 	// 3. Far future cursor (since=100) -> empty delta, since clamped to cluster sequence ceiling (40), cursor = 40
@@ -1001,3 +1004,35 @@ func TestSyncReadingHandler_FutureSinceDoesNotAdvancePersistedCursor(t *testing.
 }
 
 
+
+// #114: SyncReadingHandler must floor `since` at the device's own pull
+// cursor. A device that has already synced up to sequence N and then asks
+// with since=0 must not make the store re-scan from the beginning.
+func TestSyncReadingHandler_FloorsSinceAtDeviceCursor(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+
+	userA := domain.UserID("user-a")
+	devA, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devA.AdvanceCursor(15, now)
+	_ = devRepo.Save(context.Background(), devA)
+	// give the store a ceiling above the cursor so it is not clamped down
+	syncStore.seqCounter = 100
+
+	handler := transporthttp.SyncReadingHandler(syncStore, devRepo, func() time.Time { return now })
+	ctxA := transporthttp.WithDevice(
+		transporthttp.WithActiveLibrary(
+			transporthttp.WithUser(context.Background(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
+			domain.DefaultLibraryID,
+		),
+		devA,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading?since=0", nil)
+	handler.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctxA))
+
+	if syncStore.gotSince != 15 {
+		t.Fatalf("store queried with since=%d, want 15 (floored at device cursor)", syncStore.gotSince)
+	}
+}
