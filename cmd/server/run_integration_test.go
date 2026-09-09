@@ -393,3 +393,38 @@ func writeMigration(t *testing.T, dir, name, upSQL string) {
 		t.Fatalf("writeMigration(%q): %v", name, err)
 	}
 }
+
+// audit 0016 #295: poolStatsProvider must report the live pool's numbers,
+// not the zeroed default the diagnostics endpoint falls back to when no
+// provider is wired.
+func TestIntegration_PoolStatsProviderReportsLivePool(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	resetSchema(t, testDB(t))
+	if err := postgres.Migrate(context.Background(), dsn); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	pool, err := postgres.NewPool(context.Background(), dsn, 5)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	// Hold a connection so AcquiredConns is provably non-zero.
+	conn, err := pool.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("Acquire: %v", err)
+	}
+	defer conn.Release()
+
+	stats := poolStatsProvider(pool)()
+	if stats.MaxConns != 5 {
+		t.Fatalf("MaxConns = %d, want 5", stats.MaxConns)
+	}
+	if stats.AcquiredConns < 1 {
+		t.Fatalf("AcquiredConns = %d, want at least 1", stats.AcquiredConns)
+	}
+	if stats.TotalConns < stats.AcquiredConns {
+		t.Fatalf("TotalConns %d < AcquiredConns %d", stats.TotalConns, stats.AcquiredConns)
+	}
+}
