@@ -18,7 +18,18 @@ document and show: `docs` and `website` (ADR 0006).
 
 **In**
 
-- Electron installers (Linux, macOS, Windows)
+- Electron installers (Linux, macOS, Windows) — including the packaged
+  binary's **Electron fuses** (audit 0016 #260, re-scoped here). Set at
+  package time via `@electron/fuses`; recommended posture: `RunAsNode`
+  off, `EnableNodeCliInspectArguments` off,
+  `EnableNodeOptionsEnvironmentVariable` off, `EnableCookieEncryption` on,
+  `OnlyLoadAppFromAsar` on, `EnableEmbeddedAsarIntegrityValidation` on
+  (macOS/Windows). Phase 16 verified there is no code-level blocker: the
+  main process spawns the Go server as a separate executable (not
+  `ELECTRON_RUN_AS_NODE`), relies on no `--inspect` / `NODE_OPTIONS`, and
+  the renderer already runs with `contextIsolation`/`sandbox` on and
+  `nodeIntegration` off. The blocker to clear is simply that no packaging
+  pipeline exists yet.
 - Docker/Compose self-hosting stack: release-time hardening and
   verification (persistent volumes, image tagging/versioning, registry
   publishing) of the baseline `Dockerfile`/`docker-compose.yml` phase 03's
