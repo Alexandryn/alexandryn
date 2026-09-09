@@ -3,6 +3,7 @@ import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner/Spinner'
 import {
   isAdminNetworkStatus,
+  useNetworkSettings,
   useNetworkStatus,
   useUpdateNetworkSettings,
 } from '../../data/network'
@@ -13,6 +14,10 @@ import { DevicePairingModal } from '../Network/DevicePairingModal'
 
 export function NetworkSettings() {
   const { data: status, isLoading, error } = useNetworkStatus()
+  const adminStatus = status ? isAdminNetworkStatus(status) : false
+  // Load the saved settings so the form pre-fills real values rather than
+  // hardcoded defaults (audit 0016 #143). Only an admin can read them.
+  const { data: settings } = useNetworkSettings({ enabled: adminStatus })
   const updateSettingsMutation = useUpdateNetworkSettings()
 
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
@@ -27,15 +32,13 @@ export function NetworkSettings() {
   const hostNameId = useId()
   const rememberDaysId = useId()
 
-  const isAdmin = status ? isAdminNetworkStatus(status) : false
-  const currentHostName =
-    hostNameInput !== null
-      ? hostNameInput
-      : isAdmin && status && 'hostName' in status
-        ? status.hostName
-        : 'alexandryn.local'
-
-  const currentRememberDays = rememberDaysInput !== null ? rememberDaysInput : 30
+  const isAdmin = adminStatus
+  // Precedence: what the user has typed, then the saved settings, then
+  // the hostName the status payload carries, then the default.
+  const savedHostName =
+    settings?.hostName ?? (isAdmin && status && 'hostName' in status ? status.hostName : undefined)
+  const currentHostName = hostNameInput ?? savedHostName ?? 'alexandryn.local'
+  const currentRememberDays = rememberDaysInput ?? settings?.rememberDeviceDays ?? 30
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +54,9 @@ export function NetworkSettings() {
         hostName: currentHostName,
         rememberDeviceDays: currentRememberDays,
       })
+      // Drop the local edits so the fields re-sync to the saved values.
+      setHostNameInput(null)
+      setRememberDaysInput(null)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 4000)
     } catch (err: unknown) {

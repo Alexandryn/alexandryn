@@ -290,6 +290,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	mux.Handle("GET /api/v1/network/pair/{id}/qr", transporthttp.LazyPairingQRHandler(poolRef))
 	mux.Handle("GET /api/v1/network/status", transporthttp.LazyNetworkStatusHandler(poolRef, fallbackNetworkInfo(cfg)))
+	mux.Handle("GET /api/v1/network/settings", transporthttp.LazyGetNetworkSettingsHandler(poolRef))
 	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
 	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
 

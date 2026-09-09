@@ -239,6 +239,13 @@ export const handlers = [
   http.get('*/api/v1/network/status', () =>
     HttpResponse.json(generatedFixtures.getNetworkStatus['200']),
   ),
+  http.get('*/api/v1/network/settings', () =>
+    HttpResponse.json({
+      hostName: 'alexandryn.local',
+      rememberDeviceDays: 30,
+      updatedAt: '2026-09-05T12:00:00Z',
+    }),
+  ),
   http.patch('*/api/v1/network/settings', async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
     return HttpResponse.json({

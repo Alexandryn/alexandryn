@@ -2464,6 +2464,24 @@ paths:
                 correlationId: "00000000-0000-0000-0000-000000000000"
 
   /api/v1/network/settings:
+    get:
+      operationId: getNetworkSettings
+      summary: Read the runtime-safe network settings (admin only)
+      responses:
+        '200':
+          description: The saved settings, or the defaults when none is saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NetworkSettingsResponse' }
+              example:
+                hostName: "alexandryn.local"
+                rememberDeviceDays: 30
+                updatedAt: "2026-09-05T12:00:00Z"
+        '403':
+          description: Not an admin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     patch:
       operationId: updateNetworkSettings
       summary: Update network settings (admin only)
