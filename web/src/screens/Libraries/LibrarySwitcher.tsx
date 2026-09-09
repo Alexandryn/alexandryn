@@ -1,6 +1,7 @@
 import { QueryClientContext, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useContext, useEffect, useMemo } from 'react'
 import { getActiveLibraryId, setActiveLibraryId } from '../../data/auth'
+import { switchActiveLibrary } from '../../data/activeLibrary'
 import { fetchLibraries, type Library } from '../../data/libraries'
 
 export function LibrarySwitcher() {
@@ -29,11 +30,7 @@ function LibrarySwitcherInner() {
   }, [libraries])
 
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newId = e.target.value
-    setActiveLibraryId(newId)
-    queryClient.invalidateQueries({ queryKey: ['library'] })
-    queryClient.invalidateQueries({ queryKey: ['collections'] })
-    queryClient.invalidateQueries({ queryKey: ['readingProgress'] })
+    switchActiveLibrary(queryClient, e.target.value)
   }
 
   if (libraries.length <= 1) {

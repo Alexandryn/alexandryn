@@ -1,13 +1,16 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
-import { getAccessToken, setActiveLibraryId } from '../../data/auth'
+import { getAccessToken } from '../../data/auth'
+import { switchActiveLibrary } from '../../data/activeLibrary'
 import { acceptLibraryInvitation } from '../../data/libraries'
 
 export function AcceptInviteScreen() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const isAuthenticated = !!getAccessToken()
@@ -19,7 +22,10 @@ export function AcceptInviteScreen() {
 
     try {
       const res = await acceptLibraryInvitation(token)
-      setActiveLibraryId(res.libraryId)
+      // A new library was joined: refresh its list too, then switch to it
+      // and drop any cache scoped to the old active library.
+      void queryClient.invalidateQueries({ queryKey: ['libraries'] })
+      switchActiveLibrary(queryClient, res.libraryId)
       navigate('/library', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to accept invitation. The link may have expired.')
