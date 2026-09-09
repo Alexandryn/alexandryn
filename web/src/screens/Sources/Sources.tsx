@@ -32,8 +32,14 @@ export function Sources() {
       await deleteMutation.mutateAsync(sourceToDelete.id)
       setSourceToDelete(null)
     } catch {
-      // Error handled via mutation status
+      // Keep the dialog open; the error is shown inline below (audit
+      // 0016 #142 — the failure used to be swallowed entirely).
     }
+  }
+
+  const closeDeleteDialog = () => {
+    setSourceToDelete(null)
+    deleteMutation.reset()
   }
 
   return (
@@ -196,16 +202,26 @@ export function Sources() {
       <Modal
         open={Boolean(sourceToDelete)}
         onOpenChange={(open) => {
-          if (!open) setSourceToDelete(null)
+          if (!open) closeDeleteDialog()
         }}
         title="Remove source"
         description={`Are you sure you want to remove "${sourceToDelete?.label}"? This will not delete any files on your disk or books in your library.`}
       >
+        {deleteMutation.isError && (
+          <div
+            role="alert"
+            className="mt-md rounded-md border border-error/20 bg-error/10 p-md text-sm text-error"
+          >
+            {deleteMutation.error instanceof ApiError
+              ? deleteMutation.error.message
+              : 'Could not remove the source. Check your connection and try again.'}
+          </div>
+        )}
         <div className="mt-md flex items-center justify-end gap-sm">
           <Button
             variant="ghost"
             type="button"
-            onClick={() => setSourceToDelete(null)}
+            onClick={closeDeleteDialog}
             disabled={deleteMutation.isPending}
           >
             Cancel
@@ -217,7 +233,11 @@ export function Sources() {
             disabled={deleteMutation.isPending}
             className="bg-error hover:bg-error/90 text-white"
           >
-            {deleteMutation.isPending ? 'Removing...' : 'Remove source'}
+            {deleteMutation.isPending
+              ? 'Removing...'
+              : deleteMutation.isError
+                ? 'Try again'
+                : 'Remove source'}
           </Button>
         </div>
       </Modal>
