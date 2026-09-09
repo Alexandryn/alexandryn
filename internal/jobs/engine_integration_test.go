@@ -370,3 +370,58 @@ func TestEngine_ShutdownAbandonsUncooperativeHandler(t *testing.T) {
 		t.Fatalf("state = %q, want still running", after.State)
 	}
 }
+
+// audit 0016 #299: an admin cancel must abort the running handler's
+// context immediately, not leave it running until the next heartbeat.
+// The heartbeat interval here is far longer than the test's patience.
+func TestEngine_CancelJobAbortsHandlerContextImmediately(t *testing.T) {
+	cfg := fastConfig()
+	cfg.HeartbeatInterval = 30 * time.Second
+
+	sys := newSystem(t, jobs.SystemClock{}, cfg)
+
+	started := make(chan struct{})
+	var ctxErr atomic.Value // error
+	finished := make(chan struct{})
+	sys.Queue().Register("blocker", 1, func(ctx context.Context, _ json.RawMessage, _ jobs.ReportProgressFunc) error {
+		close(started)
+		<-ctx.Done()
+		ctxErr.Store(ctx.Err())
+		close(finished)
+		return ctx.Err()
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sys.Start(ctx)
+	t.Cleanup(func() { _ = sys.Shutdown(context.Background()) })
+
+	id, err := sys.Queue().Enqueue(ctx, "blocker", nil)
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("handler never started")
+	}
+
+	if err := sys.Queue().CancelJob(context.Background(), id); err != nil {
+		t.Fatalf("CancelJob: %v", err)
+	}
+
+	select {
+	case <-finished:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler context was not cancelled within 2s of the admin cancel (heartbeat interval is 30s)")
+	}
+	if err, _ := ctxErr.Load().(error); !errors.Is(err, context.Canceled) {
+		t.Fatalf("handler ctx.Err() = %v, want context.Canceled", err)
+	}
+
+	job := waitForState(t, sys.Queue(), id, jobs.StateDeadLetter)
+	if job.State != jobs.StateDeadLetter {
+		t.Fatalf("state = %q, want dead_letter", job.State)
+	}
+}

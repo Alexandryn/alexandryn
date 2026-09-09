@@ -96,7 +96,7 @@ func TestActivityJobActions_EndToEnd(t *testing.T) {
 	ids := seqIDs()
 	store := jobs.NewStore(pool, ids, 60*time.Second)
 	reg := jobs.NewRegistry()
-	queue := jobs.NewQueue(store, reg, ids, jobs.SystemClock{})
+	queue := jobs.NewQueue(store, reg, ids, jobs.SystemClock{}, nil)
 
 	adminUser := &transporthttp.AuthenticatedUser{UserID: "admin-1", Role: domain.RoleAdmin}
 
