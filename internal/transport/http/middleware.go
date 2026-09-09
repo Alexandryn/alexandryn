@@ -171,9 +171,19 @@ func Logging(logger *slog.Logger, newID func() string) Middleware {
 	}
 }
 
-// Metrics records request latency per route template in the given registry (FR-2).
-// Static assets under /assets/* are ignored.
-func Metrics(reg *observability.Registry) Middleware {
+// Metrics records request latency per route template in the given
+// registry (FR-2). Static assets under /assets/* are ignored.
+//
+// The route label is the registered ServeMux pattern, resolved via
+// mux.Handler independently of dispatch: r.Pattern is only set on the
+// request the matched handler receives, and the middleware between this
+// layer and the mux replaces the request via WithContext, so r.Pattern
+// here is almost always empty. Falling back to r.URL.Path made every
+// distinct id a new histogram — an unbounded metric-cardinality leak
+// (audit 0016 #293). mux.Handler also resolves the pattern for a request
+// rejected by auth before it ever reaches dispatch. When mux is nil (a
+// direct-handler test), r.Pattern is used as-is.
+func Metrics(reg *observability.Registry, mux *http.ServeMux) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if reg == nil || strings.HasPrefix(r.URL.Path, "/assets/") {
@@ -185,8 +195,15 @@ func Metrics(reg *observability.Registry) Middleware {
 			duration := time.Since(start)
 
 			route := r.Pattern
+			if mux != nil {
+				if _, pattern := mux.Handler(r); pattern != "" {
+					route = pattern
+				} else {
+					route = "unmatched"
+				}
+			}
 			if route == "" {
-				route = r.URL.Path
+				route = "unmatched"
 			}
 			reg.ObserveRequest(route, duration)
 		})
