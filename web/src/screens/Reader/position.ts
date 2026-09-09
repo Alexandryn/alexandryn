@@ -59,3 +59,36 @@ export function progressRatio(index: number, count: number, scrollFraction: numb
   const clamped = Math.min(1, Math.max(0, scrollFraction))
   return Math.min(1, (index + clamped) / count)
 }
+
+/**
+ * Inverts {@link progressRatio}: given a saved book-wide percentage and the
+ * section it resolves to, the scroll offset within that section (0..1).
+ * Restores the reader to where the reader actually stopped, not just the
+ * top of the chapter (FR-5 / audit 0016 #145). Clamped, because a CFI may
+ * pin a different section than a stale percentage implies.
+ */
+export function sectionScrollFraction(percentage: number, index: number, count: number): number {
+  if (count <= 0) return 0
+  return Math.min(1, Math.max(0, percentage * count - index))
+}
+
+/**
+ * Scrolls a chapter document to `fraction` (0..1) of its scrollable
+ * height. `fraction <= 0` scrolls to the top — the common case for
+ * chapter-to-chapter navigation. The layout-dependent branch needs a real
+ * browser to exercise; jsdom reports zero heights.
+ */
+export function restoreScroll(
+  win: Pick<Window, 'scrollTo'> & {
+    document: Pick<Document, 'scrollingElement' | 'documentElement'>
+  },
+  fraction: number,
+): void {
+  if (fraction <= 0) {
+    win.scrollTo(0, 0)
+    return
+  }
+  const el = win.document.scrollingElement ?? win.document.documentElement
+  const denom = el.scrollHeight - el.clientHeight
+  win.scrollTo(0, denom > 0 ? denom * fraction : 0)
+}

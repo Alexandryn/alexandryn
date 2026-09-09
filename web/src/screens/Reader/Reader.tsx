@@ -20,7 +20,13 @@ import {
   type ReadingPreferences,
 } from '../../data/reading'
 import { contentUrl, flattenToc, loadEpub, sectionIndexForHref } from './epubBook'
-import { positionCfi, progressRatio, sectionIndexForCfi } from './position'
+import {
+  positionCfi,
+  progressRatio,
+  restoreScroll,
+  sectionIndexForCfi,
+  sectionScrollFraction,
+} from './position'
 import { useDebouncedCallback } from './useDebouncedCallback'
 import './reader.css'
 
@@ -68,6 +74,10 @@ export function Reader() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [restored, setRestored] = useState(false)
+  // The saved intra-chapter scroll offset is applied once, when the
+  // restored chapter's document first loads (audit 0016 #145); later
+  // chapter navigation still opens at the top.
+  const scrollRestoreDone = useRef(false)
 
   const preferences = preferencesQuery.data?.preferences ?? DEFAULT_READING_PREFERENCES
   const sections = bookQuery.data?.sections ?? []
@@ -139,7 +149,18 @@ export function Reader() {
     const doc = iframeRef.current?.contentDocument
     if (!win || !doc) return
     applyPreferences(doc)
-    restoreScroll(win)
+
+    // Apply the saved intra-chapter offset once, after the restored
+    // chapter loads; every other chapter load opens at the top.
+    let scrollFraction = 0
+    if (!scrollRestoreDone.current && !progressQuery.isPending) {
+      scrollRestoreDone.current = true
+      const saved = progressQuery.data?.progress
+      if (saved) {
+        scrollFraction = sectionScrollFraction(saved.percentage, sectionIndex, sections.length)
+      }
+    }
+    restoreScroll(win, scrollFraction)
 
     const onScroll = () => {
       const el = doc.scrollingElement ?? doc.documentElement
@@ -171,7 +192,15 @@ export function Reader() {
     doc.addEventListener('selectionchange', onSelect)
 
     setRatio(progressRatio(sectionIndex, sections.length, 0))
-  }, [applyPreferences, sectionIndex, sections.length, reportPosition, currentSection])
+  }, [
+    applyPreferences,
+    sectionIndex,
+    sections.length,
+    reportPosition,
+    currentSection,
+    progressQuery.isPending,
+    progressQuery.data,
+  ])
 
   // Re-apply typography whenever preferences change without reloading.
   useEffect(() => {
@@ -541,10 +570,6 @@ function ToolButton({
       {children}
     </button>
   )
-}
-
-function restoreScroll(win: Window) {
-  win.scrollTo(0, 0)
 }
 
 /** The spine index to open at, from a saved ReadingProgress (FR-5). */
