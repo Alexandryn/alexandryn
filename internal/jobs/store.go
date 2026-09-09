@@ -363,7 +363,11 @@ func (s *Store) CancelJob(ctx context.Context, id ID, now time.Time) error {
 	return tx.Commit(ctx)
 }
 
-// RetryJob reads a failed/dead_letter job, inserts a new job record with fresh ID, attempts = 0, available_at = now.
+// RetryJob re-enqueues a dead-letter job as a fresh record (new id,
+// attempts = 0, available_at = now). Only a dead-letter job is
+// retryable: retrying a queued, running, or retrying job would put a
+// duplicate copy on the queue, and a completed job has already run
+// (audit 0016 #298).
 func (s *Store) RetryJob(ctx context.Context, id ID, newID ID, now time.Time) (ID, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -386,8 +390,11 @@ func (s *Store) RetryJob(ctx context.Context, id ID, newID ID, now time.Time) (I
 		return "", translateError(err)
 	}
 
-	if status == string(StateRunning) {
-		return "", &domain.Error{Category: domain.Conflict, Message: "cannot retry a running job"}
+	if State(status) != StateDeadLetter {
+		return "", &domain.Error{
+			Category: domain.Conflict,
+			Message:  "only a dead-letter job can be retried; this job is " + status,
+		}
 	}
 
 	if len(payload) == 0 {
