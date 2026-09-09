@@ -208,4 +208,38 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     const stored = JSON.parse(localStorage.getItem('alexandryn_dismissed_import_failures') || '[]')
     expect(stored).toContain('cand-failed-1')
   })
+
+  // audit 0016 #171: a candidate cover is extracted from an untrusted
+  // book file; a disallowed data: URI (svg, html, …) must not reach an
+  // <img src>, an allowed raster one may.
+  it('only renders a candidate cover for an allowed image data URI', async () => {
+    const withCover = (bytes: string) => ({
+      ...mockPendingCandidate,
+      id: `cand-${bytes.slice(5, 20)}`,
+      extractedMetadata: { ...mockPendingCandidate.extractedMetadata, coverBytes: bytes },
+    })
+
+    server.use(
+      http.get('*/api/v1/import/candidates', ({ request }) => {
+        const status = new URL(request.url).searchParams.get('status')
+        if (status === 'pending') {
+          return HttpResponse.json({
+            candidates: [
+              withCover('data:image/svg+xml,<svg onload=alert(1)></svg>'),
+              withCover('data:image/png;base64,iVBORw0KGgo='),
+            ],
+          })
+        }
+        return HttpResponse.json({ candidates: [] })
+      }),
+    )
+
+    renderWithProviders(<Import />, { routerEntries: ['/import'] })
+    await screen.findByRole('heading', { name: 'Import Review', level: 1 })
+    await waitFor(() => expect(screen.getAllByRole('heading', { name: 'Dune', level: 3 })).toHaveLength(2))
+
+    const covers = screen.getAllByRole('img', { name: 'Cover for Dune' })
+    expect(covers).toHaveLength(1)
+    expect(covers[0]!.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
+  })
 })

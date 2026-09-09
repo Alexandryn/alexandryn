@@ -16,6 +16,7 @@ import {
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { coverImageSrc } from '../../lib/imageDataUri'
 
 const DISMISSED_STORAGE_KEY = 'alexandryn_dismissed_import_failures'
 
@@ -92,12 +93,11 @@ function CandidateCover({
   author?: string
 }) {
   const [imgFailed, setImgFailed] = useState(false)
-  const coverBytes = candidate.extractedMetadata?.coverBytes
+  // Extracted from a book file the source provided — reject a data: URI
+  // that is not an allowed raster image type (audit 0016 #171).
+  const src = coverImageSrc(candidate.extractedMetadata?.coverBytes)
 
-  if (coverBytes && !imgFailed) {
-    const src = coverBytes.startsWith('data:')
-      ? coverBytes
-      : `data:image/jpeg;base64,${coverBytes}`
+  if (src && !imgFailed) {
     return (
       <img
         src={src}
