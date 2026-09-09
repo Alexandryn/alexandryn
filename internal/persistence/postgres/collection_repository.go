@@ -31,11 +31,11 @@ func NewCollectionRepository(pool *pgxpool.Pool) *CollectionRepository {
 
 var _ domain.CollectionRepository = (*CollectionRepository)(nil)
 
-func (r *CollectionRepository) FindByID(ctx context.Context, id domain.CollectionID) (*domain.Collection, error) {
+func (r *CollectionRepository) FindByID(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.Collection, error) {
 	exec := executorFrom(ctx, r.pool)
 
 	var name string
-	err := exec.QueryRow(ctx, `SELECT name FROM collections WHERE id = $1`, string(id)).Scan(&name)
+	err := exec.QueryRow(ctx, `SELECT name FROM collections WHERE id = $1 AND library_id = $2`, string(id), string(libraryID)).Scan(&name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "collection not found"}
@@ -69,15 +69,22 @@ func (r *CollectionRepository) FindByID(ctx context.Context, id domain.Collectio
 	return c, nil
 }
 
-func (r *CollectionRepository) Save(ctx context.Context, c *domain.Collection) error {
+func (r *CollectionRepository) Save(ctx context.Context, libraryID domain.LibraryID, c *domain.Collection) error {
 	exec := executorFrom(ctx, r.pool)
 
-	_, err := exec.Exec(ctx, `INSERT INTO collections (id, name)
-		VALUES ($1, $2)
-		ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
-		string(c.ID()), c.Name())
+	// The ON CONFLICT clause updates the row only when it already lives in
+	// this library; an id that belongs to another library affects no rows
+	// and is reported as NotFound, without disclosing that it exists (#87).
+	tag, err := exec.Exec(ctx, `INSERT INTO collections (id, name, library_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+		WHERE collections.library_id = $3`,
+		string(c.ID()), c.Name(), string(libraryID))
 	if err != nil {
 		return TranslateError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
 	}
 
 	if _, err := exec.Exec(ctx, `DELETE FROM collection_members WHERE collection_id = $1`, string(c.ID())); err != nil {
@@ -94,13 +101,16 @@ func (r *CollectionRepository) Save(ctx context.Context, c *domain.Collection) e
 	return nil
 }
 
-func (r *CollectionRepository) Delete(ctx context.Context, id domain.CollectionID) error {
+func (r *CollectionRepository) Delete(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) error {
 	exec := executorFrom(ctx, r.pool)
 
-	if _, err := exec.Exec(ctx, `DELETE FROM collection_members WHERE collection_id = $1`, string(id)); err != nil {
+	if _, err := exec.Exec(ctx,
+		`DELETE FROM collection_members WHERE collection_id = $1
+			AND collection_id IN (SELECT id FROM collections WHERE id = $1 AND library_id = $2)`,
+		string(id), string(libraryID)); err != nil {
 		return TranslateError(err)
 	}
-	res, err := exec.Exec(ctx, `DELETE FROM collections WHERE id = $1`, string(id))
+	res, err := exec.Exec(ctx, `DELETE FROM collections WHERE id = $1 AND library_id = $2`, string(id), string(libraryID))
 	if err != nil {
 		return TranslateError(err)
 	}
@@ -111,7 +121,7 @@ func (r *CollectionRepository) Delete(ctx context.Context, id domain.CollectionI
 }
 
 // FindAll returns all collections with their respective member work count, ordered by name ASC.
-func (r *CollectionRepository) FindAll(ctx context.Context) ([]*domain.CollectionSummary, error) {
+func (r *CollectionRepository) FindAll(ctx context.Context, libraryID domain.LibraryID) ([]*domain.CollectionSummary, error) {
 	exec := executorFrom(ctx, r.pool)
 
 	const query = `SELECT
@@ -120,10 +130,11 @@ func (r *CollectionRepository) FindAll(ctx context.Context) ([]*domain.Collectio
 		COUNT(cm.work_id)::int AS work_count
 	FROM collections c
 	LEFT JOIN collection_members cm ON cm.collection_id = c.id
+	WHERE c.library_id = $1
 	GROUP BY c.id, c.name
 	ORDER BY c.name ASC`
 
-	rows, err := exec.Query(ctx, query)
+	rows, err := exec.Query(ctx, query, string(libraryID))
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -165,7 +176,7 @@ type jsonMemberWork struct {
 }
 
 // FindDetail returns a single collection by ID and all of its member works.
-func (r *CollectionRepository) FindDetail(ctx context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+func (r *CollectionRepository) FindDetail(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.CollectionDetail, error) {
 	exec := executorFrom(ctx, r.pool)
 
 	const query = `SELECT
@@ -203,7 +214,7 @@ func (r *CollectionRepository) FindDetail(ctx context.Context, id domain.Collect
 			WHERE cm.collection_id = c.id
 		), '[]'::json) AS works
 	FROM collections c
-	WHERE c.id = $1`
+	WHERE c.id = $1 AND c.library_id = $2`
 
 	var (
 		collID    string
@@ -211,7 +222,7 @@ func (r *CollectionRepository) FindDetail(ctx context.Context, id domain.Collect
 		worksJSON []byte
 	)
 
-	err := exec.QueryRow(ctx, query, string(id)).Scan(&collID, &name, &worksJSON)
+	err := exec.QueryRow(ctx, query, string(id), string(libraryID)).Scan(&collID, &name, &worksJSON)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &domain.Error{Category: domain.NotFound, Message: "collection not found"}
@@ -261,11 +272,11 @@ func (r *CollectionRepository) FindDetail(ctx context.Context, id domain.Collect
 }
 
 // AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
-func (r *CollectionRepository) AddMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+func (r *CollectionRepository) AddMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
 	exec := executorFrom(ctx, r.pool)
 
 	var dummy int
-	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1`, string(collectionID)).Scan(&dummy); err != nil {
+	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1 AND library_id = $2`, string(collectionID), string(libraryID)).Scan(&dummy); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
 		}
@@ -291,11 +302,11 @@ func (r *CollectionRepository) AddMember(ctx context.Context, collectionID domai
 }
 
 // RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
-func (r *CollectionRepository) RemoveMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+func (r *CollectionRepository) RemoveMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID) error {
 	exec := executorFrom(ctx, r.pool)
 
 	var dummy int
-	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1`, string(collectionID)).Scan(&dummy); err != nil {
+	if err := exec.QueryRow(ctx, `SELECT 1 FROM collections WHERE id = $1 AND library_id = $2`, string(collectionID), string(libraryID)).Scan(&dummy); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &domain.Error{Category: domain.NotFound, Message: "collection not found"}
 		}
@@ -313,13 +324,13 @@ func (r *CollectionRepository) RemoveMember(ctx context.Context, collectionID do
 }
 
 // Rename renames a Collection after validating the new name (backend-library-api.md FR-6).
-func (r *CollectionRepository) Rename(ctx context.Context, id domain.CollectionID, name string) error {
+func (r *CollectionRepository) Rename(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID, name string) error {
 	if err := domain.ValidateBoundedText("name", name, 100); err != nil {
 		return err
 	}
 
 	exec := executorFrom(ctx, r.pool)
-	res, err := exec.Exec(ctx, `UPDATE collections SET name = $1 WHERE id = $2`, name, string(id))
+	res, err := exec.Exec(ctx, `UPDATE collections SET name = $1 WHERE id = $2 AND library_id = $3`, name, string(id), string(libraryID))
 	if err != nil {
 		return TranslateError(err)
 	}

@@ -91,68 +91,68 @@ func (l *LazyCollectionRepository) get() (domain.CollectionRepository, error) {
 	return repo, nil
 }
 
-func (l *LazyCollectionRepository) FindByID(ctx context.Context, id domain.CollectionID) (*domain.Collection, error) {
+func (l *LazyCollectionRepository) FindByID(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.Collection, error) {
 	repo, err := l.get()
 	if err != nil {
 		return nil, err
 	}
-	return repo.FindByID(ctx, id)
+	return repo.FindByID(ctx, libraryID, id)
 }
 
-func (l *LazyCollectionRepository) Save(ctx context.Context, c *domain.Collection) error {
+func (l *LazyCollectionRepository) Save(ctx context.Context, libraryID domain.LibraryID, c *domain.Collection) error {
 	repo, err := l.get()
 	if err != nil {
 		return err
 	}
-	return repo.Save(ctx, c)
+	return repo.Save(ctx, libraryID, c)
 }
 
-func (l *LazyCollectionRepository) Delete(ctx context.Context, id domain.CollectionID) error {
+func (l *LazyCollectionRepository) Delete(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) error {
 	repo, err := l.get()
 	if err != nil {
 		return err
 	}
-	return repo.Delete(ctx, id)
+	return repo.Delete(ctx, libraryID, id)
 }
 
-func (l *LazyCollectionRepository) FindAll(ctx context.Context) ([]*domain.CollectionSummary, error) {
+func (l *LazyCollectionRepository) FindAll(ctx context.Context, libraryID domain.LibraryID) ([]*domain.CollectionSummary, error) {
 	repo, err := l.get()
 	if err != nil {
 		return nil, err
 	}
-	return repo.FindAll(ctx)
+	return repo.FindAll(ctx, libraryID)
 }
 
-func (l *LazyCollectionRepository) FindDetail(ctx context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+func (l *LazyCollectionRepository) FindDetail(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.CollectionDetail, error) {
 	repo, err := l.get()
 	if err != nil {
 		return nil, err
 	}
-	return repo.FindDetail(ctx, id)
+	return repo.FindDetail(ctx, libraryID, id)
 }
 
-func (l *LazyCollectionRepository) AddMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+func (l *LazyCollectionRepository) AddMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
 	repo, err := l.get()
 	if err != nil {
 		return err
 	}
-	return repo.AddMember(ctx, collectionID, workID, addedAt)
+	return repo.AddMember(ctx, libraryID, collectionID, workID, addedAt)
 }
 
-func (l *LazyCollectionRepository) RemoveMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+func (l *LazyCollectionRepository) RemoveMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID) error {
 	repo, err := l.get()
 	if err != nil {
 		return err
 	}
-	return repo.RemoveMember(ctx, collectionID, workID)
+	return repo.RemoveMember(ctx, libraryID, collectionID, workID)
 }
 
-func (l *LazyCollectionRepository) Rename(ctx context.Context, id domain.CollectionID, name string) error {
+func (l *LazyCollectionRepository) Rename(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID, name string) error {
 	repo, err := l.get()
 	if err != nil {
 		return err
 	}
-	return repo.Rename(ctx, id, name)
+	return repo.Rename(ctx, libraryID, id, name)
 }
 
 // LazyMetadataCacheRepository delegates to postgres.MetadataCacheRepository stored on PoolRef.

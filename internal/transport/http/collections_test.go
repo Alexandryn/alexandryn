@@ -22,37 +22,46 @@ type mockCollectionRepository struct {
 	addMemberFunc    func(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error
 	removeMemberFunc func(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID) error
 	renameFunc       func(ctx context.Context, id domain.CollectionID, name string) error
+
+	// gotLibraryID records the last library id the handler passed, so a
+	// test can assert the active library reaches the repository (#87).
+	gotLibraryID domain.LibraryID
 }
 
-func (m *mockCollectionRepository) FindByID(ctx context.Context, id domain.CollectionID) (*domain.Collection, error) {
+func (m *mockCollectionRepository) FindByID(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.Collection, error) {
+	m.gotLibraryID = libraryID
 	if m.findByIDFunc != nil {
 		return m.findByIDFunc(ctx, id)
 	}
 	return domain.NewCollection(id, "Test Collection")
 }
 
-func (m *mockCollectionRepository) Save(ctx context.Context, c *domain.Collection) error {
+func (m *mockCollectionRepository) Save(ctx context.Context, libraryID domain.LibraryID, c *domain.Collection) error {
+	m.gotLibraryID = libraryID
 	if m.saveFunc != nil {
 		return m.saveFunc(ctx, c)
 	}
 	return nil
 }
 
-func (m *mockCollectionRepository) Delete(ctx context.Context, id domain.CollectionID) error {
+func (m *mockCollectionRepository) Delete(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) error {
+	m.gotLibraryID = libraryID
 	if m.deleteFunc != nil {
 		return m.deleteFunc(ctx, id)
 	}
 	return nil
 }
 
-func (m *mockCollectionRepository) FindAll(ctx context.Context) ([]*domain.CollectionSummary, error) {
+func (m *mockCollectionRepository) FindAll(ctx context.Context, libraryID domain.LibraryID) ([]*domain.CollectionSummary, error) {
+	m.gotLibraryID = libraryID
 	if m.findAllFunc != nil {
 		return m.findAllFunc(ctx)
 	}
 	return []*domain.CollectionSummary{}, nil
 }
 
-func (m *mockCollectionRepository) FindDetail(ctx context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+func (m *mockCollectionRepository) FindDetail(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID) (*domain.CollectionDetail, error) {
+	m.gotLibraryID = libraryID
 	if m.findDetailFunc != nil {
 		return m.findDetailFunc(ctx, id)
 	}
@@ -63,21 +72,24 @@ func (m *mockCollectionRepository) FindDetail(ctx context.Context, id domain.Col
 	}, nil
 }
 
-func (m *mockCollectionRepository) AddMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+func (m *mockCollectionRepository) AddMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+	m.gotLibraryID = libraryID
 	if m.addMemberFunc != nil {
 		return m.addMemberFunc(ctx, collectionID, workID, addedAt)
 	}
 	return nil
 }
 
-func (m *mockCollectionRepository) RemoveMember(ctx context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+func (m *mockCollectionRepository) RemoveMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID) error {
+	m.gotLibraryID = libraryID
 	if m.removeMemberFunc != nil {
 		return m.removeMemberFunc(ctx, collectionID, workID)
 	}
 	return nil
 }
 
-func (m *mockCollectionRepository) Rename(ctx context.Context, id domain.CollectionID, name string) error {
+func (m *mockCollectionRepository) Rename(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID, name string) error {
+	m.gotLibraryID = libraryID
 	if m.renameFunc != nil {
 		return m.renameFunc(ctx, id, name)
 	}
@@ -412,5 +424,49 @@ func TestCollectionsHandler_Contract_RemoveWorkFromCollection(t *testing.T) {
 	rr400 := validator.ValidateResponse(t, mux, req400)
 	if rr400.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rr400.Code)
+	}
+}
+
+// #87: every collection handler must scope its repository call to the
+// request's active library, so a caller in one library cannot read or
+// mutate another library's collections.
+func TestCollectionsHandler_ScopesToActiveLibrary(t *testing.T) {
+	const activeLib = domain.LibraryID("lib-xyz")
+
+	cases := map[string]func(repo *mockCollectionRepository) (http.Handler, *http.Request){
+		"list": func(repo *mockCollectionRepository) (http.Handler, *http.Request) {
+			return transporthttp.ListCollectionsHandler(repo), httptest.NewRequest("GET", "/api/v1/collections", nil)
+		},
+		"get": func(repo *mockCollectionRepository) (http.Handler, *http.Request) {
+			r := httptest.NewRequest("GET", "/api/v1/collections/c1", nil)
+			r.SetPathValue("id", "c1")
+			return transporthttp.GetCollectionHandler(repo), r
+		},
+		"rename": func(repo *mockCollectionRepository) (http.Handler, *http.Request) {
+			r := httptest.NewRequest("PATCH", "/api/v1/collections/c1", strings.NewReader(`{"name":"x"}`))
+			r.SetPathValue("id", "c1")
+			return transporthttp.RenameCollectionHandler(repo), r
+		},
+		"delete": func(repo *mockCollectionRepository) (http.Handler, *http.Request) {
+			r := httptest.NewRequest("DELETE", "/api/v1/collections/c1", nil)
+			r.SetPathValue("id", "c1")
+			return transporthttp.DeleteCollectionHandler(repo), r
+		},
+		"create": func(repo *mockCollectionRepository) (http.Handler, *http.Request) {
+			return transporthttp.CreateCollectionHandler(repo, &mockIDGen{nextID: "c-new"}),
+				httptest.NewRequest("POST", "/api/v1/collections", strings.NewReader(`{"name":"x"}`))
+		},
+	}
+
+	for name, build := range cases {
+		t.Run(name, func(t *testing.T) {
+			repo := &mockCollectionRepository{}
+			h, req := build(repo)
+			req = req.WithContext(transporthttp.WithActiveLibrary(req.Context(), activeLib))
+			h.ServeHTTP(httptest.NewRecorder(), req)
+			if repo.gotLibraryID != activeLib {
+				t.Fatalf("%s: repo received library %q, want %q", name, repo.gotLibraryID, activeLib)
+			}
+		})
 	}
 }
