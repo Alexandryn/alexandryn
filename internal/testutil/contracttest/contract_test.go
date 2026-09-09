@@ -1170,6 +1170,23 @@ func TestPhase14ContractResponses(t *testing.T) {
 			t.Errorf("expected 200, got %d", rr.Code)
 		}
 	})
+
+	t.Run("POST /api/v1/sync/progress with override → 200 overridden", func(t *testing.T) {
+		pct, _ := domain.NewPercentage(0.8)
+		progress := domain.RehydrateReadingProgress("prog-1", "work-1", pct, 0, nil, "dev-1", now())
+		h := transporthttp.SyncProgressHandler(ctReadingProgress{p: progress}, ctLibEntriesChecker{}, ctEditions{}, &ctSyncStore{}, devRepo, ctTransactor{}, ctIDs{}, now)
+		body := `{"workId":"work-1","percentage":0.3,"observedEpoch":0,"override":true,"deviceId":"dev-1"}`
+		req := mustRequest(t, "POST", "/api/v1/sync/progress", bytes.NewReader([]byte(body)))
+		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+		req = req.WithContext(transporthttp.WithActiveLibrary(req.Context(), "lib-1"))
+		req = req.WithContext(transporthttp.WithDevice(req.Context(), dev))
+
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
 }
 
 

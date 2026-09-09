@@ -299,9 +299,15 @@ func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, 
 }
 
 type SyncProgressInput struct {
-	WorkID          string               `json:"workId"`
-	Percentage      float64              `json:"percentage"`
-	ObservedEpoch   int64                `json:"observedEpoch"`
+	WorkID        string  `json:"workId"`
+	Percentage    float64 `json:"percentage"`
+	ObservedEpoch int64   `json:"observedEpoch"`
+	// Override marks a deliberate correction — a re-read, or a jump back
+	// to an earlier chapter. It is applied through OverrideProgress, which
+	// bumps the canonical epoch, so a lower percentage is accepted instead
+	// of being rejected as a stale automatic report (#109). The single-
+	// device progress endpoint carries the same flag.
+	Override        bool                 `json:"override,omitempty"`
 	PrecisePosition *SyncPrecisePosition `json:"precisePosition,omitempty"`
 	DeviceID        string               `json:"deviceId"`
 	ReportedAt      *time.Time           `json:"reportedAt,omitempty"`
@@ -446,6 +452,15 @@ func SyncProgressHandler(
 				res, outcome = first, domain.ReconcileAdvanced
 			} else if err != nil {
 				return err
+			} else if req.Override {
+				// Deliberate correction: apply unconditionally through the
+				// epoch-bumping override, the same as the single-device
+				// path (#109). A backward move is a valid outcome here.
+				next := domain.OverrideProgress(current, pct, pos, dev.ID(), repTime.UTC())
+				if serr := progressRepo.SaveForUser(txCtx, user.UserID, activeLibID, next); serr != nil {
+					return serr
+				}
+				res, outcome = next, domain.ReconcileOverridden
 			} else {
 				// Clamp ObservedEpoch if above stored Epoch
 				if report.ObservedEpoch > current.Epoch() {
