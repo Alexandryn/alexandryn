@@ -128,11 +128,25 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
     }
   }, [session])
 
-  const handleRevokeAndClose = useCallback(() => {
-    if (session?.pairingId) {
-      deleteMutation.mutate(session.pairingId)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
+
+  const handleRevokeAndClose = useCallback(async () => {
+    if (!session?.pairingId) {
+      onOpenChange(false)
+      return
     }
-    onOpenChange(false)
+    setRevokeError(null)
+    try {
+      await deleteMutation.mutateAsync(session.pairingId)
+      onOpenChange(false)
+    } catch {
+      // Do not close: a failed cancel leaves the pairing session live on
+      // the server, so the user must know and be able to retry (audit
+      // 0016 #142).
+      setRevokeError(
+        'Could not cancel the pairing session — it may still be active. Retry, or close and check your devices.',
+      )
+    }
   }, [session, deleteMutation, onOpenChange])
 
   const handleDone = useCallback(() => {
@@ -152,7 +166,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
         <RadixDialog.Content
           onEscapeKeyDown={(e) => {
             e.preventDefault()
-            handleRevokeAndClose()
+            void handleRevokeAndClose()
           }}
           className={cx(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
@@ -166,7 +180,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
             </RadixDialog.Title>
             <RadixDialog.Close
               aria-label="Close"
-              onClick={handleRevokeAndClose}
+              onClick={() => void handleRevokeAndClose()}
               className={cx('text-text-2 text-lg hover:text-text', FOCUS_RING)}
             >
               <span aria-hidden="true">×</span>
@@ -284,10 +298,28 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
                 </>
               )}
 
+              {revokeError && (
+                <div
+                  role="alert"
+                  className="rounded-md bg-error/10 border border-error/20 p-md text-sm text-error"
+                >
+                  {revokeError}
+                </div>
+              )}
+
               {/* Actions: Revoke vs Done */}
               <div className="flex items-center justify-between w-full pt-md border-t border-border">
-                <Button variant="ghost" size="sm" onClick={handleRevokeAndClose}>
-                  Revoke
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleRevokeAndClose()}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending
+                    ? 'Revoking…'
+                    : revokeError
+                      ? 'Retry revoke'
+                      : 'Revoke'}
                 </Button>
                 <Button variant="secondary" size="sm" onClick={handleDone}>
                   Done

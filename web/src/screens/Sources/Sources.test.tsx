@@ -133,4 +133,29 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
+
+  // audit 0016 #142: a failed delete used to be swallowed — the dialog
+  // stayed open with no feedback.
+  it('keeps the dialog open and shows an error when delete fails', async () => {
+    server.use(
+      http.get('*/api/v1/sources', () => HttpResponse.json({ sources: mockSources })),
+      http.delete('*/api/v1/sources/:id', () =>
+        HttpResponse.json(
+          { code: 'conflict', message: 'source is in use by a running import' },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<Sources />, { routerEntries: ['/sources'] })
+    await screen.findByText('Personal OPDS')
+
+    await user.click(screen.getAllByRole('button', { name: 'Remove' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Remove source' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('running import')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
 })

@@ -97,6 +97,27 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  // audit 0016 #142: a failed revoke used to close the modal anyway,
+  // leaving a live pairing session with no feedback.
+  it('keeps the modal open and shows an error when revoke fails', async () => {
+    const onOpenChange = vi.fn()
+    server.use(
+      http.delete('*/api/v1/network/pair/:id', () =>
+        HttpResponse.json({ code: 'internal', message: 'boom' }, { status: 500 }),
+      ),
+    )
+
+    renderWithProviders(<DevicePairingModal open={true} onOpenChange={onOpenChange} />)
+    await waitFor(() => expect(screen.getByText('Revoke')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Revoke'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('may still be active')
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(screen.getByRole('button', { name: 'Retry revoke' })).toBeInTheDocument()
+  })
+
   it('displays "This code expired" and "Generate a new code" when session is already expired', async () => {
     server.use(
       http.post('*/api/v1/network/pair/initiate', () => {
