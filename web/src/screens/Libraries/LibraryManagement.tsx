@@ -90,7 +90,7 @@ export function LibraryManagement() {
     <div className="p-lg max-w-5xl mx-auto flex flex-col gap-xl">
       <div className="flex justify-between items-center border-b border-border pb-md">
         <div>
-          <h1 className="text-2xl font-serif font-bold text-text">Library Namespaces</h1>
+          <h1 className="text-2xl font-serif font-bold text-text">Library namespaces</h1>
           <p className="text-sm text-text-3">Manage library partitions, ingestion permissions, and access memberships.</p>
         </div>
         <Button onClick={() => setIsCreatingLib(!isCreatingLib)}>
@@ -106,7 +106,7 @@ export function LibraryManagement() {
 
       {isCreatingLib && (
         <form onSubmit={handleCreateLib} className="p-lg bg-surface border border-border rounded-lg flex flex-col gap-md">
-          <h2 className="text-lg font-medium text-text">New Library Namespace</h2>
+          <h2 className="text-lg font-medium text-text">New library namespace</h2>
           <div className="flex flex-col gap-xs">
             <label className="text-sm font-medium text-text-2" htmlFor="libName">Name</label>
             <input
@@ -178,7 +178,7 @@ export function LibraryManagement() {
 
         <div className="md:col-span-2 flex flex-col gap-lg bg-surface p-lg rounded-lg border border-border">
           <div>
-            <h2 className="text-lg font-medium text-text mb-xs">Members & Access</h2>
+            <h2 className="text-lg font-medium text-text mb-xs">Members and access</h2>
             <p className="text-xs text-text-3">Users with access to this library aggregate partition.</p>
           </div>
 
@@ -197,7 +197,7 @@ export function LibraryManagement() {
           </div>
 
           <form onSubmit={handleCreateInvite} className="pt-md border-t border-border flex flex-col gap-md">
-            <h3 className="text-sm font-semibold text-text">Invite Member</h3>
+            <h3 className="text-sm font-semibold text-text">Invite member</h3>
             <div className="flex flex-col sm:flex-row gap-sm">
               <input
                 type="email"

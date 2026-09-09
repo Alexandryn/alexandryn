@@ -37,7 +37,7 @@ export function AcceptInviteScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-md">
       <div className="w-full max-w-md bg-surface p-xl rounded-lg border border-border shadow-lg text-center">
-        <h1 className="text-2xl font-serif font-bold text-text mb-xs">Library Invitation</h1>
+        <h1 className="text-2xl font-serif font-bold text-text mb-xs">Library invitation</h1>
         <p className="text-sm text-text-3 mb-lg">You have been invited to join an Alexandryn library namespace.</p>
 
         {error && (
@@ -51,7 +51,7 @@ export function AcceptInviteScreen() {
             <p className="text-sm text-text-2">Please sign in to your Alexandryn account to accept this invitation.</p>
             {/* Preserve the invite URL so login returns here and the token
                 is not lost (audit 0016 #95). */}
-            <Button onClick={() => navigate('/login', { state: { from: location } })}>Sign In</Button>
+            <Button onClick={() => navigate('/login', { state: { from: location } })}>Sign in</Button>
           </div>
         ) : (
           <div className="flex flex-col gap-md">

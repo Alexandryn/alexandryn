@@ -121,7 +121,7 @@ export function NetworkSettings() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-ui font-medium text-text">Network Access</h1>
+          <h1 className="text-2xl font-ui font-medium text-text">Network access</h1>
           <p className="text-sm text-text-2 mt-4xs">
             Manage local network reachability and connected devices.
           </p>

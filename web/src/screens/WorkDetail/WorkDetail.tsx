@@ -178,9 +178,9 @@ export function WorkDetail() {
       />
 
 
-      {/* Owned Editions Section */}
+      {/* Owned editions section */}
       <div className="flex flex-col gap-md border-t border-border pt-lg">
-        <h2 className="text-xl font-medium text-text">Owned Editions</h2>
+        <h2 className="text-xl font-medium text-text">Owned editions</h2>
         {work.ownedEditions && work.ownedEditions.length > 0 ? (
           <div className="flex flex-col gap-sm">
             {work.ownedEditions.map((edition) => {
