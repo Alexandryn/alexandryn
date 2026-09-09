@@ -136,3 +136,40 @@ func TestImportCandidateRepository_CRUD(t *testing.T) {
 func strPtr(s string) *string {
 	return &s
 }
+
+// TestImportCandidateRepository_LibraryScope is the #104 close-gate: a
+// candidate whose source is in library A is invisible to GetInLibrary /
+// ListInLibrary scoped to library B.
+func TestImportCandidateRepository_LibraryScope(t *testing.T) {
+	ctx := context.Background()
+	pool := schemaTestPool(t)
+	repo := postgres.NewImportCandidateRepository(pool)
+
+	mustExecPool(t, pool, "INSERT INTO libraries (id, name, description, allow_reader_uploads, created_at, updated_at) VALUES ('lib-b', 'B', '', false, now(), now()) ON CONFLICT DO NOTHING")
+	mustExecPool(t, pool, `INSERT INTO sources (id, label, kind, can_list, can_search, can_download, library_id)
+		VALUES ('src-a', 'A', 'local-folder', true, true, true, '00000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING`)
+
+	ref, _ := domain.NewFileReference("ref-a", "epub", nil)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	if err := repo.Create(ctx, postgres.ImportCandidateRecord{
+		ID: "cand-a", SourceID: "src-a", FileReference: ref,
+		Status: postgres.ImportCandidateStatusPending, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	const libB = domain.LibraryID("lib-b")
+	if _, err := repo.GetInLibrary(ctx, libB, "cand-a"); domain.CategoryOf(err) != domain.NotFound {
+		t.Fatalf("GetInLibrary from library B: category = %v, want NotFound", domain.CategoryOf(err))
+	}
+	if list, err := repo.ListInLibrary(ctx, libB, nil, nil); err != nil || len(list) != 0 {
+		t.Fatalf("ListInLibrary library B: err=%v count=%d, want 0", err, len(list))
+	}
+
+	if _, err := repo.GetInLibrary(ctx, domain.DefaultLibraryID, "cand-a"); err != nil {
+		t.Fatalf("GetInLibrary from the owning library: %v", err)
+	}
+	if list, err := repo.ListInLibrary(ctx, domain.DefaultLibraryID, nil, nil); err != nil || len(list) != 1 {
+		t.Fatalf("ListInLibrary owning library: err=%v count=%d, want 1", err, len(list))
+	}
+}

@@ -507,6 +507,14 @@ func (m *contractMockImportCandidateRepo) List(ctx context.Context, sourceID *st
 	return list, nil
 }
 
+func (m *contractMockImportCandidateRepo) GetInLibrary(ctx context.Context, _ domain.LibraryID, id string) (postgres.ImportCandidateRecord, error) {
+	return m.Get(ctx, id)
+}
+
+func (m *contractMockImportCandidateRepo) ListInLibrary(ctx context.Context, _ domain.LibraryID, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
+	return m.List(ctx, sourceID, status)
+}
+
 func (m *contractMockImportCandidateRepo) UpdateStatus(ctx context.Context, id string, status string, now time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

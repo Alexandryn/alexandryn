@@ -70,6 +70,11 @@ func NewImportCandidateRepository(pool *pgxpool.Pool) *ImportCandidateRepository
 const importCandidateColumns = `id, source_id, file_reference, status,
 	extracted_metadata, match_candidates, job_id, last_error, created_at, updated_at`
 
+// icColumns is importCandidateColumns qualified with the ic alias, for the
+// queries that join sources to enforce library ownership (#104).
+const icColumns = `ic.id, ic.source_id, ic.file_reference, ic.status,
+	ic.extracted_metadata, ic.match_candidates, ic.job_id, ic.last_error, ic.created_at, ic.updated_at`
+
 // Create inserts a new import candidate row.
 func (r *ImportCandidateRepository) Create(ctx context.Context, rec ImportCandidateRecord) error {
 	exec := executorFrom(ctx, r.pool)
@@ -107,6 +112,68 @@ func (r *ImportCandidateRepository) Get(ctx context.Context, id string) (ImportC
 		return ImportCandidateRecord{}, TranslateError(err)
 	}
 	return rec, nil
+}
+
+// GetInLibrary returns one import candidate by ID only when its source
+// belongs to libraryID. A candidate whose source is in another library is
+// reported as NotFound, with no existence oracle (#104).
+func (r *ImportCandidateRepository) GetInLibrary(ctx context.Context, libraryID domain.LibraryID, id string) (ImportCandidateRecord, error) {
+	exec := executorFrom(ctx, r.pool)
+	row := exec.QueryRow(ctx, `SELECT `+icColumns+`
+		FROM import_candidates ic
+		JOIN sources s ON s.id = ic.source_id
+		WHERE ic.id = $1 AND s.library_id = $2`, id, string(libraryID))
+	rec, err := scanImportCandidate(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ImportCandidateRecord{}, &domain.Error{Category: domain.NotFound, Message: "import candidate not found"}
+		}
+		return ImportCandidateRecord{}, TranslateError(err)
+	}
+	return rec, nil
+}
+
+// ListInLibrary is List restricted to candidates whose source belongs to
+// libraryID (#104).
+func (r *ImportCandidateRepository) ListInLibrary(ctx context.Context, libraryID domain.LibraryID, sourceID *string, status *string) ([]ImportCandidateRecord, error) {
+	exec := executorFrom(ctx, r.pool)
+
+	query := `SELECT ` + icColumns + ` FROM import_candidates ic
+		JOIN sources s ON s.id = ic.source_id
+		WHERE s.library_id = $1`
+	args := []any{string(libraryID)}
+	argIdx := 2
+
+	if sourceID != nil && *sourceID != "" {
+		query += fmt.Sprintf(` AND ic.source_id = $%d`, argIdx)
+		args = append(args, *sourceID)
+		argIdx++
+	}
+	if status != nil && *status != "" {
+		query += fmt.Sprintf(` AND ic.status = $%d`, argIdx)
+		args = append(args, *status)
+	}
+
+	query += ` ORDER BY ic.created_at, ic.id`
+
+	rows, err := exec.Query(ctx, query, args...)
+	if err != nil {
+		return nil, TranslateError(err)
+	}
+	defer rows.Close()
+
+	var out []ImportCandidateRecord
+	for rows.Next() {
+		rec, err := scanImportCandidate(rows)
+		if err != nil {
+			return nil, TranslateError(err)
+		}
+		out = append(out, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, TranslateError(err)
+	}
+	return out, nil
 }
 
 // List returns candidates matching the optional sourceID and status filters, ordered by created_at, id.
