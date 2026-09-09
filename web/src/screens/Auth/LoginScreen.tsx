@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { login } from '../../data/auth'
 import { MfaPromptModal } from './MfaPromptModal'
@@ -8,15 +8,22 @@ export function LoginScreen() {
   const navigate = useNavigate()
   const location = useLocation()
   const routerState = location.state as
-    | { enrolmentGrant?: string; hostName?: string; from?: { pathname?: string; search?: string } }
+    | {
+        enrolmentGrant?: string
+        hostName?: string
+        from?: { pathname?: string; search?: string }
+        passwordReset?: boolean
+      }
     | null
   const enrolmentGrant = routerState?.enrolmentGrant
 
   // Where to land after a successful sign-in: an explicit router `from`
-  // (RequireAuth), a ?next= query param (the global 401 redirect), or the
-  // library (audit 0016 #91, #95).
+  // (RequireAuth), a ?next= / ?returnTo= query param (the global 401
+  // redirect and external links), or the library (audit 0016 #91, #95,
+  // #161).
   const fromState = routerState?.from
-  const nextParam = new URLSearchParams(location.search).get('next')
+  const search = new URLSearchParams(location.search)
+  const nextParam = search.get('next') ?? search.get('returnTo')
   const returnTo =
     (fromState?.pathname ? fromState.pathname + (fromState.search ?? '') : null) ??
     nextParam ??
@@ -54,6 +61,12 @@ export function LoginScreen() {
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Sign In</h1>
           <p className="text-sm text-text-3">Access your Alexandryn library collection</p>
         </div>
+
+        {routerState?.passwordReset && !error && (
+          <div className="mb-md rounded border border-border bg-surface p-sm text-sm text-text-2" role="status">
+            Your password has been changed. Sign in with your new password.
+          </div>
+        )}
 
         {error && (
           <div className="mb-md rounded border border-error bg-surface p-sm text-sm text-error" role="alert">
@@ -98,6 +111,12 @@ export function LoginScreen() {
             </Button>
           </div>
         </form>
+
+        <div className="mt-md text-center">
+          <Link to="/forgot-password" className="text-sm text-accent hover:underline">
+            Forgot your password?
+          </Link>
+        </div>
       </div>
 
       {mfaTicket && (
