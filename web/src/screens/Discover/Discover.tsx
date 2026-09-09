@@ -89,12 +89,16 @@ export function Discover() {
   // new page settles, move focus to the results region so keyboard and
   // screen-reader users keep their place (audit 0016 #152).
   const resultsRef = useRef<HTMLDivElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
   const focusResultsOnPage = useRef(false)
 
   useEffect(() => {
     if (!focusResultsOnPage.current || isPending) return
     focusResultsOnPage.current = false
-    resultsRef.current?.focus()
+    // Prefer the results region; fall back to the page heading when the
+    // new page rendered an error or empty state instead, so focus never
+    // drops to the document body.
+    ;(resultsRef.current ?? headingRef.current)?.focus()
   }, [offset, isPending])
 
   const handlePreviousPage = () => {
@@ -128,7 +132,9 @@ export function Discover() {
     <div className="flex flex-col gap-xl p-3xl">
       {/* Header */}
       <div className="flex flex-col gap-md">
-        <h1 className="text-3xl font-medium tracking-1 text-text">Discover</h1>
+        <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-medium tracking-1 text-text outline-none">
+          Discover
+        </h1>
 
         {/* Search Input (FR-1) */}
         <div className="w-full max-w-md">
