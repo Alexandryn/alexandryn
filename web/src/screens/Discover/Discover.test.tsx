@@ -147,4 +147,40 @@ describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
       expect(screen.getAllByText('Book at offset 20').length).toBeGreaterThanOrEqual(1)
     })
   })
+
+  // audit 0016 #152: paging replaces the whole result list, unmounting the
+  // button that had focus; focus must land on the results, not document root.
+  it('moves keyboard focus to the results region after a page change', async () => {
+    server.use(
+      http.get('*/api/v1/discover', ({ request }) => {
+        const offset = parseInt(new URL(request.url).searchParams.get('offset') ?? '0', 10)
+        return HttpResponse.json({
+          items: [
+            {
+              openLibraryWorkKey: `OL${offset}W`,
+              title: `Book at offset ${offset}`,
+              authors: [{ name: 'Author' }],
+              editionCount: 1,
+            },
+          ],
+          total: 50,
+          limit: 20,
+          offset,
+        })
+      }),
+    )
+
+    renderWithProviders(['/discover?q=fiction'])
+    await screen.findAllByText('Book at offset 0')
+
+    // Not stolen on the first render.
+    expect(screen.getByRole('region', { name: /showing 1 to 20 of 50/i })).not.toHaveFocus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    await screen.findAllByText('Book at offset 20')
+
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /showing 21 to 40 of 50/i })).toHaveFocus(),
+    )
+  })
 })

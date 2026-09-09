@@ -84,7 +84,21 @@ export function Discover() {
   const total = data?.total ?? 0
 
   // 4. Pagination handlers (FR-3)
+  // Paging swaps the entire result list, so the Previous/Next button that
+  // was clicked unmounts and focus falls to the document body. After the
+  // new page settles, move focus to the results region so keyboard and
+  // screen-reader users keep their place (audit 0016 #152).
+  const resultsRef = useRef<HTMLDivElement>(null)
+  const focusResultsOnPage = useRef(false)
+
+  useEffect(() => {
+    if (!focusResultsOnPage.current || isPending) return
+    focusResultsOnPage.current = false
+    resultsRef.current?.focus()
+  }, [offset, isPending])
+
   const handlePreviousPage = () => {
+    focusResultsOnPage.current = true
     const nextOffset = Math.max(0, offset - PAGE_SIZE)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -98,6 +112,7 @@ export function Discover() {
   }
 
   const handleNextPage = () => {
+    focusResultsOnPage.current = true
     const nextOffset = offset + PAGE_SIZE
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -159,7 +174,16 @@ export function Discover() {
             description={`No books matched "${qParam}". Try another search term.`}
           />
         ) : (
-          <div className="flex flex-col gap-lg">
+          <div
+            ref={resultsRef}
+            tabIndex={-1}
+            role="region"
+            aria-label={`Search results, showing ${offset + 1} to ${Math.min(
+              offset + PAGE_SIZE,
+              total,
+            )} of ${total}`}
+            className="flex flex-col gap-lg outline-none"
+          >
             <DiscoverResultGrid results={items} />
 
             {/* Pagination Controls (FR-3) */}
