@@ -20,11 +20,13 @@ import {
   ActivityScreen,
   ConnectScreen,
   DevicesSettings,
+  ForgotPasswordScreen,
   Import,
   LibraryManagement,
   LoginScreen,
   NetworkSettings,
   Reader,
+  ResetPasswordScreen,
   SetupScreen,
   SourceDetail,
   Sources,
@@ -127,6 +129,8 @@ export const routes: RouteObject[] = [
   // Public unauthenticated routes
   { path: '/setup', element: <SetupScreen /> },
   { path: '/login', element: <LoginScreen /> },
+  { path: '/forgot-password', element: <ForgotPasswordScreen /> },
+  { path: '/reset-password', element: <ResetPasswordScreen /> },
   { path: '/invite/:token', element: <AcceptInviteScreen /> },
   { path: '/connect', element: <ConnectScreen /> },
 

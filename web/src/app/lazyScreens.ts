@@ -15,6 +15,12 @@ export const SetupScreen = lazy(() =>
 export const AcceptInviteScreen = lazy(() =>
   import('../screens/Auth/AcceptInviteScreen').then((m) => ({ default: m.AcceptInviteScreen })),
 )
+export const ForgotPasswordScreen = lazy(() =>
+  import('../screens/Auth/ForgotPasswordScreen').then((m) => ({ default: m.ForgotPasswordScreen })),
+)
+export const ResetPasswordScreen = lazy(() =>
+  import('../screens/Auth/ResetPasswordScreen').then((m) => ({ default: m.ResetPasswordScreen })),
+)
 export const ActivityScreen = lazy(() =>
   import('../screens/Activity').then((m) => ({ default: m.ActivityScreen })),
 )
