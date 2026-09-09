@@ -28,6 +28,37 @@ function wrap(step: string): string {
   return CFI.isCFI.test(step) ? step : `epubcfi(${step})`
 }
 
+/**
+ * The start and end CFIs of a text selection, each the section's spine-step
+ * CFI joined with a local CFI for that endpoint of the user's `Range`
+ * (foliate's `fromRange` on a collapsed range — never hand-derived).
+ * Earlier code reused the first-visible-block position for both ends, so
+ * every highlight was stored zero-length (audit 0016 #147). Falls back to
+ * a single position when the range can't be read.
+ */
+export function selectionCfis(
+  section: EpubSection,
+  doc: Document,
+  range: Range,
+): { start: string; end: string } {
+  const step = wrap(section.cfi)
+  try {
+    const endpoint = (container: Node, offset: number): string => {
+      const r = doc.createRange()
+      r.setStart(container, offset)
+      r.collapse(true)
+      return CFI.joinIndir(step, CFI.fromRange(r))
+    }
+    return {
+      start: endpoint(range.startContainer, range.startOffset),
+      end: endpoint(range.endContainer, range.endOffset),
+    }
+  } catch {
+    const fallback = positionCfi(section, doc)
+    return { start: fallback, end: fallback }
+  }
+}
+
 function firstVisibleBlock(doc: Document): Element | null {
   const candidates = doc.body?.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, div')
   if (!candidates) return null
