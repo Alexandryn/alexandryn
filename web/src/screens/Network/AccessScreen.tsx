@@ -2,65 +2,32 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner/Spinner'
-import {
-  clearSession,
-  getAccessToken,
-  getActiveLibraryId,
-  getCurrentUser,
-  logout,
-} from '../../data/auth'
+import { clearSession, getActiveLibraryId, getCurrentUser, logout } from '../../data/auth'
 import { fetchLibraries, type Library } from '../../data/libraries'
 import { useNetworkStatus } from '../../data/network'
 import { useQuery } from '@tanstack/react-query'
 import { getReachabilityDescription, getTLSDescription } from '../../lib/networkDescriptions'
 
-function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
-  if (!token) return null
-  try {
-    const parts = token.split('.')
-    const payloadPart = parts[1]
-    if (!payloadPart) return null
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
-    const json = atob(base64)
-    return JSON.parse(json) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
 export function AccessScreen() {
   const navigate = useNavigate()
   const { data: status, isLoading: statusLoading } = useNetworkStatus()
   const user = getCurrentUser()
-  const token = getAccessToken()
-
-  const claims = useMemo(() => decodeJwtPayload(token), [token])
 
   const { data: librariesData } = useQuery({
     queryKey: ['libraries'],
     queryFn: fetchLibraries,
   })
 
-  const libraries = useMemo(() => librariesData?.libraries || [], [librariesData])
+  // GET /api/v1/libraries is already scoped to the caller by the server
+  // (a reader gets their memberships, an admin gets all). The client must
+  // not re-derive access from the access token — that is the server's
+  // decision, not something to parse out of a JWT here (audit 0016 #154).
+  const accessibleLibraries = useMemo(() => librariesData?.libraries ?? [], [librariesData])
+  const libraries = accessibleLibraries
   const activeLibId = getActiveLibraryId() || (libraries[0]?.id ?? null)
   const activeLibrary = libraries.find((l) => l.id === activeLibId)
 
-  // Accessible library names: match claims.libraries (IDs) against fetched libraries
-  const libraryIdsInToken = useMemo(() => {
-    if (claims && Array.isArray(claims.libraries)) {
-      return claims.libraries as string[]
-    }
-    return []
-  }, [claims])
-
-  const accessibleLibraries = useMemo(() => {
-    if (libraryIdsInToken.length > 0) {
-      return libraries.filter((l) => libraryIdsInToken.includes(l.id))
-    }
-    return libraries
-  }, [libraries, libraryIdsInToken])
-
-  const role = user?.role || (claims?.role as string) || 'reader'
+  const role = user?.role ?? 'reader'
   const isAdmin = role === 'admin'
   const allowUploads = isAdmin || (activeLibrary?.allowReaderUploads ?? false)
 
