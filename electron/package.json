@@ -2,7 +2,8 @@
   "name": "@alexandryn/desktop",
   "private": true,
   "version": "0.0.0",
-  "description": "Alexandryn desktop host — Electron main process, preload, and the disk-loaded boot asset (architecture-desktop-host.md, phase 05).",
+  "description": "Alexandryn desktop host \u2014 Electron main process, preload, and the disk-loaded boot asset (architecture-desktop-host.md, phase 05).",
+  "license": "AGPL-3.0-or-later",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -16,7 +17,6 @@
     "pretest:e2e": "go build -o test-helpers/test-server/test-server ./test-helpers/test-server",
     "test:e2e": "playwright test"
   },
-
   "dependencies": {
     "zod": "4.4.3"
   },

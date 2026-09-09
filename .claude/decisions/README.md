@@ -51,7 +51,7 @@ deserves to know they were already weighed.
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-record-architecture-decisions.md) | We record architecture decisions in this directory | Accepted |
-| [0002](0002-project-licence.md) | Project licence | **Proposed — needs a decision** |
+| [0002](0002-project-licence.md) | Project licence | Accepted — AGPL-3.0-or-later |
 | [0003](0003-design-canvas-split.md) | Design reference split into per-surface canvases (Desktop/Host, Web/Remote viewer, States, Design system) | Accepted |
 | [0004](0004-persistence-engine-postgresql.md) | Persistence engine is self-hosted PostgreSQL; Supabase is dev/test tooling only | Accepted |
 | [0005](0005-process-model.md) | Go server is a spawned child process, never embedded into one binary; prototype-backed | Accepted |

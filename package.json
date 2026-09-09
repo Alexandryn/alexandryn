@@ -1,6 +1,7 @@
 {
   "name": "alexandryn",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "description": "Workspace root (ADR 0008). The Go module lives at the repo root; the two JavaScript packages are workspaces.",
   "workspaces": [
     "web",
