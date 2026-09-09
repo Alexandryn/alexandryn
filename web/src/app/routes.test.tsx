@@ -224,4 +224,28 @@ describe('RouteError (errorElement, FR-5/FR-7)', () => {
       '/library',
     )
   })
+
+  // audit 0016 #150: a public route that throws is caught by the root
+  // errorElement, not React Router's raw overlay.
+  it('catches an error thrown by a public route', async () => {
+    media = mockMatchMedia(true)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const brokenRoutes = routes.map((r) => ({
+      ...r,
+      children: r.children?.map((c) =>
+        'path' in c && c.path === '/login' ? { ...c, element: <Boom /> } : c,
+      ),
+    }))
+    const router = createMemoryRouter(brokenRoutes, { initialEntries: ['/login'] })
+    render(
+      <QueryClientProvider client={client}>
+        <CapabilityProvider>
+          <RouterProvider router={router} />
+        </CapabilityProvider>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Go to your library' })).toBeInTheDocument()
+  })
 })
