@@ -359,3 +359,96 @@ func TestLeaderboard_PrivacyAndTenantIsolation(t *testing.T) {
 		}
 	})
 }
+
+// audit 0016 #112: GET /api/v1/library/finished returns one bounded page
+// of works with a keyset cursor, never the whole completed-reads history.
+func TestFinishedWorks_Pagination(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+
+	lib := "00000000-0000-0000-0000-000000000001"
+	if _, err := pool.Exec(ctx, `INSERT INTO libraries (id, name, created_at, updated_at) VALUES ($1, 'Lib', now(), now()) ON CONFLICT DO NOTHING`, lib); err != nil {
+		t.Fatalf("seed lib: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('u-page', 'pager', 'pager@example.com', 'reader', now(), now()) ON CONFLICT DO NOTHING`); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	// 25 finished works, ids w-000..w-024.
+	if _, err := pool.Exec(ctx, `INSERT INTO works (id, title)
+		SELECT 'w-' || lpad(g::text, 3, '0'), 'Book ' || g FROM generate_series(0, 24) g`); err != nil {
+		t.Fatalf("seed works: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO reading_progress (id, work_id, percentage, device_id, observed_at, user_id, library_id, epoch)
+		SELECT 'rp-' || lpad(g::text, 3, '0'), 'w-' || lpad(g::text, 3, '0'), 100, 'd', now(), 'u-page', $1, 1
+		FROM generate_series(0, 24) g`, lib); err != nil {
+		t.Fatalf("seed progress: %v", err)
+	}
+
+	h := transporthttp.FinishedWorksHandler(pool)
+	user := &transporthttp.AuthenticatedUser{
+		UserID: "u-page", Username: "pager", Role: domain.RoleReader,
+		Libraries: []domain.LibraryID{domain.LibraryID(lib)},
+	}
+	call := func(query string) finishedPage {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/library/finished"+query, nil)
+		req = req.WithContext(transporthttp.WithUser(req.Context(), user))
+		req = req.WithContext(transporthttp.WithActiveLibrary(req.Context(), domain.LibraryID(lib)))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+		}
+		var out finishedPage
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		return out
+	}
+
+	// Page 1: limit 10 -> 10 works, cursor present.
+	p1 := call("?limit=10")
+	if len(p1.Works) != 10 || p1.NextCursor == nil {
+		t.Fatalf("page 1: %d works, cursor=%v; want 10 and a cursor", len(p1.Works), p1.NextCursor)
+	}
+	if p1.Works[0].WorkID != "w-000" || *p1.NextCursor != "w-009" {
+		t.Fatalf("page 1: first=%s cursor=%s, want w-000 / w-009", p1.Works[0].WorkID, *p1.NextCursor)
+	}
+
+	// Page 2: resume after the cursor.
+	p2 := call("?limit=10&cursor=" + *p1.NextCursor)
+	if len(p2.Works) != 10 || p2.Works[0].WorkID != "w-010" {
+		t.Fatalf("page 2: %d works, first=%s; want 10 starting w-010", len(p2.Works), p2.first())
+	}
+
+	// Page 3: the tail, no further cursor.
+	p3 := call("?limit=10&cursor=" + *p2.NextCursor)
+	if len(p3.Works) != 5 || p3.NextCursor != nil {
+		t.Fatalf("page 3: %d works, cursor=%v; want 5 and nil", len(p3.Works), p3.NextCursor)
+	}
+
+	// A bad limit is rejected.
+	reqBad := httptest.NewRequest(http.MethodGet, "/api/v1/library/finished?limit=-1", nil)
+	reqBad = reqBad.WithContext(transporthttp.WithUser(reqBad.Context(), user))
+	reqBad = reqBad.WithContext(transporthttp.WithActiveLibrary(reqBad.Context(), domain.LibraryID(lib)))
+	recBad := httptest.NewRecorder()
+	h.ServeHTTP(recBad, reqBad)
+	if recBad.Code != http.StatusBadRequest {
+		t.Fatalf("limit=-1: status %d, want 400", recBad.Code)
+	}
+}
+
+type finishedPage struct {
+	Works []struct {
+		WorkID string `json:"work_id"`
+	} `json:"works"`
+	NextCursor *string `json:"nextCursor"`
+}
+
+func (p finishedPage) first() string {
+	if len(p.Works) == 0 {
+		return "<none>"
+	}
+	return p.Works[0].WorkID
+}

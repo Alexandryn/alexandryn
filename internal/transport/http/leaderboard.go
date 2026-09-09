@@ -24,8 +24,17 @@ type FinishedWorkItem struct {
 }
 
 type finishedWorksResponse struct {
-	Works []FinishedWorkItem `json:"works"`
+	Works      []FinishedWorkItem `json:"works"`
+	NextCursor *string            `json:"nextCursor"`
 }
+
+const (
+	// finishedWorksDefaultLimit / finishedWorksMaxLimit bound one page of
+	// GET /api/v1/library/finished so the response can never be the
+	// library's entire completed-reads history (audit 0016 #112).
+	finishedWorksDefaultLimit = 50
+	finishedWorksMaxLimit     = 200
+)
 
 type LeaderboardItem struct {
 	WorkID        string `json:"work_id"`
@@ -61,20 +70,45 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 			return
 		}
 
+		limit := finishedWorksDefaultLimit
+		if q := r.URL.Query().Get("limit"); q != "" {
+			n, err := strconv.Atoi(q)
+			if err != nil || n <= 0 {
+				WriteError(w, domain.InvalidInput, "invalid limit parameter", corrID)
+				return
+			}
+			limit = min(n, finishedWorksMaxLimit)
+		}
+		// Keyset cursor: the work_id to resume after. Works are returned in
+		// work_id order, so the last work_id of a page is the next cursor.
+		cursor := r.URL.Query().Get("cursor")
+
 		start := time.Now()
-		// Privacy invariant: ONLY query percentage >= 100. Never project percentage or position.
+		// Privacy invariant: ONLY query percentage >= 100. Never project
+		// percentage or position. The page CTE picks one page of distinct
+		// work ids past the cursor; the outer query then fetches every
+		// finisher of just those works.
 		query := `
+			WITH page AS (
+				SELECT work_id
+				FROM reading_progress
+				WHERE library_id = $1 AND percentage >= 100 AND work_id > $2
+				GROUP BY work_id
+				ORDER BY work_id
+				LIMIT $3
+			)
 			SELECT
 				rp.work_id,
 				rp.user_id,
 				COALESCE(u.username, '') AS display_name,
 				rp.observed_at AS finished_at
 			FROM reading_progress rp
+			JOIN page ON page.work_id = rp.work_id
 			LEFT JOIN users u ON u.id = rp.user_id
 			WHERE rp.library_id = $1 AND rp.percentage >= 100
 			ORDER BY rp.work_id ASC, rp.observed_at ASC, rp.user_id ASC`
 
-		rows, err := pool.Query(ctx, query, string(activeLib))
+		rows, err := pool.Query(ctx, query, string(activeLib), cursor, limit)
 		if err != nil {
 			WriteError(w, domain.Internal, "failed to query finished works", corrID)
 			return
@@ -121,8 +155,14 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 			})
 		}
 
+		var nextCursor *string
+		if len(workOrder) == limit {
+			last := workOrder[len(workOrder)-1]
+			nextCursor = &last
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(finishedWorksResponse{Works: works})
+		_ = json.NewEncoder(w).Encode(finishedWorksResponse{Works: works, NextCursor: nextCursor})
 	})
 }
 
