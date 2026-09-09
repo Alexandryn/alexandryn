@@ -101,7 +101,7 @@ func LazyTOTPSetupHandler(ref *PoolRef) http.Handler {
 			WriteError(w, domain.Unavailable, "database not ready", CorrelationIDFromContext(r.Context()))
 			return
 		}
-		TOTPSetupHandler(api.MFA, api.TOTPEngine, api.MasterKey).ServeHTTP(w, r)
+		TOTPSetupHandler(api.MFA, api.Credentials, api.Hasher, api.TOTPEngine, api.MasterKey).ServeHTTP(w, r)
 	})
 }
 

@@ -1911,6 +1911,18 @@ paths:
     post:
       operationId: setupTOTP
       summary: Generate TOTP secret and recovery codes for 2FA enrollment
+      description: >-
+        Requires the account password. Generating a new secret overwrites
+        any existing enrolment, so the access token alone is not enough.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
       responses:
         '200':
           description: TOTP configuration payload
