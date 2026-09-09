@@ -2,16 +2,22 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed — awaiting the owner's decision** |
-| **Date** | 2026-08-12 |
+| **Status** | **Accepted** |
+| **Date** | 2026-08-12 (proposed), 2026-09-09 (accepted) |
 | **Deciders** | Project owner |
 | **Supersedes** | — |
 | **Superseded by** | — |
 
-> This record is deliberately unresolved. Licensing is the owner's call, not an
-> engineering default, and picking one silently would be the wrong kind of
-> initiative. Until it is settled, the repository is "all rights reserved" —
-> which is fine while it is private, and blocking before it goes public.
+> Resolved 2026-09-09 (audit 0016 #130): the owner accepted the
+> recommendation — **AGPL-3.0-or-later**. The verbatim licence text is in
+> `LICENSE` at the repository root; `license: "AGPL-3.0-or-later"` is set in
+> the root, `web/`, and `electron/` `package.json`. The Go module carries no
+> SPDX field (go.mod has none); the `LICENSE` file governs it.
+>
+> Still open, per Consequences below: whether to require a CLA or DCO
+> sign-off, and per-source-file licence headers (the `LICENSE` file plus the
+> README statement suffice for the licence to apply; headers are a
+> best-practice follow-up).
 
 ## Context
 
@@ -38,10 +44,12 @@ proprietary forks. Neither is wrong — they optimise for different things.
 
 ## Decision
 
-**Recommended: AGPL-3.0-or-later.**
+**AGPL-3.0-or-later** (accepted 2026-09-09).
 
-Not yet accepted. The owner should confirm or override before the repository is
-made public.
+The owner was shown the split precedent and the permissive alternative
+(Apache-2.0) and chose the recommendation: the operative fact is that
+Alexandryn is a server other people connect to, so the network-use clause is
+the point, not an edge case.
 
 ## Options considered
 

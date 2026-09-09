@@ -116,7 +116,8 @@ explains how to report one privately, and what's in scope.
 
 ## Licence
 
-Not yet chosen — see
-[`.claude/decisions/0002-project-licence.md`](.claude/decisions/0002-project-licence.md).
-Until one is added, the default applies: all rights reserved. This will be
-resolved before the repository becomes public.
+[GNU Affero General Public License v3.0 or later](LICENSE)
+([`.claude/decisions/0002-project-licence.md`](.claude/decisions/0002-project-licence.md)).
+Alexandryn is a self-hosted server, so the AGPL's network-use clause is the
+operative one: anyone who runs a modified copy as a service for others must
+offer their source. Running it at home imposes nothing.
