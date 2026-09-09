@@ -62,7 +62,7 @@ export function LoginScreen() {
     <div className="min-h-screen flex items-center justify-center bg-background p-md">
       <div className="w-full max-w-md bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
-          <h1 className="text-2xl font-serif font-bold text-text mb-xs">Sign In</h1>
+          <h1 className="text-2xl font-serif font-bold text-text mb-xs">Sign in</h1>
           <p className="text-sm text-text-3">Access your Alexandryn library collection</p>
         </div>
 
@@ -111,7 +111,7 @@ export function LoginScreen() {
 
           <div className="mt-md">
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </div>
         </form>

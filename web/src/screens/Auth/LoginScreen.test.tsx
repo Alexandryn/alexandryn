@@ -34,7 +34,7 @@ async function signIn() {
   const user = userEvent.setup()
   await user.type(screen.getByLabelText('Email or Username'), 'librarian')
   await user.type(screen.getByLabelText('Password'), 'correct-horse')
-  await user.click(screen.getByRole('button', { name: 'Sign In' }))
+  await user.click(screen.getByRole('button', { name: 'Sign in' }))
 }
 
 describe('LoginScreen (audit 0016 #161)', () => {

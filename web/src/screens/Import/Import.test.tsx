@@ -68,7 +68,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
       routerEntries: ['/import'],
     })
 
-    expect(await screen.findByRole('heading', { name: 'Import Review', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Import review', level: 1 })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Dune', level: 3 })).toBeInTheDocument()
     expect(screen.getAllByText('Frank Herbert').length).toBeGreaterThan(0)
     expect(screen.getByText('High confidence')).toBeInTheDocument()
@@ -235,7 +235,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     )
 
     renderWithProviders(<Import />, { routerEntries: ['/import'] })
-    await screen.findByRole('heading', { name: 'Import Review', level: 1 })
+    await screen.findByRole('heading', { name: 'Import review', level: 1 })
     await waitFor(() => expect(screen.getAllByRole('heading', { name: 'Dune', level: 3 })).toHaveLength(2))
 
     const covers = screen.getAllByRole('img', { name: 'Cover for Dune' })

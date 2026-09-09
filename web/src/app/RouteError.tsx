@@ -14,13 +14,13 @@ export function RouteError() {
   const description = (() => {
     if (error instanceof ApiError) return error.message
     if (isRouteErrorResponse(error)) return `${error.status} ${error.statusText}`
-    return 'An unexpected error occurred. Reloading the page may help.'
+    return 'The page hit an error while rendering. Reload to try again.'
   })()
 
   return (
     <div className="p-3xl">
       <ErrorState
-        title="Something went wrong"
+        title="This screen didn't load"
         description={description}
         code={error instanceof ApiError ? error.code : undefined}
         correlationId={error instanceof ApiError ? error.correlationId : undefined}

@@ -366,7 +366,7 @@ export function Import() {
       <div className="flex flex-col gap-sm">
         <div className="flex flex-wrap items-center justify-between gap-md">
           <div>
-            <h1 className="text-3xl font-medium tracking-1 text-text">Import Review</h1>
+            <h1 className="text-3xl font-medium tracking-1 text-text">Import review</h1>
             <p className="text-sm text-text-2 mt-4xs">
               Review extracted metadata and resolve suggested bibliographic matches for new books.
             </p>
@@ -406,7 +406,9 @@ export function Import() {
         <ErrorState
           title="Could not load pending candidates"
           description={
-            pendingError instanceof ApiError ? pendingError.message : 'An error occurred.'
+            pendingError instanceof ApiError
+              ? pendingError.message
+              : 'The server could not be reached. Check your connection and retry.'
           }
           onRetry={() => void refetchPending()}
         />

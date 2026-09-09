@@ -46,10 +46,10 @@ const SHARED: [string, string][] = [
 
 const HOST_ONLY: [string, string][] = [
   ['/sources', 'Sources'],
-  ['/import', 'Import Review'],
+  ['/import', 'Import review'],
   ['/settings', 'Settings'],
   ['/system', 'System'],
-  ['/settings/network', 'Network Access'],
+  ['/settings/network', 'Network access'],
 ]
 
 describe('route table (FR-1)', () => {
