@@ -462,6 +462,26 @@ func TestReadingBookmarks_CRUD(t *testing.T) {
 	}
 }
 
+// #118: readingScope must reject a request whose context carries a user
+// with no id. Such a value must never reach a scoped repository method —
+// an empty user id in the predicate would match every row with a NULL
+// owner.
+func TestReadingScope_RejectsIdlessUser(t *testing.T) {
+	api, _ := newReadingAPI()
+	poolRef := &transporthttp.PoolRef{}
+	poolRef.SetReadingAPI(api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/reading/editions/ed-1/bookmarks", nil)
+	req.SetPathValue("editionId", "ed-1")
+	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: ""})
+	rr := httptest.NewRecorder()
+	transporthttp.ReadingBookmarksListHandler(poolRef).ServeHTTP(rr, req.WithContext(ctx))
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 for an id-less user; body %s", rr.Code, rr.Body.String())
+	}
+}
+
 // hdr builds a header map for the do() helper.
 func hdr(pairs ...string) map[string]string {
 	m := map[string]string{}

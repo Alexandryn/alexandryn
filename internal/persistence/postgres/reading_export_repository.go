@@ -2,7 +2,8 @@ package postgres
 
 import (
 	"context"
-	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,15 +54,19 @@ type ExportMark struct {
 // deterministic document.
 func (r *ReadingExportRepository) ListProgress(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportProgress, error) {
 	exec := executorFrom(ctx, r.pool)
+
+	var clauses []string
+	var args []any
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+	clauses, args = appendOwnerScope(clauses, args, "library_id", string(libraryID))
+	if workID != "" {
+		args = append(args, workID)
+		clauses = append(clauses, `work_id = $`+strconv.Itoa(len(args)))
+	}
 	q := `SELECT work_id, percentage, epoch, precise_position_edition_id, precise_position_value, observed_at
 		FROM reading_progress
-		WHERE COALESCE(user_id, '') = COALESCE($1, '') AND COALESCE(library_id, '') = COALESCE($2, '')`
-	args := []any{string(userID), string(libraryID)}
-	if workID != "" {
-		q += ` AND work_id = $3`
-		args = append(args, workID)
-	}
-	q += ` ORDER BY work_id`
+		WHERE ` + strings.Join(clauses, " AND ") + `
+		ORDER BY work_id`
 
 	rows, err := exec.Query(ctx, q, args...)
 	if err != nil {
@@ -87,20 +92,23 @@ func (r *ReadingExportRepository) ListProgress(ctx context.Context, userID domai
 func (r *ReadingExportRepository) ListMarks(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportMark, error) {
 	exec := executorFrom(ctx, r.pool)
 
-	// $1 user, $2 library, always present; $3 workID when scoped.
-	args := []any{string(userID), string(libraryID)}
-	scope := `COALESCE(user_id, '') = COALESCE($1, '') AND COALESCE(library_id, '') = COALESCE($2, '')`
+	var clauses []string
+	var args []any
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+	clauses, args = appendOwnerScope(clauses, args, "library_id", string(libraryID))
+	scope := strings.Join(clauses, " AND ")
+	workFilter := ``
 	if workID != "" {
 		args = append(args, workID)
-		scope += ` AND edition_id IN (SELECT id FROM editions WHERE work_id = $3)`
+		workFilter = ` AND edition_id IN (SELECT id FROM editions WHERE work_id = $` + strconv.Itoa(len(args)) + `)`
 	}
 
-	q := fmt.Sprintf(`SELECT id, edition_id, 'bookmark' AS kind, position AS start_cfi, '' AS end_cfi, label, '' AS note, '' AS category, created_at
-		FROM bookmarks WHERE %[1]s
+	q := `SELECT id, edition_id, 'bookmark' AS kind, position AS start_cfi, '' AS end_cfi, label, '' AS note, '' AS category, created_at
+		FROM bookmarks WHERE ` + scope + workFilter + `
 		UNION ALL
 		SELECT id, edition_id, 'highlight' AS kind, start_position AS start_cfi, end_position AS end_cfi, '' AS label, note, category, created_at
-		FROM highlights WHERE %[1]s
-		ORDER BY edition_id, created_at, id`, scope)
+		FROM highlights WHERE ` + scope + workFilter + `
+		ORDER BY edition_id, created_at, id`
 
 	rows, err := exec.Query(ctx, q, args...)
 	if err != nil {
