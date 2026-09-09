@@ -217,3 +217,53 @@ func TestReadingSyncRepository_OutOrderInterleavedCommit_WatermarkGate(t *testin
 		t.Fatalf("expected cursor to advance, got %d", data2.Cursor)
 	}
 }
+
+// TestReadingSyncRepository_DeltaIsPageBounded is the #114 close-gate: a
+// first sync with hundreds of pending rows returns at most one page, the
+// cursor stops at the last delivered row, and a follow-up poll from that
+// cursor drains the remainder.
+func TestReadingSyncRepository_DeltaIsPageBounded(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+
+	mustExecPool(t, pool, `INSERT INTO users (id, username, email, role, created_at, updated_at)
+		VALUES ('u-page', 'page', 'page@example.com', 'reader', now(), now())`)
+	mustExecPool(t, pool, `INSERT INTO libraries (id, name, created_at, updated_at)
+		VALUES ('lib-page', 'Page Lib', now(), now())`)
+	mustExecPool(t, pool, `INSERT INTO works (id, title) VALUES ('w-page', 'W')`)
+	mustExecPool(t, pool, `INSERT INTO editions (id, work_id, language, publisher) VALUES ('ed-page', 'w-page', 'en', '')`)
+
+	const total = 620
+	mustExecPool(t, pool, `INSERT INTO bookmarks (id, edition_id, user_id, library_id, position, label, created_at)
+		SELECT 'bm-' || lpad(g::text, 4, '0'), 'ed-page', 'u-page', 'lib-page', 'epubcfi(/6/2)', '', now()
+		FROM generate_series(1, 620) g`)
+
+	syncRepo := postgres.NewReadingSyncRepository(pool)
+
+	first, err := syncRepo.GetReadingSyncData(ctx, "u-page", "lib-page", 0)
+	if err != nil {
+		t.Fatalf("first page: %v", err)
+	}
+	if len(first.Bookmarks) != 500 {
+		t.Fatalf("first page returned %d bookmarks, want 500", len(first.Bookmarks))
+	}
+	if first.Cursor != first.Bookmarks[len(first.Bookmarks)-1].SyncSequence {
+		t.Fatalf("cursor %d is not the last delivered sequence %d", first.Cursor, first.Bookmarks[len(first.Bookmarks)-1].SyncSequence)
+	}
+
+	second, err := syncRepo.GetReadingSyncData(ctx, "u-page", "lib-page", first.Cursor)
+	if err != nil {
+		t.Fatalf("second page: %v", err)
+	}
+	if len(second.Bookmarks) != total-500 {
+		t.Fatalf("second page returned %d bookmarks, want %d", len(second.Bookmarks), total-500)
+	}
+
+	third, err := syncRepo.GetReadingSyncData(ctx, "u-page", "lib-page", second.Cursor)
+	if err != nil {
+		t.Fatalf("third page: %v", err)
+	}
+	if len(third.Bookmarks) != 0 {
+		t.Fatalf("third page returned %d bookmarks, want 0", len(third.Bookmarks))
+	}
+}

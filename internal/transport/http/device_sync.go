@@ -250,6 +250,14 @@ func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, 
 			since = parsed
 		}
 
+		// Floor `since` at the device's own pull cursor. The device has
+		// already consumed every row up to there, so honouring a smaller
+		// `since` only widens the RepeatableRead snapshot and re-sends
+		// rows the device already has (#114).
+		if since < dev.SyncCursor() {
+			since = dev.SyncCursor()
+		}
+
 		ceiling, err := store.GetSyncSequenceCeiling(r.Context())
 		if err != nil {
 			WriteError(w, domain.Internal, "failed to check sync ceiling", corrID)

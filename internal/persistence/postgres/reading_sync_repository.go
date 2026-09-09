@@ -47,6 +47,13 @@ type ReadingSyncData struct {
 	Highlights []SyncHighlightItem `json:"highlights"`
 }
 
+// syncDeltaLimit bounds each of the three delta queries so a first sync
+// (since = 0) or a long-idle device cannot pull the entire history in one
+// RepeatableRead transaction (#114). The device keeps polling until a
+// response carries no rows; the cursor never advances past a sequence
+// below which every table has been fully delivered.
+const syncDeltaLimit = 500
+
 type ReadingSyncRepository struct {
 	pool *pgxpool.Pool
 }
@@ -117,8 +124,9 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		FROM reading_progress
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
 		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
-		ORDER BY sync_sequence ASC`,
-		string(userID), string(libraryID), since,
+		ORDER BY sync_sequence ASC
+		LIMIT $4`,
+		string(userID), string(libraryID), since, syncDeltaLimit,
 	)
 	if err != nil {
 		return nil, TranslateError(err)
@@ -167,8 +175,9 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		FROM bookmarks
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
 		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
-		ORDER BY sync_sequence ASC`,
-		string(userID), string(libraryID), since,
+		ORDER BY sync_sequence ASC
+		LIMIT $4`,
+		string(userID), string(libraryID), since, syncDeltaLimit,
 	)
 	if err != nil {
 		return nil, TranslateError(err)
@@ -206,8 +215,9 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		FROM highlights
 		WHERE user_id = $1 AND library_id = $2 AND sync_sequence > $3
 		  AND (xmin::text::bigint < (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint)
-		ORDER BY sync_sequence ASC`,
-		string(userID), string(libraryID), since,
+		ORDER BY sync_sequence ASC
+		LIMIT $4`,
+		string(userID), string(libraryID), since, syncDeltaLimit,
 	)
 	if err != nil {
 		return nil, TranslateError(err)
@@ -247,7 +257,22 @@ func (r *ReadingSyncRepository) GetReadingSyncData(ctx context.Context, userID d
 		}
 	}
 
-	res.Cursor = maxSeq
+	// When a table hit the row limit, the delta is only complete up to
+	// that table's last delivered sequence — advancing the cursor past it
+	// would skip the rows the LIMIT cut off. Cap the cursor at the lowest
+	// such boundary; the device re-polls and receives the remainder
+	// (rows already delivered are idempotent upserts on the client).
+	cursor := maxSeq
+	if n := len(res.Progress); n == syncDeltaLimit {
+		cursor = min(cursor, res.Progress[n-1].SyncSequence)
+	}
+	if n := len(res.Bookmarks); n == syncDeltaLimit {
+		cursor = min(cursor, res.Bookmarks[n-1].SyncSequence)
+	}
+	if n := len(res.Highlights); n == syncDeltaLimit {
+		cursor = min(cursor, res.Highlights[n-1].SyncSequence)
+	}
+	res.Cursor = cursor
 	return res, nil
 }
 
