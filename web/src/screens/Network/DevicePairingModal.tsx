@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import * as RadixDialog from '@radix-ui/react-dialog'
-import QRCode from 'qrcode'
 import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner/Spinner'
 import {
@@ -108,25 +107,47 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
     return () => clearInterval(timer)
   }, [open, session, prefersReducedMotion])
 
-  // QR code SVG matrix path
-  const qrSvgPath = useMemo(() => {
-    if (!session?.payload) return ''
-    try {
-      const qr = QRCode.create(session.payload, { errorCorrectionLevel: 'M' })
-      const size = qr.modules.size
-      let path = ''
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (qr.modules.get(r, c)) {
-            path += `M${c},${r}h1v1h-1z `
-          }
-        }
+  // QR code SVG matrix path. The `qrcode` library (~52 KB) is loaded on
+  // demand — only when the pairing modal actually has a payload to render
+  // — so it stays out of the NetworkSettings chunk (audit 0016 #163).
+  const [qrSvgPath, setQrSvgPath] = useState<{ path: string; size: number } | null>(null)
+
+  useEffect(() => {
+    const payload = session?.payload
+    let cancelled = false
+    // Scheduled, not run inline: an effect that sets state synchronously
+    // triggers an extra render (react-hooks/set-state-in-effect) — the
+    // same pattern startInitiation's effect above uses.
+    const id = setTimeout(() => {
+      if (cancelled) return
+      if (!payload) {
+        setQrSvgPath(null)
+        return
       }
-      return { path, size }
-    } catch {
-      return ''
+      void import('qrcode')
+        .then((mod) => {
+          if (cancelled) return
+          const qr = mod.default.create(payload, { errorCorrectionLevel: 'M' })
+          const size = qr.modules.size
+          let path = ''
+          for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+              if (qr.modules.get(r, c)) {
+                path += `M${c},${r}h1v1h-1z `
+              }
+            }
+          }
+          setQrSvgPath({ path, size })
+        })
+        .catch(() => {
+          if (!cancelled) setQrSvgPath(null)
+        })
+    }, 0)
+    return () => {
+      cancelled = true
+      clearTimeout(id)
     }
-  }, [session])
+  }, [session?.payload])
 
   const [revokeError, setRevokeError] = useState<string | null>(null)
 
@@ -264,7 +285,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
               ) : (
                 <>
                   {/* QR code canvas / svg */}
-                  {qrSvgPath && typeof qrSvgPath === 'object' && (
+                  {qrSvgPath && (
                     <div className="p-md bg-surface border border-border rounded-md shadow-sm">
                       <svg
                         viewBox={`0 0 ${qrSvgPath.size} ${qrSvgPath.size}`}

@@ -30,9 +30,9 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(codeEl).toHaveTextContent('ABCD-EFGH')
     expect(codeEl).toHaveClass('font-mono')
 
-    // QR code SVG
-    const svg = screen.getByRole('img', { name: 'Device pairing QR code' })
-    expect(svg).toBeInTheDocument()
+    // QR code SVG — the qrcode library is loaded on demand (audit 0016
+    // #163), so the image appears asynchronously after the payload.
+    expect(await screen.findByRole('img', { name: 'Device pairing QR code' })).toBeInTheDocument()
   })
 
   it('Done button closes without revoking', async () => {
