@@ -26,6 +26,7 @@ import {
   restoreScroll,
   sectionIndexForCfi,
   sectionScrollFraction,
+  selectionCfis,
 } from './position'
 import { useDebouncedCallback } from './useDebouncedCallback'
 import './reader.css'
@@ -178,13 +179,7 @@ export function Reader() {
         return
       }
       try {
-        const range = sel.getRangeAt(0)
-        const start = positionCfi(currentSection!, doc)
-        // End position: reuse the same section step; a distinct local CFI
-        // for the end needs a collapsed-to-end range — kept simple here,
-        // flagged as needing real-browser verification (spec Open Q3).
-        setSelectionRange({ start, end: start })
-        void range
+        setSelectionRange(selectionCfis(currentSection!, doc, sel.getRangeAt(0)))
       } catch {
         setSelectionRange(null)
       }

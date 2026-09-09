@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { progressRatio, restoreScroll, sectionScrollFraction } from './position'
+import type { EpubSection } from '../../vendor/foliate/epub'
+import { progressRatio, restoreScroll, sectionScrollFraction, selectionCfis } from './position'
+
+const section = { cfi: '/6/4' } as EpubSection
 
 describe('sectionScrollFraction (audit 0016 #145)', () => {
   it('returns the offset within the active section, not the whole book', () => {
@@ -24,6 +27,43 @@ describe('sectionScrollFraction (audit 0016 #145)', () => {
   it('is zero for an empty or unknown book', () => {
     expect(sectionScrollFraction(0.5, 0, 0)).toBe(0)
     expect(sectionScrollFraction(0, 0, 5)).toBe(0)
+  })
+})
+
+describe('selectionCfis (audit 0016 #147)', () => {
+  const docWith = (html: string) =>
+    new DOMParser().parseFromString(`<html><body>${html}</body></html>`, 'text/html')
+
+  it('derives distinct start and end CFIs from a real text selection', () => {
+    const doc = docWith('<p>Hello brave new world</p>')
+    const text = doc.querySelector('p')!.firstChild as Text
+    const range = doc.createRange()
+    range.setStart(text, 6) // "brave..."
+    range.setEnd(text, 20) // "...world"
+
+    const { start, end } = selectionCfis(section, doc, range)
+
+    expect(start).not.toBe(end)
+    expect(start).toMatch(/^epubcfi\(\/6\/4!/)
+    expect(end).toMatch(/^epubcfi\(\/6\/4!/)
+  })
+
+  it('spans element boundaries', () => {
+    const doc = docWith('<p>first para</p><p>second para</p>')
+    const [p1, p2] = Array.from(doc.querySelectorAll('p'))
+    const range = doc.createRange()
+    range.setStart(p1!.firstChild!, 0)
+    range.setEnd(p2!.firstChild!, 6)
+
+    const { start, end } = selectionCfis(section, doc, range)
+    expect(start).not.toBe(end)
+  })
+
+  it('falls back to a single position when the range cannot be read', () => {
+    const doc = docWith('<p>text</p>')
+    const bad = { startContainer: null } as unknown as Range
+    const { start, end } = selectionCfis(section, doc, bad)
+    expect(start).toBe(end)
   })
 })
 
