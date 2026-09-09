@@ -323,6 +323,7 @@ type LibraryEntryChecker interface {
 func SyncProgressHandler(
 	progressRepo domain.ReadingProgressRepository,
 	libEntries LibraryEntryChecker,
+	editions readerapi.EditionLookup,
 	syncStore SyncStore,
 	devRepo domain.PairedDeviceRepository,
 	tx readerapi.Transactor,
@@ -388,6 +389,14 @@ func SyncProgressHandler(
 		inLib, err := libEntries.WorkInLibrary(r.Context(), workID, activeLibID)
 		if err != nil || !inLib {
 			WriteError(w, domain.NotFound, "work not found in your library", corrID)
+			return
+		}
+
+		// A precise position's tagged edition must belong to the reported
+		// work — the same boundary check the single-device progress path
+		// enforces (#111, backend-reading-api.md FR-5).
+		if err := readerapi.CheckPrecisePositionWork(r.Context(), editions, workID, pos); err != nil {
+			writeDomainError(w, err, corrID)
 			return
 		}
 

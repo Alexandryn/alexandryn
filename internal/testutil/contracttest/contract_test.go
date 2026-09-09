@@ -1054,6 +1054,12 @@ func (ctLibEntriesChecker) WorkInLibrary(_ context.Context, _ domain.WorkID, _ d
 	return true, nil
 }
 
+type ctEditions struct{}
+
+func (ctEditions) FindByID(_ context.Context, _ domain.EditionID) (*domain.Edition, error) {
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+
 type ctTransactor struct{}
 
 func (ctTransactor) InTx(ctx context.Context, fn func(ctx context.Context) error) error {
@@ -1151,7 +1157,7 @@ func TestPhase14ContractResponses(t *testing.T) {
 		tx := ctTransactor{}
 		ids := ctIDs{}
 
-		h := transporthttp.SyncProgressHandler(progRepo, ctLibEntriesChecker{}, syncStore, devRepo, tx, ids, now)
+		h := transporthttp.SyncProgressHandler(progRepo, ctLibEntriesChecker{}, ctEditions{}, syncStore, devRepo, tx, ids, now)
 		body := `{"workId":"work-1","percentage":0.5,"observedEpoch":0,"deviceId":"dev-1"}`
 		req := mustRequest(t, "POST", "/api/v1/sync/progress", bytes.NewReader([]byte(body)))
 		user := &transporthttp.AuthenticatedUser{UserID: "user-1", Role: domain.RoleReader}

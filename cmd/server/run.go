@@ -659,6 +659,7 @@ func run(ctx context.Context, deps runDeps) int {
 				Devices:        repos.pairedDevices,
 				Progress:       repos.readingProgress,
 				LibraryEntries: repos.libraryEntries,
+				Editions:       repos.editions,
 				SyncStore:      repos.readingSync,
 				Transactor:     repos.transactor,
 				IDs:            idgen.New(),

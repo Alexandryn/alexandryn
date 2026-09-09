@@ -18,6 +18,7 @@ type SyncAPI struct {
 	Devices        domain.PairedDeviceRepository
 	Progress       domain.ReadingProgressRepository
 	LibraryEntries LibraryEntryChecker
+	Editions       readerapi.EditionLookup
 	SyncStore      SyncStore
 	Transactor     readerapi.Transactor
 	IDs            readerapi.IDs
@@ -99,6 +100,7 @@ func LazySyncProgressHandler(ref *PoolRef) http.Handler {
 		SyncProgressHandler(
 			api.Progress,
 			api.LibraryEntries,
+			api.Editions,
 			api.SyncStore,
 			api.Devices,
 			api.Transactor,
