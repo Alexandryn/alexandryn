@@ -85,26 +85,30 @@ type LibraryEntryRepository interface {
 }
 
 // CollectionRepository backs CollectionService's Create/Delete and its
-// member-mutation round-trips.
+// member-mutation round-trips. Every method is scoped to one library:
+// collections belong to the Alexandryn library they were created in, and
+// a caller in another library must not see or mutate them (#87,
+// constitution §3/§6). A collection id that exists in a different library
+// is reported as NotFound — no cross-library existence oracle.
 type CollectionRepository interface {
-	FindByID(ctx context.Context, id CollectionID) (*Collection, error)
-	Save(ctx context.Context, c *Collection) error
-	Delete(ctx context.Context, id CollectionID) error
+	FindByID(ctx context.Context, libraryID LibraryID, id CollectionID) (*Collection, error)
+	Save(ctx context.Context, libraryID LibraryID, c *Collection) error
+	Delete(ctx context.Context, libraryID LibraryID, id CollectionID) error
 
 	// FindAll returns every collection with its work count (backend-library-api.md FR-6).
-	FindAll(ctx context.Context) ([]*CollectionSummary, error)
+	FindAll(ctx context.Context, libraryID LibraryID) ([]*CollectionSummary, error)
 
 	// FindDetail returns one collection and its member Works (backend-library-api.md FR-6).
-	FindDetail(ctx context.Context, id CollectionID) (*CollectionDetail, error)
+	FindDetail(ctx context.Context, libraryID LibraryID, id CollectionID) (*CollectionDetail, error)
 
 	// AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
-	AddMember(ctx context.Context, collectionID CollectionID, workID WorkID, addedAt time.Time) error
+	AddMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID, addedAt time.Time) error
 
 	// RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
-	RemoveMember(ctx context.Context, collectionID CollectionID, workID WorkID) error
+	RemoveMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID) error
 
 	// Rename renames a Collection (backend-library-api.md FR-6).
-	Rename(ctx context.Context, id CollectionID, name string) error
+	Rename(ctx context.Context, libraryID LibraryID, id CollectionID, name string) error
 }
 
 // SourceRepository and SourceOfferingRepository back SourceRemovalService

@@ -221,7 +221,7 @@ func newFakeCollectionRepository(collections ...*domain.Collection) *fakeCollect
 	return r
 }
 
-func (r *fakeCollectionRepository) FindByID(_ context.Context, id domain.CollectionID) (*domain.Collection, error) {
+func (r *fakeCollectionRepository) FindByID(_ context.Context, _ domain.LibraryID, id domain.CollectionID) (*domain.Collection, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.collections[id]
@@ -231,21 +231,21 @@ func (r *fakeCollectionRepository) FindByID(_ context.Context, id domain.Collect
 	return c, nil
 }
 
-func (r *fakeCollectionRepository) Save(_ context.Context, c *domain.Collection) error {
+func (r *fakeCollectionRepository) Save(_ context.Context, _ domain.LibraryID, c *domain.Collection) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.collections[c.ID()] = c
 	return nil
 }
 
-func (r *fakeCollectionRepository) Delete(_ context.Context, id domain.CollectionID) error {
+func (r *fakeCollectionRepository) Delete(_ context.Context, _ domain.LibraryID, id domain.CollectionID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.collections, id)
 	return nil
 }
 
-func (r *fakeCollectionRepository) FindAll(_ context.Context) ([]*domain.CollectionSummary, error) {
+func (r *fakeCollectionRepository) FindAll(_ context.Context, _ domain.LibraryID) ([]*domain.CollectionSummary, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var result []*domain.CollectionSummary
@@ -259,7 +259,7 @@ func (r *fakeCollectionRepository) FindAll(_ context.Context) ([]*domain.Collect
 	return result, nil
 }
 
-func (r *fakeCollectionRepository) FindDetail(_ context.Context, id domain.CollectionID) (*domain.CollectionDetail, error) {
+func (r *fakeCollectionRepository) FindDetail(_ context.Context, _ domain.LibraryID, id domain.CollectionID) (*domain.CollectionDetail, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.collections[id]
@@ -273,7 +273,7 @@ func (r *fakeCollectionRepository) FindDetail(_ context.Context, id domain.Colle
 	}, nil
 }
 
-func (r *fakeCollectionRepository) AddMember(_ context.Context, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
+func (r *fakeCollectionRepository) AddMember(_ context.Context, _ domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.collections[collectionID]
@@ -284,7 +284,7 @@ func (r *fakeCollectionRepository) AddMember(_ context.Context, collectionID dom
 	return nil
 }
 
-func (r *fakeCollectionRepository) RemoveMember(_ context.Context, collectionID domain.CollectionID, workID domain.WorkID) error {
+func (r *fakeCollectionRepository) RemoveMember(_ context.Context, _ domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.collections[collectionID]
@@ -305,7 +305,7 @@ func (r *fakeCollectionRepository) RemoveMember(_ context.Context, collectionID 
 	return nil
 }
 
-func (r *fakeCollectionRepository) Rename(_ context.Context, id domain.CollectionID, name string) error {
+func (r *fakeCollectionRepository) Rename(_ context.Context, _ domain.LibraryID, id domain.CollectionID, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.collections[id]

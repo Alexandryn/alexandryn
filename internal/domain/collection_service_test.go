@@ -9,6 +9,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
+const testLib = domain.LibraryID("lib-test")
+
 func TestCollectionService_Create(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
@@ -16,7 +18,7 @@ func TestCollectionService_Create(t *testing.T) {
 	ids := testutil.NewFakeIDGenerator("collection-1")
 	svc := domain.NewCollectionService(collections, ids)
 
-	c, event, err := svc.Create(ctx, "Want to Read", now)
+	c, event, err := svc.Create(ctx, testLib, "Want to Read", now)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -37,7 +39,7 @@ func TestCollectionService_Create_InvalidNameRejected(t *testing.T) {
 	ids := testutil.NewFakeIDGenerator("collection-1")
 	svc := domain.NewCollectionService(collections, ids)
 
-	_, _, err := svc.Create(ctx, "", time.Now())
+	_, _, err := svc.Create(ctx, testLib, "", time.Now())
 	if err == nil {
 		t.Fatal("Create(\"\") = nil error, want an error")
 	}
@@ -57,7 +59,7 @@ func TestCollectionService_AddMember_NoOwnershipRequired(t *testing.T) {
 	collections := newFakeCollectionRepository(c)
 	svc := domain.NewCollectionService(collections, testutil.NewFakeIDGenerator())
 
-	event, err := svc.AddMember(ctx, "collection-1", "work-never-owned", now)
+	event, err := svc.AddMember(ctx, testLib, "collection-1", "work-never-owned", now)
 	if err != nil {
 		t.Fatalf("AddMember: %v", err)
 	}
@@ -65,7 +67,7 @@ func TestCollectionService_AddMember_NoOwnershipRequired(t *testing.T) {
 		t.Fatalf("event.AggregateID() = %v, want collection-1", event.AggregateID())
 	}
 
-	reloaded, _ := collections.FindByID(ctx, "collection-1")
+	reloaded, _ := collections.FindByID(ctx, testLib, "collection-1")
 	if len(reloaded.Members()) != 1 || reloaded.Members()[0].WorkID != "work-never-owned" {
 		t.Fatalf("Members() = %v, want [work-never-owned]", reloaded.Members())
 	}
@@ -82,10 +84,10 @@ func TestCollectionService_RemoveMember(t *testing.T) {
 	collections := newFakeCollectionRepository(c)
 	svc := domain.NewCollectionService(collections, testutil.NewFakeIDGenerator())
 
-	if _, err := svc.RemoveMember(ctx, "collection-1", "work-1", now); err != nil {
+	if _, err := svc.RemoveMember(ctx, testLib, "collection-1", "work-1", now); err != nil {
 		t.Fatalf("RemoveMember: %v", err)
 	}
-	reloaded, _ := collections.FindByID(ctx, "collection-1")
+	reloaded, _ := collections.FindByID(ctx, testLib, "collection-1")
 	if len(reloaded.Members()) != 0 {
 		t.Fatalf("Members() after removal = %v, want empty", reloaded.Members())
 	}
@@ -105,10 +107,10 @@ func TestCollectionService_Delete(t *testing.T) {
 	collections := newFakeCollectionRepository(c)
 	svc := domain.NewCollectionService(collections, testutil.NewFakeIDGenerator())
 
-	if err := svc.Delete(ctx, "collection-1"); err != nil {
+	if err := svc.Delete(ctx, testLib, "collection-1"); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	_, err = collections.FindByID(ctx, "collection-1")
+	_, err = collections.FindByID(ctx, testLib, "collection-1")
 	if domain.CategoryOf(err) != domain.NotFound {
 		t.Fatal("Collection still exists after Delete")
 	}

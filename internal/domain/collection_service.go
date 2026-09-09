@@ -21,13 +21,13 @@ func NewCollectionService(collections CollectionRepository, ids IDGenerator) *Co
 	return &CollectionService{collections: collections, ids: ids}
 }
 
-func (s *CollectionService) Create(ctx context.Context, name string, occurredAt time.Time) (*Collection, CollectionCreated, error) {
+func (s *CollectionService) Create(ctx context.Context, libraryID LibraryID, name string, occurredAt time.Time) (*Collection, CollectionCreated, error) {
 	id := CollectionID(s.ids.NewID())
 	c, err := NewCollection(id, name)
 	if err != nil {
 		return nil, CollectionCreated{}, err
 	}
-	if err := s.collections.Save(ctx, c); err != nil {
+	if err := s.collections.Save(ctx, libraryID, c); err != nil {
 		return nil, CollectionCreated{}, err
 	}
 	return c, NewCollectionCreated(string(id), occurredAt), nil
@@ -37,32 +37,32 @@ func (s *CollectionService) Create(ctx context.Context, name string, occurredAt 
 // it, and nothing else does (FR-10): no Work, Edition, or LibraryEntry is
 // ever touched, because this method never reaches those repositories at
 // all.
-func (s *CollectionService) Delete(ctx context.Context, id CollectionID) error {
-	return s.collections.Delete(ctx, id)
+func (s *CollectionService) Delete(ctx context.Context, libraryID LibraryID, id CollectionID) error {
+	return s.collections.Delete(ctx, libraryID, id)
 }
 
 // AddMember loads the Collection, delegates to its own AddMember method
 // (no ownership check — domain-library.md names none for Collection
 // membership), and persists the result.
-func (s *CollectionService) AddMember(ctx context.Context, collectionID CollectionID, workID WorkID, occurredAt time.Time) (CollectionMemberAdded, error) {
-	c, err := s.collections.FindByID(ctx, collectionID)
+func (s *CollectionService) AddMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID, occurredAt time.Time) (CollectionMemberAdded, error) {
+	c, err := s.collections.FindByID(ctx, libraryID, collectionID)
 	if err != nil {
 		return CollectionMemberAdded{}, err
 	}
 	c.AddMember(workID, occurredAt)
-	if err := s.collections.Save(ctx, c); err != nil {
+	if err := s.collections.Save(ctx, libraryID, c); err != nil {
 		return CollectionMemberAdded{}, err
 	}
 	return NewCollectionMemberAdded(string(collectionID), occurredAt), nil
 }
 
-func (s *CollectionService) RemoveMember(ctx context.Context, collectionID CollectionID, workID WorkID, occurredAt time.Time) (CollectionMemberRemoved, error) {
-	c, err := s.collections.FindByID(ctx, collectionID)
+func (s *CollectionService) RemoveMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID, occurredAt time.Time) (CollectionMemberRemoved, error) {
+	c, err := s.collections.FindByID(ctx, libraryID, collectionID)
 	if err != nil {
 		return CollectionMemberRemoved{}, err
 	}
 	c.RemoveMember(workID)
-	if err := s.collections.Save(ctx, c); err != nil {
+	if err := s.collections.Save(ctx, libraryID, c); err != nil {
 		return CollectionMemberRemoved{}, err
 	}
 	return NewCollectionMemberRemoved(string(collectionID), occurredAt), nil
