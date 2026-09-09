@@ -5,15 +5,31 @@ package main
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/config"
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
+
+// uninitDataDirStat is a stat fake for a data directory that has not been
+// initialized (no PG_VERSION) but exists with the 0700 mode initdb sets —
+// the shape EnsureDataDir now checks after running initdb (audit 0016 #264).
+func uninitDataDirStat(name string) (os.FileInfo, error) {
+	if filepath.Base(name) == "PG_VERSION" {
+		return nil, os.ErrNotExist
+	}
+	return fakeDirInfo{}, nil
+}
+
+type fakeDirInfo struct{ os.FileInfo }
+
+func (fakeDirInfo) Mode() os.FileMode { return fs.ModeDir | 0o700 }
 
 // backend-persistence.md's own required acceptance criterion
 // (architecture-persistence.md FR-7's named failure classes: corrupted
@@ -30,7 +46,7 @@ func TestSpawnPostgresOnce_CommandRunnerFailureFailsCleanly(t *testing.T) {
 	deps := supervisorDeps{
 		userConfigDir: func() (string, error) { return t.TempDir(), nil },
 		lookup:        func(file string) (string, error) { return "/usr/bin/" + file, nil },
-		stat:          func(string) (os.FileInfo, error) { return nil, os.ErrNotExist },
+		stat:          uninitDataDirStat,
 		runCommand: func(context.Context, string, ...string) error {
 			runCalls++
 			return failing
@@ -68,7 +84,7 @@ func TestSpawnPostgresOnce_SecondCallReusesStateAndOnlyWaitsForConnection(t *tes
 	deps := supervisorDeps{
 		userConfigDir: func() (string, error) { return t.TempDir(), nil },
 		lookup:        func(file string) (string, error) { return "/usr/bin/" + file, nil },
-		stat:          func(string) (os.FileInfo, error) { return nil, os.ErrNotExist },
+		stat:          uninitDataDirStat,
 		runCommand: func(context.Context, string, ...string) error {
 			runCalls++
 			return nil
@@ -120,7 +136,7 @@ func TestRun_ProductionSpawnFailure(t *testing.T) {
 	spawnDeps := supervisorDeps{
 		userConfigDir: func() (string, error) { return t.TempDir(), nil },
 		lookup:        func(file string) (string, error) { return "/usr/bin/" + file, nil },
-		stat:          func(string) (os.FileInfo, error) { return nil, os.ErrNotExist },
+		stat:          uninitDataDirStat,
 		runCommand: func(context.Context, string, ...string) error {
 			runCalls++
 			return failing
@@ -170,7 +186,7 @@ func TestSpawnPostgresOnce_BoundsAnAttemptThatNeverBecomesReady(t *testing.T) {
 	deps := supervisorDeps{
 		userConfigDir: func() (string, error) { return t.TempDir(), nil },
 		lookup:        func(file string) (string, error) { return "/usr/bin/" + file, nil },
-		stat:          func(string) (os.FileInfo, error) { return nil, os.ErrNotExist },
+		stat:          uninitDataDirStat,
 		runCommand:    func(context.Context, string, ...string) error { return nil },
 		selectPort:    func() (int, error) { return 54329, nil },
 		spawnChild:    func(*exec.Cmd) error { return nil },

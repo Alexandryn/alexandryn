@@ -8,7 +8,10 @@
 // placeholder," not reconsidered here.
 package supervisor
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // LookupFunc matches exec.LookPath's signature — injected (T25-D4) so
 // tests don't depend on what's actually on this machine's PATH.
@@ -31,9 +34,15 @@ func LocateBinaries(lookup LookupFunc) (Binaries, error) {
 	if err != nil {
 		return Binaries{}, fmt.Errorf("postgres binary not found on PATH: %w", err)
 	}
+	if !filepath.IsAbs(postgresPath) {
+		return Binaries{}, fmt.Errorf("resolved postgres binary path %q is not absolute; refusing to run it (audit 0016 #264 — PATH may contain a relative or current-directory entry)", postgresPath)
+	}
 	initDBPath, err := lookup("initdb")
 	if err != nil {
 		return Binaries{}, fmt.Errorf("initdb binary not found on PATH: %w", err)
+	}
+	if !filepath.IsAbs(initDBPath) {
+		return Binaries{}, fmt.Errorf("resolved initdb binary path %q is not absolute; refusing to run it (audit 0016 #264)", initDBPath)
 	}
 	return Binaries{Postgres: postgresPath, InitDB: initDBPath}, nil
 }

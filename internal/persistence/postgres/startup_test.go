@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
@@ -67,6 +68,23 @@ func TestPostgresArgs_IncludesTheDataDirectory(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("args %v don't include -D <dataDir>", args)
+	}
+}
+
+// audit 0016 #264, constitution §6: the bundled instance must bind only
+// to loopback, never to whatever the binary's compiled listen_addresses
+// default is.
+func TestPostgresArgs_BindsLoopbackOnly(t *testing.T) {
+	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 5432)
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "listen_addresses=127.0.0.1") {
+		t.Fatalf("args %v do not pin listen_addresses to 127.0.0.1", args)
+	}
+	for _, a := range args {
+		if strings.Contains(a, "listen_addresses=") && strings.Contains(a, "*") {
+			t.Fatalf("args %v allow a wildcard listen_addresses", args)
+		}
 	}
 }
 

@@ -3,27 +3,49 @@ package supervisor_test
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
+// fakeFileInfo is a minimal os.FileInfo carrying just a mode — the one
+// field this package inspects.
+type fakeFileInfo struct {
+	mode os.FileMode
+}
+
+func (f fakeFileInfo) Name() string       { return "" }
+func (f fakeFileInfo) Size() int64        { return 0 }
+func (f fakeFileInfo) Mode() os.FileMode  { return f.mode }
+func (f fakeFileInfo) ModTime() time.Time { return time.Time{} }
+func (f fakeFileInfo) IsDir() bool        { return f.mode.IsDir() }
+func (f fakeFileInfo) Sys() any           { return nil }
+
+// statDir returns a stat fake: PG_VERSION missing (so initdb runs) and
+// the data directory itself reporting dirMode.
+func statDir(dataDir string, dirMode os.FileMode) supervisor.StatFunc {
+	return func(name string) (os.FileInfo, error) {
+		if name == dataDir {
+			return fakeFileInfo{mode: fs.ModeDir | dirMode}, nil
+		}
+		return nil, os.ErrNotExist
+	}
+}
+
 // architecture-persistence.md FR-1: initialize the data directory if
-// absent. "Absent" here means no PG_VERSION marker file — Postgres's own
-// signal that a directory is already an initialized data directory.
+// absent. "Absent" here means no PG_VERSION marker file.
 func TestEnsureDataDir_RunsInitDBWhenNotInitialized(t *testing.T) {
 	var ranWith []string
 	run := func(_ context.Context, name string, args ...string) error {
 		ranWith = append([]string{name}, args...)
 		return nil
 	}
-	statNotExist := func(string) (os.FileInfo, error) {
-		return nil, os.ErrNotExist
-	}
 
-	err := supervisor.EnsureDataDir(context.Background(), statNotExist, run, "/usr/bin/initdb", "/data/pg")
+	err := supervisor.EnsureDataDir(context.Background(), statDir("/data/pg", 0o700), run, "/usr/bin/initdb", "/data/pg")
 	if err != nil {
 		t.Fatalf("EnsureDataDir: %v", err)
 	}
@@ -45,22 +67,24 @@ func TestEnsureDataDir_RunsInitDBWhenNotInitialized(t *testing.T) {
 }
 
 // A directory that already has PG_VERSION is already initialized — a
-// retried call (waitForPostgres's own bounded retry, T25-D3) must not
-// re-run initdb against it.
+// retried call must not re-run initdb against it.
 func TestEnsureDataDir_SkipsInitDBWhenAlreadyInitialized(t *testing.T) {
 	ranCount := 0
 	run := func(context.Context, string, ...string) error {
 		ranCount++
 		return nil
 	}
-	statExists := func(name string) (os.FileInfo, error) {
+	stat := func(name string) (os.FileInfo, error) {
 		if filepath.Base(name) == "PG_VERSION" {
 			return fakeFileInfo{}, nil
+		}
+		if name == "/data/pg" {
+			return fakeFileInfo{mode: fs.ModeDir | 0o700}, nil
 		}
 		return nil, os.ErrNotExist
 	}
 
-	err := supervisor.EnsureDataDir(context.Background(), statExists, run, "/usr/bin/initdb", "/data/pg")
+	err := supervisor.EnsureDataDir(context.Background(), stat, run, "/usr/bin/initdb", "/data/pg")
 	if err != nil {
 		t.Fatalf("EnsureDataDir: %v", err)
 	}
@@ -72,12 +96,36 @@ func TestEnsureDataDir_SkipsInitDBWhenAlreadyInitialized(t *testing.T) {
 func TestEnsureDataDir_PropagatesInitDBFailure(t *testing.T) {
 	failing := errors.New("initdb: could not create directory: permission denied")
 	run := func(context.Context, string, ...string) error { return failing }
-	statNotExist := func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
 
-	err := supervisor.EnsureDataDir(context.Background(), statNotExist, run, "/usr/bin/initdb", "/data/pg")
+	err := supervisor.EnsureDataDir(context.Background(), statDir("/data/pg", 0o700), run, "/usr/bin/initdb", "/data/pg")
 	if !errors.Is(err, failing) {
 		t.Fatalf("EnsureDataDir() error = %v, want the initdb failure propagated", err)
 	}
 }
 
-type fakeFileInfo struct{ os.FileInfo }
+// audit 0016 #264: a data directory left group- or world-accessible is
+// rejected, fail-closed, rather than handed to a Postgres that would
+// serve reading data from it.
+func TestEnsureDataDir_RejectsLoosePermissions(t *testing.T) {
+	run := func(context.Context, string, ...string) error { return nil }
+
+	err := supervisor.EnsureDataDir(context.Background(), statDir("/data/pg", 0o755), run, "/usr/bin/initdb", "/data/pg")
+	if err == nil {
+		t.Fatal("EnsureDataDir accepted a 0755 data directory, want an error")
+	}
+}
+
+// audit 0016 #264: a relative data directory (one that could trace to a
+// hostile $XDG_CONFIG_HOME) is refused before any command runs.
+func TestEnsureDataDir_RejectsRelativePath(t *testing.T) {
+	ran := false
+	run := func(context.Context, string, ...string) error { ran = true; return nil }
+
+	err := supervisor.EnsureDataDir(context.Background(), statDir("relative/pg", 0o700), run, "/usr/bin/initdb", "relative/pg")
+	if err == nil {
+		t.Fatal("EnsureDataDir accepted a relative data directory path, want an error")
+	}
+	if ran {
+		t.Fatal("initdb was run for a relative data directory path")
+	}
+}

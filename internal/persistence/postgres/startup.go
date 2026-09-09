@@ -28,5 +28,17 @@ func SelectStartupPath(ctx context.Context, databaseURL string, spawn, connect f
 // compiled-in default; socket-directory decisions still belong to a
 // later, more detailed pass, not invented in this task.
 func PostgresArgs(dataDir string, port int) []string {
-	return []string{"-D", dataDir, "-p", strconv.Itoa(port)}
+	return []string{
+		"-D", dataDir,
+		"-p", strconv.Itoa(port),
+		// Bind only to loopback regardless of the binary's compiled-in
+		// listen_addresses default — a bundled instance must never be
+		// reachable from another machine (constitution §6, audit 0016
+		// #264). Broader exposure is the Go server's job, behind
+		// authentication.
+		"-c", "listen_addresses=127.0.0.1",
+		// Restrict the Unix socket to the owner so another local account
+		// cannot connect to the instance without a credential.
+		"-c", "unix_socket_permissions=0700",
+	}
 }
