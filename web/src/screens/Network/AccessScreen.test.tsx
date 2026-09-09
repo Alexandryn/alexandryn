@@ -188,4 +188,23 @@ describe('AccessScreen (Phase 13 T5.6)', () => {
     expect(await screen.findByText('History Shelf')).toBeInTheDocument()
     expect(screen.getByText('Poetry Shelf')).toBeInTheDocument()
   })
+
+  // audit 0016 #156: a failed status/libraries query shows an inline
+  // error with a retry, it does not make the section silently disappear.
+  it('shows a retryable error when the status and libraries queries fail', async () => {
+    server.use(
+      http.get('*/api/v1/network/status', () => HttpResponse.json({ message: 'boom' }, { status: 500 })),
+      http.get('*/api/v1/libraries', () => HttpResponse.json({ message: 'boom' }, { status: 500 })),
+    )
+
+    renderAccessScreen()
+
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts.length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Could not load connection details.')).toBeInTheDocument()
+    expect(screen.getByText('Could not load your libraries.')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Retry' }).length).toBeGreaterThanOrEqual(2)
+    // Not the misleading "no libraries" copy.
+    expect(screen.queryByText('No libraries assigned to this account.')).not.toBeInTheDocument()
+  })
 })

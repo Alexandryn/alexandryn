@@ -10,10 +10,19 @@ import { getReachabilityDescription, getTLSDescription } from '../../lib/network
 
 export function AccessScreen() {
   const navigate = useNavigate()
-  const { data: status, isLoading: statusLoading } = useNetworkStatus()
+  const {
+    data: status,
+    isLoading: statusLoading,
+    isError: statusError,
+    refetch: refetchStatus,
+  } = useNetworkStatus()
   const user = getCurrentUser()
 
-  const { data: librariesData } = useQuery({
+  const {
+    data: librariesData,
+    isError: librariesError,
+    refetch: refetchLibraries,
+  } = useQuery({
     queryKey: ['libraries'],
     queryFn: fetchLibraries,
   })
@@ -63,7 +72,25 @@ export function AccessScreen() {
       </div>
 
       {/* Network Status Card */}
-      {status && (
+      {statusError && !status ? (
+        <section
+          aria-labelledby="connection-heading"
+          className="rounded-lg bg-surface border border-border p-xl flex flex-col gap-md shadow-sm"
+        >
+          <h2 id="connection-heading" className="text-lg font-ui font-medium text-text">
+            Connection Details
+          </h2>
+          <div
+            role="alert"
+            className="rounded-md bg-error/10 border border-error/20 p-md text-sm text-error flex items-center justify-between gap-md"
+          >
+            <span>Could not load connection details.</span>
+            <Button variant="secondary" size="sm" onClick={() => void refetchStatus()}>
+              Retry
+            </Button>
+          </div>
+        </section>
+      ) : status ? (
         <section aria-labelledby="connection-heading" className="rounded-lg bg-surface border border-border p-xl flex flex-col gap-lg shadow-sm">
           <h2 id="connection-heading" className="text-lg font-ui font-medium text-text">
             Connection Details
@@ -92,7 +119,7 @@ export function AccessScreen() {
             </div>
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* Capabilities & Permissions Card */}
       <section aria-labelledby="permissions-heading" className="rounded-lg bg-surface border border-border p-xl flex flex-col gap-lg shadow-sm">
@@ -140,7 +167,17 @@ export function AccessScreen() {
           Accessible Libraries
         </h2>
 
-        {accessibleLibraries.length === 0 ? (
+        {librariesError && accessibleLibraries.length === 0 ? (
+          <div
+            role="alert"
+            className="rounded-md bg-error/10 border border-error/20 p-md text-sm text-error flex items-center justify-between gap-md"
+          >
+            <span>Could not load your libraries.</span>
+            <Button variant="secondary" size="sm" onClick={() => void refetchLibraries()}>
+              Retry
+            </Button>
+          </div>
+        ) : accessibleLibraries.length === 0 ? (
           <p className="text-sm text-text-2">No libraries assigned to this account.</p>
         ) : (
           <div className="flex flex-col gap-sm">
