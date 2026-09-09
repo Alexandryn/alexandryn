@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { server } from '../../mocks/node'
 import { ConnectScreen } from './ConnectScreen'
@@ -39,6 +39,8 @@ function renderConnectScreen(initialEntries = ['/connect']) {
 }
 
 describe('ConnectScreen (Phase 13 T5.5)', () => {
+  afterEach(() => sessionStorage.clear())
+
   it('reads ?c=<code>, formats it, and strips ?c= immediately from window history', async () => {
     // Set initial window URL with ?c=ABCD-EFGH
     window.history.pushState({}, '', '/connect?c=abcd-efgh')
@@ -94,6 +96,14 @@ describe('ConnectScreen (Phase 13 T5.5)', () => {
     const stateText = screen.getByTestId('target-state').textContent
     expect(stateText).toContain('grant-secret-token-12345')
     expect(stateText).toContain('alexandryn.local')
+
+    // audit 0016 #157: also mirrored to sessionStorage (per-tab, not the
+    // URL) so a reload on /login can recover it.
+    const stored = JSON.parse(sessionStorage.getItem('alexandryn_pending_enrolment') ?? 'null')
+    expect(stored).toEqual({
+      enrolmentGrant: 'grant-secret-token-12345',
+      hostName: 'alexandryn.local',
+    })
   })
 
   it('handles 404 with generic "pairing code not recognised"', async () => {
