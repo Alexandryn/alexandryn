@@ -1018,6 +1018,18 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  getNetworkSettings: {
+    '200': {
+      hostName: 'alexandryn.local',
+      rememberDeviceDays: 30,
+      updatedAt: '2026-09-05T12:00:00Z',
+    },
+    '403': {
+      code: 'forbidden',
+      message: 'insufficient permissions for this resource',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
   updateNetworkSettings: {
     '200': {
       hostName: 'alexandryn.local',
