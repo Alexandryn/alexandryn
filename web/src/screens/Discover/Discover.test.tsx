@@ -183,4 +183,33 @@ describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
       expect(screen.getByRole('region', { name: /showing 21 to 40 of 50/i })).toHaveFocus(),
     )
   })
+
+  it('falls back to the page heading when the next page errors', async () => {
+    let call = 0
+    server.use(
+      http.get('*/api/v1/discover', ({ request }) => {
+        const offset = parseInt(new URL(request.url).searchParams.get('offset') ?? '0', 10)
+        call += 1
+        if (offset > 0) {
+          return HttpResponse.json({ code: 'unavailable' }, { status: 503 })
+        }
+        return HttpResponse.json({
+          items: [{ openLibraryWorkKey: 'OL0W', title: 'First book', authors: [{ name: 'A' }], editionCount: 1 }],
+          total: 50,
+          limit: 20,
+          offset,
+        })
+      }),
+    )
+
+    renderWithProviders(['/discover?q=fiction'])
+    await screen.findAllByText('First book')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Discover', level: 1 })).toHaveFocus(),
+    )
+    expect(call).toBeGreaterThan(1)
+  })
 })
