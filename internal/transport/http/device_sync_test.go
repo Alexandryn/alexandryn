@@ -668,6 +668,7 @@ func TestSyncProgressHandler(t *testing.T) {
 	handler := transporthttp.SyncProgressHandler(
 		progressRepo,
 		libEntries,
+		&memEditions{byID: map[domain.EditionID]*domain.Edition{}},
 		syncStore,
 		devRepo,
 		testTransactor{},
@@ -784,7 +785,7 @@ func TestSyncProgressHandler_PushCursorNotUsableAsPullCursor(t *testing.T) {
 	syncStore.seqCounter = 7
 
 	handler := transporthttp.SyncProgressHandler(
-		progressRepo, libEntries, syncStore, devRepo,
+		progressRepo, libEntries, &memEditions{byID: map[domain.EditionID]*domain.Edition{}}, syncStore, devRepo,
 		testTransactor{}, testIDGen{}, func() time.Time { return now },
 	)
 
@@ -935,7 +936,7 @@ func TestSyncProgressHandler_ClampsFutureReportedAt(t *testing.T) {
 	devA1, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
 	_ = devRepo.Save(context.Background(), devA1)
 
-	handler := transporthttp.SyncProgressHandler(progressRepo, libEntries, syncStore, devRepo, inlineTx{}, &seqID{}, func() time.Time { return now })
+	handler := transporthttp.SyncProgressHandler(progressRepo, libEntries, &memEditions{byID: map[domain.EditionID]*domain.Edition{}}, syncStore, devRepo, inlineTx{}, &seqID{}, func() time.Time { return now })
 	ctxA := transporthttp.WithDevice(
 		transporthttp.WithActiveLibrary(
 			transporthttp.WithUser(context.Background(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
@@ -1034,5 +1035,46 @@ func TestSyncReadingHandler_FloorsSinceAtDeviceCursor(t *testing.T) {
 
 	if syncStore.gotSince != 15 {
 		t.Fatalf("store queried with since=%d, want 15 (floored at device cursor)", syncStore.gotSince)
+	}
+}
+
+// #111: SyncProgressHandler must reject a precise position whose edition
+// belongs to a different work than the one being reported.
+func TestSyncProgressHandler_RejectsForeignEditionInPrecisePosition(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	devRepo := newMemPairedDevs()
+	syncStore := newMemSyncStore()
+	progressRepo := newMemProgressRepo()
+	libEntries := &memLibraryEntries{works: map[domain.WorkID]domain.LibraryID{"work-1": "lib-a"}}
+
+	lang, _ := domain.NewLanguage("en")
+	// ed-other belongs to work-2, not the reported work-1.
+	edOther, _ := domain.NewEdition("ed-other", "work-2", lang, nil, "", nil, nil)
+	editions := &memEditions{byID: map[domain.EditionID]*domain.Edition{"ed-other": edOther}}
+
+	userA := domain.UserID("user-a")
+	libA := domain.LibraryID("lib-a")
+	devA, _ := domain.NewPairedDevice("dev-a1", userA, "Pixel 8", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, now)
+	_ = devRepo.Save(context.Background(), devA)
+
+	handler := transporthttp.SyncProgressHandler(
+		progressRepo, libEntries, editions, syncStore, devRepo,
+		testTransactor{}, testIDGen{}, func() time.Time { return now },
+	)
+
+	body := `{"workId":"work-1","percentage":0.5,"observedEpoch":0,"deviceId":"dev-a1","precisePosition":{"editionId":"ed-other","cfi":"epubcfi(/6/4)"}}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+	ctx := transporthttp.WithDevice(
+		transporthttp.WithActiveLibrary(
+			transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: userA, Role: domain.RoleReader}),
+			libA,
+		),
+		devA,
+	)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req.WithContext(ctx))
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 for a precise position tagged with a foreign edition; body %s", rr.Code, rr.Body.String())
 	}
 }
