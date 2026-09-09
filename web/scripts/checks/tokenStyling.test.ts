@@ -78,7 +78,31 @@ describe('findRawStyleValues', () => {
 
   it('does not flag prose that happens to read like a style property (no object-literal shape)', () => {
     const componentsDir = makeComponents({
-      'VisuallyHidden/VisuallyHidden.test.tsx': `it('is clipped, never display:none or width:0 alone', () => {})`,
+      'VisuallyHidden/notes.ts': `export const NOTE = 'is clipped, never display:none or width:0 alone'`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toEqual([])
+  })
+
+  it('does not read an issue reference in a comment as a shorthand hex', () => {
+    const componentsDir = makeComponents({
+      'Grid/Grid.tsx': `// slides the window on the sentinel (audit 0016 #150)\nexport const x = 1`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toEqual([])
+  })
+
+  it('does not read a commented-out px aside as an inline style', () => {
+    const componentsDir = makeComponents({
+      'Grid/Grid.tsx': `/* rootMargin is '300px' — an observer margin, not CSS */\nexport const x = 1`,
+    })
+
+    expect(findRawStyleValues(componentsDir)).toEqual([])
+  })
+
+  it('skips .test files, which carry issue references in describe/it titles', () => {
+    const componentsDir = makeComponents({
+      'Grid/Grid.test.tsx': `it('slides the window (audit 0016 #168)', () => { const c = '#abc123' })`,
     })
 
     expect(findRawStyleValues(componentsDir)).toEqual([])

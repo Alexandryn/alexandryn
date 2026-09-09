@@ -57,11 +57,24 @@ export interface TokenStylingFinding {
   pattern: string
 }
 
+/**
+ * Removes `//` line comments and block comments so prose never trips the
+ * patterns — an issue reference like `#150` reads as a 3-digit shorthand
+ * hex, and an aside like `rootMargin: '300px'` reads as an inline style.
+ * The `[^:]` guard keeps `https://…` inside a string intact.
+ */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
 /** Scans every .ts/.tsx file under componentsDir for a raw hex/px value outside the token set. */
 export function findRawStyleValues(componentsDir: string): TokenStylingFinding[] {
   const findings: TokenStylingFinding[] = []
   for (const file of walkSourceFiles(componentsDir)) {
-    const contents = readFileSync(file, 'utf8')
+    // Test files carry issue references like `#150` in describe/it titles
+    // and define no shipped styling — they are not held to FR-4.
+    if (/\.test\.tsx?$/.test(file)) continue
+    const contents = stripComments(readFileSync(file, 'utf8'))
     for (const pattern of RAW_VALUE_PATTERNS) {
       if (pattern.test(contents)) {
         findings.push({ file, pattern: pattern.source })
