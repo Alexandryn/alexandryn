@@ -668,6 +668,12 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		if pgxPool, ok := pool.(*pgxpool.Pool); ok {
 			poolRef.SetDBPool(pgxPool)
+			// Feed live connection-pool stats to the diagnostics endpoint;
+			// without this GET /api/v1/diagnostics reports a zeroed db_pool
+			// (audit 0016 #295).
+			if reg, ok := poolRef.GetMetricsRegistry(); ok {
+				reg.SetPoolStatsProvider(poolStatsProvider(pgxPool))
+			}
 			eventStore := observability.NewEventStore(pgxPool, time.Now)
 			poolRef.SetEventStore(eventStore)
 			// system_events retention reaper (ADR 0031, Constitution §8).
@@ -692,6 +698,12 @@ func run(ctx context.Context, deps runDeps) int {
 			if jsConcrete, ok := js.(*jobs.System); ok {
 				poolRef.SetJobSystem(jsConcrete)
 				poolRef.SetJobQueue(jsConcrete.Queue())
+				// Feed live per-state job counts to the diagnostics
+				// endpoint; without this GET /api/v1/diagnostics reports an
+				// empty queue_depth (audit 0016 #295).
+				if reg, ok := poolRef.GetMetricsRegistry(); ok {
+					reg.SetQueueDepthProvider(queueDepthProvider(jsConcrete.Queue().CountByState))
+				}
 				if repos != nil && repos.importCandidates != nil {
 				sourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
 				olClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
