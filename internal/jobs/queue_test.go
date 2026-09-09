@@ -19,7 +19,7 @@ func (s stubIDs) NewID() string { return s.id }
 func TestQueue_Enqueue_UnregisteredKindIsInvalidInput(t *testing.T) {
 	// store is nil: an unregistered kind must be rejected before the
 	// store is ever touched.
-	q := NewQueue(nil, NewRegistry(), stubIDs{id: "x"}, fixedClock{})
+	q := NewQueue(nil, NewRegistry(), stubIDs{id: "x"}, fixedClock{}, nil)
 
 	_, err := q.Enqueue(context.Background(), "never-registered", map[string]int{"a": 1})
 	if domain.CategoryOf(err) != domain.InvalidInput {
@@ -30,7 +30,7 @@ func TestQueue_Enqueue_UnregisteredKindIsInvalidInput(t *testing.T) {
 func TestQueue_Enqueue_NonSerializablePayloadIsInvalidInput(t *testing.T) {
 	r := NewRegistry()
 	r.Register("k", 3, noopHandler)
-	q := NewQueue(nil, r, stubIDs{id: "x"}, fixedClock{})
+	q := NewQueue(nil, r, stubIDs{id: "x"}, fixedClock{}, nil)
 
 	_, err := q.Enqueue(context.Background(), "k", make(chan int))
 	if domain.CategoryOf(err) != domain.InvalidInput {

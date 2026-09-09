@@ -26,9 +26,10 @@ func NewSystem(pool *pgxpool.Pool, ids domain.IDGenerator, clock Clock, logger *
 	cfg = cfg.withDefaults()
 	registry := NewRegistry()
 	store := NewStore(pool, ids, cfg.LeaseDuration)
+	live := newLiveJobs()
 	return &System{
-		queue:  NewQueue(store, registry, ids, clock),
-		engine: NewEngine(store, registry, clock, ids, logger, cfg),
+		queue:  NewQueue(store, registry, ids, clock, live),
+		engine: NewEngine(store, registry, clock, ids, logger, cfg, live),
 	}
 }
 

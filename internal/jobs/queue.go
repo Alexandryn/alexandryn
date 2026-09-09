@@ -25,6 +25,7 @@ type Queue struct {
 	registry *Registry
 	ids      domain.IDGenerator
 	clock    Clock
+	live     *liveJobs
 }
 
 // SystemClock is the real wall clock — production's Clock.
@@ -34,8 +35,8 @@ type SystemClock struct{}
 func (SystemClock) Now() time.Time { return time.Now() }
 
 // NewQueue builds a Queue over a store and registry.
-func NewQueue(store *Store, registry *Registry, ids domain.IDGenerator, clock Clock) *Queue {
-	return &Queue{store: store, registry: registry, ids: ids, clock: clock}
+func NewQueue(store *Store, registry *Registry, ids domain.IDGenerator, clock Clock, live *liveJobs) *Queue {
+	return &Queue{store: store, registry: registry, ids: ids, clock: clock, live: live}
 }
 
 // Register binds a handler to a kind (FR-2). Call at process startup.
@@ -97,9 +98,15 @@ func (q *Queue) CountByState(ctx context.Context) (map[State]int, error) {
 	return q.store.CountByState(ctx)
 }
 
-// CancelJob cancels a queued or running job, moving it to dead_letter.
+// CancelJob cancels a queued or running job, moving it to dead_letter,
+// and immediately aborts the handler if a worker in this process is
+// running it (audit 0016 #299).
 func (q *Queue) CancelJob(ctx context.Context, id ID) error {
-	return q.store.CancelJob(ctx, id, q.clock.Now())
+	if err := q.store.CancelJob(ctx, id, q.clock.Now()); err != nil {
+		return err
+	}
+	q.live.cancel(id)
+	return nil
 }
 
 // RetryJob re-enqueues a job by inserting a new record with attempts = 0.

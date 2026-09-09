@@ -31,6 +31,7 @@ type Engine struct {
 	ids      domain.IDGenerator
 	cfg      Config
 	logger   *slog.Logger
+	live     *liveJobs
 
 	// jitter yields a value in [0,1) for the backoff spread. Injected so
 	// a test is deterministic; production uses math/rand/v2 (goroutine-
@@ -61,7 +62,7 @@ func (e *Engine) IsPaused() bool {
 
 // NewEngine builds a worker pool. Any zero field of cfg is filled from
 // DefaultConfig.
-func NewEngine(store *Store, registry *Registry, clock Clock, ids domain.IDGenerator, logger *slog.Logger, cfg Config) *Engine {
+func NewEngine(store *Store, registry *Registry, clock Clock, ids domain.IDGenerator, logger *slog.Logger, cfg Config, live *liveJobs) *Engine {
 	if logger == nil {
 		logger = slog.New(slog.DiscardHandler)
 	}
@@ -72,6 +73,7 @@ func NewEngine(store *Store, registry *Registry, clock Clock, ids domain.IDGener
 		ids:      ids,
 		cfg:      cfg.withDefaults(),
 		logger:   logger,
+		live:     live,
 		jitter:   rand.Float64,
 	}
 }
@@ -207,6 +209,11 @@ func (e *Engine) execute(parentCtx context.Context, job *Job) {
 	jobCtx, cancelJob := context.WithCancel(parentCtx)
 	defer cancelJob()
 
+	// Register this handler's cancel so an admin cancel aborts it at
+	// once rather than at the next heartbeat tick (audit 0016 #299).
+	e.live.add(job.ID, cancelJob)
+	defer e.live.remove(job.ID)
+
 	var leaseLost atomic.Bool
 	hbStopped := make(chan struct{})
 	var hbWG sync.WaitGroup
@@ -237,6 +244,13 @@ func (e *Engine) execute(parentCtx context.Context, job *Job) {
 	if parentCtx.Err() != nil {
 		// Shutdown cancelled the handler. Leave the row `running` for
 		// the reaper — do not record a synthetic failure (FR-10).
+		return
+	}
+	if jobCtx.Err() != nil {
+		// The per-job context was cancelled while the process kept
+		// running: an admin cancel already wrote dead_letter (audit 0016
+		// #299), or the lease was reclaimed. The terminal row state is
+		// owned elsewhere — don't write a synthetic failure over it.
 		return
 	}
 
