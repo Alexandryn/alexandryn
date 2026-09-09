@@ -99,7 +99,7 @@ export function useImportCandidates(options: UseImportCandidatesOptions = {}) {
       refetchInterval === true
         ? (query) =>
             importPollInterval(
-              query.state.data?.candidates.length ?? 0,
+              query.state.data?.candidates?.length ?? 0,
               typeof document !== 'undefined' && document.visibilityState === 'hidden',
             )
         : refetchInterval,
