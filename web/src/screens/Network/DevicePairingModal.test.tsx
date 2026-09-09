@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../mocks/node'
+import { mockMatchMedia } from '../../test/matchMedia'
 import { DevicePairingModal } from './DevicePairingModal'
 
 function renderWithProviders(ui: ReactNode) {
@@ -137,5 +138,41 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     renderWithProviders(<DevicePairingModal open={true} onOpenChange={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('This code expired')).toBeInTheDocument())
     expect(screen.getByText('Generate a new code')).toBeInTheDocument()
+  })
+
+  // audit 0016 #140: prefers-reduced-motion must only suppress visual
+  // transitions, never the functional expiry countdown and its
+  // screen-reader announcements.
+  it('runs the countdown and announces expiry under prefers-reduced-motion', async () => {
+    const media = mockMatchMedia(true) // (prefers-reduced-motion: reduce)
+    try {
+      server.use(
+        http.post('*/api/v1/network/pair/initiate', () =>
+          HttpResponse.json(
+            {
+              pairingId: 'rm-1',
+              code: 'RMOT-CODE',
+              payload: 'http://localhost/connect?c=RMOT-CODE',
+              address: 'localhost',
+              expiresAt: new Date(Date.now() - 1000).toISOString(),
+            },
+            { status: 201 },
+          ),
+        ),
+      )
+
+      renderWithProviders(<DevicePairingModal open={true} onOpenChange={vi.fn()} />)
+
+      // The countdown still runs to zero (visible "expired" state) and the
+      // polite live region carries the announcement for screen readers.
+      await waitFor(() =>
+        expect(document.querySelector('div.sr-only[aria-live="polite"]')).toHaveTextContent(
+          'This code expired',
+        ),
+      )
+      expect(screen.getAllByText('This code expired').length).toBeGreaterThan(0)
+    } finally {
+      media.restore()
+    }
   })
 })

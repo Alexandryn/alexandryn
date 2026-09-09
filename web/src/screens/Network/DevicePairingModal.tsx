@@ -9,7 +9,6 @@ import {
 } from '../../data/network'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { useMediaQuery } from '../../lib/useMediaQuery'
 
 export interface DevicePairingModalProps {
   open: boolean
@@ -33,7 +32,6 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
 
   const secretInputId = useId()
   const deleteMutation = useDeletePairing()
-  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const startInitiation = useCallback(
     async (secret?: string) => {
@@ -83,7 +81,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
 
   // Live countdown timer
   useEffect(() => {
-    if (!open || !session || prefersReducedMotion) return
+    if (!open || !session) return
 
     const expiry = new Date(session.expiresAt).getTime()
     const updateCountdown = () => {
@@ -105,7 +103,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
     updateCountdown()
     const timer = setInterval(updateCountdown, 1000)
     return () => clearInterval(timer)
-  }, [open, session, prefersReducedMotion])
+  }, [open, session])
 
   // QR code SVG matrix path. The `qrcode` library (~52 KB) is loaded on
   // demand — only when the pairing modal actually has a payload to render
