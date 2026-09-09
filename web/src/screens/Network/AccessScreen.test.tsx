@@ -147,4 +147,45 @@ describe('AccessScreen (Phase 13 T5.6)', () => {
     expect(logoutCalled).toBe(true)
     expect(localStorage.getItem('alexandryn_user')).toBeNull()
   })
+
+  // audit 0016 #154: the accessible-libraries list comes from the
+  // server-scoped GET /api/v1/libraries response, not from parsing the
+  // access token. A stored token with an empty (or absent) libraries
+  // claim must not hide libraries the server returned.
+  it('lists every library the server returns without re-filtering by token', async () => {
+    localStorage.setItem(
+      'alexandryn_access_token',
+      // header.payload.signature — payload = {"libraries":[],"role":"reader"}
+      'aaa.eyJsaWJyYXJpZXMiOltdLCJyb2xlIjoicmVhZGVyIn0.bbb',
+    )
+    server.use(
+      http.get('*/api/v1/libraries', () =>
+        HttpResponse.json({
+          libraries: [
+            {
+              id: 'lib-a',
+              name: 'History Shelf',
+              description: '',
+              allowReaderUploads: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            {
+              id: 'lib-b',
+              name: 'Poetry Shelf',
+              description: '',
+              allowReaderUploads: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderAccessScreen()
+
+    expect(await screen.findByText('History Shelf')).toBeInTheDocument()
+    expect(screen.getByText('Poetry Shelf')).toBeInTheDocument()
+  })
 })
