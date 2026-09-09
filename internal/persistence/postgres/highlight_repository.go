@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -49,12 +50,15 @@ func (r *HighlightRepository) FindByID(ctx context.Context, id domain.HighlightI
 func (r *HighlightRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) (*domain.Highlight, error) {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"id = $1"}
+	args := []any{string(id)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+
 	var editionID, startPosition, endPosition, note, category string
 	var createdAt time.Time
 	err := exec.QueryRow(ctx,
-		`SELECT edition_id, start_position, end_position, note, category, created_at FROM highlights
-			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
-		string(id), string(userID),
+		`SELECT edition_id, start_position, end_position, note, category, created_at FROM highlights WHERE `+strings.Join(clauses, " AND "),
+		args...,
 	).Scan(&editionID, &startPosition, &endPosition, &note, &category, &createdAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -72,11 +76,16 @@ func (r *HighlightRepository) FindByEdition(ctx context.Context, editionID domai
 func (r *HighlightRepository) FindByEditionAndUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, editionID domain.EditionID) ([]*domain.Highlight, error) {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"edition_id = $1"}
+	args := []any{string(editionID)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+	clauses, args = appendOwnerScope(clauses, args, "library_id", string(libraryID))
+
 	query := `SELECT id, start_position, end_position, note, category, created_at
 		FROM highlights
-		WHERE edition_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '') AND COALESCE(library_id, '') = COALESCE($3, '')
+		WHERE ` + strings.Join(clauses, " AND ") + `
 		ORDER BY created_at, id`
-	rows, err := exec.Query(ctx, query, string(editionID), string(userID), string(libraryID))
+	rows, err := exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -137,10 +146,13 @@ func (r *HighlightRepository) SaveForUser(ctx context.Context, userID domain.Use
 func (r *HighlightRepository) UpdateNoteCategoryAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID, note, category string) error {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"id = $1"}
+	args := []any{string(id), note, category}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+
 	tag, err := exec.Exec(ctx,
-		`UPDATE highlights SET note = $3, category = $4
-			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
-		string(id), string(userID), note, category)
+		`UPDATE highlights SET note = $2, category = $3 WHERE `+strings.Join(clauses, " AND "),
+		args...)
 	if err != nil {
 		return TranslateError(err)
 	}
@@ -163,9 +175,13 @@ func (r *HighlightRepository) Delete(ctx context.Context, id domain.HighlightID)
 func (r *HighlightRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) error {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"id = $1"}
+	args := []any{string(id)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+
 	tag, err := exec.Exec(ctx,
-		`DELETE FROM highlights WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
-		string(id), string(userID))
+		`DELETE FROM highlights WHERE `+strings.Join(clauses, " AND "),
+		args...)
 	if err != nil {
 		return TranslateError(err)
 	}

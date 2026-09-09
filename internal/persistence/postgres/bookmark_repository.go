@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -50,12 +51,15 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 func (r *BookmarkRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) (*domain.Bookmark, error) {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"id = $1"}
+	args := []any{string(id)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+
 	var editionID, position, label string
 	var createdAt time.Time
 	err := exec.QueryRow(ctx,
-		`SELECT edition_id, position, label, created_at FROM bookmarks
-			WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
-		string(id), string(userID),
+		`SELECT edition_id, position, label, created_at FROM bookmarks WHERE `+strings.Join(clauses, " AND "),
+		args...,
 	).Scan(&editionID, &position, &label, &createdAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -73,11 +77,16 @@ func (r *BookmarkRepository) FindByEdition(ctx context.Context, editionID domain
 func (r *BookmarkRepository) FindByEditionAndUser(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, editionID domain.EditionID) ([]*domain.Bookmark, error) {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"edition_id = $1"}
+	args := []any{string(editionID)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+	clauses, args = appendOwnerScope(clauses, args, "library_id", string(libraryID))
+
 	query := `SELECT id, position, label, created_at
 		FROM bookmarks
-		WHERE edition_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '') AND COALESCE(library_id, '') = COALESCE($3, '')
+		WHERE ` + strings.Join(clauses, " AND ") + `
 		ORDER BY created_at, id`
-	rows, err := exec.Query(ctx, query, string(editionID), string(userID), string(libraryID))
+	rows, err := exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, TranslateError(err)
 	}
@@ -144,9 +153,13 @@ func (r *BookmarkRepository) Delete(ctx context.Context, id domain.BookmarkID) e
 func (r *BookmarkRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) error {
 	exec := executorFrom(ctx, r.pool)
 
+	clauses := []string{"id = $1"}
+	args := []any{string(id)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+
 	tag, err := exec.Exec(ctx,
-		`DELETE FROM bookmarks WHERE id = $1 AND COALESCE(user_id, '') = COALESCE($2, '')`,
-		string(id), string(userID))
+		`DELETE FROM bookmarks WHERE `+strings.Join(clauses, " AND "),
+		args...)
 	if err != nil {
 		return TranslateError(err)
 	}

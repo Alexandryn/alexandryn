@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -58,11 +59,16 @@ func (r *ReadingProgressRepository) findByWork(ctx context.Context, userID domai
 	var deviceID string
 	var observedAt time.Time
 
+	clauses := []string{"work_id = $1"}
+	args := []any{string(workID)}
+	clauses, args = appendOwnerScope(clauses, args, "user_id", string(userID))
+	clauses, args = appendOwnerScope(clauses, args, "library_id", string(libraryID))
+
 	query := `SELECT id, percentage, epoch, precise_position_edition_id, precise_position_value, device_id, observed_at
 		FROM reading_progress
-		WHERE work_id = $1 AND COALESCE(user_id, '') = COALESCE($2, '') AND COALESCE(library_id, '') = COALESCE($3, '')` + lock
+		WHERE ` + strings.Join(clauses, " AND ") + lock
 
-	err := exec.QueryRow(ctx, query, string(workID), string(userID), string(libraryID)).
+	err := exec.QueryRow(ctx, query, args...).
 		Scan(&id, &percentage, &epoch, &precisePositionEditionID, &precisePositionValue, &deviceID, &observedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

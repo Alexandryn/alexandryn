@@ -40,7 +40,11 @@ func readingDeps(poolRef *PoolRef, w http.ResponseWriter, correlationID string) 
 // missing user is a 401.
 func readingScope(r *http.Request, w http.ResponseWriter, correlationID string) (domain.UserID, domain.LibraryID, bool) {
 	user := UserFromContext(r.Context())
-	if user == nil {
+	// A nil or id-less user must never reach a scoped repository method: an
+	// empty user id in the predicate would match every row with a NULL
+	// owner (#118). ActiveLibraryFromContext already resolves to a
+	// concrete library id for every authenticated request.
+	if user == nil || user.UserID == "" {
 		WriteError(w, domain.Unauthorized, "authentication is required", correlationID)
 		return "", "", false
 	}
