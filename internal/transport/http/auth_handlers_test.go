@@ -413,3 +413,45 @@ func TestAuthLoginAndRefresh(t *testing.T) {
 		}
 	})
 }
+
+// audit 0016 #107: TOTPSetupHandler must require the account password —
+// an access token alone must not be able to overwrite a user's MFA
+// enrolment with an attacker-chosen secret.
+func TestTOTPSetupHandler_RequiresPassword(t *testing.T) {
+	creds := newMemCredentials()
+	mfaRepo := newMemMFA()
+	hasher := auth.NewArgon2idPasswordHasher(auth.FastArgon2idParamsForTesting())
+	totpEngine := auth.NewTOTPEngine("Alexandryn")
+	masterKey := bytes.Repeat([]byte("k"), 32)
+
+	pwdHash, _ := hasher.HashPassword("CorrectPassword123!")
+	cred, _ := domain.NewUserCredentials("u-1", pwdHash, time.Now())
+	_ = creds.Save(context.Background(), cred)
+
+	h := transporthttp.TOTPSetupHandler(mfaRepo, creds, hasher, totpEngine, masterKey)
+	call := func(body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "/api/v1/auth/mfa/totp/setup", bytes.NewReader([]byte(body)))
+		ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: "u-1", Username: "testuser"})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req.WithContext(ctx))
+		return rec
+	}
+
+	if rec := call(`{}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing password: status %d, want 400", rec.Code)
+	}
+	if rec := call(`{"password":"wrong-password"}`); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong password: status %d, want 401", rec.Code)
+	}
+	if _, saved := mfaRepo.byUser["u-1"]; saved {
+		t.Fatal("MFA settings were written despite a failed password check")
+	}
+
+	rec := call(`{"password":"CorrectPassword123!"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("correct password: status %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	if _, saved := mfaRepo.byUser["u-1"]; !saved {
+		t.Fatal("MFA settings not saved after a successful, password-verified setup")
+	}
+}

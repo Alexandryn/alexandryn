@@ -607,13 +607,34 @@ func PasswordResetConfirmHandler(
 	})
 }
 
-// TOTPSetupHandler starts 2FA enrollment (ADR 0027).
-func TOTPSetupHandler(mfaRepo domain.MFARepository, totpEngine *auth.TOTPEngine, masterKey []byte) http.Handler {
+// TOTPSetupHandler starts 2FA enrollment (ADR 0027). Generating a fresh
+// secret overwrites any existing enrolment, so it is a step-up action:
+// the account password is required even though the access token already
+// authenticates the request (audit 0016 #107).
+func TOTPSetupHandler(mfaRepo domain.MFARepository, credRepo domain.CredentialRepository, hasher auth.PasswordHasher, totpEngine *auth.TOTPEngine, masterKey []byte) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 		user := UserFromContext(r.Context())
 		if user == nil {
 			WriteError(w, domain.Unauthorized, "unauthorized", corrID)
+			return
+		}
+
+		var req struct {
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Password == "" {
+			WriteError(w, domain.InvalidInput, "password is required to change 2FA settings", corrID)
+			return
+		}
+		creds, err := credRepo.FindByUserID(r.Context(), user.UserID)
+		if err != nil {
+			WriteError(w, domain.Unauthorized, "credentials not found", corrID)
+			return
+		}
+		match, err := hasher.VerifyPassword(req.Password, creds.PasswordHash())
+		if err != nil || !match {
+			WriteError(w, domain.Unauthorized, "invalid password", corrID)
 			return
 		}
 
