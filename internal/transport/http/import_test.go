@@ -17,6 +17,10 @@ import (
 
 type fakeImportCandidateRepo struct {
 	candidates map[string]postgres.ImportCandidateRecord
+	// candidateLibrary optionally records which library each candidate
+	// belongs to; GetInLibrary/ListInLibrary honour it when set.
+	candidateLibrary map[string]domain.LibraryID
+	gotLibraryID     domain.LibraryID
 }
 
 func (r *fakeImportCandidateRepo) Create(ctx context.Context, rec postgres.ImportCandidateRecord) error {
@@ -30,6 +34,31 @@ func (r *fakeImportCandidateRepo) Get(ctx context.Context, id string) (postgres.
 		return postgres.ImportCandidateRecord{}, &domain.Error{Category: domain.NotFound, Message: "candidate not found"}
 	}
 	return c, nil
+}
+
+func (r *fakeImportCandidateRepo) GetInLibrary(ctx context.Context, libraryID domain.LibraryID, id string) (postgres.ImportCandidateRecord, error) {
+	r.gotLibraryID = libraryID
+	if r.candidateLibrary != nil {
+		if lib, ok := r.candidateLibrary[id]; ok && lib != libraryID {
+			return postgres.ImportCandidateRecord{}, &domain.Error{Category: domain.NotFound, Message: "import candidate not found"}
+		}
+	}
+	return r.Get(ctx, id)
+}
+
+func (r *fakeImportCandidateRepo) ListInLibrary(ctx context.Context, libraryID domain.LibraryID, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
+	r.gotLibraryID = libraryID
+	all, err := r.List(ctx, sourceID, status)
+	if err != nil || r.candidateLibrary == nil {
+		return all, err
+	}
+	var out []postgres.ImportCandidateRecord
+	for _, c := range all {
+		if r.candidateLibrary[c.ID] == libraryID {
+			out = append(out, c)
+		}
+	}
+	return out, nil
 }
 
 func (r *fakeImportCandidateRepo) List(ctx context.Context, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
@@ -207,4 +236,69 @@ func TestImportRejectHandler(t *testing.T) {
 	if c.Status != postgres.ImportCandidateStatusRejected {
 		t.Fatalf("status = %q, want rejected", c.Status)
 	}
+}
+
+// #104: the candidate list, confirm, and reject handlers must scope to
+// the request's active library. A candidate whose source is in another
+// library must be a 404 on confirm/reject and absent from the list.
+func TestImportHandlers_ScopeToActiveLibrary(t *testing.T) {
+	const libA = domain.LibraryID("lib-a")
+	const libB = domain.LibraryID("lib-b")
+	ref, _ := domain.NewFileReference("ref-1", "epub", nil)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	newRepo := func() *fakeImportCandidateRepo {
+		return &fakeImportCandidateRepo{
+			candidates: map[string]postgres.ImportCandidateRecord{
+				"cand-a": {ID: "cand-a", SourceID: "src-a", FileReference: ref, Status: postgres.ImportCandidateStatusPending, CreatedAt: now, UpdatedAt: now},
+			},
+			candidateLibrary: map[string]domain.LibraryID{"cand-a": libA},
+		}
+	}
+	withLib := func(r *http.Request, lib domain.LibraryID) *http.Request {
+		return r.WithContext(transporthttp.WithActiveLibrary(r.Context(), lib))
+	}
+
+	t.Run("list hides another library's candidate", func(t *testing.T) {
+		repo := newRepo()
+		h := transporthttp.ImportCandidatesListHandler(repo)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(httptest.NewRequest(http.MethodGet, "/api/v1/import/candidates", nil), libB))
+		var res struct {
+			Candidates []transporthttp.ImportCandidateWireDTO `json:"candidates"`
+		}
+		_ = json.Unmarshal(w.Body.Bytes(), &res)
+		if len(res.Candidates) != 0 {
+			t.Fatalf("library B saw %d candidates, want 0", len(res.Candidates))
+		}
+	})
+
+	t.Run("reject from another library is 404", func(t *testing.T) {
+		repo := newRepo()
+		svc := importer.NewService(nil, nil, nil, nil, nil, repo, nil, nil, nil)
+		h := transporthttp.ImportCandidateRejectHandler(svc, repo)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/import/candidates/cand-a/reject", nil)
+		req.SetPathValue("id", "cand-a")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libB))
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404; body %s", w.Code, w.Body.String())
+		}
+		if repo.candidates["cand-a"].Status != postgres.ImportCandidateStatusPending {
+			t.Fatalf("candidate status changed to %q despite cross-library reject", repo.candidates["cand-a"].Status)
+		}
+	})
+
+	t.Run("confirm from another library is 404", func(t *testing.T) {
+		repo := newRepo()
+		svc := importer.NewService(nil, nil, nil, nil, nil, repo, nil, nil, nil)
+		h := transporthttp.ImportCandidateConfirmHandler(svc, repo, nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/import/candidates/cand-a/confirm", bytes.NewReader([]byte(`{"action":"create_new"}`)))
+		req.SetPathValue("id", "cand-a")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libB))
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404; body %s", w.Code, w.Body.String())
+		}
+	})
 }

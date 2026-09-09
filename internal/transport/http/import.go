@@ -42,9 +42,11 @@ type DiscoveryRunner interface {
 }
 
 // ImportCandidateLister abstracts candidate retrieval for HTTP handlers.
+// Both methods are scoped to the request's active library: a candidate
+// whose source belongs to another library is NotFound (#104).
 type ImportCandidateLister interface {
-	Get(ctx context.Context, id string) (postgres.ImportCandidateRecord, error)
-	List(ctx context.Context, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error)
+	GetInLibrary(ctx context.Context, libraryID domain.LibraryID, id string) (postgres.ImportCandidateRecord, error)
+	ListInLibrary(ctx context.Context, libraryID domain.LibraryID, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error)
 }
 
 func toCandidateWireDTO(rec postgres.ImportCandidateRecord) ImportCandidateWireDTO {
@@ -141,7 +143,7 @@ func ImportCandidatesListHandler(repo ImportCandidateLister) http.Handler {
 			statusPtr = &st
 		}
 
-		list, err := repo.List(r.Context(), sourceIDPtr, statusPtr)
+		list, err := repo.ListInLibrary(r.Context(), ActiveLibraryFromContext(r.Context()), sourceIDPtr, statusPtr)
 		if err != nil {
 			writeDomainError(w, err, id)
 			return
@@ -196,6 +198,15 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			return
 		}
 
+		// Confirm the candidate belongs to the active library before any
+		// state change — the importer service methods below are keyed by
+		// candidate id alone (#104).
+		activeLib := ActiveLibraryFromContext(r.Context())
+		if _, err := repo.GetInLibrary(r.Context(), activeLib, candidateID); err != nil {
+			writeDomainError(w, err, id)
+			return
+		}
+
 		var body ImportConfirmRequestBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, domain.InvalidInput, "malformed request body", id)
@@ -222,7 +233,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			}
 			workKey := strings.TrimSpace(*body.OpenLibraryWorkKey)
 
-			cand, err := repo.Get(r.Context(), candidateID)
+			cand, err := repo.GetInLibrary(r.Context(), activeLib, candidateID)
 			if err != nil {
 				writeDomainError(w, err, id)
 				return
@@ -247,7 +258,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			}
 
 		case "create_new":
-			cand, err := repo.Get(r.Context(), candidateID)
+			cand, err := repo.GetInLibrary(r.Context(), activeLib, candidateID)
 			if err != nil {
 				writeDomainError(w, err, id)
 				return
@@ -290,7 +301,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 			return
 		}
 
-		updated, err := repo.Get(r.Context(), candidateID)
+		updated, err := repo.GetInLibrary(r.Context(), activeLib, candidateID)
 		if err != nil {
 			writeDomainError(w, err, id)
 			return
@@ -312,13 +323,21 @@ func ImportCandidateRejectHandler(svc ImporterService, repo ImportCandidateListe
 			return
 		}
 
+		// Confirm the candidate belongs to the active library before
+		// rejecting it — svc.Reject is keyed by candidate id alone (#104).
+		activeLib := ActiveLibraryFromContext(r.Context())
+		if _, err := repo.GetInLibrary(r.Context(), activeLib, candidateID); err != nil {
+			writeDomainError(w, err, id)
+			return
+		}
+
 		now := time.Now().UTC()
 		if err := svc.Reject(r.Context(), candidateID, now); err != nil {
 			writeDomainError(w, err, id)
 			return
 		}
 
-		updated, err := repo.Get(r.Context(), candidateID)
+		updated, err := repo.GetInLibrary(r.Context(), activeLib, candidateID)
 		if err != nil {
 			writeDomainError(w, err, id)
 			return

@@ -76,20 +76,20 @@ func (l *LazyImportCandidateRepository) get() (*postgres.ImportCandidateReposito
 	return repo, nil
 }
 
-func (l *LazyImportCandidateRepository) Get(ctx context.Context, id string) (postgres.ImportCandidateRecord, error) {
+func (l *LazyImportCandidateRepository) GetInLibrary(ctx context.Context, libraryID domain.LibraryID, id string) (postgres.ImportCandidateRecord, error) {
 	repo, err := l.get()
 	if err != nil {
 		return postgres.ImportCandidateRecord{}, err
 	}
-	return repo.Get(ctx, id)
+	return repo.GetInLibrary(ctx, libraryID, id)
 }
 
-func (l *LazyImportCandidateRepository) List(ctx context.Context, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
+func (l *LazyImportCandidateRepository) ListInLibrary(ctx context.Context, libraryID domain.LibraryID, sourceID *string, status *string) ([]postgres.ImportCandidateRecord, error) {
 	repo, err := l.get()
 	if err != nil {
 		return nil, err
 	}
-	return repo.List(ctx, sourceID, status)
+	return repo.ListInLibrary(ctx, libraryID, sourceID, status)
 }
 
 // LazyDiscoveryRunner delegates discovery runs to the DiscoveryCoordinator on PoolRef.
