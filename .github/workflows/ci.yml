@@ -116,6 +116,12 @@ jobs:
       - name: Bundle-size check
         run: npm run check:bundle-size
 
+      # audit 0016 #164: no @radix-ui/* package split across versions —
+      # they share internal helpers, so a split doubles that code in the
+      # bundle.
+      - name: Radix version-dedup check
+        run: npm run check:radix-dedup
+
       - name: Production-bundle secrets check
         run: npm run check:dist-secrets
 
