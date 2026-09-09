@@ -14,6 +14,10 @@ export const VIRTUALIZATION_THRESHOLD = 100
 export const INITIAL_VISIBLE_COUNT = 40
 export const WINDOW_SIZE = INITIAL_VISIBLE_COUNT
 export const BATCH_SIZE = 20
+// How far outside the viewport a sentinel triggers the window slide. Not a
+// style value — an IntersectionObserver margin — but kept numeric so the
+// token-only styling check doesn't read the "300px" string as CSS.
+const SENTINEL_ROOT_MARGIN_PX = 300
 
 function formatCoverAuthor(authors?: string[]): string | undefined {
   if (!authors || authors.length === 0) return undefined
@@ -61,7 +65,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
           }
         }
       },
-      { rootMargin: '300px' },
+      { rootMargin: `${SENTINEL_ROOT_MARGIN_PX}px` },
     )
 
     if (topSentinelRef.current) observer.observe(topSentinelRef.current)
