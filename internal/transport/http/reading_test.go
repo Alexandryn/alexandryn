@@ -835,4 +835,3 @@ func TestReadingAnnotationAndPrefs_RevokedDeviceRejected(t *testing.T) {
 		t.Fatalf("expected 401 device revoked on preferences put, got %d: %s", rr.Code, rr.Body.String())
 	}
 }
-

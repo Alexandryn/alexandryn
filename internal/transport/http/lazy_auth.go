@@ -274,4 +274,3 @@ func LazyRequireIngestPermission(ref *PoolRef) Middleware {
 		})
 	}
 }
-

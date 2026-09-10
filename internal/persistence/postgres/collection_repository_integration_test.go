@@ -176,7 +176,6 @@ func TestCollectionRepository_FindDetail(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO editions (id, work_id, language, publisher) VALUES ('e1', 'w1', 'en', 'Chilton')")
 	mustExecPool(t, pool, "INSERT INTO library_entries (id, edition_id, added_at) VALUES ('le1', 'e1', '2026-01-01T00:00:00Z')")
 
-
 	c, _ := domain.NewCollection("c1", "Sci-Fi Favorites")
 	addedAt := time.Date(2026, 2, 15, 12, 0, 0, 0, time.UTC)
 	c.AddMember("w1", addedAt)
@@ -311,7 +310,6 @@ func TestCollectionRepository_Rename(t *testing.T) {
 		t.Fatalf("Rename nonexistent category = %v, want NotFound", domain.CategoryOf(err))
 	}
 }
-
 
 // TestCollectionRepository_LibraryScopeIsStrict is the #87 close-gate: a
 // collection created in library A is invisible and immutable to every

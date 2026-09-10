@@ -14,6 +14,13 @@ on:
 permissions:
   contents: read
 
+# Cancel stale runs on the same PR or branch to free runner capacity
+# (audit 0016 #200). `cancel-in-progress` only applies to PR runs —
+# a push to `main` is always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # backend-test-harness.md FR-8 fixes nine ordered stages for this
 # workflow. All nine are real as of this workflow (phase 04): stage 1
 # (web/ build, ADR 0008) runs in its own frontend job below; stage 6 is
@@ -37,6 +44,7 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     defaults:
@@ -129,7 +137,8 @@ jobs:
         run: npm run check:dist-msw
 
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        # audit 0016 #207: catch moderate advisories, not just high.
+        run: npm audit --audit-level=moderate
 
       # @playwright/test suites — a real CI dependency (D3,
       # tasks/plan-p04-tier3/-tier4), not the Playwright MCP (which is
@@ -168,6 +177,7 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     needs: frontend
@@ -175,7 +185,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_PASSWORD: postgres
+          # audit 0016 #259: use a non-trivial password. This credential
+          # is only reachable within the job's ephemeral network — it is
+          # not a deployed secret — but a non-trivial password is
+          # defence-in-depth against accidental exposure and consistent
+          # with the principle of not normalising weak credentials in CI.
+          POSTGRES_PASSWORD: ci-test-pg-alexandryn-s3cret
           POSTGRES_DB: alexandryn_test
         ports:
           - 5432:5432
@@ -229,6 +244,15 @@ jobs:
       # (architecture-backend.md FR-3, FR-7; ADR 0018).
       - name: Vet
         run: go vet ./...
+
+      # audit 0016 #304: gofmt drift was not caught by golangci-lint v2
+      # (formatters are off by default). A dedicated guard script fills
+      # the gap and self-tests before it runs on the tree.
+      - name: Formatter self-test
+        run: CHECK_GOFMT_SELF_TEST=1 bash scripts/check-gofmt.sh
+
+      - name: Formatter check
+        run: bash scripts/check-gofmt.sh .
 
       - name: Import-boundary check self-test
         run: bash scripts/check-import-boundaries_test.sh
@@ -292,7 +316,7 @@ jobs:
       # confirmed for real during T24's R3).
       - name: Integration tests
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/alexandryn_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://postgres:ci-test-pg-alexandryn-s3cret@localhost:5432/alexandryn_test?sslmode=disable
         run: go test -race -tags=integration ./...
 
       # Stage 6 — contract test, named no-op (D3, tasks/plan.md).
@@ -371,6 +395,7 @@ jobs:
   desktop:
     name: Desktop
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     needs: [frontend, backend]

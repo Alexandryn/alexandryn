@@ -78,4 +78,3 @@ func (r *ReadingPreferencesRepository) SaveForUser(ctx context.Context, userID d
 	}
 	return nil
 }
-

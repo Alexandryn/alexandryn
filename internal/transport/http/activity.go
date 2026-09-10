@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -69,22 +68,25 @@ func ActivityEventsHandler(eventStore *observability.EventStore) http.Handler {
 			events = []observability.SystemEvent{}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(activityEventsResponse{Events: events})
+		writeJSON(w, http.StatusOK, activityEventsResponse{Events: events}, corrID)
 	})
 }
 
 // ActivityPauseAllHandler handles POST /api/v1/activity/pause-all (FR-12).
+// Job control is host-level: it is guarded by the global RoleAdmin (audit
+// 0016 #178) — a deliberate design choice for this single-operator server.
+// Pausing the job system suspends ingestion for the entire host; this is
+// appropriate for operator-level maintenance, not a per-library action.
+// The route is protected by RequireRole(domain.RoleAdmin) in main.go.
 func ActivityPauseAllHandler(sys *jobs.System) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		corrID := CorrelationIDFromContext(ctx)
 		if sys != nil {
 			sys.Pause()
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(activityPauseAllResponse{Paused: true})
+		writeJSON(w, http.StatusOK, activityPauseAllResponse{Paused: true}, corrID)
 	})
 }
 
@@ -116,9 +118,7 @@ func ActivityJobCancelHandler(queue *jobs.Queue) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(activityJobCancelResponse{Cancelled: true})
+		writeJSON(w, http.StatusOK, activityJobCancelResponse{Cancelled: true}, corrID)
 	})
 }
 
@@ -150,9 +150,7 @@ func ActivityJobRetryHandler(queue *jobs.Queue) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(activityJobRetryResponse{NewJobID: string(newID)})
+		writeJSON(w, http.StatusOK, activityJobRetryResponse{NewJobID: string(newID)}, corrID)
 	})
 }
 
@@ -182,8 +180,6 @@ func ActivityClearCompletedHandler(queue *jobs.Queue, clock func() time.Time) ht
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(activityClearCompletedResponse{ClearedCount: cleared})
+		writeJSON(w, http.StatusOK, activityClearCompletedResponse{ClearedCount: cleared}, corrID)
 	})
 }

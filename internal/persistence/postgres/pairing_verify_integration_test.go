@@ -298,4 +298,3 @@ func TestPairingVerifier_LabelFallbackAndValidation(t *testing.T) {
 		t.Fatalf("expected InvalidInput for label > 100 runes, got: %v", err)
 	}
 }
-

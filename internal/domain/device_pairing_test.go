@@ -465,11 +465,10 @@ func TestPairedDevice_AdvanceCursor(t *testing.T) {
 	if err := dev.Revoke(syncTime.Add(2 * time.Minute)); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
-	if err := dev.AdvanceCursor(20, syncTime.Add(3 * time.Minute)); err == nil {
+	if err := dev.AdvanceCursor(20, syncTime.Add(3*time.Minute)); err == nil {
 		t.Fatal("expected error advancing cursor on revoked device, got nil")
 	}
 	if dev.SyncCursor() != 10 {
 		t.Fatalf("expected SyncCursor unchanged after failed advance on revoked device, got %d", dev.SyncCursor())
 	}
 }
-

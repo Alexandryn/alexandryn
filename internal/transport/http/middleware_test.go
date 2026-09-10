@@ -431,4 +431,3 @@ func TestMetrics_LabelsByRegisteredPatternNotRawPath(t *testing.T) {
 		t.Fatalf("recorded %d distinct route labels, want 2 (bounded)", len(snap.Latencies))
 	}
 }
-

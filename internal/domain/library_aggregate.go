@@ -40,12 +40,12 @@ func NewLibrary(id LibraryID, name, description string, allowReaderUploads bool,
 	}, nil
 }
 
-func (l *Library) ID() LibraryID                 { return l.id }
-func (l *Library) Name() string                  { return l.name }
-func (l *Library) Description() string           { return l.description }
-func (l *Library) AllowReaderUploads() bool      { return l.allowReaderUploads }
-func (l *Library) CreatedAt() time.Time          { return l.createdAt }
-func (l *Library) UpdatedAt() time.Time          { return l.updatedAt }
+func (l *Library) ID() LibraryID            { return l.id }
+func (l *Library) Name() string             { return l.name }
+func (l *Library) Description() string      { return l.description }
+func (l *Library) AllowReaderUploads() bool { return l.allowReaderUploads }
+func (l *Library) CreatedAt() time.Time     { return l.createdAt }
+func (l *Library) UpdatedAt() time.Time     { return l.updatedAt }
 
 func (l *Library) Rename(newName string, now time.Time) error {
 	newName = strings.TrimSpace(newName)

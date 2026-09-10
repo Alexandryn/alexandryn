@@ -27,7 +27,6 @@ import (
 	"time"
 )
 
-
 // isIgnorableSyncErr checks if a sync error is due to stdout being connected to a pipe or pseudo-device
 // where fsync is not supported by the OS kernel (returns EINVAL or ENOTSUP).
 func isIgnorableSyncErr(err error) bool {
@@ -129,7 +128,6 @@ func main() {
 </body>
 </html>`))
 	})
-
 
 	srv := &http.Server{
 

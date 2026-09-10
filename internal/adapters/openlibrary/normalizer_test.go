@@ -293,4 +293,3 @@ func TestExtractAuthorKeys(t *testing.T) {
 		t.Errorf("expected [OL1A, OL2A], got %v", keys)
 	}
 }
-

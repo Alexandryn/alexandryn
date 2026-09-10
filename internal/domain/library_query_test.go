@@ -55,7 +55,7 @@ func TestCursor_MalformedCursorRejection(t *testing.T) {
 	malformed := []string{
 		"not-base64-!@#$",
 		"",
-		"YWJj",          // "abc" without separator
+		"YWJj",             // "abc" without separator
 		"YWJjOmRlZjpoaQ==", // too many parts
 	}
 

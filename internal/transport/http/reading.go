@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -132,10 +133,20 @@ func assertDeviceActive(deps ReadingAPI, r *http.Request, w http.ResponseWriter,
 	return true
 }
 
-func writeJSON(w http.ResponseWriter, status int, body any) {
+// writeJSON marshals body to a buffer before touching the response, so a
+// marshal failure produces a clean 500 (logged with the correlation ID)
+// rather than a 200 with a truncated body (audit 0016 #185).
+func writeJSON(w http.ResponseWriter, status int, body any, correlationID string) {
+	raw, err := json.Marshal(body)
+	if err != nil {
+		slog.Error("response body failed to marshal",
+			"correlation_id", correlationID, "error", err.Error())
+		WriteError(w, domain.Internal, "unexpected error", correlationID)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	_, _ = w.Write(raw)
 }
 
 // writeJSONCapped marshals body and refuses to write a response over
@@ -212,13 +223,13 @@ func ReadingProgressGetHandler(poolRef *PoolRef) http.Handler {
 		p, err := deps.Progress.FindByWorkAndUser(r.Context(), userID, libID, domain.WorkID(workID))
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
-				writeJSON(w, http.StatusOK, map[string]any{"progress": nil})
+				writeJSON(w, http.StatusOK, map[string]any{"progress": nil}, correlationID)
 				return
 			}
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"progress": progressToWire(p)})
+		writeJSON(w, http.StatusOK, map[string]any{"progress": progressToWire(p)}, correlationID)
 	})
 }
 
@@ -303,7 +314,7 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 		writeJSON(w, http.StatusOK, map[string]any{
 			"progress": progressToWire(result),
 			"outcome":  string(outcome),
-		})
+		}, correlationID)
 	})
 }
 
@@ -368,7 +379,7 @@ func ReadingBookmarksListHandler(poolRef *PoolRef) http.Handler {
 		for _, b := range list {
 			out = append(out, bookmarkToWire(b))
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"bookmarks": out})
+		writeJSON(w, http.StatusOK, map[string]any{"bookmarks": out}, correlationID)
 	})
 }
 
@@ -424,7 +435,7 @@ func ReadingBookmarkCreateHandler(poolRef *PoolRef, now func() time.Time) http.H
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"bookmark": bookmarkToWire(b)})
+		writeJSON(w, http.StatusCreated, map[string]any{"bookmark": bookmarkToWire(b)}, correlationID)
 	})
 }
 
@@ -494,7 +505,7 @@ func ReadingHighlightsListHandler(poolRef *PoolRef) http.Handler {
 		for _, h := range list {
 			out = append(out, highlightToWire(h))
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"highlights": out})
+		writeJSON(w, http.StatusOK, map[string]any{"highlights": out}, correlationID)
 	})
 }
 
@@ -569,7 +580,7 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"highlight": highlightToWire(h)})
+		writeJSON(w, http.StatusCreated, map[string]any{"highlight": highlightToWire(h)}, correlationID)
 	})
 }
 
@@ -624,15 +635,21 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 			}
 		}
 
-		// Update note/category only — a PATCH must not move the highlight
-		// into whatever library X-Library-Id currently names (PR #78
-		// review). edition_id and library_id are left as stored.
-		if err := deps.Highlights.UpdateNoteCategoryAndUser(r.Context(), userID, id, note, category); err != nil {
-			writeDomainError(w, err, correlationID)
-			return
+		// Skip a no-op PATCH: the highlights BEFORE UPDATE trigger assigns
+		// a fresh sync_sequence on every write, so an unchanged note or
+		// category would fan a needless delta out to every other device
+		// (audit 0016 #183).
+		if note != existing.Note() || category != existing.Category() {
+			// Update note/category only — a PATCH must not move the highlight
+			// into whatever library X-Library-Id currently names (PR #78
+			// review). edition_id and library_id are left as stored.
+			if err := deps.Highlights.UpdateNoteCategoryAndUser(r.Context(), userID, id, note, category); err != nil {
+				writeDomainError(w, err, correlationID)
+				return
+			}
 		}
 		updated := domain.NewHighlight(existing.ID(), existing.EditionID(), existing.StartPosition(), existing.EndPosition(), note, category, existing.CreatedAt())
-		writeJSON(w, http.StatusOK, map[string]any{"highlight": highlightToWire(updated)})
+		writeJSON(w, http.StatusOK, map[string]any{"highlight": highlightToWire(updated)}, correlationID)
 	})
 }
 
@@ -728,13 +745,13 @@ func ReadingPreferencesGetHandler(poolRef *PoolRef) http.Handler {
 		p, err := deps.Preferences.FindByUserAndDevice(r.Context(), userID, domain.DeviceID(deviceID))
 		if err != nil {
 			if domain.CategoryOf(err) == domain.NotFound {
-				writeJSON(w, http.StatusOK, map[string]any{"preferences": defaultPreferences()})
+				writeJSON(w, http.StatusOK, map[string]any{"preferences": defaultPreferences()}, correlationID)
 				return
 			}
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"preferences": preferencesToWire(p)})
+		writeJSON(w, http.StatusOK, map[string]any{"preferences": preferencesToWire(p)}, correlationID)
 	})
 }
 
@@ -780,7 +797,7 @@ func ReadingPreferencesPutHandler(poolRef *PoolRef) http.Handler {
 			writeDomainError(w, err, correlationID)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"preferences": preferencesToWire(p)})
+		writeJSON(w, http.StatusOK, map[string]any{"preferences": preferencesToWire(p)}, correlationID)
 	})
 }
 

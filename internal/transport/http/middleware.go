@@ -209,4 +209,3 @@ func Metrics(reg *observability.Registry, mux *http.ServeMux) Middleware {
 		})
 	}
 }
-
