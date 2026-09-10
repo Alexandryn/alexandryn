@@ -155,6 +155,19 @@ var fixturePath = "config.toml"
 EOF
 assert_pass "rule (b): \"toml\" inside a non-import string literal is not a violation" "$d"
 
+# audit 0016 #267: adversarial aliased single-line import of TOML
+d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/pool.go" <<'EOF'
+package postgres
+
+import tomlpkg "github.com/pelletier/go-toml/v2"
+
+func decode(data []byte, v any) error {
+	return tomlpkg.Unmarshal(data, v)
+}
+EOF
+assert_fail "rule (b): aliased single-line TOML import outside internal/config (audit 0016 #267)" "$d" "internal/persistence/postgres/pool.go"
+
 # --- Rule (c): no package-level var holding a logger/pool/config ---
 
 d="$(new_fixture)"

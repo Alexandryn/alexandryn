@@ -51,14 +51,13 @@ func TestClient_BodySizeCap(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		time.Sleep(2 * time.Second)
-		w.WriteHeader(200)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
 	}))
 	defer srv.Close()
 
 	c := newHTTPClient(sources.NewSemaphore(50), sources.Credential{}, false, true)
-	c.hc.Timeout = 200 * time.Millisecond
+	c.hc.Timeout = 50 * time.Millisecond
 	_, ferr := c.get(context.Background(), srv.URL)
 	if ferr == nil || ferr.detail != sources.DetailTimeout {
 		t.Fatalf("slow server: ferr = %v, want timeout", ferr)

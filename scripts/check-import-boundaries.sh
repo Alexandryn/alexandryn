@@ -69,7 +69,7 @@ import_lines() {
 		/^import \(/ { inblock = 1; next }
 		inblock && /^\)/ { inblock = 0; next }
 		inblock { print; next }
-		/^import "/ { print }
+		/^import[[:space:]]+.*"/ { print }
 	'
 }
 

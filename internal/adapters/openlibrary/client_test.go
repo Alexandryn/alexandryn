@@ -183,7 +183,7 @@ func TestClient_GetWork(t *testing.T) {
 	// bounded by one budget.
 	t.Run("total call is bounded by one timeout, not per-request", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(150 * time.Millisecond)
+			<-r.Context().Done()
 			switch {
 			case strings.HasSuffix(r.URL.Path, "/OL82563W.json"):
 				_, _ = w.Write([]byte(`{"key":"/works/OL82563W","title":"T","authors":[{"author":{"key":"/authors/OL1A"}},{"author":{"key":"/authors/OL2A"}}]}`))

@@ -23,6 +23,8 @@ export default defineConfig({
   // attempt.
   fullyParallel: false,
   workers: 1,
+  // Fail CI if test.only was left in any spec file (audit 0016 #209).
+  forbidOnly: !!process.env.CI,
   // A retry also covers the rare cold-server dynamic-import race on a
   // fresh dev server, not only CI-runner timing — so keep one locally.
   retries: process.env.CI ? 2 : 1,
