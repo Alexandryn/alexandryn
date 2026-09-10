@@ -591,6 +591,13 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  getImportCandidateCover: {
+    '404': {
+      code: 'not_found',
+      message: 'cover not found',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
   getReaderContent: {
     '400': {
       code: 'invalid_input',
