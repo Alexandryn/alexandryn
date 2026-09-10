@@ -124,14 +124,18 @@ func (s *JWTSigner) Verify(tokenString string, now time.Time) (*Claims, error) {
 }
 
 // VerifyAccessToken verifies the token and asserts it is an access token.
-// A signature-valid token whose type is "mfa_ticket", "enrol", or anything
-// other than "" / TokenTypeAccess is rejected (AUDIT-0012-C2).
+// The type must be exactly TokenTypeAccess: a signature-valid token whose
+// type is "mfa_ticket", "enrol", or empty is rejected (AUDIT-0012-C2,
+// #173). Every issuance path sets Type explicitly; the only tokens with
+// an empty type are ones minted before this check landed, and access
+// tokens live 15 minutes, so the transition self-clears — a client with
+// an old token refreshes once.
 func (s *JWTSigner) VerifyAccessToken(tokenString string, now time.Time) (*Claims, error) {
 	claims, err := s.Verify(tokenString, now)
 	if err != nil {
 		return nil, err
 	}
-	if claims.Type != "" && claims.Type != TokenTypeAccess {
+	if claims.Type != TokenTypeAccess {
 		return nil, fmt.Errorf("auth/jwt: token type %q is not an access token", claims.Type)
 	}
 	return claims, nil

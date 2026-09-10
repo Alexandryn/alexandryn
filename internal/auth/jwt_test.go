@@ -20,6 +20,7 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 		Role:      domain.RoleAdmin,
 		Libraries: []domain.LibraryID{domain.DefaultLibraryID, "lib-2"},
 		JTI:       "token-jti-1",
+		Type:      auth.TokenTypeAccess,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(15 * time.Minute).Unix(),
 		Issuer:    "alexandryn",
@@ -110,25 +111,25 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 		}
 	})
 
-	t.Run("VerifyAccessToken accepts an access token", func(t *testing.T) {
-		// A token with no explicit type (the phase-12 shape) is an access token.
+	t.Run("VerifyAccessToken accepts an explicit access token", func(t *testing.T) {
 		tokenStr, err := signer.Sign(claims)
 		if err != nil {
 			t.Fatalf("sign error: %v", err)
 		}
 		if _, err := signer.VerifyAccessToken(tokenStr, now); err != nil {
-			t.Errorf("expected access token to verify, got %v", err)
+			t.Errorf("expected typ:access token to verify, got %v", err)
 		}
+	})
 
-		// An explicit typ:"access" also verifies.
-		explicit := claims
-		explicit.Type = auth.TokenTypeAccess
-		tokenStr, err = signer.Sign(explicit)
+	t.Run("VerifyAccessToken rejects an empty token type (#173)", func(t *testing.T) {
+		untyped := claims
+		untyped.Type = ""
+		tokenStr, err := signer.Sign(untyped)
 		if err != nil {
 			t.Fatalf("sign error: %v", err)
 		}
-		if _, err := signer.VerifyAccessToken(tokenStr, now); err != nil {
-			t.Errorf("expected typ:access token to verify, got %v", err)
+		if _, err := signer.VerifyAccessToken(tokenStr, now); err == nil {
+			t.Error("expected an empty-type token to be rejected on the access path")
 		}
 	})
 
