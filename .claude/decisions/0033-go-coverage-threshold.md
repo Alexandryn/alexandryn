@@ -39,11 +39,23 @@ CI enforces a **non-regression floor**, not a fixed target:
 
 - The coverage step computes the combined statement coverage of the
   unit suite and fails the build if it drops **more than 1.0 percentage
-  point below the recorded baseline** in `scripts/coverage-baseline.txt`
-  (initial baseline: `54.0`).
+  point below the recorded baseline** in `scripts/coverage-baseline.txt`.
 - Raising the baseline is a deliberate commit that edits that file, made
   when a phase's work lands with tests. Lowering it requires a recorded
   reason in the commit message and is expected to be rare.
+
+**Baseline calibration (2026-09-09).** The initial `54.0` was taken from
+a local `go test -coverprofile ./...` run while this ADR was drafted. The
+gate's first real execution on a clean CI runner (Backend job, run
+34417101994) measured **51.1%**, and the last pre-gate green run
+measured 50.8% — the gate had never actually executed against CI's
+environment when the number was chosen. A clean checkout has no
+`web/node_modules`, so the two vendored `flatted/golang` packages that a
+local `./...` compiles at 0% are absent, and `cmd/` wiring is exercised
+only by the integration-tagged suite the `-func` total excludes. The
+baseline is corrected to **`51.0`** (floor 50.0) to match the
+environment that enforces it; Phase 16's Go changes were coverage-neutral
+to slightly positive (`internal/transport/http` rose 54.7% → 56.4%).
 - The absolute number is not a quality gate on its own. A reviewer still
   checks that new behaviour arrived with a failing-first test (§2); the
   floor only catches the case where that review missed a net deletion of
