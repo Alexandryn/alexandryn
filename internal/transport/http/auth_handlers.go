@@ -174,7 +174,7 @@ func SetupHandler(
 		userID := domain.UserID(idGen.NewID())
 		user, err := domain.NewUser(userID, req.Username, req.Email, domain.RoleAdmin, now, now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 
@@ -185,7 +185,7 @@ func SetupHandler(
 		}
 		creds, err := domain.NewUserCredentials(userID, pwdHash, now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 
@@ -659,7 +659,7 @@ func TOTPSetupHandler(mfaRepo domain.MFARepository, credRepo domain.CredentialRe
 		now := time.Now()
 		settings, err := domain.NewTOTPSettings(user.UserID, encryptedSecret, hashes, false, nil, now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 

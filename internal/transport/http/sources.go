@@ -327,7 +327,7 @@ func CreateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 		}
 
 		if err := repo.Create(r.Context(), rec); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -348,7 +348,7 @@ func ListSourcesHandler(repo SourceRecordRepository) http.Handler {
 
 		recs, err := repo.List(r.Context())
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -376,7 +376,7 @@ func GetSourceHandler(repo SourceRecordRepository) http.Handler {
 
 		rec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -402,7 +402,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		rec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -453,7 +453,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 		}
 
 		if err := repo.UpdateConfig(r.Context(), sourceID, newLabel, newBasePath, newBaseURL); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -489,7 +489,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 				return
 			}
 			if err := repo.SetCredential(r.Context(), sourceID, ct, nonce); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), id)
+				writeDomainError(w, err, id)
 				return
 			}
 			rec.CredentialCiphertext = ct
@@ -536,7 +536,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 		probeResult := prov.Probe(r.Context())
 		now := time.Now().UTC()
 		if err := repo.UpdateHealth(r.Context(), sourceID, string(probeResult.Status), probeResult.Detail, now, probeResult.Capabilities, probeResult.SearchLinkURL); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -546,7 +546,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		updatedRec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -568,7 +568,7 @@ func DeleteSourceHandler(repo SourceRecordRepository, poolRef *PoolRef) http.Han
 		}
 
 		if _, err := repo.Get(r.Context(), sourceID); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -579,7 +579,7 @@ func DeleteSourceHandler(repo SourceRecordRepository, poolRef *PoolRef) http.Han
 		}
 
 		if _, _, err := svc.Remove(r.Context(), domain.SourceID(sourceID), time.Now().UTC()); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -603,7 +603,7 @@ func HealthCheckSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem
 
 		rec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -674,7 +674,7 @@ func HealthCheckSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem
 
 		now := time.Now().UTC()
 		if err := repo.UpdateHealth(r.Context(), sourceID, string(probeResult.Status), probeResult.Detail, now, probeResult.Capabilities, probeResult.SearchLinkURL); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -720,7 +720,7 @@ func BrowseSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		rec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -781,7 +781,7 @@ func BrowseSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		page, err := prov.List(r.Context(), cursor, limit)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -828,7 +828,7 @@ func SearchSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		rec, err := repo.Get(r.Context(), sourceID)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -894,7 +894,7 @@ func SearchSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 
 		page, err := prov.Search(r.Context(), q, cursor, limit)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
