@@ -19,10 +19,18 @@ var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 // IsBlockedDialIP reports whether an outbound source request must never
 // reach ip (Constitution §4: a source base URL is attacker-chosen input).
 //
-// Always blocked, no opt-out: link-local (which covers the
+// Always blocked, no opt-out: link-local in its plain form (the
 // 169.254.169.254 cloud-metadata address and fe80::/10), carrier-grade
 // NAT (100.64.0.0/10), multicast, and the unspecified address — none of
 // these is ever a legitimate OPDS host.
+//
+// Not decoded: an internal IPv4 embedded in a transitional IPv6 form
+// (NAT64 64:ff9b::/96, 6to4 2002::/16, Teredo 2001::/32), or the
+// reserved 240.0.0.0/4 / broadcast / 0.0.0.0/8-with-host ranges. Go's
+// net predicates only unwrap the IPv4-mapped form. The practical path to
+// these is narrow (RFC 6052 forbids a compliant NAT64 translating a
+// special-use address; 6to4/Teredo are effectively dead) — tracked for a
+// follow-up that adds explicit prefix checks.
 //
 // Blocked unless allowPrivate is set: loopback and RFC 1918 / IPv6-ULA
 // private ranges. A self-hoster running a source on the same machine
