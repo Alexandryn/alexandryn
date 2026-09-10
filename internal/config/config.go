@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -85,6 +86,15 @@ type Config struct {
 	// honoured and the same-origin SPA is unaffected. Each entry is a
 	// well-formed scheme://host[:port] with no path.
 	CORSAllowedOrigins []string
+
+	// TrustedProxyCIDRs lists the networks a reverse proxy in front of the
+	// server binds from (ADR 0017's upstream-TLS mode). Empty by default:
+	// with no entry, rate-limit keys come from the connection's RemoteAddr
+	// and a client-supplied X-Forwarded-For is ignored. When RemoteAddr
+	// falls in one of these ranges, the last X-Forwarded-For hop is taken
+	// as the client address instead (#195). Comma-separated CIDRs, e.g.
+	// "127.0.0.1/32,::1/128".
+	TrustedProxyCIDRs []netip.Prefix
 
 	// DevicePairingSecret is an optional operator-set extra factor on
 	// POST /api/v1/network/pair/initiate (ADR 0028 §6). Redacted — never
@@ -291,6 +301,12 @@ var fields = []fieldSpec{
 		category: categoryOptionalNoDefault,
 		parse:    parseOriginList,
 		apply:    func(cfg *Config, v any) { cfg.CORSAllowedOrigins = v.([]string) },
+	},
+	{
+		key:      "TRUSTED_PROXY_CIDRS",
+		category: categoryOptionalNoDefault,
+		parse:    parseCIDRList,
+		apply:    func(cfg *Config, v any) { cfg.TrustedProxyCIDRs = v.([]netip.Prefix) },
 	},
 	{
 		key:      "DEVICE_PAIRING_SECRET",
@@ -533,6 +549,23 @@ func parseOriginList(raw string) (any, error) {
 			host += ":" + port
 		}
 		out = append(out, u.Scheme+"://"+host)
+	}
+	return out, nil
+}
+
+// parseCIDRList parses a comma-separated list of CIDR prefixes (#195).
+func parseCIDRList(raw string) (any, error) {
+	var out []netip.Prefix
+	for _, part := range strings.Split(raw, ",") {
+		entry := strings.TrimSpace(part)
+		if entry == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(entry)
+		if err != nil {
+			return nil, fmt.Errorf("entry %q is not a valid CIDR: %w", entry, err)
+		}
+		out = append(out, p.Masked())
 	}
 	return out, nil
 }

@@ -288,6 +288,10 @@ func run(ctx context.Context, deps runDeps) int {
 
 	poolRef := &transporthttp.PoolRef{}
 
+	// Rate-limit keying: trust X-Forwarded-For only from these proxy
+	// ranges, and collapse IPv6 clients to their /64 (#195).
+	transporthttp.SetTrustedProxyCIDRs(cfg.TrustedProxyCIDRs)
+
 	// The unauthenticated health-probe rate limiter (backend-network-transport.md
 	// FR-8). Its per-IP map is evicted on a ticker bound to ctx — without
 	// that the map only grows.

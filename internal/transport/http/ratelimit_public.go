@@ -34,10 +34,10 @@ func writeRateLimited(w http.ResponseWriter, corrID string) {
 // health probes are the real anonymous-hammer target and cost a pool
 // ping, so they keep a bucket.
 //
-// The client IP is taken from the connection's RemoteAddr, NEVER from
-// X-Forwarded-For — trusting a client-supplied header for rate-limit
-// keying is itself the bypass. A trusted-proxy configuration that would
-// make XFF safe does not exist in phase 13.
+// The client IP comes from clientIP: the connection's RemoteAddr, unless
+// RemoteAddr is a configured trusted proxy (TRUSTED_PROXY_CIDRS), in
+// which case the last X-Forwarded-For hop. An unconfigured deployment
+// trusts no proxy and ignores the header entirely (#195).
 //
 // A request that does not match `applies` passes straight through, so this
 // composes with phase 12's auth-endpoint limiter rather than
