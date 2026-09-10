@@ -1,0 +1,17 @@
+/* Hand-authored global utility classes.
+ *
+ * Like a11y.css, these are NOT design tokens
+ * (frontend-design-tokens.md's categories), so they live here rather
+ * than in the generated theme.css / tokens.css that `npm run
+ * tokens:generate` overwrites. Loaded from main.tsx after theme.css.
+ */
+
+/* Off-screen layout/paint skip for long virtual/scroll regions (audit
+ * 0016 #222). `contain-intrinsic-size` is an estimate the browser
+ * replaces with the real measured size once a region has been rendered
+ * once; `auto` keeps that remembered size while the region is off-screen
+ * so the scrollbar does not drift. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}

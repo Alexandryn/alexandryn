@@ -18,6 +18,16 @@ const GENERATED_HEADER = `/* GENERATED FILE — do not hand-edit.
  * same single extraction pass, so they can never drift from each other. */
 `
 
+// The web-font integration contract (audit 0016 #223). The font-family
+// tokens below currently resolve to their system fallbacks; this note
+// records the rules for adding the real faces so it is visible at the
+// definition site. Emitted by the generator so it survives regeneration.
+const FONT_INTEGRATION_NOTE = `  /* Design fonts (audit 0016 #223): currently render via system fallback.
+     When custom web fonts are added: self-host .woff2 under public/fonts/,
+     use @font-face { font-display: swap } (optional for mono), subset with
+     unicode-range, preload max 1-2 first-paint faces, and never load from
+     external CDNs (fonts.googleapis.com). */`
+
 function buildThemeCss(tokens: ExtractedTokens): string {
   const lines: string[] = [GENERATED_HEADER, '@import "tailwindcss";', '', '@theme {']
   for (const c of tokens.colors) lines.push(`  --color-${c.name}: ${c.value};`)
@@ -33,6 +43,7 @@ function buildThemeCss(tokens: ExtractedTokens): string {
   // Tailwind v4 turns --breakpoint-reflow into the `reflow:` variant.
   lines.push(`  --breakpoint-${tokens.breakpoint.name}: ${tokens.breakpoint.px}px;`)
   lines.push(
+    FONT_INTEGRATION_NOTE,
     "  --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;",
     '  --font-reading: Newsreader, Georgia, serif;',
     "  --font-mono: 'IBM Plex Mono', monospace;",
@@ -64,6 +75,7 @@ function buildTokensCss(tokens: ExtractedTokens): string {
   for (const t of tokens.letterSpacing) lines.push(`  --tracking-${t.name}: ${t.em}em;`)
   lines.push(`  --breakpoint-${tokens.breakpoint.name}: ${tokens.breakpoint.px}px;`)
   lines.push(
+    FONT_INTEGRATION_NOTE,
     "  --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;",
     '  --font-reading: Newsreader, Georgia, serif;',
     "  --font-mono: 'IBM Plex Mono', monospace;",
