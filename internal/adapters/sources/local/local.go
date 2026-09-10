@@ -236,6 +236,13 @@ func (p *Provider) Resolve(_ context.Context, ref domain.FileReference) (io.Read
 	if name == "" || name == "." || name == ".." || strings.ContainsRune(name, os.PathSeparator) || strings.ContainsRune(name, '/') {
 		return nil, &domain.Error{Category: domain.InvalidInput, Message: "file reference is not valid for this source"}
 	}
+	// Only book files are resolvable — the same extension filter List
+	// applies. A request for a .env, .ssh key, or any other file the
+	// listing would never surface is treated as not found, no oracle
+	// (#176).
+	if !p.isSupported(name) {
+		return nil, &domain.Error{Category: domain.NotFound, Message: "file not found in this source"}
+	}
 	realBase, err := filepath.EvalSymlinks(p.basePath)
 	if err != nil {
 		return nil, &domain.Error{Category: domain.Unavailable, Message: "source is unavailable right now"}

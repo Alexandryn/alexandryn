@@ -21,16 +21,23 @@ const (
 	maxMetadataResponseBytes  = 5 * 1024 * 1024  // 5 MiB (FR-9)
 	maxCoverResponseBytes     = 10 * 1024 * 1024 // 10 MiB (backend-metadata-caching.md FR-6)
 	defaultRequestTimeout     = 5 * time.Second  // 5 seconds (FR-9)
+
+	// getWorkTotalTimeout bounds a whole GetWork call — one work fetch,
+	// one editions fetch, and up to 20 author fetches, each otherwise
+	// getting its own defaultRequestTimeout. Without this a slow Open
+	// Library could hold the caller for 22 x 5s (#180).
+	getWorkTotalTimeout = 15 * time.Second
 )
 
 // HTTPClient is the production implementation of Client.
 type HTTPClient struct {
-	baseURL       string
-	coversBaseURL string
-	userAgent     string
-	logger        *slog.Logger
-	limiter       *RateLimiter
-	httpClient    *http.Client
+	baseURL        string
+	coversBaseURL  string
+	userAgent      string
+	logger         *slog.Logger
+	limiter        *RateLimiter
+	httpClient     *http.Client
+	getWorkTimeout time.Duration
 }
 
 // Option configures an HTTPClient.
@@ -41,6 +48,16 @@ func WithCoversBaseURL(url string) Option {
 	return func(c *HTTPClient) {
 		if url != "" {
 			c.coversBaseURL = strings.TrimRight(url, "/")
+		}
+	}
+}
+
+// WithGetWorkTimeout overrides the total time budget for one GetWork
+// call (#180). Non-positive values are ignored.
+func WithGetWorkTimeout(d time.Duration) Option {
+	return func(c *HTTPClient) {
+		if d > 0 {
+			c.getWorkTimeout = d
 		}
 	}
 }
@@ -57,17 +74,20 @@ func NewClient(baseURL, userAgent string, logger *slog.Logger, limiter *RateLimi
 	}
 	if httpClient == nil {
 		httpClient = &http.Client{
-			Timeout: defaultRequestTimeout,
+			Timeout:       defaultRequestTimeout,
+			Transport:     guardedTransport(),
+			CheckRedirect: capRedirects,
 		}
 	}
 
 	c := &HTTPClient{
-		baseURL:       baseURL,
-		coversBaseURL: defaultCoversBaseURL,
-		userAgent:     userAgent,
-		logger:        logger,
-		limiter:       limiter,
-		httpClient:    httpClient,
+		baseURL:        baseURL,
+		coversBaseURL:  defaultCoversBaseURL,
+		userAgent:      userAgent,
+		logger:         logger,
+		limiter:        limiter,
+		httpClient:     httpClient,
+		getWorkTimeout: getWorkTotalTimeout,
 	}
 
 	for _, opt := range opts {
@@ -194,6 +214,11 @@ func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*Discov
 	if !IsValidWorkKey(openLibraryID) {
 		return nil, &domain.Error{Category: domain.InvalidInput, Message: fmt.Sprintf("invalid Open Library work key: %q", openLibraryID)}
 	}
+
+	// Bound the whole call (work + editions + author fan-out), not just
+	// each request individually (#180).
+	ctx, cancel := context.WithTimeout(ctx, c.getWorkTimeout)
+	defer cancel()
 
 	// 1. Fetch work record
 	workURL := fmt.Sprintf("%s/works/%s.json", c.baseURL, openLibraryID)

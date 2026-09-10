@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -176,6 +177,38 @@ func TestClient_GetWork(t *testing.T) {
 			t.Errorf("expected 19 authors after 1 dropped, got %d", len(detail.Work.Authors))
 		}
 	})
+
+	// #180: a slow Open Library must not hold the caller for
+	// (1 + 1 + 20) x per-request timeout — the whole GetWork call is
+	// bounded by one budget.
+	t.Run("total call is bounded by one timeout, not per-request", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(150 * time.Millisecond)
+			switch {
+			case strings.HasSuffix(r.URL.Path, "/OL82563W.json"):
+				_, _ = w.Write([]byte(`{"key":"/works/OL82563W","title":"T","authors":[{"author":{"key":"/authors/OL1A"}},{"author":{"key":"/authors/OL2A"}}]}`))
+			case strings.HasSuffix(r.URL.Path, "editions.json"):
+				_, _ = w.Write([]byte(`{"entries": []}`))
+			default:
+				_, _ = w.Write([]byte(`{"name":"A"}`))
+			}
+		}))
+		defer ts.Close()
+
+		client := openlibrary.NewClient(ts.URL, "UA", slog.New(slog.NewTextHandler(io.Discard, nil)), nil, ts.Client(),
+			openlibrary.WithGetWorkTimeout(120*time.Millisecond))
+
+		start := time.Now()
+		_, err := client.GetWork(context.Background(), "OL82563W")
+		elapsed := time.Since(start)
+
+		if err == nil {
+			t.Fatal("expected a deadline error from the bounded call")
+		}
+		if elapsed > time.Second {
+			t.Fatalf("GetWork took %s — the total-call timeout is not being applied", elapsed)
+		}
+	})
 }
 
 func TestRateLimiter_ConcurrencyAndWaiterLimit(t *testing.T) {
@@ -296,4 +329,3 @@ func TestClient_FetchCover(t *testing.T) {
 		}
 	})
 }
-
