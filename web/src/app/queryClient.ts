@@ -12,10 +12,22 @@ function isClientError(error: unknown): boolean {
 // (audit 0016 #91).
 let refreshInFlight: Promise<boolean> | null = null
 
+// Consecutive refresh-then-refetch cycles with no successful response in
+// between. A refresh that returns 200 without a usable token, or a fresh
+// token the server still rejects (clock skew, signing-key rotation),
+// would otherwise re-enter handleAuthFailure forever — hammering
+// /auth/refresh and refetching every query. After this many, stop and
+// send the user to login. Reset to 0 by the first successful response
+// (review follow-up to audit 0016 #91).
+const MAX_REFRESH_CYCLES = 2
+let refreshCycles = 0
+
 function refreshOnce(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = refreshSession()
-      .then(() => true)
+      // A refresh that resolves without minting an access token is a
+      // failed refresh, not a successful one.
+      .then((res) => Boolean(res?.accessToken))
       .catch(() => false)
       .finally(() => {
         refreshInFlight = null
@@ -38,11 +50,13 @@ async function handleAuthFailure(error: unknown): Promise<void> {
   if (typeof window === 'undefined') return
   if (window.location.pathname === '/login' || window.location.pathname === '/setup') return
 
-  if (await refreshOnce()) {
+  if (refreshCycles < MAX_REFRESH_CYCLES && (await refreshOnce())) {
+    refreshCycles++
     void clientRef?.invalidateQueries()
     return
   }
 
+  refreshCycles = 0
   clearSession()
   const here = window.location.pathname + window.location.search
   window.location.assign(`/login?next=${encodeURIComponent(here)}`)
@@ -57,8 +71,20 @@ async function handleAuthFailure(error: unknown): Promise<void> {
  */
 export function makeQueryClient(): QueryClient {
   const client = new QueryClient({
-    queryCache: new QueryCache({ onError: (error) => void handleAuthFailure(error) }),
-    mutationCache: new MutationCache({ onError: (error) => void handleAuthFailure(error) }),
+    queryCache: new QueryCache({
+      onError: (error) => void handleAuthFailure(error),
+      // A response that lands proves the current token is good — clear
+      // the refresh circuit breaker.
+      onSuccess: () => {
+        refreshCycles = 0
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error) => void handleAuthFailure(error),
+      onSuccess: () => {
+        refreshCycles = 0
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: (failureCount, error) => !isClientError(error) && failureCount < 2,

@@ -37,11 +37,23 @@ async function handleResponse<T>(res: Response): Promise<T> {
     const body = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null
     throw new ApiError(res.status, body)
   }
-  if (res.status === 204) {
+  if (res.status === 204 || res.status === 205) {
     return undefined as unknown as T
   }
   const text = await res.text()
-  return (text ? JSON.parse(text) : undefined) as T
+  if (text === '') {
+    // An empty body is a legitimate void result only for a no-content
+    // response: an explicit `Content-Length: 0`, or a non-JSON content
+    // type (a bare `w.WriteHeader(200)` with no body). An empty body
+    // from a JSON resource endpoint is a malformed response and must
+    // surface as an error, not a silent `undefined` that a caller then
+    // reads a field off (review follow-up to audit 0016 #230).
+    const contentType = res.headers.get('Content-Type') ?? ''
+    if (res.headers.get('Content-Length') === '0' || !contentType.includes('json')) {
+      return undefined as unknown as T
+    }
+  }
+  return JSON.parse(text) as T
 }
 
 /** Extra request headers — used by the reader for `X-Device-Id`, etc. */

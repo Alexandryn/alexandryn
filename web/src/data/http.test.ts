@@ -46,6 +46,21 @@ describe('http client AbortSignal forwarding (audit 0016 #166)', () => {
     server.use(http.delete('*/api/v1/empty-200', () => new Response('', { status: 200 })))
     await expect(deleteRequest('/api/v1/empty-200')).resolves.toBeUndefined()
   })
+
+  it('surfaces an error when a JSON endpoint returns an empty body (does not silently yield undefined)', async () => {
+    server.use(
+      http.get(
+        '*/api/v1/broken-json',
+        () => new Response('', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      ),
+    )
+    await expect(getJson('/api/v1/broken-json')).rejects.toBeInstanceOf(Error)
+  })
+
+  it('treats an empty 205 response as a void result', async () => {
+    server.use(http.post('*/api/v1/reset-content', () => new Response(null, { status: 205 })))
+    await expect(postJson('/api/v1/reset-content', { x: 1 })).resolves.toBeUndefined()
+  })
 })
 
 function mkAborted(): AbortSignal {
