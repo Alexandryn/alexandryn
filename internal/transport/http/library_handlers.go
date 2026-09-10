@@ -104,7 +104,7 @@ func CreateLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.Libra
 		libID := domain.LibraryID(idGen.NewID())
 		lib, err := domain.NewLibrary(libID, req.Name, req.Description, req.AllowReaderUploads, now, now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 
@@ -213,13 +213,13 @@ func UpdateLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
 		now := time.Now()
 		if req.Name != nil {
 			if err := lib.Rename(*req.Name, now); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+				writeDomainError(w, err, corrID)
 				return
 			}
 		}
 		if req.Description != nil {
 			if err := lib.SetDescription(*req.Description, now); err != nil {
-				WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+				writeDomainError(w, err, corrID)
 				return
 			}
 		}
@@ -355,7 +355,7 @@ func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo
 		invID := domain.LibraryInvitationID(idGen.NewID())
 		inv, err := domain.NewLibraryInvitation(invID, libID, req.Email, role, tokenHash, user.UserID, now.Add(7*24*time.Hour), now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 
@@ -406,7 +406,7 @@ func AcceptInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo
 		memID := domain.LibraryMembershipID(idGen.NewID())
 		mem, err := domain.NewLibraryMembership(memID, inv.LibraryID(), user.UserID, inv.Role(), now)
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), corrID)
+			writeDomainError(w, err, corrID)
 			return
 		}
 

@@ -151,7 +151,7 @@ func LibraryHandler(repo domain.WorkRepository) http.Handler {
 			LibraryID: activeLib,
 		})
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -220,7 +220,7 @@ func WorkDetailHandler(repo domain.WorkRepository) http.Handler {
 				WriteError(w, domain.NotFound, "no work with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 

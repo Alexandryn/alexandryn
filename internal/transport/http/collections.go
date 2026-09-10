@@ -108,7 +108,7 @@ func ListCollectionsHandler(repo domain.CollectionRepository) http.Handler {
 
 		colls, err := repo.FindAll(r.Context(), ActiveLibraryFromContext(r.Context()))
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -151,7 +151,7 @@ func CreateCollectionHandler(repo domain.CollectionRepository, ids domain.IDGene
 		}
 
 		if err := repo.Save(r.Context(), ActiveLibraryFromContext(r.Context()), c); err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -184,7 +184,7 @@ func GetCollectionHandler(repo domain.CollectionRepository) http.Handler {
 				WriteError(w, domain.NotFound, "no collection with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -221,13 +221,13 @@ func RenameCollectionHandler(repo domain.CollectionRepository) http.Handler {
 				WriteError(w, domain.NotFound, "no collection with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
 		detail, err := repo.FindDetail(r.Context(), ActiveLibraryFromContext(r.Context()), domain.CollectionID(collID))
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -253,7 +253,7 @@ func DeleteCollectionHandler(repo domain.CollectionRepository) http.Handler {
 				WriteError(w, domain.NotFound, "no collection with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -301,13 +301,13 @@ func AddWorkToCollectionHandler(repo domain.CollectionRepository, clock func() t
 				WriteError(w, domain.NotFound, "no collection with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
 		detail, err := repo.FindDetail(r.Context(), ActiveLibraryFromContext(r.Context()), domain.CollectionID(collID))
 		if err != nil {
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
@@ -341,7 +341,7 @@ func RemoveWorkFromCollectionHandler(repo domain.CollectionRepository) http.Hand
 				WriteError(w, domain.NotFound, "no collection with that id", id)
 				return
 			}
-			WriteError(w, domain.CategoryOf(err), err.Error(), id)
+			writeDomainError(w, err, id)
 			return
 		}
 
