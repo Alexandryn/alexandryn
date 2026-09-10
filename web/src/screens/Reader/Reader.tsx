@@ -50,7 +50,7 @@ export function Reader() {
 
   const bookQuery = useQuery({
     queryKey: ['reader', 'epub', editionId],
-    queryFn: () => loadEpub(editionId),
+    queryFn: ({ signal }) => loadEpub(editionId, signal),
     enabled: editionId !== '',
     staleTime: Infinity,
     retry: false,

@@ -54,7 +54,10 @@ export interface LibraryQueryParams {
   cursor?: string
 }
 
-export function fetchLibraryPage(params: LibraryQueryParams = {}): Promise<LibraryPage> {
+export function fetchLibraryPage(
+  params: LibraryQueryParams = {},
+  signal?: AbortSignal,
+): Promise<LibraryPage> {
   const search = new URLSearchParams()
   if (params.q && params.q.trim() !== '') {
     search.set('q', params.q.trim())
@@ -74,7 +77,7 @@ export function fetchLibraryPage(params: LibraryQueryParams = {}): Promise<Libra
 
   const qs = search.toString()
   const path = `/api/v1/library${qs ? `?${qs}` : ''}`
-  return getJson<LibraryPage>(path)
+  return getJson<LibraryPage>(path, {}, { signal })
 }
 
 /**
@@ -94,21 +97,27 @@ export function useLibrary(params: {
 
   return useInfiniteQuery({
     queryKey: ['library', { q, filter, sort, limit }],
-    queryFn: ({ pageParam }) =>
-      fetchLibraryPage({
-        q,
-        filter,
-        sort,
-        limit,
-        cursor: pageParam,
-      }),
+    // A superseded search (the user kept typing) or an unmount aborts the
+    // in-flight request rather than downloading a response nobody will see
+    // (audit 0016 #166).
+    queryFn: ({ pageParam, signal }) =>
+      fetchLibraryPage(
+        {
+          q,
+          filter,
+          sort,
+          limit,
+          cursor: pageParam,
+        },
+        signal,
+      ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   })
 }
 
-export function fetchWorkDetail(id: string): Promise<WorkDetail> {
-  return getJson<WorkDetail>(`/api/v1/works/${encodeURIComponent(id)}`)
+export function fetchWorkDetail(id: string, signal?: AbortSignal): Promise<WorkDetail> {
+  return getJson<WorkDetail>(`/api/v1/works/${encodeURIComponent(id)}`, {}, { signal })
 }
 
 /**
@@ -118,7 +127,8 @@ export function fetchWorkDetail(id: string): Promise<WorkDetail> {
 export function useWork(id: string | undefined) {
   return useQuery({
     queryKey: ['work', id],
-    queryFn: () => (id ? fetchWorkDetail(id) : Promise.reject(new Error('id is required'))),
+    queryFn: ({ signal }) =>
+      id ? fetchWorkDetail(id, signal) : Promise.reject(new Error('id is required')),
     enabled: Boolean(id && id.trim() !== ''),
   })
 }

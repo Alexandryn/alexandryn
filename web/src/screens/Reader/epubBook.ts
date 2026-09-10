@@ -28,18 +28,18 @@ export interface LoadedBook {
  * probes for optional files (encryption.xml, display-options, an NCX)
  * whose absence is normal, and the content endpoint 404s a missing entry.
  */
-async function loadEpubText(editionId: string, uri: string): Promise<string> {
+async function loadEpubText(editionId: string, uri: string, signal?: AbortSignal): Promise<string> {
   try {
-    return await getText(contentUrl(editionId, uri))
+    return await getText(contentUrl(editionId, uri), { signal })
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return ''
     throw err
   }
 }
 
-export async function loadEpub(editionId: string): Promise<LoadedBook> {
+export async function loadEpub(editionId: string, signal?: AbortSignal): Promise<LoadedBook> {
   const book = new EPUB({
-    loadText: (uri) => loadEpubText(editionId, uri),
+    loadText: (uri) => loadEpubText(editionId, uri, signal),
     // The reader never asks foliate for blobs — chapter documents load
     // via the <iframe> src, and images resolve as relative URLs against
     // it. A rejected loadBlob keeps foliate from constructing blob: URLs.
