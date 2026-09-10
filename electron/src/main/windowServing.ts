@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import type { ServerEvent } from './serverLifecycle'
+import { MAX_RESPAWN_ATTEMPTS, type ServerEvent } from './serverLifecycle'
 
 // desktop-host-window-and-serving.md FR-5, FR-6 — loadURL sequencing & Recovering banner.
 // Starting   → loadFile(bootHtmlPath)
@@ -124,8 +124,13 @@ export class WindowServingController {
         this.recoveringCssKey = await this.window.webContents.insertCSS(RECOVERING_BANNER_CSS)
       }
 
+      const attemptNum = Math.max(1, Math.floor(Number(attempt) || 1))
+      const maxNum = MAX_RESPAWN_ATTEMPTS
+      // audit 0016 #193: Pass attempt and max as JSON-encoded arguments to a static
+      // function rather than string-interpolating into the script template.
+      // Use textContent instead of innerHTML to avoid any HTML injection risk.
       const script = `
-(function() {
+(function(attempt, max) {
   let el = document.getElementById('alexandryn-recovering-banner');
   if (!el) {
     el = document.createElement('div');
@@ -134,8 +139,12 @@ export class WindowServingController {
     el.setAttribute('aria-live', 'polite');
     document.body.appendChild(el);
   }
-  el.innerHTML = '<div class="banner-spinner"></div><span>Reconnecting to server... (Attempt ${attempt} of 3)</span>';
-})()
+  const spinner = document.createElement('div');
+  spinner.className = 'banner-spinner';
+  const text = document.createElement('span');
+  text.textContent = 'Reconnecting to server... (Attempt ' + attempt + ' of ' + max + ')';
+  el.replaceChildren(spinner, text);
+})(${JSON.stringify(attemptNum)}, ${JSON.stringify(maxNum)})
 `
       await this.window.webContents.executeJavaScript(script)
     } catch {

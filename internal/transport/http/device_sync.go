@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,13 +84,7 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 			}
 
 			if dev.RevokedAt() != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				_ = json.NewEncoder(w).Encode(errorBody{
-					Code:          "Unauthorized",
-					Message:       "device revoked",
-					CorrelationID: corrID,
-				})
+				WriteError(w, domain.Unauthorized, "device revoked", corrID)
 				return
 			}
 
@@ -98,8 +93,22 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 				currentTime = now()
 			}
 
-			_ = dev.Touch(currentTime)
-			_ = deviceRepo.UpdateLastSeen(r.Context(), dev.ID(), currentTime)
+			// Throttle UpdateLastSeen DB writes (audit 0016 #301): only write
+			// to the repository if last_seen_at is zero or at least 1 minute old.
+			// This avoids continuous DB write amplification on polled GET /sync/reading requests.
+			shouldUpdateDB := dev.LastSeenAt().IsZero() || currentTime.Sub(dev.LastSeenAt()) >= 60*time.Second
+
+			if terr := dev.Touch(currentTime); terr != nil {
+				slog.WarnContext(r.Context(), "failed to touch device in memory",
+					"device_id", string(dev.ID()), "correlation_id", corrID, "error", terr.Error())
+			}
+
+			if shouldUpdateDB {
+				if uerr := deviceRepo.UpdateLastSeen(r.Context(), dev.ID(), currentTime); uerr != nil {
+					slog.WarnContext(r.Context(), "failed to update device last seen in database",
+						"device_id", string(dev.ID()), "correlation_id", corrID, "error", uerr.Error())
+				}
+			}
 
 			ctx := WithDevice(r.Context(), dev)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -163,8 +172,7 @@ func ListDevicesHandler(deviceRepo domain.PairedDeviceRepository) http.Handler {
 			resp.Devices = append(resp.Devices, item)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
+		writeJSON(w, http.StatusOK, resp, corrID)
 	})
 }
 
@@ -290,11 +298,13 @@ func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, 
 
 		hasUpdates := len(data.Progress) > 0 || len(data.Bookmarks) > 0 || len(data.Highlights) > 0
 		if hasUpdates && data.Cursor > dev.SyncCursor() {
-			_ = devRepo.AdvanceCursor(r.Context(), dev.ID(), data.Cursor, currentTime)
+			if aerr := devRepo.AdvanceCursor(r.Context(), dev.ID(), data.Cursor, currentTime); aerr != nil {
+				slog.WarnContext(r.Context(), "failed to advance device sync cursor",
+					"device_id", string(dev.ID()), "cursor", data.Cursor, "correlation_id", corrID, "error", aerr.Error())
+			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(data)
+		writeJSON(w, http.StatusOK, data, corrID)
 	})
 }
 
@@ -485,8 +495,14 @@ func SyncProgressHandler(
 			// seq == cursor+1 means there is no gap to skip over — only
 			// this device's own echo — so the advance is safe.
 			seq, err := syncStore.GetProgressSyncSequence(txCtx, res.ID())
-			if err == nil && seq == dev.SyncCursor()+1 {
-				if aerr := devRepo.AdvanceCursor(txCtx, dev.ID(), seq, currentTime); aerr == nil {
+			if err != nil {
+				slog.WarnContext(txCtx, "failed to get progress sync sequence for cursor advance",
+					"progress_id", string(res.ID()), "correlation_id", corrID, "error", err.Error())
+			} else if seq == dev.SyncCursor()+1 {
+				if aerr := devRepo.AdvanceCursor(txCtx, dev.ID(), seq, currentTime); aerr != nil {
+					slog.WarnContext(txCtx, "failed to advance device cursor in push handler",
+						"device_id", string(dev.ID()), "seq", seq, "correlation_id", corrID, "error", aerr.Error())
+				} else {
 					newCursor = seq
 				}
 			}
@@ -503,11 +519,10 @@ func SyncProgressHandler(
 		// echo (see the advance guard above). It is never a jump to an
 		// arbitrary later sequence, so a client may safely persist it as
 		// the next `since` for GET /sync/reading (audit 0016 #90).
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, http.StatusOK, map[string]any{
 			"outcome":  string(outcome),
 			"progress": progressToWire(res),
 			"cursor":   newCursor,
-		})
+		}, corrID)
 	})
 }

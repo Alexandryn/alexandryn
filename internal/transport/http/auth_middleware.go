@@ -134,12 +134,19 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 			// (403) — it is not silently used, and it does not fall back to
 			// a default (AUDIT-0012-P12-4, backend-library-namespaces.md
 			// FR-3).
+			// If claims.Libraries is empty, reject protected routes with 403
+			// rather than defaulting to DefaultLibraryID without a membership
+			// check (audit 0016 #246). Listing libraries (GET /api/v1/libraries)
+			// is permitted so the user can discover available memberships.
 			activeLibID := domain.LibraryID(r.Header.Get("X-Library-Id"))
 			if activeLibID == "" {
 				if len(claims.Libraries) > 0 {
 					activeLibID = claims.Libraries[0]
+				} else if r.URL.Path == "/api/v1/libraries" && r.Method == http.MethodGet {
+					activeLibID = ""
 				} else {
-					activeLibID = domain.DefaultLibraryID
+					writeForbidden(w, "you are not a member of that library", corrID)
+					return
 				}
 			} else if !libraryInClaims(activeLibID, claims.Libraries) {
 				writeForbidden(w, "you are not a member of that library", corrID)

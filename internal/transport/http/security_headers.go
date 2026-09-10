@@ -13,9 +13,9 @@ import (
 //   - default-src 'self' — everything the SPA loads is same-origin.
 //   - no 'unsafe-inline' on script-src: the Vite build emits no inline
 //     script.
-//   - style-src allows 'unsafe-inline' only for the small runtime style
-//     attributes React/Radix set (a common, low-risk exception); revisit
-//     with nonces in phase 16.
+//   - style-src allows 'unsafe-inline' for dynamic runtime style attributes
+//     and elements inserted by React/Radix UI. The residual risk and rationale
+//     are documented in ADR 0035 (audit 0016 #191).
 //   - connect-src 'self' — the API is same-origin; a reverse-proxy
 //     deployment on another hostname adds it via CORS, not here.
 //   - frame-ancestors 'none' + X-Frame-Options: DENY — belt and braces

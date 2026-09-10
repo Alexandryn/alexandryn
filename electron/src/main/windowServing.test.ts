@@ -70,7 +70,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
       expect.stringContaining("setAttribute('aria-live', 'polite')"),
     )
     expect(win.webContents.executeJavaScript).toHaveBeenCalledWith(
-      expect.stringContaining('Attempt 1 of 3'),
+      expect.stringContaining('(1, 3)'),
     )
   })
 
