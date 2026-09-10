@@ -3,6 +3,8 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -253,6 +255,81 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET members as library admin = %d, want 200: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	// audit 0016 #262: the admin of one library must not be able to invite
+	// members to a different library. `callerIsLibraryAdmin` checks the
+	// membership role in the *target* library, not a global admin bit.
+	t.Run("library admin of one library cannot invite to another", func(t *testing.T) {
+		libAdmin := &transporthttp.AuthenticatedUser{UserID: "u-libadmin", Role: domain.RoleReader}
+
+		mkBody, _ := json.Marshal(map[string]any{"name": "Other Library", "allowReaderUploads": false})
+		mkReq := httptest.NewRequest("POST", "/api/v1/libraries", bytes.NewReader(mkBody))
+		mkReq = mkReq.WithContext(transporthttp.WithUser(mkReq.Context(), adminUser))
+		mkRec := httptest.NewRecorder()
+		mux.ServeHTTP(mkRec, mkReq)
+		if mkRec.Code != http.StatusCreated {
+			t.Fatalf("create second library = %d, want 201: %s", mkRec.Code, mkRec.Body.String())
+		}
+		var mk struct {
+			Library struct {
+				ID string `json:"id"`
+			} `json:"library"`
+		}
+		_ = json.NewDecoder(mkRec.Body).Decode(&mk)
+
+		invReq := httptest.NewRequest("POST", "/api/v1/libraries/"+mk.Library.ID+"/invitations",
+			bytes.NewReader([]byte(`{"email":"x@y.z","role":"reader"}`)))
+		invReq = invReq.WithContext(transporthttp.WithUser(invReq.Context(), libAdmin))
+		invRec := httptest.NewRecorder()
+		mux.ServeHTTP(invRec, invReq)
+		if invRec.Code != http.StatusForbidden {
+			t.Fatalf("invite to a library the caller does not administer = %d, want 403", invRec.Code)
+		}
+	})
+
+	// audit 0016 #262: the accept endpoint must reject a token that has
+	// been tampered with, already used, or has expired — each as 404, with
+	// no signal distinguishing the three.
+	t.Run("accept rejects a tampered, used, or expired token", func(t *testing.T) {
+		cases := []struct {
+			name  string
+			token string
+			setup func()
+		}{
+			{name: "tampered", token: rawInviteToken + "-tampered"},
+			{name: "already used", token: rawInviteToken}, // consumed by the earlier accept subtest
+			{
+				name:  "expired",
+				token: "expired-invite-raw-token",
+				setup: func() {
+					h := sha256.Sum256([]byte("expired-invite-raw-token"))
+					inv, err := domain.NewLibraryInvitation(
+						"inv-expired", domain.LibraryID(createdLibID), "later@example.com",
+						domain.RoleReader, hex.EncodeToString(h[:]), "u-admin",
+						time.Now().Add(-1*time.Hour), time.Now().Add(-25*time.Hour),
+					)
+					if err != nil {
+						t.Fatalf("build expired invitation: %v", err)
+					}
+					_ = invs.Save(context.Background(), inv)
+				},
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				if tc.setup != nil {
+					tc.setup()
+				}
+				req := httptest.NewRequest("POST", "/api/v1/invitations/"+tc.token+"/accept", nil)
+				req = req.WithContext(transporthttp.WithUser(req.Context(), readerUser))
+				rec := httptest.NewRecorder()
+				mux.ServeHTTP(rec, req)
+				if rec.Code != http.StatusNotFound {
+					t.Fatalf("accept %s token = %d, want 404: %s", tc.name, rec.Code, rec.Body.String())
+				}
+			})
 		}
 	})
 }
