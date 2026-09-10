@@ -414,6 +414,46 @@ func TestAuthLoginAndRefresh(t *testing.T) {
 	})
 }
 
+// spyHasher wraps a real PasswordHasher and records the encodedHash
+// argument of every VerifyPassword call.
+type spyHasher struct {
+	auth.PasswordHasher
+	verifyHashes []string
+}
+
+func (s *spyHasher) VerifyPassword(password, encodedHash string) (bool, error) {
+	s.verifyHashes = append(s.verifyHashes, encodedHash)
+	return s.PasswordHasher.VerifyPassword(password, encodedHash)
+}
+
+// #187: a login attempt for a non-existent account must still run the
+// password KDF so its response time is indistinguishable from an
+// attempt against a real account with a wrong password.
+func TestLogin_UnknownUser_StillVerifiesPassword(t *testing.T) {
+	spy := &spyHasher{PasswordHasher: auth.NewArgon2idPasswordHasher(auth.FastArgon2idParamsForTesting())}
+	limiter := auth.NewIPRateLimiter(rate.Inf, 100, time.Hour)
+	h := transporthttp.LoginHandler(
+		newMemUsers(), newMemCredentials(), newMemMFA(), newMemMemberships(),
+		newMemRefreshTokens(), spy,
+		auth.NewJWTSigner([]byte("32-byte-test-jwt-secret-key-12345!"), "alexandryn"),
+		&seqID{}, limiter,
+	)
+
+	body, _ := json.Marshal(map[string]string{"emailOrUsername": "ghost@example.com", "password": "whatever-123"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body)))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+	if len(spy.verifyHashes) != 1 {
+		t.Fatalf("VerifyPassword called %d times, want 1", len(spy.verifyHashes))
+	}
+	if spy.verifyHashes[0] != auth.DummyPasswordHash() {
+		t.Errorf("VerifyPassword called with %q, want the dummy timing hash", spy.verifyHashes[0])
+	}
+}
+
 // audit 0016 #107: TOTPSetupHandler must require the account password —
 // an access token alone must not be able to overwrite a user's MFA
 // enrolment with an attacker-chosen secret.

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -45,6 +46,24 @@ type PasswordHasher interface {
 	HashPassword(password string) (string, error)
 	VerifyPassword(password, encodedHash string) (bool, error)
 }
+
+// dummyPasswordHash is a valid encoded Argon2id hash with default
+// parameters, computed once on first use. Authentication paths that
+// reach a point where no user or credential record exists run
+// VerifyPassword against it and discard the result, so a request for a
+// non-existent account performs the same key-derivation work as one for
+// a real account and the two take the same time to answer (#187).
+var dummyPasswordHash = sync.OnceValue(func() string {
+	h, err := NewArgon2idPasswordHasher(DefaultArgon2idParams()).HashPassword("alexandryn login timing equaliser")
+	if err != nil {
+		panic("auth: precompute dummy password hash: " + err.Error())
+	}
+	return h
+})
+
+// DummyPasswordHash returns a stable, valid encoded Argon2id hash for
+// timing equalisation on authentication paths. See dummyPasswordHash.
+func DummyPasswordHash() string { return dummyPasswordHash() }
 
 type Argon2idPasswordHasher struct {
 	params Argon2idParams
