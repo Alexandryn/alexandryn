@@ -21,9 +21,13 @@ var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 // must never reach. Open Library is a fixed public service, so — unlike
 // the user-configured source client's sources.IsBlockedDialIP, whose
 // sibling this mirrors (#251) — there is no allow-private opt-out:
-// loopback, RFC 1918 / IPv6-ULA private, link-local (covers the
-// 169.254.169.254 cloud-metadata address), CGNAT, multicast and the
+// loopback, RFC 1918 / IPv6-ULA private, link-local in its plain form
+// (the 169.254.169.254 cloud-metadata address), CGNAT, multicast and the
 // unspecified address are all refused.
+//
+// Not decoded: an internal IPv4 embedded in a transitional IPv6 form
+// (NAT64, 6to4, Teredo) or the reserved 240.0.0.0/4 / broadcast ranges —
+// same gap and same follow-up as sources.IsBlockedDialIP.
 func blockedResolvedIP(ip net.IP) bool {
 	if ip == nil {
 		return true
