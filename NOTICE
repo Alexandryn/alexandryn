@@ -1,0 +1,23 @@
+Alexandryn
+Copyright (c) 2026 Alexandryn Contributors
+Licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
+
+Third-Party Licenses and Attributions
+====================================
+
+This repository uses open-source third-party dependencies.
+
+1. Creative Commons Attribution 4.0 International (CC-BY-4.0)
+-------------------------------------------------------------
+The following packages are licensed under CC-BY-4.0 and are used strictly as
+development-time build dependencies (transitive dependencies of Babel, Storybook,
+and ESLint). They are not bundled into shipped client distributions:
+- caniuse-lite (Copyright (c) Alexis Deveria and contributors; https://github.com/browserslist/caniuse-lite)
+
+2. Mozilla Public License 2.0 (MPL-2.0)
+---------------------------------------
+The following tools are used during application build and testing under MPL-2.0:
+- lightningcss (Copyright (c) Devon Govett; https://github.com/parcel-bundler/lightningcss)
+- axe-core / @axe-core/playwright (Copyright (c) Deque Systems, Inc.; https://github.com/dequelabs/axe-core)
+
+Full text of licenses and source code repositories are available at their respective project homes.

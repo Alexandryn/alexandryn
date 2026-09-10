@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# .githooks/pre-push — prevent direct pushes to main (audit 0016 #202).
+#
+# GitHub Free restricts branch protection rulesets on private repositories.
+# This client-side guard prevents accidental pushes to 'main' from developer
+# workstations.
+set -euo pipefail
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+	if [[ "$remote_ref" =~ refs/heads/main$ ]]; then
+		echo "ERROR: Direct push to 'main' is prohibited by project policy (audit 0016 #202)." >&2
+		echo "Please push to a feature branch and open a pull request." >&2
+		exit 1
+	fi
+done
+
+exit 0

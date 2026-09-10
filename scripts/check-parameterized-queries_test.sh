@@ -100,6 +100,27 @@ q := fmt.Sprintf("SELECT id FROM works WHERE title = '%s'", title)
 EOF
 assert_pass "raw-string fixture data is not this file's own code" "$d"
 
+# audit 0016 #267: adversarial multi-line fmt.Sprintf call
+d="$(new_fixture)"
+cat >"$d/internal/persistence/postgres/work_repository.go" <<'EOF'
+package postgres
+
+import (
+	"context"
+	"fmt"
+)
+
+func (r *WorkRepository) byTitle(ctx context.Context, title string) error {
+	q := fmt.Sprintf(
+		"SELECT id FROM works WHERE title = '%s'",
+		title,
+	)
+	_, err := r.pool.Query(ctx, q)
+	return err
+}
+EOF
+assert_fail "multi-line fmt.Sprintf building a SQL-shaped string (audit 0016 #267)" "$d" "work_repository.go"
+
 if [ "$fail" -ne 0 ]; then
 	echo "check-parameterized-queries_test.sh: FAILED"
 	exit 1

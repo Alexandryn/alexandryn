@@ -304,6 +304,13 @@ jobs:
       # network alias, port 5432 in-network regardless of the mapped
       # host port above.
       #
+      # Note (audit 0016 #210, Constitution §12): The real bundled-Postgres
+      # spawn (cmd/server/spawn_e2e_test.go) and ACME issuance
+      # (internal/transport/http/acme_integration_test.go) require local
+      # postgresql/initdb server binaries and a Pebble test CA container.
+      # They are deliberately skipped in this fast per-PR CI workflow in
+      # favour of the Postgres service container and mocked TLS suites.
+      #
       # Default package-level parallelism is safe here: each
       # integration-tagged package's own TestMain (internal/testutil,
       # internal/persistence/postgres, cmd/server) now creates and

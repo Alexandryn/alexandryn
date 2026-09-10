@@ -95,3 +95,20 @@ binary is ever published outside CI.
 - No ADR is owed for the CODEOWNERS lockfile fix (#128) or the
   Dependabot npm addition (#126) — those are corrections to existing
   config, not decisions.
+
+## Addendum — Branch protection on private repository (audit 0016 #202) (2026-09-10)
+
+GitHub Free plans do not allow branch protection rulesets on private
+repositories (API returns HTTP 403 `Upgrade to GitHub Pro or make this
+repository public`).
+
+The project trade-off is resolved as follows:
+1. When the repository is made public at release under AGPL-3.0 (ADR 0002,
+   ADR 0006), GitHub native branch protection rulesets become available
+   without fee. At that point, native protection on `main` must be enabled
+   (requiring CI checks to pass, 1 approving review, CODEOWNERS approval,
+   and disallowing force push).
+2. Prior to public release, client-side protection is enforced via
+   `.githooks/pre-push` (configured via `scripts/install-git-hooks.sh`),
+   which intercepts git pushes and aborts any direct push targeting `main`.
+

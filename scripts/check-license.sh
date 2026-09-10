@@ -26,4 +26,22 @@ for pkg in "$ROOT/package.json" "$ROOT/web/package.json" "$ROOT/electron/package
 		|| fail "$pkg does not declare \"license\": \"$SPDX\""
 done
 
-echo "check-license: LICENSE present (AGPL-3.0), package.json SPDX consistent — ok"
+# audit 0016 #204: Automated dependency license gate for production npm packages.
+# Fails if any production package uses copyleft licenses (GPL, AGPL, LGPL).
+if [ -f "$ROOT/package-lock.json" ] && command -v python3 >/dev/null 2>&1; then
+	python3 -c "
+import json, sys
+with open('$ROOT/package-lock.json') as f:
+    d = json.load(f)
+for name, pkg in d.get('packages', {}).items():
+    if pkg.get('dev', False):
+        continue
+    lic = str(pkg.get('license', ''))
+    for bad in ['GPL', 'AGPL', 'LGPL']:
+        if bad in lic:
+            print(f'check-license: forbidden copyleft license {lic} in production npm package {name}', file=sys.stderr)
+            sys.exit(1)
+" || fail "copyleft dependency found in package-lock.json"
+fi
+
+echo "check-license: LICENSE present (AGPL-3.0), package.json SPDX consistent, production deps clean — ok"

@@ -44,8 +44,7 @@ func TestIPRateLimiter_StartEviction(t *testing.T) {
 	limiter.StartEviction(ctx)
 	cancel() // must return without leaking the goroutine
 
-	time.Sleep(20 * time.Millisecond)
-	limiter.Cleanup(time.Now()) // the ip is now older than the 10ms ttl
+	limiter.Cleanup(time.Now().Add(time.Hour)) // advance simulated clock past the 10ms ttl (audit 0016 #212)
 	if !limiter.Allow("203.0.113.1") {
 		t.Fatal("after Cleanup past the TTL the entry should be gone and a fresh bucket allows")
 	}

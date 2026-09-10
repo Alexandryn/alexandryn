@@ -50,13 +50,26 @@ if [ -d "$DIR" ]; then
 	while IFS= read -r f; do
 		stripped="$(strip_raw_strings "$f")"
 
-		# (a) fmt.Sprintf building something SQL-shaped.
+		# (a) fmt.Sprintf building something SQL-shaped (handles single-line and multi-line calls, audit 0016 #267).
 		if grep -Eiq "fmt\.Sprintf\(" <<<"$stripped" && grep -Eiq "$sql_keyword_pattern" <<<"$stripped"; then
+			matched=0
 			while IFS= read -r line; do
 				if grep -Eiq "fmt\.Sprintf\(" <<<"$line" && grep -Eiq "$sql_keyword_pattern" <<<"$line"; then
 					add_violation "$f: fmt.Sprintf building a SQL-shaped string — use pgx's own parameterized-query arguments instead (backend-persistence.md FR-3): ${line# }"
+					matched=1
 				fi
 			done <<<"$stripped"
+			if [ "$matched" -eq 0 ]; then
+				if python3 -c "
+import sys, re
+c = sys.stdin.read()
+if re.search(r'fmt\.Sprintf\s*\([^)]*\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|VALUES|SET)\b', c, re.IGNORECASE | re.DOTALL):
+    sys.exit(0)
+sys.exit(1)
+" <<<"$stripped" 2>/dev/null; then
+					add_violation "$f: fmt.Sprintf building a SQL-shaped string across multiple lines — use pgx's own parameterized-query arguments instead (backend-persistence.md FR-3)"
+				fi
+			fi
 		fi
 
 		# (b) string concatenation around a SQL-shaped literal.

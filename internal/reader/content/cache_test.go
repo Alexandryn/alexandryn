@@ -36,10 +36,18 @@ type loaderStub struct {
 	cleaned map[domain.EditionID]*int64
 	mu      sync.Mutex
 	block   chan struct{} // if non-nil, load blocks until closed
+	started chan struct{} // if non-nil, closed when load is entered (audit 0016 #212)
 }
 
 func (l *loaderStub) load(ctx context.Context, id domain.EditionID) (*zip.Reader, func(), error) {
 	atomic.AddInt64(&l.calls, 1)
+	if l.started != nil {
+		select {
+		case <-l.started:
+		default:
+			close(l.started)
+		}
+	}
 	if l.block != nil {
 		select {
 		case <-l.block:
@@ -179,7 +187,7 @@ func TestCache_ReferencedEntrySurvivesEviction(t *testing.T) {
 
 // FR-2: concurrent first requests for the same Edition load it once.
 func TestCache_ConcurrentMissLoadsOnce(t *testing.T) {
-	l := &loaderStub{block: make(chan struct{})}
+	l := &loaderStub{block: make(chan struct{}), started: make(chan struct{})}
 	c := newCache(l.load, &fakeClock{now: time.Unix(0, 0)}, 5, time.Hour, time.Second)
 
 	const n = 8
@@ -196,7 +204,7 @@ func TestCache_ConcurrentMissLoadsOnce(t *testing.T) {
 			}
 		}(i)
 	}
-	time.Sleep(20 * time.Millisecond)
+	<-l.started
 	close(l.block)
 	wg.Wait()
 
