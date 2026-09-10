@@ -140,4 +140,3 @@ func (r *ReadingProgressRepository) SaveForUser(ctx context.Context, userID doma
 	}
 	return nil
 }
-

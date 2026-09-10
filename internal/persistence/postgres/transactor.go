@@ -16,11 +16,12 @@ import (
 // serves both transactional and standalone callers with no signature
 // change (ADR 0021).
 //
-//nolint:unused // consumed by transactor_integration_test.go today and
 // by T24's own repository implementations (R4 onward,
 // tasks/plan-t24-repositories.md) starting the very next task —
 // golangci-lint runs with no build tags in CI, so the integration-tagged
 // test's usage doesn't count toward this check yet.
+//
+//nolint:unused // consumed by transactor_integration_test.go today and
 type querier interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)

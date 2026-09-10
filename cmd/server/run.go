@@ -722,16 +722,16 @@ func run(ctx context.Context, deps runDeps) int {
 					reg.SetQueueDepthProvider(queueDepthProvider(jsConcrete.Queue().CountByState))
 				}
 				if repos != nil && repos.importCandidates != nil {
-				sourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
-				olClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
-				matcher := importer.NewMatcher(repos.importCandidates, olClient)
-				importHandler := importer.NewJobHandler(sourceResolver, repos.importCandidates, matcher, repos.importerService)
-				jsConcrete.Queue().Register("import", 3, importHandler)
+					sourceResolver := transporthttp.NewSourceProviderResolver(repos.sourceRecords, poolRef, logger)
+					olClient := openlibrary.NewClient("", cfg.OpenLibraryUserAgent, logger, nil, nil)
+					matcher := importer.NewMatcher(repos.importCandidates, olClient)
+					importHandler := importer.NewJobHandler(sourceResolver, repos.importCandidates, matcher, repos.importerService)
+					jsConcrete.Queue().Register("import", 3, importHandler)
 
-				sourceChecker := transporthttp.NewSourceCheckerAdapter(repos.sources)
-				jobEnqueuer := transporthttp.NewJobQueueEnqueuer(jsConcrete.Queue())
-				discoveryCoord := importer.NewDiscoveryCoordinator(sourceChecker, sourceResolver, repos.importCandidates, jobEnqueuer, idgen.New())
-				poolRef.SetDiscoveryCoordinator(discoveryCoord)
+					sourceChecker := transporthttp.NewSourceCheckerAdapter(repos.sources)
+					jobEnqueuer := transporthttp.NewJobQueueEnqueuer(jsConcrete.Queue())
+					discoveryCoord := importer.NewDiscoveryCoordinator(sourceChecker, sourceResolver, repos.importCandidates, jobEnqueuer, idgen.New())
+					poolRef.SetDiscoveryCoordinator(discoveryCoord)
 				}
 			}
 			js.Start(ctx)

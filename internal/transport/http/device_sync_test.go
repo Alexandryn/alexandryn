@@ -187,14 +187,14 @@ func TestListDevicesHandler_OwnerScoped(t *testing.T) {
 
 	var resp struct {
 		Devices []struct {
-			ID          string  `json:"id"`
-			Label       string  `json:"label"`
-			DeviceClass string  `json:"deviceClass"`
-			EnrolledVia string  `json:"enrolledVia"`
-			CreatedAt   string  `json:"createdAt"`
-			LastSeenAt  string  `json:"lastSeenAt"`
+			ID           string  `json:"id"`
+			Label        string  `json:"label"`
+			DeviceClass  string  `json:"deviceClass"`
+			EnrolledVia  string  `json:"enrolledVia"`
+			CreatedAt    string  `json:"createdAt"`
+			LastSeenAt   string  `json:"lastSeenAt"`
 			LastSyncedAt *string `json:"lastSyncedAt"`
-			RevokedAt   *string `json:"revokedAt"`
+			RevokedAt    *string `json:"revokedAt"`
 		} `json:"devices"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
@@ -582,10 +582,10 @@ func TestSyncReadingHandler(t *testing.T) {
 	}
 
 	var resp struct {
-		Cursor     int64                              `json:"cursor"`
-		Progress   []transporthttp.SyncProgressItem   `json:"progress"`
-		Bookmarks  []transporthttp.SyncBookmarkItem   `json:"bookmarks"`
-		Highlights []transporthttp.SyncHighlightItem  `json:"highlights"`
+		Cursor     int64                             `json:"cursor"`
+		Progress   []transporthttp.SyncProgressItem  `json:"progress"`
+		Bookmarks  []transporthttp.SyncBookmarkItem  `json:"bookmarks"`
+		Highlights []transporthttp.SyncHighlightItem `json:"highlights"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -1003,8 +1003,6 @@ func TestSyncReadingHandler_FutureSinceDoesNotAdvancePersistedCursor(t *testing.
 		t.Fatalf("expected echoed cursor to be clamped to ceiling (0), got %d", resp.Cursor)
 	}
 }
-
-
 
 // #114: SyncReadingHandler must floor `since` at the device's own pull
 // cursor. A device that has already synced up to sequence N and then asks

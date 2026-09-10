@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -115,11 +114,6 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 		}
 		defer rows.Close()
 
-		elapsed := time.Since(start)
-		if elapsed > 100*time.Millisecond {
-			slog.WarnContext(ctx, "slow finished works query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
-		}
-
 		worksMap := make(map[string][]FinishedUserRef)
 		var workOrder []string
 
@@ -147,6 +141,13 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 			return
 		}
 
+		// pgx's pool.Query returns before rows are fetched, so the query
+		// time is only known once the scan loop and rows.Err() are done
+		// (audit 0016 #182).
+		if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+			slog.WarnContext(ctx, "slow finished works query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
+		}
+
 		works := make([]FinishedWorkItem, 0, len(workOrder))
 		for _, wid := range workOrder {
 			works = append(works, FinishedWorkItem{
@@ -161,8 +162,7 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 			nextCursor = &last
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(finishedWorksResponse{Works: works, NextCursor: nextCursor})
+		writeJSON(w, http.StatusOK, finishedWorksResponse{Works: works, NextCursor: nextCursor}, corrID)
 	})
 }
 
@@ -224,11 +224,6 @@ func LibraryLeaderboardHandler(pool *pgxpool.Pool) http.Handler {
 		}
 		defer rows.Close()
 
-		elapsed := time.Since(start)
-		if elapsed > 100*time.Millisecond {
-			slog.WarnContext(ctx, "slow leaderboard query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
-		}
-
 		items := make([]LeaderboardItem, 0)
 		for rows.Next() {
 			var item LeaderboardItem
@@ -244,8 +239,13 @@ func LibraryLeaderboardHandler(pool *pgxpool.Pool) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(leaderboardResponse{Leaderboard: items})
+		// pgx returns from Query before rows are fetched — time the scan
+		// loop, not the dispatch (audit 0016 #182).
+		if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+			slog.WarnContext(ctx, "slow leaderboard query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
+		}
+
+		writeJSON(w, http.StatusOK, leaderboardResponse{Leaderboard: items}, corrID)
 	})
 }
 

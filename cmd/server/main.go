@@ -27,8 +27,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/idgen"
 	"github.com/Alexandryn/alexandryn/internal/jobs"
 	"github.com/Alexandryn/alexandryn/internal/logging"
-	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/observability"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 	"golang.org/x/time/rate"
 )

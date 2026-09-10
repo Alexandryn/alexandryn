@@ -70,10 +70,10 @@ func NewUser(id UserID, username, email string, role Role, createdAt, updatedAt 
 	}, nil
 }
 
-func (u *User) ID() UserID          { return u.id }
-func (u *User) Username() string    { return u.username }
-func (u *User) Email() string       { return u.email }
-func (u *User) Role() Role          { return u.role }
+func (u *User) ID() UserID           { return u.id }
+func (u *User) Username() string     { return u.username }
+func (u *User) Email() string        { return u.email }
+func (u *User) Role() Role           { return u.role }
 func (u *User) CreatedAt() time.Time { return u.createdAt }
 func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 
@@ -107,9 +107,9 @@ func NewUserCredentials(userID UserID, passwordHash string, updatedAt time.Time)
 	}, nil
 }
 
-func (c *UserCredentials) UserID() UserID          { return c.userID }
-func (c *UserCredentials) PasswordHash() string    { return c.passwordHash }
-func (c *UserCredentials) UpdatedAt() time.Time    { return c.updatedAt }
+func (c *UserCredentials) UserID() UserID       { return c.userID }
+func (c *UserCredentials) PasswordHash() string { return c.passwordHash }
+func (c *UserCredentials) UpdatedAt() time.Time { return c.updatedAt }
 
 // RefreshToken represents a stateful, rotatable session refresh token (ADR 0025).
 type RefreshToken struct {
@@ -151,12 +151,12 @@ func RehydrateRefreshToken(id RefreshTokenID, userID UserID, tokenHash string, e
 	}
 }
 
-func (r *RefreshToken) ID() RefreshTokenID       { return r.id }
-func (r *RefreshToken) UserID() UserID           { return r.userID }
-func (r *RefreshToken) TokenHash() string        { return r.tokenHash }
-func (r *RefreshToken) ExpiresAt() time.Time     { return r.expiresAt }
-func (r *RefreshToken) RevokedAt() *time.Time    { return r.revokedAt }
-func (r *RefreshToken) CreatedAt() time.Time     { return r.createdAt }
+func (r *RefreshToken) ID() RefreshTokenID    { return r.id }
+func (r *RefreshToken) UserID() UserID        { return r.userID }
+func (r *RefreshToken) TokenHash() string     { return r.tokenHash }
+func (r *RefreshToken) ExpiresAt() time.Time  { return r.expiresAt }
+func (r *RefreshToken) RevokedAt() *time.Time { return r.revokedAt }
+func (r *RefreshToken) CreatedAt() time.Time  { return r.createdAt }
 
 func (r *RefreshToken) IsActive(now time.Time) bool {
 	return r.revokedAt == nil && now.Before(r.expiresAt)
@@ -193,12 +193,12 @@ func NewTOTPSettings(userID UserID, encryptedSecret []byte, recoveryCodeHashes [
 	}, nil
 }
 
-func (t *TOTPSettings) UserID() UserID                  { return t.userID }
-func (t *TOTPSettings) EncryptedSecret() []byte         { return t.encryptedSecret }
-func (t *TOTPSettings) RecoveryCodeHashes() []string    { return t.recoveryCodeHashes }
-func (t *TOTPSettings) IsEnabled() bool                 { return t.enabled }
-func (t *TOTPSettings) ConfirmedAt() *time.Time         { return t.confirmedAt }
-func (t *TOTPSettings) CreatedAt() time.Time            { return t.createdAt }
+func (t *TOTPSettings) UserID() UserID               { return t.userID }
+func (t *TOTPSettings) EncryptedSecret() []byte      { return t.encryptedSecret }
+func (t *TOTPSettings) RecoveryCodeHashes() []string { return t.recoveryCodeHashes }
+func (t *TOTPSettings) IsEnabled() bool              { return t.enabled }
+func (t *TOTPSettings) ConfirmedAt() *time.Time      { return t.confirmedAt }
+func (t *TOTPSettings) CreatedAt() time.Time         { return t.createdAt }
 
 func (t *TOTPSettings) Confirm(now time.Time) {
 	t.enabled = true
@@ -250,12 +250,12 @@ func RehydratePasswordResetToken(id PasswordResetID, userID UserID, tokenHash st
 	}
 }
 
-func (p *PasswordResetToken) ID() PasswordResetID       { return p.id }
-func (p *PasswordResetToken) UserID() UserID           { return p.userID }
-func (p *PasswordResetToken) TokenHash() string        { return p.tokenHash }
-func (p *PasswordResetToken) ExpiresAt() time.Time     { return p.expiresAt }
-func (p *PasswordResetToken) UsedAt() *time.Time       { return p.usedAt }
-func (p *PasswordResetToken) CreatedAt() time.Time     { return p.createdAt }
+func (p *PasswordResetToken) ID() PasswordResetID  { return p.id }
+func (p *PasswordResetToken) UserID() UserID       { return p.userID }
+func (p *PasswordResetToken) TokenHash() string    { return p.tokenHash }
+func (p *PasswordResetToken) ExpiresAt() time.Time { return p.expiresAt }
+func (p *PasswordResetToken) UsedAt() *time.Time   { return p.usedAt }
+func (p *PasswordResetToken) CreatedAt() time.Time { return p.createdAt }
 
 func (p *PasswordResetToken) IsValid(now time.Time) bool {
 	return p.usedAt == nil && now.Before(p.expiresAt)

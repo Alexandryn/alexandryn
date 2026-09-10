@@ -579,4 +579,3 @@ func TestStore_ClearCompleted(t *testing.T) {
 		t.Error("expected completed job to be deleted")
 	}
 }
-

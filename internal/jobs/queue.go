@@ -119,4 +119,3 @@ func (q *Queue) RetryJob(ctx context.Context, id ID) (ID, error) {
 func (q *Queue) ClearCompleted(ctx context.Context, olderThan time.Time) (int64, error) {
 	return q.store.ClearCompleted(ctx, olderThan)
 }
-

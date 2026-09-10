@@ -1188,5 +1188,3 @@ func TestPhase14ContractResponses(t *testing.T) {
 		}
 	})
 }
-
-

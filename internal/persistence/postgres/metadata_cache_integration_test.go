@@ -185,4 +185,3 @@ func TestMetadataCacheRepository_SaveWork_NilSubjectsAndEditionPruning(t *testin
 		t.Errorf("expected edition OL201M, got %s", cachedAfterRefresh.Editions[0].OpenLibraryEditionKey)
 	}
 }
-

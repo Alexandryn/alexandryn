@@ -51,9 +51,9 @@ func TestDiagnosticsHandler_AdminAccess_ReturnsSnapshot(t *testing.T) {
 	}
 
 	var resp struct {
-		UptimeSeconds int64                          `json:"uptime_seconds"`
-		Version       map[string]string              `json:"version"`
-		Runtime       map[string]any                 `json:"runtime"`
+		UptimeSeconds int64                         `json:"uptime_seconds"`
+		Version       map[string]string             `json:"version"`
+		Runtime       map[string]any                `json:"runtime"`
 		Metrics       observability.MetricsSnapshot `json:"metrics"`
 	}
 	if err := json.Unmarshal(recAdmin.Body.Bytes(), &resp); err != nil {

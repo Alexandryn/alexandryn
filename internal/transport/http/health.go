@@ -26,12 +26,12 @@ type PoolRef struct {
 	collections   atomic.Pointer[domain.CollectionRepository]
 	metadataCache atomic.Pointer[postgres.MetadataCacheRepository]
 	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
-	sources       sourceRefs // phase 08 — see sources_ref.go
-	imports       importRefs // phase 10 — see import_ref.go
-	reader        readerRefs  // phase 11 — see reader_ref.go
-	auth          authRefs    // phase 12 — see auth_ref.go
-	network       networkRefs // phase 13 — see network_ref.go
-	sync          syncRefs    // phase 14 — see sync_ref.go
+	sources       sourceRefs        // phase 08 — see sources_ref.go
+	imports       importRefs        // phase 10 — see import_ref.go
+	reader        readerRefs        // phase 11 — see reader_ref.go
+	auth          authRefs          // phase 12 — see auth_ref.go
+	network       networkRefs       // phase 13 — see network_ref.go
+	sync          syncRefs          // phase 14 — see sync_ref.go
 	observability observabilityRefs // phase 15 — see activity_ref.go
 }
 

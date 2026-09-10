@@ -374,9 +374,9 @@ const maxDeviceLabelRunes = 100
 // who completed POST /api/v1/auth/login carrying the enrolment grant —
 // NOT the admin who initiated the PairingSession (ADR 0028 §6).
 type PairedDevice struct {
-	id          DeviceID
-	owner       UserID
-	label       string
+	id           DeviceID
+	owner        UserID
+	label        string
 	deviceClass  DeviceClass
 	enrolledVia  EnrolledVia
 	createdAt    time.Time

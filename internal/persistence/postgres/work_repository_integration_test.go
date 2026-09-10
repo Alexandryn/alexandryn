@@ -501,7 +501,6 @@ func TestWorkRepository_QueryLibrary_CursorStability(t *testing.T) {
 	}
 }
 
-
 func TestWorkRepository_FindWorkDetail(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
@@ -592,4 +591,3 @@ func TestWorkRepository_QueryLibrary_SingleQueryClaim(t *testing.T) {
 		t.Fatalf("backend-library-api.md FR-9 single query claim failed: executed %d queries, want exactly 1. Queries: %+v", queryCount, tracedQueries)
 	}
 }
-

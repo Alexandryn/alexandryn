@@ -21,7 +21,9 @@ func testKeys() ([]byte, []byte) {
 	return encKey, indexKey
 }
 
-func seedTestAdmin(t *testing.T, pool interface{ Exec(context.Context, string, ...any) (any, error) }) {
+func seedTestAdmin(t *testing.T, pool interface {
+	Exec(context.Context, string, ...any) (any, error)
+}) {
 	// Handled by mustExecPool in postgres_test
 }
 

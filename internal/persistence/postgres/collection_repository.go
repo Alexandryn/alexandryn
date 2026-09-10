@@ -339,4 +339,3 @@ func (r *CollectionRepository) Rename(ctx context.Context, libraryID domain.Libr
 	}
 	return nil
 }
-
