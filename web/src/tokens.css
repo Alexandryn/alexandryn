@@ -70,6 +70,11 @@
   --tracking-10: 0.14em;
   --tracking-11: 0.2em;
   --breakpoint-reflow: 768px;
+  /* Design fonts (audit 0016 #223): currently render via system fallback.
+     When custom web fonts are added: self-host .woff2 under public/fonts/,
+     use @font-face { font-display: swap } (optional for mono), subset with
+     unicode-range, preload max 1-2 first-paint faces, and never load from
+     external CDNs (fonts.googleapis.com). */
   --font-ui: Geist, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
   --font-reading: Newsreader, Georgia, serif;
   --font-mono: 'IBM Plex Mono', monospace;

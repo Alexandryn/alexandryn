@@ -47,11 +47,7 @@ describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
 
   it('DiscoverCover renders network image when coverUrl is provided', () => {
     const { container } = render(
-      <DiscoverCover
-        coverUrl="/api/v1/discover/covers/123"
-        identifier="OL1W"
-        title="Test Title"
-      />,
+      <DiscoverCover coverUrl="/api/v1/discover/covers/123" identifier="OL1W" title="Test Title" />,
     )
 
     const img = container.querySelector('img')
@@ -78,5 +74,49 @@ describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
     // Now img should be replaced with GeneratedCover
     expect(container.querySelector('img')).toBeNull()
     expect(screen.getByText('Test Title')).toBeInTheDocument()
+  })
+
+  it('renders priority hint with eager loading and high fetchPriority on first row (audit 0016 #219)', () => {
+    const { container } = render(
+      <DiscoverCover
+        coverUrl="/api/v1/discover/covers/123"
+        identifier="OL1W"
+        title="Test Title"
+        priority
+      />,
+    )
+
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img).toHaveAttribute('loading', 'eager')
+    expect(img).toHaveAttribute('fetchpriority', 'high')
+    expect(img).toHaveAttribute('decoding', 'async')
+  })
+
+  it('passes priority=true for first 6 results in DiscoverResultGrid (audit 0016 #219)', () => {
+    const manyResults: NormalisedSearchResult[] = Array.from({ length: 8 }, (_, i) => ({
+      openLibraryWorkKey: `OL${i}W`,
+      title: `Book ${i}`,
+      authors: [{ name: `Author ${i}` }],
+      coverUrl: `/api/v1/discover/covers/${i}`,
+      editionCount: 1,
+    }))
+
+    const { container } = render(
+      <MemoryRouter>
+        <DiscoverResultGrid results={manyResults} />
+      </MemoryRouter>,
+    )
+
+    const images = container.querySelectorAll('img')
+    expect(images.length).toBe(8)
+    // First 6 covers are priority
+    for (let i = 0; i < 6; i++) {
+      expect(images[i]).toHaveAttribute('loading', 'eager')
+      expect(images[i]).toHaveAttribute('fetchpriority', 'high')
+    }
+    // 7th and 8th covers are lazy
+    expect(images[6]).toHaveAttribute('loading', 'lazy')
+    expect(images[7]).toHaveAttribute('loading', 'lazy')
   })
 })

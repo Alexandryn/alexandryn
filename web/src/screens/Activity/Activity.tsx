@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   parseActivityEvents,
@@ -26,7 +26,8 @@ export function ActivityScreen() {
   // click (audit 0016 #300).
   const [pendingCancel, setPendingCancel] = useState<ActivityItem | null>(null)
 
-  const grouped = parseActivityEvents(events)
+  // Memoize grouped events to prevent downstream memo breakage across poll ticks (audit 0016 #214).
+  const grouped = useMemo(() => parseActivityEvents(events), [events])
   const isEmpty =
     grouped.active.length === 0 &&
     grouped.queued.length === 0 &&
@@ -70,7 +71,7 @@ export function ActivityScreen() {
         <>
           {/* ACTIVE section */}
           {grouped.active.length > 0 && (
-            <section aria-labelledby="active-heading" className="mb-[1.875rem]">
+            <section aria-labelledby="active-heading" className="cv-auto mb-[1.875rem]">
               <div className="flex items-center gap-2.5 mb-3">
                 <h2
                   id="active-heading"
@@ -83,10 +84,7 @@ export function ActivityScreen() {
                   type="button"
                   onClick={() => pauseAll.mutate()}
                   disabled={pauseAll.isPending}
-                  className={cx(
-                    'text-xs text-text-2 hover:text-text cursor-pointer',
-                    FOCUS_RING,
-                  )}
+                  className={cx('text-xs text-text-2 hover:text-text cursor-pointer', FOCUS_RING)}
                 >
                   Pause all
                 </button>
@@ -94,11 +92,7 @@ export function ActivityScreen() {
 
               <div className="flex flex-col gap-2">
                 {grouped.active.map((item) => (
-                  <ActiveRow
-                    key={item.id}
-                    item={item}
-                    onCancel={() => setPendingCancel(item)}
-                  />
+                  <ActiveRow key={item.id} item={item} onCancel={() => setPendingCancel(item)} />
                 ))}
               </div>
             </section>
@@ -106,7 +100,7 @@ export function ActivityScreen() {
 
           {/* QUEUED section */}
           {grouped.queued.length > 0 && (
-            <section aria-labelledby="queued-heading" className="mb-[1.875rem]">
+            <section aria-labelledby="queued-heading" className="cv-auto mb-[1.875rem]">
               <div className="flex items-center gap-2.5 mb-3">
                 <h2
                   id="queued-heading"
@@ -133,7 +127,7 @@ export function ActivityScreen() {
 
           {/* FAILED section */}
           {grouped.failed.length > 0 && (
-            <section aria-labelledby="failed-heading" className="mb-[1.875rem]">
+            <section aria-labelledby="failed-heading" className="cv-auto mb-[1.875rem]">
               <div className="flex items-center gap-2.5 mb-3">
                 <h2
                   id="failed-heading"
@@ -160,7 +154,7 @@ export function ActivityScreen() {
 
           {/* COMPLETED section */}
           {grouped.completed.length > 0 && (
-            <section aria-labelledby="completed-heading">
+            <section aria-labelledby="completed-heading" className="cv-auto">
               <div className="flex items-center gap-2.5 mb-3">
                 <h2
                   id="completed-heading"
@@ -173,10 +167,7 @@ export function ActivityScreen() {
                   type="button"
                   onClick={() => clearCompleted.mutate()}
                   disabled={clearCompleted.isPending}
-                  className={cx(
-                    'text-xs text-text-2 hover:text-text cursor-pointer',
-                    FOCUS_RING,
-                  )}
+                  className={cx('text-xs text-text-2 hover:text-text cursor-pointer', FOCUS_RING)}
                 >
                   Clear
                 </button>
@@ -238,7 +229,9 @@ function ActiveRow({ item, onCancel }: { item: ActivityItem; onCancel: () => voi
 
       <div className="w-[16.25rem] flex-[1_1_200px] min-w-0">
         <div className="text-2xl font-medium truncate text-text">{item.title}</div>
-        <div className="text-xs text-text-3 truncate mt-0.75">{item.author || 'Unknown author'}</div>
+        <div className="text-xs text-text-3 truncate mt-0.75">
+          {item.author || 'Unknown author'}
+        </div>
       </div>
 
       <div className="w-[10.625rem] flex-[0_1_170px] min-w-0 font-mono text-2xs text-text-3 truncate">
@@ -300,10 +293,7 @@ function QueuedRow({ item, onCancel }: { item: ActivityItem; onCancel: () => voi
       <button
         type="button"
         onClick={onCancel}
-        className={cx(
-          'flex-none text-xs text-text-2 hover:text-error cursor-pointer',
-          FOCUS_RING,
-        )}
+        className={cx('flex-none text-xs text-text-2 hover:text-error cursor-pointer', FOCUS_RING)}
       >
         Cancel
       </button>
@@ -328,9 +318,7 @@ function FailedRow({ item, onRetry }: { item: ActivityItem; onRetry: () => void 
 
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <div className="w-1.25 h-1.25 rounded-full bg-error flex-none" />
-        <div className="text-lg text-error truncate">
-          {item.errorMessage || 'Operation failed'}
-        </div>
+        <div className="text-lg text-error truncate">{item.errorMessage || 'Operation failed'}</div>
       </div>
 
       <Link
