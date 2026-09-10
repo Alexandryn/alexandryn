@@ -285,6 +285,9 @@ func LoginHandler(
 		if err != nil {
 			user, err = userRepo.FindByUsername(r.Context(), req.EmailOrUsername)
 			if err != nil {
+				// No such account: still run the KDF so the response
+				// time does not reveal whether the account exists (#187).
+				_, _ = hasher.VerifyPassword(req.Password, auth.DummyPasswordHash())
 				WriteError(w, domain.Unauthorized, "invalid credentials", corrID)
 				return
 			}
@@ -292,6 +295,7 @@ func LoginHandler(
 
 		creds, err := credRepo.FindByUserID(r.Context(), user.ID())
 		if err != nil {
+			_, _ = hasher.VerifyPassword(req.Password, auth.DummyPasswordHash())
 			WriteError(w, domain.Unauthorized, "invalid credentials", corrID)
 			return
 		}
