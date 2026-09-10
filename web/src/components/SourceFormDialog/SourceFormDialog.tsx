@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
+import { ApiError } from '../../data/http'
+import { type Source, type SourceKind, useCreateSource, useUpdateSource } from '../../data/sources'
 import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import { Modal } from '../Modal/Modal'
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
-import { useCreateSource, useUpdateSource, type Source, type SourceKind } from '../../data/sources'
-import { ApiError } from '../../data/http'
 
 interface AlexandrynWindow {
   alexandryn?: {
@@ -38,7 +38,19 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
   const [isReplacingCred, setIsReplacingCred] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [validationError, setValidationError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    label?: string
+    basePath?: string
+    baseUrl?: string
+    username?: string
+    password?: string
+  }>({})
+
+  const labelInputRef = useRef<HTMLInputElement>(null)
+  const basePathInputRef = useRef<HTMLInputElement>(null)
+  const baseUrlInputRef = useRef<HTMLInputElement>(null)
+  const usernameInputRef = useRef<HTMLInputElement>(null)
+  const passwordInputRef = useRef<HTMLInputElement>(null)
 
   const createMutation = useCreateSource()
   const updateMutation = useUpdateSource()
@@ -57,7 +69,7 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
       ).alexandryn?.source?.pickLocalFolder?.()
       if (result && typeof result.path === 'string') {
         setBasePath(result.path)
-        if (validationError) setValidationError(null)
+        if (fieldErrors.basePath) setFieldErrors((prev) => ({ ...prev, basePath: undefined }))
       }
     } catch {
       // Ignore user cancellation or IPC errors
@@ -78,50 +90,58 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
 
     const trimmedLabel = label.trim()
     if (!trimmedLabel) {
-      setValidationError('Source label is required.')
+      setFieldErrors({ label: 'Source label is required.' })
+      labelInputRef.current?.focus()
       return
     }
     if (trimmedLabel.length > 100) {
-      setValidationError('Source label cannot exceed 100 characters.')
+      setFieldErrors({ label: 'Source label cannot exceed 100 characters.' })
+      labelInputRef.current?.focus()
       return
     }
 
     if (kind === 'local-folder') {
       const trimmedPath = basePath.trim()
       if (!trimmedPath) {
-        setValidationError('Folder path is required.')
+        setFieldErrors({ basePath: 'Folder path is required.' })
+        basePathInputRef.current?.focus()
         return
       }
     } else if (kind === 'opds') {
       const trimmedUrl = baseUrl.trim()
       if (!trimmedUrl) {
-        setValidationError('Catalog URL is required.')
+        setFieldErrors({ baseUrl: 'Catalog URL is required.' })
+        baseUrlInputRef.current?.focus()
         return
       }
       try {
         const parsed = new URL(trimmedUrl)
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-          setValidationError('Catalog URL must start with http:// or https://')
+          setFieldErrors({ baseUrl: 'Catalog URL must start with http:// or https://' })
+          baseUrlInputRef.current?.focus()
           return
         }
       } catch {
-        setValidationError('Catalog URL is not a valid URL.')
+        setFieldErrors({ baseUrl: 'Catalog URL is not a valid URL.' })
+        baseUrlInputRef.current?.focus()
         return
       }
 
       if (isCredentialSubformVisible) {
         if (!username.trim()) {
-          setValidationError('Username is required for authentication.')
+          setFieldErrors({ username: 'Username is required for authentication.' })
+          usernameInputRef.current?.focus()
           return
         }
         if (!password.trim()) {
-          setValidationError('Password is required for authentication.')
+          setFieldErrors({ password: 'Password is required for authentication.' })
+          passwordInputRef.current?.focus()
           return
         }
       }
     }
 
-    setValidationError(null)
+    setFieldErrors({})
 
     try {
       if (isEditing && source) {
@@ -175,16 +195,18 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
         : null
 
   return (
-    <form onSubmit={handleSubmit} className="mt-md flex flex-col gap-md">
+    <form onSubmit={handleSubmit} noValidate className="mt-md flex flex-col gap-md">
       <Input
+        ref={labelInputRef}
         label="Source label"
         value={label}
         onChange={(e) => {
           setLabel(e.target.value)
-          if (validationError) setValidationError(null)
+          if (fieldErrors.label) setFieldErrors((prev) => ({ ...prev, label: undefined }))
         }}
         placeholder="e.g. Personal Library, Standard Ebooks"
         maxLength={100}
+        error={fieldErrors.label}
         required
       />
 
@@ -196,7 +218,7 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
             value={kind}
             onValueChange={(val) => {
               setKind(val as SourceKind)
-              if (validationError) setValidationError(null)
+              setFieldErrors({})
             }}
             options={[
               { value: 'local-folder', label: 'Local folder' },
@@ -211,13 +233,16 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
           <div className="flex items-end gap-xs">
             <div className="flex-1">
               <Input
+                ref={basePathInputRef}
                 label="Folder path"
                 value={basePath}
                 onChange={(e) => {
                   setBasePath(e.target.value)
-                  if (validationError) setValidationError(null)
+                  if (fieldErrors.basePath)
+                    setFieldErrors((prev) => ({ ...prev, basePath: undefined }))
                 }}
                 placeholder="/path/to/books or C:\Books"
+                error={fieldErrors.basePath}
                 required
               />
             </div>
@@ -236,13 +261,15 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
       ) : (
         <div className="flex flex-col gap-md">
           <Input
+            ref={baseUrlInputRef}
             label="Catalog base URL"
             value={baseUrl}
             onChange={(e) => {
               setBaseUrl(e.target.value)
-              if (validationError) setValidationError(null)
+              if (fieldErrors.baseUrl) setFieldErrors((prev) => ({ ...prev, baseUrl: undefined }))
             }}
             placeholder="https://opds.example.org/catalog"
+            error={fieldErrors.baseUrl}
             required
           />
 
@@ -293,19 +320,31 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
                   )}
 
                   <Input
+                    ref={usernameInputRef}
                     label="Username"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      setUsername(e.target.value)
+                      if (fieldErrors.username)
+                        setFieldErrors((prev) => ({ ...prev, username: undefined }))
+                    }}
                     autoComplete="username"
+                    error={fieldErrors.username}
                     required
                   />
 
                   <Input
+                    ref={passwordInputRef}
                     label="Password"
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      if (fieldErrors.password)
+                        setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                    }}
                     autoComplete="new-password"
+                    error={fieldErrors.password}
                     required
                   />
 
@@ -328,12 +367,6 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
             </div>
           )}
         </div>
-      )}
-
-      {validationError && (
-        <p className="text-xs text-error font-ui" role="alert">
-          {validationError}
-        </p>
       )}
 
       {errorMessage && (

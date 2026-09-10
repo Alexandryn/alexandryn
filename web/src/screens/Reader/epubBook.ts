@@ -75,8 +75,22 @@ export function flattenToc(items: EpubTocItem[], depth = 0): FlatTocEntry[] {
   ])
 }
 
+/** Normalises an EPUB path for comparison (strips fragments/queries, resolves separators). */
+function normalisePath(p: string): string {
+  const clean = p.split(/[?#]/)[0] ?? ''
+  try {
+    return decodeURIComponent(clean).replace(/^\/+/, '').replace(/\/+/g, '/')
+  } catch {
+    return clean.replace(/^\/+/, '').replace(/\/+/g, '/')
+  }
+}
+
 /** The spine index whose section href matches a TOC href (ignoring a #fragment). */
 export function sectionIndexForHref(sections: EpubSection[], href: string): number {
-  const path = href.split('#')[0] ?? href
-  return sections.findIndex((s) => s.id === path || s.id.endsWith('/' + path) || path.endsWith(s.id))
+  const path = normalisePath(href)
+  if (!path) return -1
+  return sections.findIndex((s) => {
+    const sPath = normalisePath(s.id)
+    return sPath === path || sPath.endsWith('/' + path) || path.endsWith('/' + sPath)
+  })
 }

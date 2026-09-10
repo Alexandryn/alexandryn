@@ -148,7 +148,16 @@ export function Reader() {
     [preferences],
   )
 
+  const cleanupIframeListenersRef = useRef<(() => void) | null>(null)
+  const sectionIndexRef = useRef(sectionIndex)
+  sectionIndexRef.current = sectionIndex
+  const sectionsLengthRef = useRef(sections.length)
+  sectionsLengthRef.current = sections.length
+  const currentSectionRef = useRef(currentSection)
+  currentSectionRef.current = currentSection
+
   const handleIframeLoad = useCallback(() => {
+    cleanupIframeListenersRef.current?.()
     const win = iframeRef.current?.contentWindow
     const doc = iframeRef.current?.contentDocument
     if (!win || !doc) return
@@ -157,13 +166,13 @@ export function Reader() {
     // Every load opens at the top; the one-shot intra-chapter restore is
     // applied by the effect below once this section's document is in.
     restoreScroll(win, 0)
-    setLoadedSection(sectionIndex)
+    setLoadedSection(sectionIndexRef.current)
 
     const onScroll = () => {
       const el = doc.scrollingElement ?? doc.documentElement
       const denom = el.scrollHeight - el.clientHeight
       const fraction = denom > 0 ? el.scrollTop / denom : 0
-      setRatio(progressRatio(sectionIndex, sections.length, fraction))
+      setRatio(progressRatio(sectionIndexRef.current, sectionsLengthRef.current, fraction))
       reportPosition()
     }
     win.addEventListener('scroll', onScroll, { passive: true })
@@ -175,15 +184,33 @@ export function Reader() {
         return
       }
       try {
-        setSelectionRange(selectionCfis(currentSection!, doc, sel.getRangeAt(0)))
+        const sec = currentSectionRef.current
+        if (sec) {
+          setSelectionRange(selectionCfis(sec, doc, sel.getRangeAt(0)))
+        }
       } catch {
         setSelectionRange(null)
       }
     }
     doc.addEventListener('selectionchange', onSelect)
 
-    setRatio(progressRatio(sectionIndex, sections.length, 0))
-  }, [applyPreferences, sectionIndex, sections.length, reportPosition, currentSection])
+    cleanupIframeListenersRef.current = () => {
+      try {
+        win.removeEventListener('scroll', onScroll)
+        doc.removeEventListener('selectionchange', onSelect)
+      } catch {
+        // Window or document may already be torn down
+      }
+    }
+
+    setRatio(progressRatio(sectionIndexRef.current, sectionsLengthRef.current, 0))
+  }, [applyPreferences, reportPosition])
+
+  useEffect(() => {
+    return () => {
+      cleanupIframeListenersRef.current?.()
+    }
+  }, [])
 
   // One-shot intra-chapter scroll restore (audit 0016 #145). Runs after
   // the restored section's document is loaded — covers both the case
@@ -199,7 +226,14 @@ export function Reader() {
     if (win && saved) {
       restoreScroll(win, sectionScrollFraction(saved.percentage, sectionIndex, sections.length))
     }
-  }, [restored, loadedSection, sectionIndex, sections.length, progressQuery.isPending, progressQuery.data])
+  }, [
+    restored,
+    loadedSection,
+    sectionIndex,
+    sections.length,
+    progressQuery.isPending,
+    progressQuery.data,
+  ])
 
   // Re-apply typography whenever preferences change without reloading.
   useEffect(() => {
@@ -229,7 +263,8 @@ export function Reader() {
   }
   if (bookQuery.isPending) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-full items-center justify-center" role="status">
+        <h1 className="sr-only">Opening book</h1>
         <Spinner label="Opening book" />
       </div>
     )
@@ -248,7 +283,10 @@ export function Reader() {
     )
   }
 
-  const setPreference = <K extends keyof ReadingPreferences>(key: K, value: ReadingPreferences[K]) => {
+  const setPreference = <K extends keyof ReadingPreferences>(
+    key: K,
+    value: ReadingPreferences[K],
+  ) => {
     const next = { ...preferences, [key]: value }
     savePreferencesDebounced(next)
   }
@@ -260,7 +298,11 @@ export function Reader() {
   }
 
   return (
-    <div className="reader-root" data-theme={preferences.theme} data-layout={preferences.layoutMode}>
+    <div
+      className="reader-root"
+      data-theme={preferences.theme}
+      data-layout={preferences.layoutMode}
+    >
       {chromeVisible && (
         <div className="reader-bar">
           <Link to={`/book/${workId}`} className={cx('text-sm opacity-70', FOCUS_RING)}>
@@ -270,7 +312,10 @@ export function Reader() {
             {bookQuery.data?.title}
           </div>
           <div className="flex flex-none gap-2xs">
-            <ToolButton active={panel === 'toc'} onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>
+            <ToolButton
+              active={panel === 'toc'}
+              onClick={() => setPanel(panel === 'toc' ? null : 'toc')}
+            >
               Contents
             </ToolButton>
             <ToolButton
@@ -299,7 +344,10 @@ export function Reader() {
       {!chromeVisible && (
         <button
           type="button"
-          className={cx('absolute right-md top-md z-10 rounded-md border bg-surface px-sm py-2xs text-xs', FOCUS_RING)}
+          className={cx(
+            'absolute right-md top-md z-10 rounded-md border bg-surface px-sm py-2xs text-xs',
+            FOCUS_RING,
+          )}
           onClick={() => setChromeVisible(true)}
         >
           Show controls
@@ -338,28 +386,41 @@ export function Reader() {
         <nav className="reader-panel reader-panel--toc" aria-label="Table of contents">
           <p className="font-mono text-2xs uppercase tracking-2 opacity-60">Contents</p>
           <ul className="mt-sm flex flex-col gap-4xs">
-            {toc.map((entry, i) => {
-              const idx = sectionIndexForHref(sections, entry.href)
-              const active = idx === sectionIndex
-              return (
-                <li key={`${entry.href}-${i}`} style={{ paddingLeft: entry.depth ? '0.75rem' : undefined }}>
-                  <button
-                    type="button"
-                    className={cx('reader-toc-entry', FOCUS_RING)}
-                    aria-current={active}
-                    onClick={() => goToSection(idx >= 0 ? idx : sectionIndex)}
+            {toc
+              .map((entry, i) => ({
+                entry,
+                i,
+                idx: sectionIndexForHref(sections, entry.href),
+              }))
+              .filter(({ idx }) => idx >= 0)
+              .map(({ entry, i, idx }) => {
+                const active = idx === sectionIndex
+                return (
+                  <li
+                    key={`${entry.href}-${i}`}
+                    style={{ paddingLeft: entry.depth ? '0.75rem' : undefined }}
                   >
-                    {entry.label}
-                  </button>
-                </li>
-              )
-            })}
+                    <button
+                      type="button"
+                      className={cx('reader-toc-entry', FOCUS_RING)}
+                      aria-current={active}
+                      onClick={() => goToSection(idx)}
+                    >
+                      {entry.label}
+                    </button>
+                  </li>
+                )
+              })}
           </ul>
         </nav>
       )}
 
       {panel === 'settings' && (
-        <div className="reader-panel reader-panel--settings" role="group" aria-label="Reading settings">
+        <div
+          className="reader-panel reader-panel--settings"
+          role="group"
+          aria-label="Reading settings"
+        >
           <p className="font-mono text-2xs uppercase tracking-2 opacity-60">Reading</p>
 
           <fieldset className="mt-md border-0 p-0">
@@ -453,7 +514,9 @@ export function Reader() {
         <aside className="reader-panel reader-panel--marks" aria-label="Bookmarks and highlights">
           <div className="flex items-center gap-sm">
             <p className="flex-1 font-mono text-2xs uppercase tracking-2 opacity-60">
-              Marks · {(bookmarksQuery.data?.bookmarks.length ?? 0) + (highlightsQuery.data?.highlights.length ?? 0)}
+              Marks ·{' '}
+              {(bookmarksQuery.data?.bookmarks.length ?? 0) +
+                (highlightsQuery.data?.highlights.length ?? 0)}
             </p>
             <button
               type="button"
@@ -492,15 +555,17 @@ export function Reader() {
             ))}
             {highlightsQuery.data?.highlights.map((h) => (
               <li key={h.id} className="rounded-lg border p-sm text-sm">
-                <span className="font-mono text-2xs uppercase tracking-1 opacity-60">Highlight</span>
+                <span className="font-mono text-2xs uppercase tracking-1 opacity-60">
+                  Highlight
+                </span>
                 {h.note && <p className="mt-4xs opacity-80">{h.note}</p>}
               </li>
             ))}
             {(bookmarksQuery.data?.bookmarks.length ?? 0) === 0 &&
               (highlightsQuery.data?.highlights.length ?? 0) === 0 && (
                 <li className="rounded-lg border border-dashed p-md text-sm opacity-70">
-                  Nothing marked yet. Select a passage to highlight it, or bookmark this page. Marks are
-                  stored with the library, not in this browser.
+                  Nothing marked yet. Select a passage to highlight it, or bookmark this page. Marks
+                  are stored with the library, not in this browser.
                 </li>
               )}
           </ul>
@@ -560,11 +625,7 @@ function ToolButton({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className={cx(
-        'h-8 rounded-md border px-sm text-xs',
-        active && 'bg-surface-2',
-        FOCUS_RING,
-      )}
+      className={cx('h-8 rounded-md border px-sm text-xs', active && 'bg-surface-2', FOCUS_RING)}
     >
       {children}
     </button>

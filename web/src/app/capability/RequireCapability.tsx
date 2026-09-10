@@ -37,7 +37,12 @@ export function RequireCapability({ capability, children, loading }: RequireCapa
   // Unreachable this phase (the mock grants everything); the branch keeps
   // the shape ready for phase 12/13's real denied state.
   if (!state.can(capability)) {
-    return <p className="text-text-2 p-3xl">This isn't available on this device.</p>
+    return (
+      <div className="p-3xl">
+        <h1 className="text-xl font-medium text-text mb-sm">Not Available</h1>
+        <p className="text-text-2">This isn't available on this device.</p>
+      </div>
+    )
   }
 
   return <>{children}</>

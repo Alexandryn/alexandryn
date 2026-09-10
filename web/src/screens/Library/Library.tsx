@@ -196,7 +196,6 @@ export function Library() {
                 placeholder="Search titles, authors..."
                 value={searchInputValue}
                 onChange={handleSearchChange}
-                aria-label="Search library"
               />
             </div>
 

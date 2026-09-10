@@ -98,4 +98,29 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     expect(screen.getByLabelText('Username')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
   })
+
+  it('ties validation error to specific input with aria-invalid and moves focus (audit 0016 #245)', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<SourceFormDialog open={true} onOpenChange={vi.fn()} />)
+
+    // Submit with empty label
+    const submitBtn = screen.getByRole('button', { name: 'Add source' })
+    await user.click(submitBtn)
+
+    const labelInput = screen.getByLabelText('Source label')
+    expect(labelInput).toHaveAttribute('aria-invalid', 'true')
+    expect(labelInput).toHaveFocus()
+    const errorId = labelInput.getAttribute('aria-describedby')
+    expect(errorId).toBeTruthy()
+    const errorMsg = document.getElementById(errorId!)
+    expect(errorMsg).toHaveTextContent('Source label is required.')
+
+    // Type valid label, leaving folder path empty
+    await user.type(labelInput, 'My Library')
+    await user.click(submitBtn)
+
+    const folderInput = screen.getByLabelText('Folder path')
+    expect(folderInput).toHaveAttribute('aria-invalid', 'true')
+    expect(folderInput).toHaveFocus()
+  })
 })

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button/Button'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -22,6 +22,7 @@ export function Collections() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newCollectionName, setNewCollectionName] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const handleOpenCreateModal = () => {
     setNewCollectionName('')
@@ -36,10 +37,12 @@ export function Collections() {
 
     if (!trimmed) {
       setValidationError('Collection name is required.')
+      nameInputRef.current?.focus()
       return
     }
     if (trimmed.length > 100) {
       setValidationError('Collection name cannot exceed 100 characters.')
+      nameInputRef.current?.focus()
       return
     }
 
@@ -66,7 +69,9 @@ export function Collections() {
       <div className="flex flex-wrap items-center justify-between gap-md">
         <div>
           <h1 className="text-3xl font-medium tracking-1 text-text">Collections</h1>
-          <p className="text-sm text-text-2 mt-4xs">Organize your books into custom reading lists.</p>
+          <p className="text-sm text-text-2 mt-4xs">
+            Organize your books into custom reading lists.
+          </p>
         </div>
 
         <Button variant="primary" onClick={handleOpenCreateModal}>
@@ -143,6 +148,7 @@ export function Collections() {
       >
         <form onSubmit={handleCreateSubmit} className="mt-md flex flex-col gap-md">
           <Input
+            ref={nameInputRef}
             label="Collection name"
             value={newCollectionName}
             onChange={(e) => {
@@ -154,7 +160,6 @@ export function Collections() {
             error={validationError ?? undefined}
           />
 
-
           {mutationErrorMessage && (
             <p className="text-xs text-error font-ui" role="alert">
               {mutationErrorMessage}
@@ -162,11 +167,7 @@ export function Collections() {
           )}
 
           <div className="mt-sm flex items-center justify-end gap-sm">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-            >
+            <Button variant="ghost" type="button" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
             <Button

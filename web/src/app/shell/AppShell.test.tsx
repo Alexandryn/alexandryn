@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { act } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -36,6 +37,20 @@ describe('AppShell', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
+  })
+
+  it('renders a real search input that navigates to discover on submit (audit 0016 #236)', async () => {
+    const router = routerAt('/library')
+    render(<RouterProvider router={router} />)
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'Search library, authors, subjects, ISBN',
+    })
+    expect(searchInput).toBeInTheDocument()
+
+    await userEvent.type(searchInput, 'tolstoy{Enter}')
+    expect(router.state.location.pathname).toBe('/discover')
+    expect(router.state.location.search).toBe('?q=tolstoy')
   })
 
   it('marks the active route in the sidebar', () => {
