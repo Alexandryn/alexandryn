@@ -111,6 +111,44 @@ Web
 - #264, #265, #267 (unfinished review surfaces — pg-supervisor, contract diff, guard-script bypass audit)
 - #293, #295, #298, #299, #300, #302 (Phase 15 correctness/wiring — recorded for the next Phase 15 touch)
 
+### PR #85 verification pass (2026-09-10)
+
+An adversarial commit-by-commit review of the remediation branch against
+each finding, closing verified issues on GitHub. Every commit on
+`origin/main..HEAD` was read against its issue; every tenant-scoped fix
+was traced handler → repository → SQL with the predicate quoted; the unit,
+integration (`-tags=integration` against Postgres), and web suites were
+run.
+
+- **65 issues closed** — all 16 High + #262 (High on verification), every
+  security/DB/observability/auth Medium, the CI/supply-chain batch, and
+  the web UX/a11y/perf Mediums. Each close comment records the fixing
+  commit, the root-cause confirmation, and the verifying test.
+- **2 fix commits added** on top of the branch:
+  - `cbfc854` — negative tests for #262 (cross-library-admin 403;
+    tampered / used / expired invitation token → 404).
+  - `62a0bbc` — #166 completed: `AbortSignal` wired through the remaining
+    named hooks (`useLibrary` — the issue's own repro — `useWork`,
+    `useDiscoverWork`, Reader `bookQuery`).
+- **55 issues left open with a triage comment**, scheduled and verified
+  not blocking the close gate:
+  - #119 — confirmed leaks fixed (import/sync); ~35 same-shape
+    `err.Error()` sites remain (repo-origin errors already safe via total
+    `TranslateError`; residual risk is service-layer bare errors). One
+    mechanical `writeDomainError` sweep, maintainer to schedule.
+  - #171 — security half done + tested (data-URI allowlist + 1.5 MB cap);
+    performance half (cover-URL endpoint + `loading="lazy"`) outstanding.
+  - #304 — **confirmed**: 32 Go files carry gofmt drift (35 on
+    `origin/main`; branch is net −3) and `golangci-lint` v2's default set
+    omits formatters, so CI never checks it. Needs a standalone
+    `gofmt -w` chore + a CI formatter/`check-gofmt.sh` gate.
+  - The remaining Low/Info → Phase 17 (QA), post-release hardening, or
+    recorded-informational, per the per-issue comments.
+- **Verification run clean**: `go vet`, import-boundaries /
+  parameterized-queries / user-scoped-reading / license guards,
+  `go test -race ./...`, `go test -race -tags=integration ./...`, and
+  `web` lint + 512 tests + build.
+
 ### Exit criteria (from the phase README)
 
 - [x] Consolidated audit recorded with mandatory handler → repository → SQL traces
