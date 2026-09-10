@@ -104,6 +104,15 @@ latent decision.
 `expvar.Map` directly in the diagnostics handler. This is deliberate — the
 default path is unauthenticated and would violate the admin-only constraint.
 
+**Addendum (2026-09-10, audit `0016` #302):** For the first phase-15 cut the
+`alexandryn_metrics` map was created but never written — `Registry.Snapshot`
+built its response struct straight from the in-memory histograms and the map
+stayed empty. `Snapshot` now also writes `latencies` / `queue_depth` /
+`db_pool` into that map (JSON-valued vars) at read time, so ADR 0030's stated
+"read the `expvar.Map` directly" mechanism is real. The latency histogram
+gained a `+Inf` overflow bucket in the same change: a request slower than the
+10s top bound was previously counted in `count`/`sum` but in no bucket.
+
 ## Reversal cost
 
 Low. `expvar` calls are isolated to `internal/observability/`. Replacing the

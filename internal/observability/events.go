@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Standard system event kind constants (ADR 0031).
@@ -25,6 +26,61 @@ var prohibitedPayloadKeys = []string{
 	"password", "passwd", "token", "secret", "apikey", "api_key",
 	"authorization", "position", "cfi", "location", "percentage",
 	"pct", "chapter", "note",
+}
+
+// prohibitedKeySet is prohibitedPayloadKeys lowercased, for exact
+// matching against a candidate key's words. Substring matching (the
+// previous approach) wrongly dropped innocent keys whose text merely
+// contains a prohibited word — "disposition"/"position",
+// "allocation"/"location", "exposition"/"position" (audit 0016 #297).
+var prohibitedKeySet = func() map[string]struct{} {
+	set := make(map[string]struct{}, len(prohibitedPayloadKeys))
+	for _, k := range prohibitedPayloadKeys {
+		set[strings.ToLower(k)] = struct{}{}
+	}
+	return set
+}()
+
+func isKeySeparator(r rune) bool {
+	return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+}
+
+// keyForms returns the strings a key should be checked against: each of
+// its separator- and camelCase-delimited words, plus the whole key with
+// separators removed. So "access_token" yields {access, token,
+// accesstoken}, "apiKey" yields {api, key, apikey}, and "disposition"
+// yields just {disposition}.
+func keyForms(key string) []string {
+	lower := strings.ToLower(key)
+	forms := []string{strings.Map(func(r rune) rune {
+		if isKeySeparator(r) {
+			return -1
+		}
+		return r
+	}, lower)}
+
+	var word strings.Builder
+	flush := func() {
+		if word.Len() > 0 {
+			forms = append(forms, word.String())
+			word.Reset()
+		}
+	}
+	var prev rune
+	for i, r := range key {
+		switch {
+		case isKeySeparator(r):
+			flush()
+		case i > 0 && unicode.IsUpper(r) && (unicode.IsLower(prev) || unicode.IsDigit(prev)):
+			flush()
+			word.WriteRune(unicode.ToLower(r))
+		default:
+			word.WriteRune(unicode.ToLower(r))
+		}
+		prev = r
+	}
+	flush()
+	return forms
 }
 
 // SystemEvent represents an immutable row in the system_events ledger.
@@ -98,9 +154,8 @@ func sanitizeValue(v any) any {
 }
 
 func isProhibitedKey(key string) bool {
-	lower := strings.ToLower(key)
-	for _, p := range prohibitedPayloadKeys {
-		if strings.Contains(lower, p) {
+	for _, form := range keyForms(key) {
+		if _, bad := prohibitedKeySet[form]; bad {
 			return true
 		}
 	}

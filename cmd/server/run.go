@@ -174,7 +174,7 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 // Close have both had their chance — never before, never concurrently.
 // pool may be nil: a shutdown signal arriving before FR-1 step 6 has
 // constructed one has nothing to close yet.
-func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, logger *slog.Logger) int {
+func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, eventReaper *observability.Reaper, logger *slog.Logger) int {
 	logger.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
@@ -229,6 +229,13 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 			logger.Warn("job worker pool did not stop within the grace period", "error", err.Error())
 		}
 		jobCancel()
+	}
+
+	// Stop the retention reaper before closing the pool: its sweep writes
+	// through pool, and Stop blocks until any in-flight sweep returns
+	// (audit 0016 #303).
+	if eventReaper != nil {
+		eventReaper.Stop()
 	}
 
 	if pool != nil {
@@ -410,7 +417,7 @@ func run(ctx context.Context, deps runDeps) int {
 			// The signal that ended this loop was a shutdown, not a
 			// database failure — FR-4 requires attempting Shutdown, not
 			// exiting through the ordinary FR-3 failure path below.
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -430,7 +437,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if err := deps.runMigrations(ctx, cfg); err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -448,10 +455,14 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	logger.Info("startup step completed", "step", "migrate")
 
+	// Held so gracefulShutdown can wait for an in-flight retention sweep
+	// to finish before the pool closes (audit 0016 #303).
+	var eventReaper *observability.Reaper
+
 	pool, repos, err := deps.newPool(ctx, cfg)
 	if err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -685,7 +696,8 @@ func run(ctx context.Context, deps runDeps) int {
 			// Each row carries its own purge_at; this deletes rows past it
 			// on an hourly sweep. Without this wiring the ledger grows
 			// without bound and nothing is ever purged (audit 0016 #294).
-			observability.NewReaper(eventStore, time.Hour, logger).Start(ctx)
+			eventReaper = observability.NewReaper(eventStore, time.Hour, logger)
+			eventReaper.Start(ctx)
 		}
 	}
 
@@ -736,7 +748,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	select {
 	case <-ctx.Done():
-		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, logger)
+		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, eventReaper, logger)
 	case err := <-serveErr:
 		// The server stopped on its own, not via a shutdown signal — no
 		// Shutdown was called, but FR-6's "close the pool before the

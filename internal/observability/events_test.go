@@ -81,6 +81,39 @@ func TestNewSystemEvent_SanitizesNestedPayload(t *testing.T) {
 	}
 }
 
+// audit 0016 #297: key matching is word-based, not substring. A key that
+// merely contains a prohibited word as a substring — "disposition",
+// "allocation", "exposition" — must survive; a compound key that
+// genuinely carries a prohibited word — "accessToken", "reading_position"
+// — must still be stripped.
+func TestNewSystemEvent_KeyMatchingIsWordBased(t *testing.T) {
+	ev := observability.NewSystemEvent{
+		EventKind: "test.event",
+		Payload: map[string]any{
+			"disposition":      "final",
+			"allocation":       42,
+			"exposition":       "intro",
+			"accessToken":      "leak-me",
+			"reading_position": "epubcfi(/6/4)",
+			"api_key":          "leak-me-too",
+			"userNote":         "private thought",
+		},
+		RetentionDays: 30,
+	}
+	s := ev.SanitizedPayload()
+
+	for _, keep := range []string{"disposition", "allocation", "exposition"} {
+		if _, ok := s[keep]; !ok {
+			t.Errorf("innocent key %q was wrongly stripped", keep)
+		}
+	}
+	for _, drop := range []string{"accessToken", "reading_position", "api_key", "userNote"} {
+		if _, ok := s[drop]; ok {
+			t.Errorf("sensitive key %q was not stripped", drop)
+		}
+	}
+}
+
 func TestRetention_PurgeAtCalculatedCorrectly(t *testing.T) {
 	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
 	ev := observability.NewSystemEvent{
