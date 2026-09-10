@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/auth"
@@ -97,14 +96,6 @@ type AuthResponseWire struct {
 	RefreshToken string           `json:"refreshToken,omitempty"`
 	MFARequired  bool             `json:"mfaRequired,omitempty"`
 	MFATicket    string           `json:"mfaTicket,omitempty"`
-}
-
-func clientIP(r *http.Request) string {
-	ip := r.RemoteAddr
-	if colon := strings.LastIndex(ip, ":"); colon != -1 {
-		ip = ip[:colon]
-	}
-	return ip
 }
 
 func generateRandomToken(bytesLen int) (raw string, hash string, err error) {

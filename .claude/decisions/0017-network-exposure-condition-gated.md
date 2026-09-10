@@ -141,6 +141,18 @@ property to verify than "does this file contain the string `ports:`."
 authentication still ships first, this ADR only changes what gates the
 bind at runtime once both exist.
 
+**Addendum (2026-09-10, phase 16 audit `0016` #195)** — Mode B (a reverse
+proxy in front of the server) makes every request's `RemoteAddr` the
+proxy's address, so a rate limiter keyed on `RemoteAddr` alone collapses
+to one shared bucket. `TRUSTED_PROXY_CIDRS`
+(`backend-configuration.md` FR-4) names the proxy ranges whose
+`X-Forwarded-For` the limiter may believe: when `RemoteAddr` is in that
+set, the key is the last `X-Forwarded-For` hop; otherwise `RemoteAddr`,
+and the header is ignored. An unset key trusts no proxy — safe for
+Mode A (in-process TLS, direct bind) by default. Independent of mode,
+the limiter key for an IPv6 client is its `/64`, not the exact address,
+since a single allocation spans one.
+
 ## Reversal cost
 
 Medium. Unlike ADR 0003's addendum, this changes a validated startup
