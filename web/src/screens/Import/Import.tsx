@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { FormatBadge } from '../../components/FormatBadge/FormatBadge'
 import { GeneratedCover } from '../../components/GeneratedCover/GeneratedCover'
+import { Modal } from '../../components/Modal'
 import { Spinner } from '../../components/Spinner/Spinner'
 import {
   type ImportCandidate,
@@ -186,7 +187,9 @@ function CandidateCard({
     )
   }
 
-  const handleReject = () => {
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false)
+
+  const handleConfirmReject = () => {
     setInlineError(null)
     rejectMutation.mutate(candidate.id, {
       onSuccess: () => {
@@ -215,7 +218,7 @@ function CandidateCard({
         </div>
         <Button
           variant="secondary"
-          onClick={handleReject}
+          onClick={() => setShowRejectConfirm(true)}
           disabled={isPending}
           className="text-xs py-4xs px-xs"
         >
@@ -318,6 +321,32 @@ function CandidateCard({
           </div>
         </div>
       </div>
+
+      <Modal
+        open={showRejectConfirm}
+        onOpenChange={(open) => setShowRejectConfirm(open)}
+        title="Reject this book?"
+        description={`"${title || candidate.fileReference.id}" will be removed from your import candidates. You will need to re-scan the source if you want to import it later.`}
+        contentClassName="max-w-md"
+      >
+        <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
+          <Button variant="ghost" size="sm" onClick={() => setShowRejectConfirm(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="bg-error hover:bg-error/90 text-white"
+            onClick={() => {
+              setShowRejectConfirm(false)
+              handleConfirmReject()
+            }}
+            disabled={isPending}
+          >
+            Reject candidate
+          </Button>
+        </div>
+      </Modal>
     </article>
   )
 }

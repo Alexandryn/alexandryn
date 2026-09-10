@@ -40,7 +40,7 @@ export function ErrorState({
       )}
       {...rest}
     >
-      <p className="text-3xl font-medium text-text">{title}</p>
+      <h2 className="text-3xl font-medium text-text">{title}</h2>
       {description ? <p className="text-lg text-text-2">{description}</p> : null}
       {onRetry ? (
         <Button variant="secondary" size="sm" onClick={onRetry} className="mt-xs">

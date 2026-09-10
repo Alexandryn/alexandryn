@@ -132,7 +132,11 @@ export function Discover() {
     <div className="flex flex-col gap-xl p-3xl">
       {/* Header */}
       <div className="flex flex-col gap-md">
-        <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-medium tracking-1 text-text outline-none">
+        <h1
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-3xl font-medium tracking-1 text-text outline-none"
+        >
           Discover
         </h1>
 
@@ -143,7 +147,6 @@ export function Discover() {
             placeholder="Search titles, authors..."
             value={searchInputValue}
             onChange={handleSearchChange}
-            aria-label="Search Open Library"
           />
         </div>
       </div>
@@ -165,7 +168,8 @@ export function Discover() {
         ) : error ? (
           <ErrorState
             title={
-              error instanceof ApiError && (error.status === 503 || error.code.toLowerCase() === 'unavailable')
+              error instanceof ApiError &&
+              (error.status === 503 || error.code.toLowerCase() === 'unavailable')
                 ? 'Open Library is unavailable right now, try again shortly'
                 : 'Something went wrong searching Open Library'
             }

@@ -8,7 +8,12 @@ import type { ReactNode } from 'react'
  */
 export function ContentPane({ children }: { children: ReactNode }) {
   return (
-    <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto bg-background outline-none">
+    <main
+      id="main"
+      tabIndex={-1}
+      aria-label="Main content"
+      className="flex-1 overflow-y-auto bg-background outline-none"
+    >
       {children}
     </main>
   )

@@ -1,4 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getCurrentUser, logout } from '../../data/auth'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -12,10 +13,21 @@ import { LibrarySwitcher } from '../../screens/Libraries/LibrarySwitcher'
 export function Titlebar() {
   const navigate = useNavigate()
   const user = getCurrentUser()
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleLogout = async () => {
     await logout()
     navigate('/login')
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = searchQuery.trim()
+    if (trimmed) {
+      navigate(`/discover?q=${encodeURIComponent(trimmed)}`)
+    } else {
+      navigate('/discover')
+    }
   }
 
   return (
@@ -23,16 +35,23 @@ export function Titlebar() {
       <div className="flex items-center gap-lg flex-1">
         <span className="font-mono text-2xs tracking-11 text-text-2">ALEXANDRYN</span>
         <LibrarySwitcher />
-        <Link
-          to="/discover"
-          className={cx(
-            'flex flex-1 items-center gap-md h-3xl max-w-[28rem] px-md',
-            'rounded-2xs border border-border bg-surface-2 text-lg text-text-3',
-            FOCUS_RING,
-          )}
-        >
-          Search library, authors, subjects, ISBN
-        </Link>
+        <form role="search" onSubmit={handleSearch} className="flex flex-1 max-w-[28rem]">
+          <label htmlFor="global-search-input" className="sr-only">
+            Search library, authors, subjects, ISBN
+          </label>
+          <input
+            id="global-search-input"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search library, authors, subjects, ISBN"
+            className={cx(
+              'flex flex-1 items-center gap-md h-3xl w-full px-md',
+              'rounded-2xs border border-border bg-surface-2 text-sm text-text placeholder:text-text-3',
+              FOCUS_RING,
+            )}
+          />
+        </form>
       </div>
 
       {user && (
@@ -49,4 +68,3 @@ export function Titlebar() {
     </header>
   )
 }
-

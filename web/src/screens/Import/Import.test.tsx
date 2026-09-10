@@ -171,10 +171,49 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     const rejectBtn = await screen.findByRole('button', { name: 'Reject' })
     await user.click(rejectBtn)
 
+    // Confirm dialog (audit 0016 #241)
+    const confirmBtn = await screen.findByRole('button', { name: 'Reject candidate' })
+    await user.click(confirmBtn)
+
     await waitFor(() => {
       expect(rejectCalled).toBe(true)
       expect(screen.getByText('No pending imports')).toBeInTheDocument()
     })
+  })
+
+  it('canceling rejection modal keeps candidate intact (audit 0016 #241)', async () => {
+    let rejectCalled = false
+
+    server.use(
+      http.get('*/api/v1/import/candidates', ({ request }) => {
+        const url = new URL(request.url)
+        const status = url.searchParams.get('status')
+        if (status === 'pending') {
+          return HttpResponse.json({
+            candidates: [mockPendingCandidate],
+          })
+        }
+        return HttpResponse.json({ candidates: [] })
+      }),
+      http.post('*/api/v1/import/candidates/cand-1/reject', () => {
+        rejectCalled = true
+        return HttpResponse.json({ ...mockPendingCandidate, status: 'rejected' })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<Import />, {
+      routerEntries: ['/import'],
+    })
+
+    const rejectBtn = await screen.findByRole('button', { name: 'Reject' })
+    await user.click(rejectBtn)
+
+    const cancelBtn = await screen.findByRole('button', { name: 'Cancel' })
+    await user.click(cancelBtn)
+
+    expect(rejectCalled).toBe(false)
+    expect(screen.getAllByText('Dune').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders failed candidates section and dismisses to localStorage (FR-5)', async () => {

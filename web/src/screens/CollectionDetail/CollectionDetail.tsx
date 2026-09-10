@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/Button/Button'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -7,11 +7,7 @@ import { Input } from '../../components/Input/Input'
 import { Modal } from '../../components/Modal/Modal'
 import { Spinner } from '../../components/Spinner/Spinner'
 import { WorkGrid } from '../../components/WorkGrid'
-import {
-  useCollection,
-  useDeleteCollection,
-  useRenameCollection,
-} from '../../data/collections'
+import { useCollection, useDeleteCollection, useRenameCollection } from '../../data/collections'
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -26,9 +22,7 @@ export function CollectionDetail() {
   const params = useParams<{ id?: string; '*'?: string }>()
   const id =
     params.id ||
-    (params['*']
-      ? params['*'].replace(/^(collections|collection)\//, '').split('/')[0]
-      : '') ||
+    (params['*'] ? params['*'].replace(/^(collections|collection)\//, '').split('/')[0] : '') ||
     ''
 
   const { data: collection, error, isPending, refetch } = useCollection(id)
@@ -39,6 +33,7 @@ export function CollectionDetail() {
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [renameValidationError, setRenameValidationError] = useState<string | null>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   // Delete modal state
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -94,10 +89,12 @@ export function CollectionDetail() {
     const trimmed = renameValue.trim()
     if (!trimmed) {
       setRenameValidationError('Collection name is required.')
+      renameInputRef.current?.focus()
       return
     }
     if (trimmed.length > 100) {
       setRenameValidationError('Collection name cannot exceed 100 characters.')
+      renameInputRef.current?.focus()
       return
     }
 
@@ -181,7 +178,9 @@ export function CollectionDetail() {
               onClick={() => setView('grid')}
               className={cx(
                 'rounded-xs px-xs py-4xs text-xs font-ui transition-colors',
-                view === 'grid' ? 'bg-surface-3 text-text font-medium' : 'text-text-2 hover:text-text',
+                view === 'grid'
+                  ? 'bg-surface-3 text-text font-medium'
+                  : 'text-text-2 hover:text-text',
                 FOCUS_RING,
               )}
               aria-label="Grid view"
@@ -193,7 +192,9 @@ export function CollectionDetail() {
               onClick={() => setView('list')}
               className={cx(
                 'rounded-xs px-xs py-4xs text-xs font-ui transition-colors',
-                view === 'list' ? 'bg-surface-3 text-text font-medium' : 'text-text-2 hover:text-text',
+                view === 'list'
+                  ? 'bg-surface-3 text-text font-medium'
+                  : 'text-text-2 hover:text-text',
                 FOCUS_RING,
               )}
               aria-label="List view"
@@ -234,6 +235,7 @@ export function CollectionDetail() {
       >
         <form onSubmit={handleRenameSubmit} className="mt-md flex flex-col gap-md">
           <Input
+            ref={renameInputRef}
             label="New name"
             value={renameValue}
             onChange={(e) => {
@@ -244,7 +246,6 @@ export function CollectionDetail() {
             error={renameValidationError ?? undefined}
           />
 
-
           {renameErrorMessage && (
             <p className="text-xs text-error font-ui" role="alert">
               {renameErrorMessage}
@@ -252,11 +253,7 @@ export function CollectionDetail() {
           )}
 
           <div className="mt-sm flex items-center justify-end gap-sm">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setIsRenameOpen(false)}
-            >
+            <Button variant="ghost" type="button" onClick={() => setIsRenameOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -285,11 +282,7 @@ export function CollectionDetail() {
           )}
 
           <div className="mt-sm flex items-center justify-end gap-sm">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setIsDeleteOpen(false)}
-            >
+            <Button variant="ghost" type="button" onClick={() => setIsDeleteOpen(false)}>
               Cancel
             </Button>
             <Button
