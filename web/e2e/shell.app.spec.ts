@@ -11,7 +11,7 @@ test('routing and shell composition work end to end against mock data', async ({
   await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible()
   await expect(page.getByRole('banner')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
-  await expect(page.getByLabel('Search library')).toBeVisible()
+  await expect(page.getByRole('banner').getByRole('searchbox')).toBeVisible()
   await expect(page.getByRole('link', { name: /Middlemarch/ })).toBeVisible()
 
   await page.getByRole('link', { name: 'Discover' }).click()

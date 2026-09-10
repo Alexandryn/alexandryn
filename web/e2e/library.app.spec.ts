@@ -13,11 +13,13 @@ test.describe('Phase 06: Library and Collections E2E Walkthrough (L21)', () => {
 
     // Library Header & Content
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible()
-    await expect(page.getByLabel('Search library')).toBeVisible()
+    // The in-page library filter — a textbox, distinct from the titlebar's
+    // global searchbox which also carries a "Search library…" label.
+    await expect(page.getByRole('textbox', { name: 'Search library' })).toBeVisible()
     await expect(page.getByRole('link', { name: /Middlemarch/ })).toBeVisible()
 
     // Test Search input debounce & URL update
-    const searchInput = page.getByLabel('Search library')
+    const searchInput = page.getByRole('textbox', { name: 'Search library' })
     await searchInput.fill('Middlemarch')
     await expect(page).toHaveURL(/q=Middlemarch/)
 
