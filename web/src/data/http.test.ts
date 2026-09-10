@@ -41,6 +41,11 @@ describe('http client AbortSignal forwarding (audit 0016 #166)', () => {
     server.use(http.get('*/api/v1/fine', () => HttpResponse.json({ value: 42 })))
     await expect(getJson<{ value: number }>('/api/v1/fine')).resolves.toEqual({ value: 42 })
   })
+
+  it('handles 200 response with empty body without throwing JSON parse error (audit 0016 #230)', async () => {
+    server.use(http.delete('*/api/v1/empty-200', () => new Response('', { status: 200 })))
+    await expect(deleteRequest('/api/v1/empty-200')).resolves.toBeUndefined()
+  })
 })
 
 function mkAborted(): AbortSignal {

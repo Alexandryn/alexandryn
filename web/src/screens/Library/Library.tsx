@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button/Button'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
@@ -89,7 +89,6 @@ export function Library() {
     [setSearchParams],
   )
 
-
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -150,17 +149,14 @@ export function Library() {
     sort: activeSort,
   })
 
-  const {
-    data,
-    error,
-    isPending,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    refetch,
-  } = libraryQuery
+  const { data, error, isPending, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
+    libraryQuery
 
-  const allWorks: WorkSummary[] = data?.pages.flatMap((page) => page.works) ?? []
+  // Memoize allWorks to preserve array identity across keystrokes/transitions (audit 0016 #217).
+  const allWorks: WorkSummary[] = useMemo(
+    () => data?.pages.flatMap((page) => page.works) ?? [],
+    [data],
+  )
 
   // 6. Infinite scroll sentinel intersection observer
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -272,12 +268,7 @@ export function Library() {
                 {isFetchingNextPage ? (
                   <Spinner label="Loading more books" />
                 ) : (
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void fetchNextPage()}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => void fetchNextPage()}>
                     Load more
                   </Button>
                 )}

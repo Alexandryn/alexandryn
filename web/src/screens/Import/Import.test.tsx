@@ -68,7 +68,9 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
       routerEntries: ['/import'],
     })
 
-    expect(await screen.findByRole('heading', { name: 'Import review', level: 1 })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Import review', level: 1 }),
+    ).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Dune', level: 3 })).toBeInTheDocument()
     expect(screen.getAllByText('Frank Herbert').length).toBeGreaterThan(0)
     expect(screen.getByText('High confidence')).toBeInTheDocument()
@@ -209,6 +211,37 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(stored).toContain('cand-failed-1')
   })
 
+  it('bounds dismissed import failure IDs in localStorage to at most 100 entries (audit 0016 #229)', async () => {
+    const existing = Array.from({ length: 100 }, (_, i) => `old-failed-${i}`)
+    localStorage.setItem('alexandryn_dismissed_import_failures', JSON.stringify(existing))
+
+    server.use(
+      http.get('*/api/v1/import/candidates', ({ request }) => {
+        const url = new URL(request.url)
+        const status = url.searchParams.get('status')
+        if (status === 'failed') {
+          return HttpResponse.json({ candidates: [mockFailedCandidate] })
+        }
+        return HttpResponse.json({ candidates: [] })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<Import />, { routerEntries: ['/import'] })
+
+    const dismissBtn = await screen.findByRole('button', { name: 'Dismiss' })
+    await user.click(dismissBtn)
+
+    await waitFor(() => {
+      expect(screen.queryByText('corrupt.pdf')).not.toBeInTheDocument()
+    })
+
+    const stored = JSON.parse(localStorage.getItem('alexandryn_dismissed_import_failures') || '[]')
+    expect(stored).toHaveLength(100)
+    expect(stored).toContain('cand-failed-1')
+    expect(stored).not.toContain('old-failed-0')
+  })
+
   // audit 0016 #171: a candidate cover is extracted from an untrusted
   // book file; a disallowed data: URI (svg, html, …) must not reach an
   // <img src>, an allowed raster one may.
@@ -236,7 +269,9 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
 
     renderWithProviders(<Import />, { routerEntries: ['/import'] })
     await screen.findByRole('heading', { name: 'Import review', level: 1 })
-    await waitFor(() => expect(screen.getAllByRole('heading', { name: 'Dune', level: 3 })).toHaveLength(2))
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: 'Dune', level: 3 })).toHaveLength(2),
+    )
 
     const covers = screen.getAllByRole('img', { name: 'Cover for Dune' })
     expect(covers).toHaveLength(1)
@@ -264,4 +299,3 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(cover.getAttribute('loading')).toBe('lazy')
   })
 })
-
