@@ -19,6 +19,7 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { coverImageSrc } from '../../lib/imageDataUri'
 
 const DISMISSED_STORAGE_KEY = 'alexandryn_dismissed_import_failures'
+const MAX_DISMISSED_FAILURES = 100
 
 function getDismissedIds(): string[] {
   try {
@@ -36,7 +37,10 @@ function addDismissedId(id: string) {
     const current = getDismissedIds()
     if (!current.includes(id)) {
       current.push(id)
-      localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(current))
+      // Bound the dismissed list to MAX_DISMISSED_FAILURES to prevent unbounded growth (audit 0016 #229)
+      const bounded =
+        current.length > MAX_DISMISSED_FAILURES ? current.slice(-MAX_DISMISSED_FAILURES) : current
+      localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(bounded))
     }
   } catch {
     // Ignore storage errors
@@ -98,7 +102,8 @@ function CandidateCover({
   const inlineSrc = coverImageSrc(candidate.extractedMetadata?.coverBytes)
   // Serve extracted covers at a dedicated URL (audit 0016 #171), falling back to inline cover or generated cover
   const coverUrl = `/api/v1/import/candidates/${encodeURIComponent(candidate.id)}/cover`
-  const src = inlineSrc || (candidate.extractedMetadata?.coverBytes ? null : (candidate.id ? coverUrl : null))
+  const src =
+    inlineSrc || (candidate.extractedMetadata?.coverBytes ? null : candidate.id ? coverUrl : null)
 
   if (src && !imgFailed) {
     return (
@@ -113,12 +118,7 @@ function CandidateCover({
   }
 
   return (
-    <GeneratedCover
-      identifier={candidate.id}
-      title={title}
-      author={author}
-      className="size-full"
-    />
+    <GeneratedCover identifier={candidate.id} title={title} author={author} className="size-full" />
   )
 }
 
@@ -137,7 +137,8 @@ function CandidateCard({
 
   const meta = candidate.extractedMetadata
   const title = meta?.title || 'Untitled'
-  const author = meta?.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'Unknown author'
+  const author =
+    meta?.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'Unknown author'
   const matches = candidate.matchCandidates || []
 
   const isPending = confirmMutation.isPending || rejectMutation.isPending
@@ -205,7 +206,10 @@ function CandidateCard({
       <div className="flex items-center justify-between border-b border-border-1 pb-xs">
         <div className="flex items-center gap-xs">
           <FormatBadge format={candidate.fileReference.format} />
-          <span className="text-xs font-mono text-text-3 truncate max-w-xs" title={candidate.fileReference.id}>
+          <span
+            className="text-xs font-mono text-text-3 truncate max-w-xs"
+            title={candidate.fileReference.id}
+          >
             {candidate.fileReference.id}
           </span>
         </div>
@@ -235,16 +239,16 @@ function CandidateCard({
             <CandidateCover candidate={candidate} title={title} author={author} />
           </div>
           <div className="flex flex-col gap-2xs min-w-0">
-            <span className="text-3xs uppercase tracking-wider text-text-3 font-medium">Extracted from file</span>
+            <span className="text-3xs uppercase tracking-wider text-text-3 font-medium">
+              Extracted from file
+            </span>
             <h3 className="text-base font-semibold text-text truncate" title={title}>
               {title}
             </h3>
             <p className="text-xs text-text-2 truncate" title={author}>
               {author}
             </p>
-            {meta?.isbn && (
-              <p className="text-3xs font-mono text-text-3">ISBN: {meta.isbn}</p>
-            )}
+            {meta?.isbn && <p className="text-3xs font-mono text-text-3">ISBN: {meta.isbn}</p>}
             {meta?.publisher && (
               <p className="text-3xs text-text-3 truncate">Publisher: {meta.publisher}</p>
             )}
@@ -452,7 +456,8 @@ export function Import() {
               Couldn’t be imported ({failedCandidates.length})
             </h2>
             <p className="text-xs text-text-3 mt-4xs">
-              These files could not be extracted or read. You can dismiss them from this review list.
+              These files could not be extracted or read. You can dismiss them from this review
+              list.
             </p>
           </div>
 
@@ -465,7 +470,10 @@ export function Import() {
                 <div className="flex items-center gap-sm min-w-0">
                   <FormatBadge format={cand.fileReference.format} />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-mono text-text truncate" title={cand.fileReference.id}>
+                    <span
+                      className="text-xs font-mono text-text truncate"
+                      title={cand.fileReference.id}
+                    >
                       {cand.fileReference.id}
                     </span>
                     <span className="text-3xs text-danger font-medium">
