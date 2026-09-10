@@ -27,10 +27,11 @@ func NewNetworkSweep(pool *pgxpool.Pool) *NetworkSweep {
 
 // SweepResults records counts of rows affected during one sweep run.
 type SweepResults struct {
-	ExpiredSessions  int64
-	DeletedSessions  int64
-	DeletedDevices   int64
-	DeletedGrantJTIs int64
+	ExpiredSessions   int64
+	DeletedSessions   int64
+	DeletedDevices    int64
+	DeletedGrantJTIs  int64
+	DeletedTicketJTIs int64
 }
 
 const (
@@ -45,6 +46,9 @@ const (
 		WHERE owner_id IS NULL AND created_at <= $1`
 
 	sweepDeleteSpentGrantJTIsSQL = `DELETE FROM enrolment_grant_jtis
+		WHERE spent_at <= $1`
+
+	sweepDeleteSpentTicketJTIsSQL = `DELETE FROM mfa_ticket_jtis
 		WHERE spent_at <= $1`
 )
 
@@ -84,6 +88,15 @@ func (s *NetworkSweep) SweepOnce(ctx context.Context, now time.Time) (SweepResul
 	}
 	res.DeletedGrantJTIs = tag.RowsAffected()
 
+	// 5. Delete spent mfa_ticket_jtis past the 5-minute ticket TTL with a
+	// wide safety margin (#189).
+	cutoffTicket := now.Add(-1 * time.Hour)
+	tag, err = exec.Exec(ctx, sweepDeleteSpentTicketJTIsSQL, cutoffTicket)
+	if err != nil {
+		return res, TranslateError(err)
+	}
+	res.DeletedTicketJTIs = tag.RowsAffected()
+
 	return res, nil
 }
 
@@ -108,12 +121,13 @@ func (s *NetworkSweep) Start(ctx context.Context, interval time.Duration, logger
 					if logger != nil {
 						logger.Warn("network sweep failed", "error", err.Error())
 					}
-				} else if logger != nil && (res.ExpiredSessions > 0 || res.DeletedSessions > 0 || res.DeletedDevices > 0 || res.DeletedGrantJTIs > 0) {
+				} else if logger != nil && (res.ExpiredSessions > 0 || res.DeletedSessions > 0 || res.DeletedDevices > 0 || res.DeletedGrantJTIs > 0 || res.DeletedTicketJTIs > 0) {
 					logger.Info("network sweep completed",
 						"expired_sessions", res.ExpiredSessions,
 						"deleted_sessions", res.DeletedSessions,
 						"deleted_devices", res.DeletedDevices,
 						"deleted_grant_jtis", res.DeletedGrantJTIs,
+						"deleted_ticket_jtis", res.DeletedTicketJTIs,
 					)
 				}
 			}

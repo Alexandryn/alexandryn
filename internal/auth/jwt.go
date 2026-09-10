@@ -2,7 +2,9 @@ package auth
 
 import (
 	"crypto/hkdf"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +12,15 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
+
+// newJTI returns a 128-bit random token identifier as hex.
+func newJTI() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("auth/jwt: generate jti: %w", err)
+	}
+	return hex.EncodeToString(b[:]), nil
+}
 
 type Claims struct {
 	Subject   domain.UserID      `json:"sub"`
@@ -52,7 +63,10 @@ type TokenSigner interface {
 	// the signature is valid.
 	VerifyAccessToken(tokenString string, now time.Time) (*Claims, error)
 	SignMFATicket(userID domain.UserID, expiresAt time.Time) (string, error)
-	VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, error)
+	// VerifyMFATicket returns the ticket's subject and its jti. The caller
+	// on the MFA path claims the jti so a captured ticket cannot be
+	// replayed within its TTL (#189).
+	VerifyMFATicket(ticketString string, now time.Time) (userID domain.UserID, jti string, err error)
 }
 
 type JWTSigner struct {
@@ -124,9 +138,14 @@ func (s *JWTSigner) VerifyAccessToken(tokenString string, now time.Time) (*Claim
 }
 
 func (s *JWTSigner) SignMFATicket(userID domain.UserID, expiresAt time.Time) (string, error) {
+	jti, err := newJTI()
+	if err != nil {
+		return "", err
+	}
 	claims := Claims{
 		Subject:   userID,
 		Type:      TokenTypeMFATicket,
+		JTI:       jti,
 		IssuedAt:  time.Now().Unix(),
 		ExpiresAt: expiresAt.Unix(),
 		Issuer:    s.issuer,
@@ -136,23 +155,23 @@ func (s *JWTSigner) SignMFATicket(userID domain.UserID, expiresAt time.Time) (st
 	return hs256Sign(s.mfaTicketSecret, claims)
 }
 
-func (s *JWTSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, error) {
+func (s *JWTSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, string, error) {
 	claimsJSON, err := hs256VerifiedClaims(s.mfaTicketSecret, ticketString)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	var claims Claims
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
-		return "", errors.New("auth/jwt: invalid claims JSON")
+		return "", "", errors.New("auth/jwt: invalid claims JSON")
 	}
 	if claims.ExpiresAt <= now.Unix() {
-		return "", errors.New("auth/jwt: token expired")
+		return "", "", errors.New("auth/jwt: token expired")
 	}
 	if s.issuer != "" && claims.Issuer != s.issuer {
-		return "", fmt.Errorf("auth/jwt: issuer mismatch, expected %s", s.issuer)
+		return "", "", fmt.Errorf("auth/jwt: issuer mismatch, expected %s", s.issuer)
 	}
 	if claims.Type != TokenTypeMFATicket {
-		return "", errors.New("auth/jwt: invalid token type for MFA ticket")
+		return "", "", errors.New("auth/jwt: invalid token type for MFA ticket")
 	}
-	return claims.Subject, nil
+	return claims.Subject, claims.JTI, nil
 }
