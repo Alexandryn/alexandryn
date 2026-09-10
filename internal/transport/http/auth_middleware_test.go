@@ -33,7 +33,7 @@ func (d *dummyTokenSigner) VerifyAccessToken(tokenString string, now time.Time) 
 	if err != nil {
 		return nil, err
 	}
-	if c.Type != "" && c.Type != auth.TokenTypeAccess {
+	if c.Type != auth.TokenTypeAccess {
 		return nil, errors.New("not an access token")
 	}
 	return c, nil
@@ -54,6 +54,7 @@ func TestAuthMiddleware(t *testing.T) {
 		Username:  "alex",
 		Role:      domain.RoleAdmin,
 		Libraries: []domain.LibraryID{domain.DefaultLibraryID},
+		Type:      auth.TokenTypeAccess,
 		ExpiresAt: now.Add(time.Hour).Unix(),
 	}
 

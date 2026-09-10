@@ -90,6 +90,7 @@ func TestLazyBootstrapHandler_Admin(t *testing.T) {
 		Subject:   "admin-1",
 		Role:      domain.RoleAdmin,
 		Libraries: []domain.LibraryID{domain.DefaultLibraryID},
+		Type:      auth.TokenTypeAccess,
 	}
 	signer := &dummyTokenSigner{claims: claims}
 	poolRef.SetAuthAPI(transporthttp.AuthAPI{
@@ -133,6 +134,7 @@ func TestLazyBootstrapHandler_Reader(t *testing.T) {
 			Subject:   "reader-1",
 			Role:      domain.RoleReader,
 			Libraries: []domain.LibraryID{"lib-1"},
+			Type:      auth.TokenTypeAccess,
 		}
 		poolRef.SetAuthAPI(transporthttp.AuthAPI{
 			Signer:    &dummyTokenSigner{claims: claims},
@@ -162,6 +164,7 @@ func TestLazyBootstrapHandler_Reader(t *testing.T) {
 			Subject:   "reader-1",
 			Role:      domain.RoleReader,
 			Libraries: []domain.LibraryID{"lib-2"},
+			Type:      auth.TokenTypeAccess,
 		}
 		poolRef.SetAuthAPI(transporthttp.AuthAPI{
 			Signer:    &dummyTokenSigner{claims: claims},
@@ -211,6 +214,7 @@ func TestLazyBootstrapHandler_Reader_CrossLibraryHeaderIgnored(t *testing.T) {
 		Subject:   "reader-1",
 		Role:      domain.RoleReader,
 		Libraries: []domain.LibraryID{"lib-1"}, // NOT a member of lib-2
+		Type:      auth.TokenTypeAccess,
 	}
 	poolRef.SetAuthAPI(transporthttp.AuthAPI{
 		Signer:    &dummyTokenSigner{claims: claims},
