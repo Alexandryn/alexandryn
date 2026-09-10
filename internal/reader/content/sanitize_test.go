@@ -156,3 +156,18 @@ func TestSanitizeCSS_KeepsDataURI(t *testing.T) {
 		t.Fatalf("data: URI was stripped: %q", out)
 	}
 }
+
+// audit 0016 #253: a data: URI on <a href> is stripped to prevent phishing/UI-redress,
+// while data: images on <img src> continue to be permitted.
+func TestSanitizeHTML_StripsDataURIOnAnchor(t *testing.T) {
+	in := []byte(`<a href="data:text/html,<script>alert(1)</script>">link</a><img src="data:image/png;base64,AAAA">`)
+	out, _ := content.SanitizeHTML(in)
+	s := string(out)
+
+	if strings.Contains(s, "data:text/html") {
+		t.Fatalf("data: URI on <a> survived sanitisation: %q", s)
+	}
+	if !strings.Contains(s, `src="data:image/png;base64,AAAA"`) {
+		t.Fatalf("data: URI on <img> should have been preserved: %q", s)
+	}
+}

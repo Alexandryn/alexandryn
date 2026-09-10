@@ -289,16 +289,22 @@ func (r *ReadingSyncRepository) GetProgressSyncSequence(ctx context.Context, pro
 	return syncSeq, nil
 }
 
+// GetSyncSequenceCeiling returns the highest committed sequence across all sync tables.
+// audit 0016 #248: previously read the non-transactional sync_seq sequence allocation
+// counter (`SELECT last_value, is_called FROM sync_seq`), which could be ahead of the
+// highest committed sync_sequence.
 func (r *ReadingSyncRepository) GetSyncSequenceCeiling(ctx context.Context) (int64, error) {
 	exec := executorFrom(ctx, r.pool)
-	var lastVal int64
-	var isCalled bool
-	err := exec.QueryRow(ctx, `SELECT last_value, is_called FROM sync_seq`).Scan(&lastVal, &isCalled)
+	var maxVal int64
+	query := `
+		SELECT GREATEST(
+			COALESCE((SELECT MAX(sync_sequence) FROM reading_progress), 0),
+			COALESCE((SELECT MAX(sync_sequence) FROM reading_bookmarks), 0),
+			COALESCE((SELECT MAX(sync_sequence) FROM reading_highlights), 0)
+		)`
+	err := exec.QueryRow(ctx, query).Scan(&maxVal)
 	if err != nil {
 		return 0, TranslateError(err)
 	}
-	if !isCalled {
-		return 0, nil
-	}
-	return lastVal, nil
+	return maxVal, nil
 }

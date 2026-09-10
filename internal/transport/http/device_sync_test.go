@@ -908,6 +908,82 @@ func TestSyncMiddleware_NilDeviceHandling(t *testing.T) {
 	}
 }
 
+type spyLastSeenRepo struct {
+	nilDevRepo
+	dev         *domain.PairedDevice
+	updateCalls int
+}
+
+func (s *spyLastSeenRepo) FindByID(_ context.Context, id domain.DeviceID) (*domain.PairedDevice, error) {
+	if s.dev != nil && s.dev.ID() == id {
+		return s.dev, nil
+	}
+	return nil, &domain.Error{Category: domain.NotFound, Message: "not found"}
+}
+
+func (s *spyLastSeenRepo) UpdateLastSeen(_ context.Context, _ domain.DeviceID, _ time.Time) error {
+	s.updateCalls++
+	return nil
+}
+
+func TestSyncMiddleware_ThrottlesUpdateLastSeen(t *testing.T) {
+	baseTime := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	currentTime := baseTime
+	nowFn := func() time.Time { return currentTime }
+
+	dev, err := domain.NewPairedDevice("dev-123", "u1", "Phone", domain.DeviceClassPhone, domain.EnrolledViaPairingCode, baseTime)
+	if err != nil {
+		t.Fatalf("NewPairedDevice failed: %v", err)
+	}
+
+	repo := &spyLastSeenRepo{dev: dev}
+	mw := transporthttp.SyncMiddleware(repo, nowFn)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	makeReq := func() *http.Response {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/sync/reading", nil)
+		req.Header.Set("X-Device-Id", "dev-123")
+		ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: "u1", Role: domain.RoleReader})
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req.WithContext(ctx))
+		return rr.Result()
+	}
+
+	// 1st request at baseTime: LastSeenAt == baseTime, diff == 0, so DB update is throttled
+	// Wait, NewPairedDevice sets lastSeenAt = baseTime!
+	// If currentTime is baseTime + 10s: diff < 60s -> no DB update
+	currentTime = baseTime.Add(10 * time.Second)
+	res1 := makeReq()
+	if res1.StatusCode != http.StatusOK {
+		t.Fatalf("request 1 failed: %d", res1.StatusCode)
+	}
+	if repo.updateCalls != 0 {
+		t.Fatalf("expected 0 calls when last_seen is fresh (diff=10s), got %d", repo.updateCalls)
+	}
+
+	// 2nd request at baseTime + 70s: diff >= 60s -> DB update occurs
+	currentTime = baseTime.Add(70 * time.Second)
+	res2 := makeReq()
+	if res2.StatusCode != http.StatusOK {
+		t.Fatalf("request 2 failed: %d", res2.StatusCode)
+	}
+	if repo.updateCalls != 1 {
+		t.Fatalf("expected 1 call after 70s elapsed, got %d", repo.updateCalls)
+	}
+
+	// 3rd request at baseTime + 80s: diff == 10s from last touch -> throttled
+	currentTime = baseTime.Add(80 * time.Second)
+	res3 := makeReq()
+	if res3.StatusCode != http.StatusOK {
+		t.Fatalf("request 3 failed: %d", res3.StatusCode)
+	}
+	if repo.updateCalls != 1 {
+		t.Fatalf("expected still 1 call (diff=10s from last update), got %d", repo.updateCalls)
+	}
+}
+
 func TestRevokeDeviceHandler_NilDeviceHandling(t *testing.T) {
 	handler := transporthttp.RevokeDeviceHandler(nilDevRepo{}, time.Now)
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/devices/unknown-dev", nil)

@@ -213,3 +213,50 @@ func TestRequireRole(t *testing.T) {
 		}
 	})
 }
+
+func TestAuthMiddleware_EmptyLibraryClaimsRejectsProtectedRoutes(t *testing.T) {
+	now := time.Now()
+	signer := &dummyTokenSigner{claims: &auth.Claims{
+		Subject:   "u-1",
+		Role:      domain.RoleReader,
+		Libraries: []domain.LibraryID{}, // No library claims
+		ExpiresAt: now.Add(time.Hour).Unix(),
+		Type:      auth.TokenTypeAccess,
+	}}
+
+	nextCalled := false
+	handler := transporthttp.AuthMiddleware(signer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	t.Run("protected route fails 403 when user has zero libraries (#246)", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/library", nil)
+		req.Header.Set("Authorization", "Bearer valid-token")
+		rec := httptest.NewRecorder()
+		nextCalled = false
+
+		handler.ServeHTTP(rec, req)
+		if nextCalled {
+			t.Error("expected handler not to be called")
+		}
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rec.Code)
+		}
+	})
+
+	t.Run("library listing route succeeds when user has zero libraries (#246)", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/libraries", nil)
+		req.Header.Set("Authorization", "Bearer valid-token")
+		rec := httptest.NewRecorder()
+		nextCalled = false
+
+		handler.ServeHTTP(rec, req)
+		if !nextCalled {
+			t.Error("expected handler to be called for /api/v1/libraries")
+		}
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
+	})
+}

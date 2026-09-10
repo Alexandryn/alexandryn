@@ -49,6 +49,10 @@ var (
 	// A value bluemonday may keep on href/src: a data: URI, or a
 	// relative reference that does not begin with "//" (protocol-relative).
 	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:[^/:]|/[^/])[^:]*|#\S*)$`)
+
+	// A relative-only reference that does not begin with "//" and rejects data: schemes.
+	// Used on <a href> so that books cannot embed data:text/html anchors (audit 0016 #253).
+	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:[^/:]|/[^/])[^:]*|#\S*)$`)
 )
 
 // htmlContentElements is the allowlist for EPUB XHTML content — the
@@ -86,10 +90,9 @@ func htmlPolicy() *bluemonday.Policy {
 	p.AllowElements(htmlContentElements...)
 
 	p.AllowAttrs("id", "class", "lang", "dir", "title").Globally()
-	// A relative path or a data: URI only — reject a protocol-relative
-	// //host reference, which AllowRelativeURLs would otherwise treat as
-	// relative (FR-6).
-	p.AllowAttrs("href").Matching(reRelativeOrData).OnElements("a")
+	// A relative path only on <a> (audit 0016 #253: data: href on <a> disallowed).
+	// Rejects protocol-relative //host references and data: URIs.
+	p.AllowAttrs("href").Matching(reRelativeOnly).OnElements("a")
 	p.AllowAttrs("src").Matching(reRelativeOrData).OnElements("img")
 	p.AllowAttrs("alt", "width", "height").OnElements("img")
 	// <link rel="stylesheet" href="relative.css"> only — no preconnect,
