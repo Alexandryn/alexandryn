@@ -220,6 +220,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("GET /api/v1/import/candidates", ingestAuth(transporthttp.ImportCandidatesListHandler(candRepo)))
 	mux.Handle("POST /api/v1/import/candidates/{id}/confirm", ingestAuth(transporthttp.ImportCandidateConfirmHandler(importerSvc, candRepo, openLibraryClient)))
 	mux.Handle("POST /api/v1/import/candidates/{id}/reject", ingestAuth(transporthttp.ImportCandidateRejectHandler(importerSvc, candRepo)))
+	mux.Handle("GET /api/v1/import/candidates/{id}/cover", ingestAuth(transporthttp.ImportCandidateCoverHandler(candRepo)))
 
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
 

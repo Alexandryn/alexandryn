@@ -78,6 +78,7 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/import/candidates",
 		"/api/v1/import/candidates/{id}/confirm",
 		"/api/v1/import/candidates/{id}/reject",
+		"/api/v1/import/candidates/{id}/cover",
 		// Phase 11 — reader content + reading API + export.
 		"/api/v1/library/editions/{editionId}/reader/content/{path}",
 		"/api/v1/reading/works/{workId}/progress",
@@ -624,6 +625,36 @@ func TestRealImportHandlersPassContractTest(t *testing.T) {
 		rr := v.ValidateResponse(t, h, req)
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	candRepo.candidates["01JCANDIDATE_COVER"] = postgres.ImportCandidateRecord{
+		ID:                "01JCANDIDATE_COVER",
+		SourceID:          "01JSOURCE1",
+		FileReference:     ref,
+		Status:            "pending",
+		ExtractedMetadata: []byte(`{"title":"Dune","coverBytes":"/9j/4AAQSkZJRgABAQEASABIAAD/2w=="}`),
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+
+	t.Run("GET /api/v1/import/candidates/{id}/cover -> 200", func(t *testing.T) {
+		h := transporthttp.ImportCandidateCoverHandler(candRepo)
+		req := mustRequest(t, "GET", "/api/v1/import/candidates/01JCANDIDATE_COVER/cover", nil)
+		req.SetPathValue("id", "01JCANDIDATE_COVER")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/import/candidates/{id}/cover -> 404", func(t *testing.T) {
+		h := transporthttp.ImportCandidateCoverHandler(candRepo)
+		req := mustRequest(t, "GET", "/api/v1/import/candidates/01JCANDIDATE1/cover", nil)
+		req.SetPathValue("id", "01JCANDIDATE1")
+		rr := v.ValidateResponse(t, h, req)
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("expected 404, got %d", rr.Code)
 		}
 	})
 }

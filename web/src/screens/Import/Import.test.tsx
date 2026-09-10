@@ -242,4 +242,26 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(covers).toHaveLength(1)
     expect(covers[0]!.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
   })
+
+  it('serves candidate cover via dedicated URL with lazy loading when no inline cover is present', async () => {
+    server.use(
+      http.get('*/api/v1/import/candidates', ({ request }) => {
+        const status = new URL(request.url).searchParams.get('status')
+        if (status === 'pending') {
+          return HttpResponse.json({
+            candidates: [mockPendingCandidate],
+          })
+        }
+        return HttpResponse.json({ candidates: [] })
+      }),
+    )
+
+    renderWithProviders(<Import />, { routerEntries: ['/import'] })
+    await screen.findByRole('heading', { name: 'Import review', level: 1 })
+
+    const cover = await screen.findByRole('img', { name: 'Cover for Dune' })
+    expect(cover.getAttribute('src')).toBe('/api/v1/import/candidates/cand-1/cover')
+    expect(cover.getAttribute('loading')).toBe('lazy')
+  })
 })
+
