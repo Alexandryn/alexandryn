@@ -81,9 +81,3 @@
   --font-reading: Newsreader, Georgia, serif;
   --font-mono: 'IBM Plex Mono', monospace;
 }
-
-/* Off-screen layout/paint skip for long virtual/scroll regions (audit 0016 #222) */
-.cv-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 280px;
-}

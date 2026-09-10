@@ -2,9 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 // theme.css (generated, frontend-design-tokens.md) carries the @theme
 // tokens every utility class resolves against; a11y.css layers the
-// prefers-contrast adaptation on top (frontend-accessibility.md FR-5).
+// prefers-contrast adaptation on top (frontend-accessibility.md FR-5);
+// utilities.css adds the hand-authored global classes that are not
+// tokens.
 import './theme.css'
 import './a11y.css'
+import './utilities.css'
 import { AppRoot } from './app/AppRoot'
 
 // MSW (frontend-shell-and-routing.md FR-6) runs only in development. The
