@@ -1407,6 +1407,55 @@ paths:
                 message: "candidate is not pending"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  /api/v1/import/candidates/{id}/cover:
+    get:
+      operationId: getImportCandidateCover
+      summary: Serve extracted cover image for an import candidate
+      description: >-
+        Serves binary cover image from candidate's extracted metadata (backend-import-pipeline.md FR-9).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Import candidate ID.
+      responses:
+        '200':
+          description: Candidate cover image binary data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: "private, max-age=86400"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Candidate or cover image not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: not_found
+                message: "cover not found"
+                correlationId: 00000000-0000-0000-0000-000000000000
+
   /api/v1/library/editions/{editionId}/reader/content/{path}:
     get:
       operationId: getReaderContent

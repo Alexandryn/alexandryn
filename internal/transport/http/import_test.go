@@ -3,7 +3,9 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -299,6 +301,112 @@ func TestImportHandlers_ScopeToActiveLibrary(t *testing.T) {
 		h.ServeHTTP(w, withLib(req, libB))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("status = %d, want 404; body %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestImportCandidateCoverHandler(t *testing.T) {
+	libA := domain.LibraryID("01JLIB0000000000000000000A")
+	libB := domain.LibraryID("01JLIB0000000000000000000B")
+	ref, _ := domain.NewFileReference("ref-1.epub", "epub", nil)
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+
+	// Minimal 1x1 JPEG bytes: FF D8 FF E0 00 10 4A 46 49 46 ...
+	jpegBytes := []byte{0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xdb}
+	svgBytes := []byte("<svg xmlns='http://www.w3.org/2000/svg'></svg>")
+
+	repo := &fakeImportCandidateRepo{
+		candidates: map[string]postgres.ImportCandidateRecord{
+			"cand-jpeg": {
+				ID:                "cand-jpeg",
+				SourceID:          "src-1",
+				FileReference:     ref,
+				Status:            postgres.ImportCandidateStatusPending,
+				ExtractedMetadata: []byte(fmt.Sprintf(`{"title":"Dune","coverBytes":%q}`, base64.StdEncoding.EncodeToString(jpegBytes))),
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+			"cand-svg": {
+				ID:                "cand-svg",
+				SourceID:          "src-1",
+				FileReference:     ref,
+				Status:            postgres.ImportCandidateStatusPending,
+				ExtractedMetadata: []byte(fmt.Sprintf(`{"title":"Dune","coverBytes":"data:image/svg+xml;base64,%s"}`, base64.StdEncoding.EncodeToString(svgBytes))),
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+			"cand-nocover": {
+				ID:                "cand-nocover",
+				SourceID:          "src-1",
+				FileReference:     ref,
+				Status:            postgres.ImportCandidateStatusPending,
+				ExtractedMetadata: []byte(`{"title":"Dune"}`),
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+		},
+		candidateLibrary: map[string]domain.LibraryID{
+			"cand-jpeg":    libA,
+			"cand-svg":     libA,
+			"cand-nocover": libA,
+		},
+	}
+
+	h := transporthttp.ImportCandidateCoverHandler(repo)
+	withLib := func(r *http.Request, lib domain.LibraryID) *http.Request {
+		return r.WithContext(transporthttp.WithActiveLibrary(r.Context(), lib))
+	}
+
+	t.Run("valid jpeg cover returns 200 binary", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/import/candidates/cand-jpeg/cover", nil)
+		req.SetPathValue("id", "cand-jpeg")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libA))
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200; body = %s", w.Code, w.Body.String())
+		}
+		if ct := w.Header().Get("Content-Type"); ct != "image/jpeg" {
+			t.Errorf("Content-Type = %q, want image/jpeg", ct)
+		}
+		if cc := w.Header().Get("Cache-Control"); cc != "private, max-age=86400" {
+			t.Errorf("Cache-Control = %q, want private, max-age=86400", cc)
+		}
+		if !bytes.Equal(w.Body.Bytes(), jpegBytes) {
+			t.Errorf("body mismatch: got %v, want %v", w.Body.Bytes(), jpegBytes)
+		}
+	})
+
+	t.Run("svg cover returns 404", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/import/candidates/cand-svg/cover", nil)
+		req.SetPathValue("id", "cand-svg")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libA))
+
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", w.Code)
+		}
+	})
+
+	t.Run("candidate without cover returns 404", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/import/candidates/cand-nocover/cover", nil)
+		req.SetPathValue("id", "cand-nocover")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libA))
+
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", w.Code)
+		}
+	})
+
+	t.Run("cross-library candidate returns 404", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/import/candidates/cand-jpeg/cover", nil)
+		req.SetPathValue("id", "cand-jpeg")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withLib(req, libB))
+
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", w.Code)
 		}
 	})
 }

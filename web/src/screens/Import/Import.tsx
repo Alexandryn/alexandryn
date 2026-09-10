@@ -95,13 +95,17 @@ function CandidateCover({
   const [imgFailed, setImgFailed] = useState(false)
   // Extracted from a book file the source provided — reject a data: URI
   // that is not an allowed raster image type (audit 0016 #171).
-  const src = coverImageSrc(candidate.extractedMetadata?.coverBytes)
+  const inlineSrc = coverImageSrc(candidate.extractedMetadata?.coverBytes)
+  // Serve extracted covers at a dedicated URL (audit 0016 #171), falling back to inline cover or generated cover
+  const coverUrl = `/api/v1/import/candidates/${encodeURIComponent(candidate.id)}/cover`
+  const src = inlineSrc || (candidate.extractedMetadata?.coverBytes ? null : (candidate.id ? coverUrl : null))
 
   if (src && !imgFailed) {
     return (
       <img
         src={src}
         alt={`Cover for ${title}`}
+        loading="lazy"
         onError={() => setImgFailed(true)}
         className="size-full rounded-xs object-cover shadow-sm aspect-[2/3]"
       />

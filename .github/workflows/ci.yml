@@ -326,15 +326,11 @@ jobs:
           TEST_DATABASE_URL: postgres://postgres:ci-test-pg-alexandryn-s3cret@localhost:5432/alexandryn_test?sslmode=disable
         run: go test -race -tags=integration ./...
 
-      # Stage 6 — contract test, named no-op (D3, tasks/plan.md).
-      # architecture-contracts.md FR-3's own tool (schema validation
-      # against real responses, or generated-server-stub conformance)
-      # isn't chosen or built yet — this step exists so the stage is
-      # present and visible, not silently skipped, until it is.
-      - name: Contract test (not yet implemented)
-        run: |
-          echo "Contract test stage is a placeholder: architecture-contracts.md FR-3's tool isn't chosen yet (D3, tasks/plan.md)."
-          echo "This step exists so the stage is visible in CI, not silently absent — see backend-test-harness.md FR-8."
+      # Stage 6 — contract test (audit 0016 #265, architecture-contracts.md FR-3):
+      # validates actual handler JSON response structures against api/openapi.yaml
+      # using getkin/kin-openapi schema validators.
+      - name: Contract tests
+        run: go test -race -v ./internal/testutil/contracttest/...
 
       # Stage 7 — coverage reporting plus a non-regression floor
       # (ADR 0033, audit 0016 #131): fail if unit coverage drops more

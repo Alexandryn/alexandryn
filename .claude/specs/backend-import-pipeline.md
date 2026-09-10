@@ -302,6 +302,14 @@ real domain data.
   request the current state doesn't allow
   (`backend-source-adapter.md` FR-8's own precedent for the same shape
   of problem).
+- **FR-9** Cover image serving (`GET /api/v1/import/candidates/:id/cover`,
+  audit 0016 #171): serves the binary cover image from
+  `import_candidates.extracted_metadata -> 'coverBytes'` when present,
+  with `Content-Type` sniffed from bytes (safe raster types only:
+  `image/jpeg`, `image/png`, `image/webp`, `image/gif`) and
+  `Cache-Control: private, max-age=86400`. Non-raster or missing cover
+  returns `404 Not Found`. Scoped to the caller's active library
+  (`ActiveLibraryFromContext`).
 
 ## Non-functional requirements
 

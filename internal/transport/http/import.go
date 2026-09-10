@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -346,5 +347,70 @@ func ImportCandidateRejectHandler(svc ImporterService, repo ImportCandidateListe
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(toCandidateWireDTO(updated))
+	})
+}
+
+// ImportCandidateCoverHandler handles GET /api/v1/import/candidates/{id}/cover (FR-9, audit 0016 #171).
+func ImportCandidateCoverHandler(repo ImportCandidateLister) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := CorrelationIDFromContext(r.Context())
+		candidateID := r.PathValue("id")
+		if candidateID == "" {
+			WriteError(w, domain.InvalidInput, "candidate id is required", id)
+			return
+		}
+
+		activeLib := ActiveLibraryFromContext(r.Context())
+		cand, err := repo.GetInLibrary(r.Context(), activeLib, candidateID)
+		if err != nil {
+			writeDomainError(w, err, id)
+			return
+		}
+
+		if len(cand.ExtractedMetadata) == 0 {
+			WriteError(w, domain.NotFound, "cover not found", id)
+			return
+		}
+
+		var meta struct {
+			CoverBytes []byte `json:"coverBytes"`
+		}
+		var coverData []byte
+		if err := json.Unmarshal(cand.ExtractedMetadata, &meta); err == nil && len(meta.CoverBytes) > 0 {
+			coverData = meta.CoverBytes
+		} else {
+			var strMeta struct {
+				CoverBytes string `json:"coverBytes"`
+			}
+			if err := json.Unmarshal(cand.ExtractedMetadata, &strMeta); err == nil && strMeta.CoverBytes != "" {
+				s := strings.TrimSpace(strMeta.CoverBytes)
+				if idx := strings.Index(s, ","); idx != -1 && strings.HasPrefix(s, "data:") {
+					s = s[idx+1:]
+				}
+				b, err := base64.StdEncoding.DecodeString(s)
+				if err == nil {
+					coverData = b
+				}
+			}
+		}
+
+		if len(coverData) == 0 {
+			WriteError(w, domain.NotFound, "cover not found", id)
+			return
+		}
+
+		sniff := http.DetectContentType(coverData)
+		base := strings.ToLower(strings.TrimSpace(strings.SplitN(sniff, ";", 2)[0]))
+
+		// Only allow safe raster image types: jpeg, png, webp, gif. Disallow SVG and non-images.
+		if base != "image/jpeg" && base != "image/png" && base != "image/webp" && base != "image/gif" {
+			WriteError(w, domain.NotFound, "cover not found", id)
+			return
+		}
+
+		w.Header().Set("Content-Type", base)
+		w.Header().Set("Cache-Control", "private, max-age=86400")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(coverData)
 	})
 }
