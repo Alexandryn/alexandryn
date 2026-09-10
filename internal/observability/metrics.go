@@ -2,16 +2,25 @@ package observability
 
 import (
 	"context"
+	"encoding/json"
 	"expvar"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
 
 // DefaultLatencyBuckets defines histogram upper bounds in milliseconds.
+// Observations above the last bound land in the "+Inf" overflow bucket
+// (audit 0016 #302) — before that bucket existed a request slower than
+// 10s was counted in `count`/`sum` but in no bucket at all.
 var DefaultLatencyBuckets = []float64{
 	1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000,
 }
+
+// overflowBucketLabel is the key for observations above the last finite
+// bucket bound.
+const overflowBucketLabel = "+Inf"
 
 // LatencySnapshot represents computed percentiles and counts for a route.
 type LatencySnapshot struct {
@@ -20,16 +29,20 @@ type LatencySnapshot struct {
 	P50MS float64 `json:"p50_ms"`
 	P95MS float64 `json:"p95_ms"`
 	P99MS float64 `json:"p99_ms"`
+	// Buckets maps each upper-bound label (in ms, and "+Inf" for the
+	// overflow bucket) to its cumulative-in-that-band observation count.
+	Buckets map[string]int64 `json:"buckets"`
 }
 
 // LatencyHistogram tracks observed request durations.
 type LatencyHistogram struct {
-	mu      sync.RWMutex
-	buckets []float64
-	counts  []int64
-	samples []float64
-	count   int64
-	sumMS   float64
+	mu       sync.RWMutex
+	buckets  []float64
+	counts   []int64
+	overflow int64
+	samples  []float64
+	count    int64
+	sumMS    float64
 }
 
 // NewLatencyHistogram constructs a histogram with default latency buckets.
@@ -50,11 +63,16 @@ func (h *LatencyHistogram) Observe(d time.Duration) {
 	h.count++
 	h.sumMS += ms
 
+	matched := false
 	for i, b := range h.buckets {
 		if ms <= b {
 			h.counts[i]++
+			matched = true
 			break
 		}
+	}
+	if !matched {
+		h.overflow++
 	}
 
 	// Keep bounded recent samples for quantile estimation
@@ -74,9 +92,15 @@ func (h *LatencyHistogram) Snapshot() LatencySnapshot {
 	defer h.mu.RUnlock()
 
 	snap := LatencySnapshot{
-		Count: h.count,
-		SumMS: h.sumMS,
+		Count:   h.count,
+		SumMS:   h.sumMS,
+		Buckets: make(map[string]int64, len(h.buckets)+1),
 	}
+	for i, b := range h.buckets {
+		snap.Buckets[strconv.FormatFloat(b, 'f', -1, 64)] = h.counts[i]
+	}
+	snap.Buckets[overflowBucketLabel] = h.overflow
+
 	if len(h.samples) == 0 {
 		return snap
 	}
@@ -122,11 +146,11 @@ type QueueDepthProvider func(ctx context.Context) (map[string]int, error)
 
 // Registry manages in-process expvar metrics.
 type Registry struct {
-	mu         sync.RWMutex
-	routes     map[string]*LatencyHistogram
-	poolFn     PoolStatsProvider
-	queueFn    QueueDepthProvider
-	expvarMap  *expvar.Map
+	mu        sync.RWMutex
+	routes    map[string]*LatencyHistogram
+	poolFn    PoolStatsProvider
+	queueFn   QueueDepthProvider
+	expvarMap *expvar.Map
 }
 
 // NewRegistry constructs a new operational metrics registry.
@@ -207,9 +231,30 @@ func (r *Registry) Snapshot(ctx context.Context) (MetricsSnapshot, error) {
 		}
 	}
 
-	return MetricsSnapshot{
+	result := MetricsSnapshot{
 		Latencies:  latencies,
 		QueueDepth: queue,
 		DBPool:     pool,
-	}, nil
+	}
+
+	// Publish the same view into the expvar map ADR 0030 names as the
+	// read mechanism, refreshed at snapshot time (audit 0016 #302).
+	r.expvarMap.Set("latencies", jsonVar{latencies})
+	r.expvarMap.Set("queue_depth", jsonVar{queue})
+	r.expvarMap.Set("db_pool", jsonVar{pool})
+
+	return result, nil
+}
+
+// jsonVar adapts an arbitrary value to expvar.Var by marshalling it to
+// JSON on read, so a struct or map can be published without a bespoke
+// expvar type per shape.
+type jsonVar struct{ v any }
+
+func (j jsonVar) String() string {
+	b, err := json.Marshal(j.v)
+	if err != nil {
+		return "null"
+	}
+	return string(b)
 }

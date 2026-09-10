@@ -2,6 +2,8 @@ package observability_test
 
 import (
 	"context"
+	"encoding/json"
+	"expvar"
 	"testing"
 	"time"
 
@@ -32,6 +34,53 @@ func TestLatencyHistogram_Percentiles(t *testing.T) {
 	}
 	if snap.P99MS < 95 || snap.P99MS > 100 {
 		t.Errorf("P99MS = %f, want ~99", snap.P99MS)
+	}
+}
+
+// audit 0016 #302: an observation slower than the last finite bucket
+// bound must land in the "+Inf" overflow bucket, not vanish.
+func TestLatencyHistogram_OverflowBucket(t *testing.T) {
+	h := observability.NewLatencyHistogram()
+	h.Observe(50 * time.Millisecond)
+	h.Observe(30 * time.Second) // above the 10s top bound
+
+	snap := h.Snapshot()
+	if snap.Buckets["+Inf"] != 1 {
+		t.Errorf("+Inf bucket = %d, want 1", snap.Buckets["+Inf"])
+	}
+	if snap.Buckets["50"] != 1 {
+		t.Errorf("50ms bucket = %d, want 1", snap.Buckets["50"])
+	}
+	var total int64
+	for _, c := range snap.Buckets {
+		total += c
+	}
+	if total != snap.Count {
+		t.Errorf("bucket total %d != Count %d — an observation was lost", total, snap.Count)
+	}
+}
+
+// audit 0016 #302: Snapshot publishes into the expvar map ADR 0030 names
+// as the read mechanism.
+func TestMetrics_Snapshot_PublishesToExpvar(t *testing.T) {
+	m := observability.NewRegistry()
+	m.ObserveRequest("GET /x", 5*time.Millisecond)
+	if _, err := m.Snapshot(context.Background()); err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	v := expvar.Get("alexandryn_metrics")
+	if v == nil {
+		t.Fatal("alexandryn_metrics expvar not registered")
+	}
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(v.String()), &parsed); err != nil {
+		t.Fatalf("expvar map is not valid JSON: %v", err)
+	}
+	for _, key := range []string{"latencies", "queue_depth", "db_pool"} {
+		if _, ok := parsed[key]; !ok {
+			t.Errorf("expvar map missing %q after Snapshot", key)
+		}
 	}
 }
 
