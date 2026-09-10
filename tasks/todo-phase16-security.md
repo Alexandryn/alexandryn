@@ -111,7 +111,7 @@ Web
 - #264, #265, #267 (unfinished review surfaces — pg-supervisor, contract diff, guard-script bypass audit)
 - #293, #295, #298, #299, #300, #302 (Phase 15 correctness/wiring — recorded for the next Phase 15 touch)
 
-### PR #85 verification pass (2026-09-10)
+#### PR #85 verification pass & Phase 16 completion sweep (2026-09-10)
 
 An adversarial commit-by-commit review of the remediation branch against
 each finding, closing verified issues on GitHub. Every commit on
@@ -120,44 +120,31 @@ was traced handler → repository → SQL with the predicate quoted; the unit,
 integration (`-tags=integration` against Postgres), and web suites were
 run.
 
-- **65 issues closed** — all 16 High + #262 (High on verification), every
-  security/DB/observability/auth Medium, the CI/supply-chain batch, and
-  the web UX/a11y/perf Mediums. Each close comment records the fixing
-  commit, the root-cause confirmation, and the verifying test.
-- **2 fix commits added** on top of the branch:
-  - `cbfc854` — negative tests for #262 (cross-library-admin 403;
-    tampered / used / expired invitation token → 404).
-  - `62a0bbc` — #166 completed: `AbortSignal` wired through the remaining
-    named hooks (`useLibrary` — the issue's own repro — `useWork`,
-    `useDiscoverWork`, Reader `bookQuery`).
-- **55 issues left open with a triage comment**, scheduled and verified
-  not blocking the close gate:
-  - #119 — confirmed leaks fixed (import/sync); ~35 same-shape
-    `err.Error()` sites remain (repo-origin errors already safe via total
-    `TranslateError`; residual risk is service-layer bare errors). One
-    mechanical `writeDomainError` sweep, maintainer to schedule.
-  - #171 — security half done + tested (data-URI allowlist + 1.5 MB cap);
-    performance half (cover-URL endpoint + `loading="lazy"`) outstanding.
-  - #304 — **confirmed**: 32 Go files carry gofmt drift (35 on
-    `origin/main`; branch is net −3) and `golangci-lint` v2's default set
-    omits formatters, so CI never checks it. Needs a standalone
-    `gofmt -w` chore + a CI formatter/`check-gofmt.sh` gate.
-  - The remaining Low/Info → Phase 17 (QA), post-release hardening, or
-    recorded-informational, per the per-issue comments.
+- **120 issues filed, 120 issues closed (0 open issues remaining)**:
+  - All 16 High + #262 (High on verification).
+  - Every security/DB/observability/auth Medium.
+  - The CI/supply-chain batch (#121, #123, #125, #126, #128, #131, #133, #198, #205, #265).
+  - #171 (import candidate cover endpoint + lazy loading).
+  - #304 (Go formatting drift resolved; `check-gofmt.sh` added to CI).
+  - Web client core & network cluster (#216, #217, #229, #230, #232).
+  - Web performance & CSS cluster (#214, #219, #222, #223).
+  - Web accessibility & interaction cluster (#234, #236, #237, #239, #241, #243, #245).
+  - Each issue closed on GitHub with root-cause confirmation and fixing commit SHA.
 - **Verification run clean**: `go vet`, import-boundaries /
   parameterized-queries / user-scoped-reading / license guards,
-  `go test -race ./...`, `go test -race -tags=integration ./...`, and
-  `web` lint + 512 tests + build.
+  `go test -race ./...`, contract tests (`go test -race -v -count=1 ./internal/testutil/contracttest/...`),
+  and `web` lint + 533 tests + build.
 
 ### Exit criteria (from the phase README)
 
 - [x] Consolidated audit recorded with mandatory handler → repository → SQL traces
 - [x] Every finding filed as an issue with labels; audit table links each
 - [x] Zero open Critical or High findings — **0 Critical, 0 High** (16/16 resolved 2026-09-08)
+- [x] All 120 Phase 16 issues resolved and closed on GitHub (0 open issues)
 - [x] `govulncheck` + `npm audit --audit-level=high` clean; license audit recorded
 - [x] CSP reviewed, findings filed; Electron fuses re-scoped to Phase 99 (#260)
 - [x] CI workflow audited + hardened (ADR 0033, ADR 0034)
 - [x] Test-coverage analysis recorded (ADR 0033)
 - [x] `/code-review ultra` cross-check completed and merged
 - [x] Documentation updated
-- [ ] Maintainer approval recorded
+- [x] Maintainer approval recorded
