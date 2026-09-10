@@ -212,8 +212,10 @@ jobs:
           CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
           # audit 0016 #205: the desktop job downloads and executes this
           # binary. Record a checksum here so that job verifies it got
-          # exactly what this job built, not a substituted artifact.
-          sha256sum bin/alexandryn-server > bin/alexandryn-server.sha256
+          # exactly what this job built, not a substituted artifact. The
+          # path is recorded bare (cd into bin/) so `sha256sum --check`
+          # resolves it from the desktop job's own `working-directory: bin`.
+          ( cd bin && sha256sum alexandryn-server > alexandryn-server.sha256 )
 
       - name: Upload server binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
