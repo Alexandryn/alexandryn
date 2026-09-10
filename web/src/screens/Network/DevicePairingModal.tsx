@@ -187,6 +187,13 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
             e.preventDefault()
             void handleRevokeAndClose()
           }}
+          onInteractOutside={(e) => {
+            // An outside click, like Escape and the corner ×, must
+            // revoke the live pairing session and only close if that
+            // succeeds — never bypass the failed-cancel notice (#142).
+            e.preventDefault()
+            void handleRevokeAndClose()
+          }}
           className={cx(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
             'rounded-lg bg-surface p-xl shadow-lg max-w-lg w-full flex flex-col gap-lg',
@@ -197,13 +204,19 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
             <RadixDialog.Title className="text-xl font-ui text-text font-medium">
               Pair a Device
             </RadixDialog.Title>
-            <RadixDialog.Close
+            {/* A plain button, not RadixDialog.Close: Close fires
+                onOpenChange(false) unconditionally, which would unmount
+                the modal before a failed revoke can be shown (#142).
+                This routes through handleRevokeAndClose like Revoke and
+                Escape. */}
+            <button
+              type="button"
               aria-label="Close"
               onClick={() => void handleRevokeAndClose()}
               className={cx('text-text-2 text-lg hover:text-text', FOCUS_RING)}
             >
               <span aria-hidden="true">×</span>
-            </RadixDialog.Close>
+            </button>
           </div>
 
           <RadixDialog.Description className="text-sm text-text-2">

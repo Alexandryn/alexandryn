@@ -70,4 +70,74 @@ describe('makeQueryClient (audit 0016 issues 91 and 227)', () => {
     expect(window.localStorage.getItem('alexandryn_access_token')).toBeNull()
     expect(assign).toHaveBeenCalledWith(expect.stringContaining('/login?next=%2Flibrary'))
   })
+
+  it('redirects to login when a refresh returns 200 without an access token (no refresh loop)', async () => {
+    window.localStorage.setItem('alexandryn_access_token', 'expired')
+    window.localStorage.setItem('alexandryn_refresh_token', 'rt-1')
+    const assign = vi.fn()
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      pathname: '/library',
+      search: '',
+      assign,
+    } as unknown as Location)
+
+    let refreshCalls = 0
+    let thingCalls = 0
+    server.use(
+      http.get('*/api/v1/thing', () => {
+        thingCalls++
+        return HttpResponse.json({ code: 'Unauthorized', message: 'expired' }, { status: 401 })
+      }),
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls++
+        // 200, but no accessToken — a misbehaving server.
+        return HttpResponse.json({ user: { id: 'u1' } })
+      }),
+    )
+
+    renderHook(
+      () => useQuery({ queryKey: ['t3'], queryFn: () => getJson('/api/v1/thing'), retry: false }),
+      { wrapper: wrap() },
+    )
+    await waitFor(() => expect(assign).toHaveBeenCalled())
+
+    // One refresh attempt, then straight to login — never re-entered.
+    expect(refreshCalls).toBe(1)
+    expect(thingCalls).toBe(1)
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining('/login?next=%2Flibrary'))
+  })
+
+  it('bounds refresh+refetch cycles when a fresh token is still rejected', async () => {
+    window.localStorage.setItem('alexandryn_access_token', 'expired')
+    window.localStorage.setItem('alexandryn_refresh_token', 'rt-1')
+    const assign = vi.fn()
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      pathname: '/library',
+      search: '',
+      assign,
+    } as unknown as Location)
+
+    let refreshCalls = 0
+    server.use(
+      http.get('*/api/v1/thing', () =>
+        HttpResponse.json({ code: 'Unauthorized', message: 'expired' }, { status: 401 }),
+      ),
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls++
+        // Server keeps minting tokens the API still rejects.
+        return HttpResponse.json({ accessToken: `tok-${refreshCalls}` })
+      }),
+    )
+
+    renderHook(
+      () => useQuery({ queryKey: ['t4'], queryFn: () => getJson('/api/v1/thing'), retry: false }),
+      { wrapper: wrap() },
+    )
+    await waitFor(() => expect(assign).toHaveBeenCalled())
+
+    // Bounded, not unbounded: a small number of attempts then login.
+    expect(refreshCalls).toBeLessThanOrEqual(3)
+  })
 })

@@ -119,6 +119,47 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(screen.getByRole('button', { name: 'Retry revoke' })).toBeInTheDocument()
   })
 
+  // audit 0016 #142 (review follow-up): the corner "×" is a plain button,
+  // not RadixDialog.Close — closing it must revoke first and stay open on
+  // a failed revoke, exactly like the Revoke button and Escape.
+  it('corner close revokes, and keeps the modal open when revoke fails', async () => {
+    const onOpenChange = vi.fn()
+    server.use(
+      http.delete('*/api/v1/network/pair/:id', () =>
+        HttpResponse.json({ code: 'internal', message: 'boom' }, { status: 500 }),
+      ),
+    )
+
+    renderWithProviders(<DevicePairingModal open={true} onOpenChange={onOpenChange} />)
+    await waitFor(() => expect(screen.getByTestId('pairing-code')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('may still be active')
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('corner close revokes the pairing and closes on success', async () => {
+    const onOpenChange = vi.fn()
+    let deletedId: string | null = null
+    server.use(
+      http.delete('*/api/v1/network/pair/:id', ({ params }) => {
+        deletedId = String(params.id)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+
+    renderWithProviders(<DevicePairingModal open={true} onOpenChange={onOpenChange} />)
+    await waitFor(() => expect(screen.getByTestId('pairing-code')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    await waitFor(() => expect(deletedId).toBe('00000000-0000-0000-0000-000000000001'))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
   it('displays "This code expired" and "Generate a new code" when session is already expired', async () => {
     server.use(
       http.post('*/api/v1/network/pair/initiate', () => {
