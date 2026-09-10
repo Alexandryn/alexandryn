@@ -1324,22 +1324,46 @@ func newMemGrantJTIs() *memGrantJTIs {
 	}
 }
 
-func (m *memGrantJTIs) Record(_ context.Context, jti string, spentAt time.Time) error {
+// Claim atomically records jti and reports whether this call spent it.
+func (m *memGrantJTIs) Claim(_ context.Context, jti string, spentAt time.Time) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.spent[jti]; ok {
-		return &domain.Error{Category: domain.Conflict, Message: "jti already spent"}
+		return false, nil
 	}
 	m.spent[jti] = spentAt
-	return nil
+	return true, nil
 }
 
-func (m *memGrantJTIs) Exists(_ context.Context, jti string) (bool, error) {
+// spent reports whether jti has been claimed (test helper).
+func (m *memGrantJTIs) isSpent(jti string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	_, ok := m.spent[jti]
-	return ok, nil
+	return ok
 }
+
+var _ domain.EnrolmentGrantJTIRepository = (*memGrantJTIs)(nil)
+
+// memTicketJTIs is an in-memory domain.MFATicketJTIRepository.
+type memTicketJTIs struct {
+	mu    sync.Mutex
+	spent map[string]time.Time
+}
+
+func newMemTicketJTIs() *memTicketJTIs { return &memTicketJTIs{spent: make(map[string]time.Time)} }
+
+func (m *memTicketJTIs) Claim(_ context.Context, jti string, spentAt time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.spent[jti]; ok {
+		return false, nil
+	}
+	m.spent[jti] = spentAt
+	return true, nil
+}
+
+var _ domain.MFATicketJTIRepository = (*memTicketJTIs)(nil)
 
 func TestLogin_WithValidEnrolmentGrant(t *testing.T) {
 	users := newMemUsers()
@@ -1412,9 +1436,8 @@ func TestLogin_WithValidEnrolmentGrant(t *testing.T) {
 
 	// Verify JTI was recorded
 	claims, _ := grantSigner.Verify(grant, now)
-	exists, err := jtiRepo.Exists(context.Background(), claims.JTI)
-	if err != nil || !exists {
-		t.Errorf("expected jti to be recorded as spent, exists=%v, err=%v", exists, err)
+	if !jtiRepo.isSpent(claims.JTI) {
+		t.Errorf("expected jti to be recorded as spent")
 	}
 
 	// Second login with SAME grant (replay) must succeed but ignore grant
@@ -1561,7 +1584,7 @@ func TestLogin_MFARequired_DoesNotConsumeEnrolmentGrant(t *testing.T) {
 		t.Fatal("expected device to remain unassigned/provisional, but it was claimed")
 	}
 	claims, _ := grantSigner.Verify(grant, now)
-	if exists, _ := jtiRepo.Exists(context.Background(), claims.JTI); exists {
+	if jtiRepo.isSpent(claims.JTI) {
 		t.Fatal("expected enrolment grant JTI to remain unspent after an mfaRequired response")
 	}
 }
@@ -1617,7 +1640,7 @@ func TestTOTPVerify_WithEnrolmentGrant(t *testing.T) {
 	}
 
 	verifyHandler := transporthttp.TOTPVerifyHandler(
-		mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, nil,
+		mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, nil, nil,
 		transporthttp.WithEnrolmentGrant(grantSigner, devRepo, jtiRepo, nil),
 	)
 
@@ -1645,9 +1668,67 @@ func TestTOTPVerify_WithEnrolmentGrant(t *testing.T) {
 	}
 
 	claims, _ := grantSigner.Verify(grant, now)
-	exists, err := jtiRepo.Exists(context.Background(), claims.JTI)
-	if err != nil || !exists {
-		t.Errorf("expected jti to be recorded as spent, exists=%v, err=%v", exists, err)
+	if !jtiRepo.isSpent(claims.JTI) {
+		t.Errorf("expected jti to be recorded as spent")
+	}
+}
+
+// TestTOTPVerify_TicketIsSingleUse is the #189 regression: a captured
+// MFA ticket must not be replayable within its 5-minute TTL. The first
+// presentation claims the ticket's JTI; a second presentation of the
+// same ticket is rejected even with a valid code.
+func TestTOTPVerify_TicketIsSingleUse(t *testing.T) {
+	users := newMemUsers()
+	mfaRepo := newMemMFA()
+	mems := newMemMemberships()
+	rtRepo := newMemRefreshTokens()
+	signer := auth.NewJWTSigner([]byte("test-jwt-secret-at-least-32-bytes!"), "alexandryn")
+	idGen := &fakeIDGen{val: "id-fixed-su-1"}
+	totpEngine := auth.NewTOTPEngine("Alexandryn")
+	masterKey := []byte("totp-master-key-32-bytes-long!!")
+	ticketJTIs := newMemTicketJTIs()
+
+	user, _ := domain.NewUser("user-su-1", "suuser1", "suuser1@example.com", domain.RoleReader, time.Now(), time.Now())
+	_ = users.Save(context.Background(), user)
+
+	secret, err := totpEngine.GenerateSecret()
+	if err != nil {
+		t.Fatalf("GenerateSecret: %v", err)
+	}
+	encryptedSecret, err := auth.EncryptSecret([]byte(secret), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptSecret: %v", err)
+	}
+	confirmedAt := time.Now()
+	totpSettings, _ := domain.NewTOTPSettings(user.ID(), encryptedSecret, nil, true, &confirmedAt, time.Now())
+	_ = mfaRepo.Save(context.Background(), totpSettings)
+
+	now := time.Now().UTC()
+	mfaTicket, err := signer.SignMFATicket(user.ID(), now.Add(5*time.Minute))
+	if err != nil {
+		t.Fatalf("SignMFATicket: %v", err)
+	}
+	code, err := totpEngine.GenerateCode(secret, now)
+	if err != nil {
+		t.Fatalf("GenerateCode: %v", err)
+	}
+
+	h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, nil, ticketJTIs)
+
+	send := func() *httptest.ResponseRecorder {
+		body, _ := json.Marshal(map[string]string{"mfaTicket": mfaTicket, "code": code})
+		req := httptest.NewRequest("POST", "/api/v1/auth/mfa/totp/verify", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := send(); rec.Code != http.StatusOK {
+		t.Fatalf("first presentation status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if rec := send(); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("replayed ticket status = %d, want 401; body: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -1689,7 +1770,7 @@ func TestTOTPVerify_RateLimited(t *testing.T) {
 
 	t.Run("per-IP limiter trips", func(t *testing.T) {
 		ipLimiter := auth.NewIPRateLimiter(rate.Every(time.Hour), 3, time.Hour)
-		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, ipLimiter, nil)
+		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, ipLimiter, nil, nil)
 		var got429 bool
 		for i := 0; i < 10; i++ {
 			if post(h, "203.0.113.9:1234") == http.StatusTooManyRequests {
@@ -1704,7 +1785,7 @@ func TestTOTPVerify_RateLimited(t *testing.T) {
 
 	t.Run("per-user limiter trips across rotating IPs", func(t *testing.T) {
 		userLimiter := auth.NewIPRateLimiter(rate.Every(time.Hour), 3, time.Hour)
-		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, userLimiter)
+		h := transporthttp.TOTPVerifyHandler(mfaRepo, users, rtRepo, mems, totpEngine, signer, idGen, masterKey, nil, userLimiter, nil)
 		var got429 bool
 		for i := 0; i < 10; i++ {
 			if post(h, "198.51.100."+strconv.Itoa(i)+":5555") == http.StatusTooManyRequests {

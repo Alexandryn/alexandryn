@@ -66,6 +66,17 @@ func TestSchema_Phase13NetworkTablesExistAfterMigration(t *testing.T) {
 		t.Fatalf("enrolment_grant_jtis row unexpected: jti=%q", jti)
 	}
 
+	// 3b. mfa_ticket_jtis round-trip (migration 00011, issue #189)
+	mustExecPool(t, pool, `INSERT INTO mfa_ticket_jtis (jti, spent_at) VALUES ('mfa-jti-123', now())`)
+	var mfaJTI string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT jti FROM mfa_ticket_jtis WHERE jti = 'mfa-jti-123'`).Scan(&mfaJTI); err != nil {
+		t.Fatalf("scan mfa_ticket_jtis columns: %v", err)
+	}
+	if mfaJTI != "mfa-jti-123" {
+		t.Fatalf("mfa_ticket_jtis row unexpected: jti=%q", mfaJTI)
+	}
+
 	// 4. network_settings round-trip
 	mustExecPool(t, pool, `INSERT INTO network_settings (id, host_name, remember_device_days, updated_at)
 		VALUES ('default', 'alexandryn.local', 45, now())

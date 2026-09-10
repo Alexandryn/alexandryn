@@ -4,6 +4,8 @@ package postgres_test
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -271,34 +273,61 @@ func TestEnrolmentGrantJTIRepository(t *testing.T) {
 	repo := postgres.NewEnrolmentGrantJTIRepository(pool)
 
 	jti := "test-jti-uuid-999"
-
-	// Exists initially false
-	exists, err := repo.Exists(ctx, jti)
-	if err != nil {
-		t.Fatalf("repo.Exists initial: %v", err)
-	}
-	if exists {
-		t.Fatal("expected exists=false for new jti")
-	}
-
-	// Record
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	if err := repo.Record(ctx, jti, now); err != nil {
-		t.Fatalf("repo.Record: %v", err)
-	}
 
-	// Exists now true
-	exists, err = repo.Exists(ctx, jti)
+	// First claim wins.
+	claimed, err := repo.Claim(ctx, jti, now)
 	if err != nil {
-		t.Fatalf("repo.Exists after record: %v", err)
+		t.Fatalf("repo.Claim first: %v", err)
 	}
-	if !exists {
-		t.Fatal("expected exists=true after record")
+	if !claimed {
+		t.Fatal("expected first Claim to win")
 	}
 
-	// Replay (duplicate Record) errors
-	err = repo.Record(ctx, jti, now)
-	if err == nil {
-		t.Fatal("expected duplicate Record to fail, got nil")
+	// Second claim of the same jti loses, without error.
+	claimed, err = repo.Claim(ctx, jti, now)
+	if err != nil {
+		t.Fatalf("repo.Claim replay: %v", err)
+	}
+	if claimed {
+		t.Fatal("expected replayed Claim to lose")
+	}
+}
+
+// #250: two concurrent Claims of the same jti must resolve to exactly one
+// winner — the atomic INSERT ... ON CONFLICT DO NOTHING, not a TOCTOU
+// Exists-then-Record pair.
+func TestEnrolmentGrantJTIRepository_ConcurrentClaimWinsOnce(t *testing.T) {
+	pool := schemaTestPool(t)
+	ctx := context.Background()
+	repo := postgres.NewEnrolmentGrantJTIRepository(pool)
+
+	jti := "test-jti-concurrent-1"
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	const n = 8
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var wins int32
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			claimed, err := repo.Claim(ctx, jti, now)
+			if err != nil {
+				t.Errorf("Claim: %v", err)
+				return
+			}
+			if claimed {
+				atomic.AddInt32(&wins, 1)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	if wins != 1 {
+		t.Fatalf("wins = %d, want exactly 1", wins)
 	}
 }

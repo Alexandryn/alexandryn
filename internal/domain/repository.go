@@ -289,6 +289,18 @@ type NetworkSettingsRepository interface {
 }
 
 type EnrolmentGrantJTIRepository interface {
-	Record(ctx context.Context, jti string, spentAt time.Time) error
-	Exists(ctx context.Context, jti string) (bool, error)
+	// Claim atomically records jti as spent and reports whether this call
+	// was the one that spent it. A second call with the same jti returns
+	// (false, nil). This is the single-use gate for an enrolment grant:
+	// a separate Exists-then-Record pair is a TOCTOU race under concurrent
+	// logins with the same grant (#250).
+	Claim(ctx context.Context, jti string, spentAt time.Time) (bool, error)
+}
+
+// MFATicketJTIRepository is the single-use gate for an MFA ticket. A
+// ticket carries a jti (auth.SignMFATicket); TOTPVerifyHandler claims it
+// on presentation so a captured ticket cannot be replayed within its TTL
+// (#189).
+type MFATicketJTIRepository interface {
+	Claim(ctx context.Context, jti string, spentAt time.Time) (bool, error)
 }

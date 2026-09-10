@@ -31,6 +31,7 @@ type AuthAPI struct {
 	PairedDevices      domain.PairedDeviceRepository
 	NetworkSettings    domain.NetworkSettingsRepository
 	EnrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
+	MFATicketJTIs      domain.MFATicketJTIRepository
 	EnrolmentSigner    *auth.EnrolmentGrantSigner
 	Logger             *slog.Logger
 }

@@ -66,20 +66,22 @@ func applyEnrolmentGrant(ctx context.Context, cfg authConfig, grant string, user
 		}
 		return
 	}
-	spent, err := cfg.jtiRepo.Exists(ctx, claims.JTI)
-	if err != nil || spent {
+	// Atomic single-use claim before any durable work: a concurrent
+	// second login with the same grant loses the claim and stops here,
+	// rather than both passing an Exists check and racing (#250).
+	claimed, err := cfg.jtiRepo.Claim(ctx, claims.JTI, now)
+	if err != nil || !claimed {
 		if cfg.logger != nil {
-			cfg.logger.Info("replayed enrolment grant ignored", "correlationId", corrID, "jti", claims.JTI)
+			cfg.logger.Info("replayed or unclaimable enrolment grant ignored", "correlationId", corrID, "jti", claims.JTI)
 		}
 		return
 	}
 	if err := cfg.devRepo.AssignOwnerByPairingSession(ctx, claims.SessionID, userID); err != nil {
 		if cfg.logger != nil {
-			cfg.logger.Info("failed to assign device owner, ignoring", "correlationId", corrID, "error", err.Error())
+			cfg.logger.Info("failed to assign device owner after claiming grant, ignoring", "correlationId", corrID, "error", err.Error())
 		}
 		return
 	}
-	_ = cfg.jtiRepo.Record(ctx, claims.JTI, now)
 }
 
 type UserSummaryWire struct {
@@ -759,6 +761,7 @@ func TOTPVerifyHandler(
 	masterKey []byte,
 	ipLimiter *auth.IPRateLimiter,
 	userLimiter *auth.IPRateLimiter,
+	ticketJTIs domain.MFATicketJTIRepository,
 	opts ...LoginOption,
 ) http.Handler {
 	var cfg authConfig
@@ -788,10 +791,26 @@ func TOTPVerifyHandler(
 		}
 
 		now := time.Now()
-		userID, err := signer.VerifyMFATicket(req.MFATicket, now)
+		userID, ticketJTI, err := signer.VerifyMFATicket(req.MFATicket, now)
 		if err != nil {
 			WriteError(w, domain.Unauthorized, "invalid or expired MFA ticket", corrID)
 			return
+		}
+
+		// Single-use: claim the ticket's JTI on presentation so a
+		// captured ticket cannot be replayed within its TTL (#189). A
+		// spent or unclaimable ticket is rejected; the client must
+		// re-authenticate to get a fresh one.
+		if ticketJTIs != nil && ticketJTI != "" {
+			claimed, err := ticketJTIs.Claim(r.Context(), ticketJTI, now)
+			if err != nil {
+				WriteError(w, domain.Unavailable, "could not verify MFA ticket, try again", corrID)
+				return
+			}
+			if !claimed {
+				WriteError(w, domain.Unauthorized, "this MFA ticket has already been used, sign in again", corrID)
+				return
+			}
 		}
 
 		if userLimiter != nil && !userLimiter.Allow(string(userID)) {

@@ -43,8 +43,8 @@ func (d *dummyTokenSigner) SignMFATicket(userID domain.UserID, expiresAt time.Ti
 	return "mfa-ticket", nil
 }
 
-func (d *dummyTokenSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, error) {
-	return "u-1", nil
+func (d *dummyTokenSigner) VerifyMFATicket(ticketString string, now time.Time) (domain.UserID, string, error) {
+	return "u-1", "jti-1", nil
 }
 
 func TestAuthMiddleware(t *testing.T) {

@@ -21,25 +21,15 @@ func NewEnrolmentGrantJTIRepository(pool *pgxpool.Pool) *EnrolmentGrantJTIReposi
 
 var _ domain.EnrolmentGrantJTIRepository = (*EnrolmentGrantJTIRepository)(nil)
 
-const enrolmentGrantJTIRecordSQL = `INSERT INTO enrolment_grant_jtis (jti, spent_at) VALUES ($1, $2)`
+// jti is the table's primary key, so the insert is the atomic claim:
+// ON CONFLICT DO NOTHING means a concurrent second claim inserts no row.
+const enrolmentGrantJTIClaimSQL = `INSERT INTO enrolment_grant_jtis (jti, spent_at) VALUES ($1, $2) ON CONFLICT (jti) DO NOTHING`
 
-func (r *EnrolmentGrantJTIRepository) Record(ctx context.Context, jti string, spentAt time.Time) error {
+func (r *EnrolmentGrantJTIRepository) Claim(ctx context.Context, jti string, spentAt time.Time) (bool, error) {
 	exec := executorFrom(ctx, r.pool)
-	_, err := exec.Exec(ctx, enrolmentGrantJTIRecordSQL, jti, spentAt)
-	if err != nil {
-		return TranslateError(err)
-	}
-	return nil
-}
-
-const enrolmentGrantJTIExistsSQL = `SELECT EXISTS (SELECT 1 FROM enrolment_grant_jtis WHERE jti = $1)`
-
-func (r *EnrolmentGrantJTIRepository) Exists(ctx context.Context, jti string) (bool, error) {
-	exec := executorFrom(ctx, r.pool)
-	var exists bool
-	err := exec.QueryRow(ctx, enrolmentGrantJTIExistsSQL, jti).Scan(&exists)
+	tag, err := exec.Exec(ctx, enrolmentGrantJTIClaimSQL, jti, spentAt)
 	if err != nil {
 		return false, TranslateError(err)
 	}
-	return exists, nil
+	return tag.RowsAffected() == 1, nil
 }

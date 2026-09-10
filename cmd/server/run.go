@@ -644,6 +644,7 @@ func run(ctx context.Context, deps runDeps) int {
 				PairedDevices:      repos.pairedDevices,
 				NetworkSettings:    repos.networkSettings,
 				EnrolmentGrantJTIs: repos.enrolmentGrantJTIs,
+				MFATicketJTIs:      repos.mfaTicketJTIs,
 				EnrolmentSigner:    enrolmentSigner,
 				Logger:             logger,
 			})

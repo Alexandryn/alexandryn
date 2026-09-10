@@ -56,6 +56,7 @@ type repositories struct {
 	pairedDevices      domain.PairedDeviceRepository
 	networkSettings    domain.NetworkSettingsRepository
 	enrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
+	mfaTicketJTIs      domain.MFATicketJTIRepository
 	networkSweep       *postgres.NetworkSweep
 	readingSync        *postgres.ReadingSyncRepository
 }
@@ -133,6 +134,7 @@ func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories 
 		pairedDevices:      postgres.NewPairedDeviceRepository(pool),
 		networkSettings:    postgres.NewNetworkSettingsRepository(pool),
 		enrolmentGrantJTIs: postgres.NewEnrolmentGrantJTIRepository(pool),
+		mfaTicketJTIs:      postgres.NewMFATicketJTIRepository(pool),
 		networkSweep:       postgres.NewNetworkSweep(pool),
 		readingSync:        postgres.NewReadingSyncRepository(pool),
 	}

@@ -151,7 +151,7 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 			t.Error("expected VerifyAccessToken to reject an MFA ticket, got nil")
 		}
 		// But it does verify as an MFA ticket.
-		if _, err := signer.VerifyMFATicket(ticket, now); err != nil {
+		if _, _, err := signer.VerifyMFATicket(ticket, now); err != nil {
 			t.Errorf("MFA ticket should verify via VerifyMFATicket: %v", err)
 		}
 	})
@@ -186,16 +186,26 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 			t.Fatalf("unexpected MFA ticket sign error: %v", err)
 		}
 
-		userID, err := signer.VerifyMFATicket(ticket, now)
+		userID, jti, err := signer.VerifyMFATicket(ticket, now)
 		if err != nil {
 			t.Fatalf("unexpected MFA ticket verify error: %v", err)
 		}
 		if userID != "u-12345" {
 			t.Errorf("expected user ID u-12345, got %v", userID)
 		}
+		if jti == "" {
+			t.Error("expected a non-empty jti on the MFA ticket (#189)")
+		}
+
+		// A second ticket carries a distinct jti.
+		ticket2, _ := signer.SignMFATicket("u-12345", now.Add(5*time.Minute))
+		_, jti2, _ := signer.VerifyMFATicket(ticket2, now)
+		if jti2 == jti {
+			t.Error("expected distinct jtis on distinct MFA tickets")
+		}
 
 		// Expired ticket
-		_, err = signer.VerifyMFATicket(ticket, now.Add(10*time.Minute))
+		_, _, err = signer.VerifyMFATicket(ticket, now.Add(10*time.Minute))
 		if err == nil {
 			t.Error("expected error for expired MFA ticket")
 		}
