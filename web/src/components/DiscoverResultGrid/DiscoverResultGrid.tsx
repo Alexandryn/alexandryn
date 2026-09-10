@@ -28,7 +28,7 @@ export function DiscoverResultGrid({ results, className, ...rest }: DiscoverResu
   return (
     <div className={cx('flex flex-col gap-md', className)} {...rest}>
       <div className="grid grid-cols-2 gap-md sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {results.map((item) => (
+        {results.map((item, idx) => (
           <div key={item.openLibraryWorkKey}>
             <Link
               to={`/discover/works/${encodeURIComponent(item.openLibraryWorkKey)}`}
@@ -42,6 +42,7 @@ export function DiscoverResultGrid({ results, className, ...rest }: DiscoverResu
                 identifier={item.openLibraryWorkKey}
                 title={item.title}
                 author={formatCoverAuthor(item.authors)}
+                priority={idx < 6}
               />
 
               <div className="mt-xs flex flex-col">
@@ -52,12 +53,12 @@ export function DiscoverResultGrid({ results, className, ...rest }: DiscoverResu
                   {formatAuthorString(item.authors)}
                 </span>
                 <div className="mt-xs flex items-center gap-xs text-3xs text-text-3">
-                  {item.firstPublishYear && (
-                    <span>{item.firstPublishYear}</span>
-                  )}
+                  {item.firstPublishYear && <span>{item.firstPublishYear}</span>}
                   {item.firstPublishYear && item.editionCount > 0 && <span>•</span>}
                   {item.editionCount > 0 && (
-                    <span>{item.editionCount} {item.editionCount === 1 ? 'edition' : 'editions'}</span>
+                    <span>
+                      {item.editionCount} {item.editionCount === 1 ? 'edition' : 'editions'}
+                    </span>
                   )}
                 </div>
               </div>

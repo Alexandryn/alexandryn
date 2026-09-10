@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getJson, postJson } from './http'
 
@@ -190,8 +191,11 @@ export function useActivityEvents(opts: { active?: boolean } = {}) {
 
 export function useActivityBadge() {
   const { data: events = [] } = useActivityEvents()
-  const grouped = parseActivityEvents(events)
-  const hasActiveOrFailed = grouped.active.length > 0 || grouped.failed.length > 0
+  // Memoize grouped events to prevent downstream memo breakage across poll ticks (audit 0016 #214).
+  const hasActiveOrFailed = useMemo(() => {
+    const grouped = parseActivityEvents(events)
+    return grouped.active.length > 0 || grouped.failed.length > 0
+  }, [events])
   return { hasActiveOrFailed }
 }
 
@@ -208,7 +212,8 @@ export function usePauseAll() {
 export function useCancelJob() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (jobId: string) => postJson<{ cancelled: boolean }>(`/api/v1/activity/jobs/${jobId}/cancel`),
+    mutationFn: (jobId: string) =>
+      postJson<{ cancelled: boolean }>(`/api/v1/activity/jobs/${jobId}/cancel`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ACTIVITY_QUERY_KEY })
     },
@@ -218,7 +223,8 @@ export function useCancelJob() {
 export function useRetryJob() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (jobId: string) => postJson<{ new_job_id: string }>(`/api/v1/activity/jobs/${jobId}/retry`),
+    mutationFn: (jobId: string) =>
+      postJson<{ new_job_id: string }>(`/api/v1/activity/jobs/${jobId}/retry`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ACTIVITY_QUERY_KEY })
     },
