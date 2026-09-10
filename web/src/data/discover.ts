@@ -97,8 +97,15 @@ export function useDiscoverSearch(params: {
   })
 }
 
-export function fetchDiscoverWork(openLibraryId: string): Promise<DiscoverWorkDetail> {
-  return getJson<DiscoverWorkDetail>(`/api/v1/discover/works/${encodeURIComponent(openLibraryId)}`)
+export function fetchDiscoverWork(
+  openLibraryId: string,
+  signal?: AbortSignal,
+): Promise<DiscoverWorkDetail> {
+  return getJson<DiscoverWorkDetail>(
+    `/api/v1/discover/works/${encodeURIComponent(openLibraryId)}`,
+    {},
+    { signal },
+  )
 }
 
 /**
@@ -108,11 +115,11 @@ export function fetchDiscoverWork(openLibraryId: string): Promise<DiscoverWorkDe
 export function useDiscoverWork(openLibraryId: string | undefined) {
   return useQuery({
     queryKey: ['discover', 'work', openLibraryId],
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (!openLibraryId) {
         return Promise.reject(new Error('openLibraryId is required'))
       }
-      return fetchDiscoverWork(openLibraryId)
+      return fetchDiscoverWork(openLibraryId, signal)
     },
     enabled: Boolean(openLibraryId && openLibraryId.trim() !== ''),
   })

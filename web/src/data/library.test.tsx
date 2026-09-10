@@ -155,4 +155,18 @@ describe('library data hooks & fetchers (FR-1, FR-3, FR-5)', () => {
     expect(result.current.fetchStatus).toBe('idle')
     expect(result.current.data).toBeUndefined()
   })
+
+  // audit 0016 #166: the catalog fetchers forward the query's AbortSignal
+  // to fetch, so a superseded search or an unmount cancels the in-flight
+  // request rather than downloading a response nobody will read.
+  it('fetchLibraryPage and fetchWorkDetail forward an AbortSignal', async () => {
+    server.use(
+      http.get('*/api/v1/library', () => HttpResponse.json({ works: [], nextCursor: null })),
+      http.get('*/api/v1/works/:id', () => HttpResponse.json({ id: 'w1', title: 'T' })),
+    )
+
+    const aborted = AbortSignal.abort()
+    await expect(fetchLibraryPage({ q: 'x' }, aborted)).rejects.toMatchObject({ name: 'AbortError' })
+    await expect(fetchWorkDetail('w1', aborted)).rejects.toMatchObject({ name: 'AbortError' })
+  })
 })
