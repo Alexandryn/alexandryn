@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ErrorState } from '../../components/ErrorState/ErrorState'
@@ -149,12 +149,19 @@ export function Reader() {
   )
 
   const cleanupIframeListenersRef = useRef<(() => void) | null>(null)
+  // These refs mirror the latest render's values so the iframe `load`
+  // handler and the scroll/selection listeners it installs (all off a
+  // stable useCallback) read current data without re-subscribing. Synced
+  // in a layout effect: after DOM mutation, before paint, and well before
+  // the async iframe `load` event or any user interaction with the frame.
   const sectionIndexRef = useRef(sectionIndex)
-  sectionIndexRef.current = sectionIndex
   const sectionsLengthRef = useRef(sections.length)
-  sectionsLengthRef.current = sections.length
   const currentSectionRef = useRef(currentSection)
-  currentSectionRef.current = currentSection
+  useLayoutEffect(() => {
+    sectionIndexRef.current = sectionIndex
+    sectionsLengthRef.current = sections.length
+    currentSectionRef.current = currentSection
+  }, [sectionIndex, sections.length, currentSection])
 
   const handleIframeLoad = useCallback(() => {
     cleanupIframeListenersRef.current?.()
