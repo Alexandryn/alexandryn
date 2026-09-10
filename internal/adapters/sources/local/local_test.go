@@ -264,6 +264,28 @@ func TestProvider_ResolveRejectsTraversal(t *testing.T) {
 	}
 }
 
+// #176: Resolve applies the same extension filter as List, so a request
+// for a non-book file in the source root — a .env, an SSH key — is not
+// found even though the file is really there.
+func TestProvider_ResolveRejectsUnsupportedExtension(t *testing.T) {
+	base := t.TempDir()
+	writeFile(t, filepath.Join(base, ".env"), 20)
+	writeFile(t, filepath.Join(base, "secrets.txt"), 20)
+	p := newProvider(t, base, nil)
+
+	for _, name := range []string{".env", "secrets.txt"} {
+		rc, err := p.Resolve(context.Background(), domain.FileReference{ReferenceID: name, Format: "EPUB"})
+		if err == nil {
+			_ = rc.Close()
+			t.Errorf("Resolve(%q) = nil error, want NotFound", name)
+			continue
+		}
+		if domain.CategoryOf(err) != domain.NotFound {
+			t.Errorf("Resolve(%q) category = %s, want NotFound", name, domain.CategoryOf(err))
+		}
+	}
+}
+
 func TestNew_RejectsBadPathShape(t *testing.T) {
 	if _, err := local.New("s", "relative/path", newCodec(t), nil); err == nil {
 		t.Fatal("New accepted a relative basePath")
