@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-08, A-17-09, A-17-10 fixed** (`1b008ec`, `0f9ccdd`) — 0 open Critical, 0 open Medium (A-17-02 escalated, not fixed here — see its own resolution note). Reader (EPUB/PDF) and Import screen not yet examined. |
+| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-01, A-17-04, A-17-08, A-17-09, A-17-10, A-17-11 fixed** — 0 open Critical, 0 open Medium (A-17-02 escalated, not fixed here), 1 open Low (A-17-07, pending CI confirmation). Reader (EPUB/PDF) and Import screen not yet examined. |
 
 ## Template deviation, stated per constitution §12
 
@@ -110,17 +110,17 @@ README's G0-2/G0-4 and constitution §7.
 
 | ID | Severity | Title | Issue | Status |
 |---|---|---|---|---|
-| A-17-01 | Informational | `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check | #314 | Open |
-| A-17-02 | Medium | `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size | #315 | Open |
+| A-17-01 | Informational | `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check | #314 | **Fixed** (`a114855`) |
+| A-17-02 | Medium | `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size | #315 | Open — escalated, not fixed inline (maintainer directed: file forward) |
 | A-17-03 | Informational | Scroll frame rate holds ~60fps through 20,000 items — confirmed clean, worth a regression-watch benchmark | #321 | Open |
-| A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | #318 | Open |
+| A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | #318 | **Fixed** (`5b9fa80`) |
 | A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | #322 | Open |
 | A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | #323 | Open |
 | A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | Open |
 | A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | **Fixed** (`1b008ec`) |
 | A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | **Fixed** (`1b008ec`) |
 | A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | **Fixed** (`0f9ccdd`) |
-| A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | #320 | Open |
+| A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | #320 | **Fixed** (`af3d864`) |
 
 ### A-17-01 — `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check
 
@@ -138,7 +138,7 @@ README's G0-2/G0-4 and constitution §7.
 
 **Recommendation** — Commit the regenerated file, and extend the CI drift-check step in `.github/workflows/ci.yml` to also run the Electron build (or just `copyFileSync`'s equivalent) and `git diff --exit-code` on this path, the same way it already does for the three `web/src/` generated files.
 
-**Resolution** — Open, filed for the findings gate.
+**Resolution** — **Fixed**, commit `a114855`. Regenerated the file via `npm run -w @alexandryn/desktop build`, and added a "Boot tokens.css up to date" step to the Desktop CI job right after its own Build step, mirroring the frontend job's existing drift check.
 
 ### A-17-02 — `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size
 
@@ -165,7 +165,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Extend `WorkGrid`'s existing sliding-window tracking (`clampedStart`/`windowEnd`) to also skip mounting the wrapper element outside the window (fixed-height placeholder instead), following the fully-windowed pattern `web/e2e/benchmark/CoverGridHarness.tsx:38-44` already uses for the GeneratedCover benchmark harness. This is a real windowing change (scroll-position-driven, not just intersection-observer-sentinel-driven) and should be scoped as its own change rather than folded into a same-PR mechanical fix — per the roadmap's own risk table, which anticipated exactly this outcome and named escalation as the correct response.
 
-**Resolution** — Open, filed for the findings gate; escalate rather than fix inline per G0-5/risk table.
+**Resolution** — Open — escalated, not fixed inline. Maintainer confirmed (2026-09-11): "if its too big of a fix, make an issue on the repo of it and later we deal with it," matching the risk table's own anticipated outcome. Issue #315 stands as the tracking record; no code change in this phase.
 
 ### A-17-03 — Scroll frame rate holds ~60fps through 20,000 items
 
@@ -193,7 +193,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Run the same benchmark against list view before deciding whether it needs `cv-auto` — don't assume parity either way.
 
-**Resolution** — Open, filed for the findings gate.
+**Resolution** — **Fixed**, commit `5b9fa80`. Didn't reuse `.cv-auto` as-is: its `contain-intrinsic-size` (280px) is tuned for the grid card, and a live DOM measurement showed list rows are actually ~68px — applying the grid value would have badly inflated off-screen scroll height. Added a separate `.cv-auto-list` class sized for the real row height. Not independently re-run through a full 10k-item scroll-FPS benchmark (that would be a reasonable follow-up); this applies the same proven mechanism, correctly parameterized, which carries no downside.
 
 ### A-17-05 — `seedCache` module-level `Map` is unbounded
 
@@ -287,7 +287,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Resolution** — **Fixed**, commit `0f9ccdd`. Correction: the tab-bar component is actually `web/src/app/shell/MobileTabBar.tsx`, not `NavList.tsx` (a different, unrelated component used by `/settings` and `/more`'s index lists) — fixed at the actual component. Also fixed `SegmentedControl` (`min-h-11 min-w-11`), `Button`'s shared `SIZE.sm` (`min-h-11` — this alone fixed Devices' Retry and every other `size="sm"` consumer app-wide), Activity's "Retry connection" (was a bare `<button>` bypassing the shared `Button` component entirely, inconsistent with Devices' identical pattern — switched to `Button variant="secondary" size="sm"`), and Sources' Edit/Remove (`h-auto` override opted out of `sm` sizing — switched to `size="sm"` plus a scoped `min-w-11`, since Edit's text alone left it 38px wide even at the corrected height). Manually re-measured all five originally-sampled controls at 320px — all ≥44×44px now.
 
-### A-17-11 — `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s with an unverified focus indicator
+### A-17-11 — `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s with an unverified focus indicator — **Fixed**
 
 **Severity:** Low
 
@@ -303,7 +303,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Switch `LoginScreen`/`SetupScreen` to the shared `Input` component (removes the inconsistency regardless of the contrast question), or if there's a reason these screens can't use it, verify the border-color focus indicator's contrast ratio explicitly and record that verification.
 
-**Resolution** — Open, filed for the findings gate.
+**Resolution** — **Fixed**, commit `af3d864`. Took the "remove the inconsistency outright" option: `LoginScreen`, `SetupScreen`, `ForgotPasswordScreen`, and `ResetPasswordScreen` all switched to the shared `Input` component, so the contrast question is moot — all four now use the same verified `FOCUS_RING` outline as every other field in the app. `SetupScreen`'s shared-banner `aria-invalid`/`aria-describedby` and field-focus refs carried through unchanged (`Input` spreads extra props and forwards its ref).
 
 ---
 
