@@ -100,6 +100,14 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
   })
 
   test('unhappy path: host revoke invalidates code for second context', async ({ browser, baseURL }) => {
+    // One shared context, not two (unlike the happy-path test above) is
+    // deliberate, not an oversight: the mock revoke state
+    // (alexandryn_mock_revoked, src/mocks/handlers.ts's pair/verify and
+    // DELETE pair/:id handlers) lives in localStorage, which is scoped
+    // per browser context — pageA's revoke would be invisible to pageB in
+    // a separate context. Confirmed by trying it (audit 0017 #325
+    // investigation): separating contexts breaks this test on every
+    // engine, not just Firefox.
     const context = await browser.newContext({ baseURL })
     const pageA = await context.newPage()
     const pageB = await context.newPage()
@@ -115,8 +123,17 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await pageA.getByRole('button', { name: 'Revoke' }).click()
       await expect(pageA.getByRole('dialog', { name: 'Pair a Device' })).toBeHidden()
 
-      // Context B tries to connect with code
+      // Context B tries to connect with code. bringToFront() (audit 0017
+      // #325 investigation) — pageB is a second, backgrounded tab in the
+      // same context as pageA; Firefox headless throttles background-tab
+      // rendering more aggressively than Chromium, which timed out
+      // waiting for Continue to appear. Also wait for the code to
+      // actually be prefilled (matching the happy-path test's own care)
+      // instead of clicking immediately, so a slow-hydrating page fails
+      // with a clear assertion here rather than a bare button-not-found.
       await pageB.goto('/connect?c=ABCD-EFGH')
+      await pageB.bringToFront()
+      await expect(pageB.getByLabel('Pairing Code')).toHaveValue('ABCD-EFGH')
       await pageB.getByRole('button', { name: 'Continue' }).click()
 
       // Code no longer verifies: error shown, focus returned
