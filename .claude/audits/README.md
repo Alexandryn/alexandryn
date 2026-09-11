@@ -60,4 +60,5 @@ No phase closes with an open Critical or High finding.
 | [0014](0014-phase14-devices-and-sync.md) | Phase 14 devices and sync | 2026-09-06 | 0 | 0 | Clear |
 | [0015](0015-phase15-observability.md) | Phase 15 observability | 2026-09-07 | 0 | 0 | Clear (1 Med, 2 Low, all resolved) |
 | [0016](0016-phase16-security-hardening.md) | Phase 16 whole-application security hardening sweep (all three trust boundaries, deps, CSP, CI/CD, test coverage) + `/code-review ultra` cross-check | 2026-09-07 | 0 | 0 | Closed 2026-09-11 — 219 issues filed (#86–#304 range), all resolved. 0 open Critical/High. Ultra pass found 4 Phase 15 deliverables certified but never wired (#294–#296, #302), now tracked/fixed. Maintainer approval recorded in `.claude/roadmap/16-security-hardening/README.md` |
+| [0017](0017-phase17-accessibility-and-qa.md) | Phase 17 whole-application accessibility (WCAG 2.1 AA) and QA conformance sweep — cross-browser/viewport matrix, 10k-item scale benchmark | — | — | — | Scaffold only — Gate 0 scope awaiting maintainer approval, sweep not yet run |
 
