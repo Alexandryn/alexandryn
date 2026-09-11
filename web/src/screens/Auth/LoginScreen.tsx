@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { login } from '../../data/auth'
 import { clearPendingEnrolment, getPendingEnrolment } from '../../data/pendingEnrolment'
 import { MfaPromptModal } from './MfaPromptModal'
@@ -80,35 +81,26 @@ export function LoginScreen() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="emailOrUsername">
-              Email or Username
-            </label>
-            <input
-              id="emailOrUsername"
-              type="text"
-              required
-              value={emailOrUsername}
-              onChange={(e) => setEmailOrUsername(e.target.value)}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="username or email"
-            />
-          </div>
+          {/* Shared Input, not a hand-rolled <input> (audit 0017 A-17-11): its focus-visible outline is the same, verified mechanism every other field in the app uses */}
+          <Input
+            label="Email or Username"
+            id="emailOrUsername"
+            type="text"
+            required
+            value={emailOrUsername}
+            onChange={(e) => setEmailOrUsername(e.target.value)}
+            placeholder="username or email"
+          />
 
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            label="Password"
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
 
           <div className="mt-md">
             <Button type="submit" disabled={loading} className="w-full">
