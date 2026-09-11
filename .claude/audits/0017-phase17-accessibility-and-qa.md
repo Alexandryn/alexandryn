@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational). Reader (EPUB/PDF) and Import screen not yet examined. |
+| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-08 (Critical) and A-17-09 (Medium) fixed** (`1b008ec`) — 0 open Critical, 2 open Medium remain (A-17-02, A-17-10). Reader (EPUB/PDF) and Import screen not yet examined. |
 
 ## Template deviation, stated per constitution §12
 
@@ -117,8 +117,8 @@ README's G0-2/G0-4 and constitution §7.
 | A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | #322 | Open |
 | A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | #323 | Open |
 | A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | Open |
-| A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | Open |
-| A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | Open |
+| A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | **Fixed** (`1b008ec`) |
+| A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | **Fixed** (`1b008ec`) |
 | A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | Open |
 | A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | #320 | Open |
 
@@ -249,9 +249,9 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Rename the generated `--spacing-*` scale's keys in `scripts/generate-tokens.ts`/`scripts/tokens/extract.ts` so they don't collide with Tailwind's default named scales (e.g. a `--spacing-` numeric scale instead of named `xs`/`sm`/`md`/…, or prefix them, e.g. `--spacing-space-md`), **or** add an explicit `--container-*`/`--max-width-*` block to `web/src/theme.css`'s `@theme` so Tailwind's intended max-width scale takes precedence regardless of the spacing scale's key names. The former is more correct (removes the ambiguity at the source) but is a generator change requiring re-validation of every consumer of the current `--spacing-*` names; the latter is the smaller, faster fix. This needs a maintainer decision on which, not a default pick, since the generator is shared with the Electron boot CSS (A-17-01) and any consumer already depending on the current `--spacing-{key}` utility class names (e.g. `p-md`, `gap-xs`) would be affected by a rename.
 
-**Resolution** — Open, filed for the findings gate. Recommend treating this as blocking Phase 17's close given its Critical rating and app-wide blast radius, independent of the rest of the Tier 1-3 sweep's timeline.
+**Resolution** — **Fixed**, commit `1b008ece96cc8c64de83b96f323fa48fb3ee1934`. The originally-recommended `--container-*` override does **not** work — proven, not assumed: Tailwind v4 always prefers a `--spacing-{key}` theme value over `--container-{key}` on a name collision regardless of declaration order (confirmed by inspecting the compiled CSS — `.max-w-md` used `var(--spacing-md)` even with an explicit `--container-md` defined; `.max-w-4xl`, which doesn't collide, correctly used `var(--container-4xl)`). Actual fix: replaced every `max-w-{xs,sm,md,lg,xl,2xl,3xl}` class across the 17 affected files with Tailwind arbitrary-value syntax (`max-w-[28rem]`, etc.), bypassing the named-scale lookup entirely — no token rename, no risk to other `--spacing-{key}` consumers. Verified: full `app` project 38/38, `gallery` 3/3, vitest 539/539, lint and `check:token-styling` clean.
 
-### A-17-09 — Missing `<main>` landmark on public auth screens; `/settings/devices` has no `<h1>`
+### A-17-09 — Missing `<main>` landmark on public auth screens; `/settings/devices` has no `<h1>` — **Fixed**
 
 **Severity:** Medium
 
@@ -263,11 +263,11 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Preconditions** — None — present on every load, any assistive-tech context.
 
-**Reproduction** — `npx playwright test --project=app e2e/auth-screens.app.spec.ts` and `e2e/settings.app.spec.ts` (both currently red on this).
+**Reproduction** — `npx playwright test --project=app e2e/auth-screens.app.spec.ts` and `e2e/settings.app.spec.ts` (both now green).
 
 **Recommendation** — Wrap each auth screen's card in a `<main>` (or add `role="main"`) landmark, matching whatever pattern the authenticated shell already uses for its route content. Add a visually-consistent `<h1>` to `DevicesSettings` (can visually match the existing `<h2>` styling while being the correct semantic level, per `frontend-ui-engineering`'s native-semantics-first rule).
 
-**Resolution** — Open, filed for the findings gate.
+**Resolution** — **Fixed**, commit `1b008ece96cc8c64de83b96f323fa48fb3ee1934`. Auth screens' outer card wrapper (`LoginScreen`, `SetupScreen`, `ForgotPasswordScreen`, `ResetPasswordScreen`, plus `AcceptInviteScreen` — same pattern, not separately tested) promoted from `<div>` to `<main>`. `DevicesSettings`' heading promoted from `<h2>` to `<h1>`, visual styling unchanged.
 
 ### A-17-10 — Numerous interactive controls fall short of the 44×44px touch-target minimum at mobile width
 
