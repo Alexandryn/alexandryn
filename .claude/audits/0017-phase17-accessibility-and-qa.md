@@ -22,11 +22,50 @@ findings.
 
 ## Scope and method
 
-To be filled once Tier 1 runs. Expected: automated (`axe-core`, static
-scripts) + manual (keyboard walkthrough, screen-reader semantics review,
-viewport reflow) + performance benchmarking, per the phase README's Test
-strategy table. Say which method found which finding, so a later reader knows
-whether "clear" means "no human checked" or "a human checked and it's fine."
+Tier 1 (automated conformance sweep) run 2026-09-11 against commit `0c9e65e`:
+
+- Static: `npm run lint` (clean), `npm run tokens:check-contrast` (clean —
+  4 `text-3`-on-light-surface pairs fail raw contrast but are a permanent,
+  documented exception per `frontend-accessibility.md` FR-4/FR-5, with a
+  `prefers-contrast: more` fallback that itself passes AA; not a new
+  finding), `npm run check:token-styling` (clean), `npm run check:a11y-tabindex`
+  (clean), `npm run check:a11y-hidden-text` (clean).
+- `npx playwright test --project=gallery` — 3/3 pass (`@axe-core/playwright`
+  zero violations across every primitive, the modal dialog open state, and
+  `prefers-reduced-motion`).
+- `npx playwright test --project=app` — 30/30 pass, covering Library/shell,
+  Discover, Sources, pairing (functional, not yet axe-audited — see below),
+  hostile-input boundary cases, and the not-found view.
+- `npx playwright test --project=electron` (electron/ suite) — 14/14 pass:
+  preload surface isolation, IPC argument validation, boot lifecycle, window
+  security flags.
+- Coverage gap closed under a separate `test-engineer` pass: added
+  `axe-core` coverage for `/login`, `/setup`, `/forgot-password`,
+  `/reset-password`, `/activity`, `/more`, `/settings`, `/settings/devices`,
+  `/settings/network`, and the `DevicePairingModal` open state.
+  (`WorkDetail`/`CollectionDetail` turned out already covered in
+  `library.app.spec.ts` — this audit's initial gap list was stale on that
+  point.) Result: **33 passed, 5 failed** — the 5 failures are genuine
+  defects (A-17-08, A-17-09), not test-authoring bugs; left red
+  deliberately per the Prove-It pattern rather than weakened to pass.
+  Reader (`/read/:workId/:editionId`) is a genuine, not merely
+  not-yet-done, gap: the shared MSW handler set
+  (`src/mocks/handlers.ts`) has no route for the reader-content endpoint
+  `epubBook.ts` fetches — only `Reader.test.tsx`'s local, file-scoped
+  helper mocks it. Covering it would mean adding a new shared MSW handler,
+  a `src/` change outside a test-only pass's scope; recorded as a
+  follow-up, not invented.
+- Cross-browser matrix (G0-4): `playwright.config.ts` extended with
+  `app-firefox`, `app-webkit`, `app-mobile-chrome`, `app-mobile-safari`
+  projects. `app-mobile-chrome` verified green (30/30, Chromium engine, no
+  extra system deps). Firefox and WebKit browser binaries are installed but
+  **blocked** — the host is missing system libraries
+  (`libicu74`, `libxml2`, `libflite1`); the fix (`sudo npx playwright
+  install-deps`) needs the maintainer's explicit go-ahead, since it's a
+  privileged, machine-wide change outside this repo's scope. `app-mobile-safari`
+  is WebKit-engine and is blocked the same way. Recorded as a finding below.
+- Scale/performance benchmark (Tier 3): running under a separate
+  `web-performance-auditor` pass. Results pending.
 
 ## Screens/flows examined (in place of "Trust boundaries examined")
 
@@ -71,30 +110,162 @@ README's G0-2/G0-4 and constitution §7.
 
 | ID | Severity | Title | Status |
 |---|---|---|---|
-| A-17-01 | | | Open / Fixed / Accepted / Won't fix |
+| A-17-01 | Informational | `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check | Open |
+| A-17-02 | Medium | `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size | Open |
+| A-17-03 | Informational | Scroll frame rate holds ~60fps through 20,000 items — confirmed clean, worth a regression-watch benchmark | Open |
+| A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | Open |
+| A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | Open |
+| A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | Open |
+| A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | Open |
+| A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | Open |
+| A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | Open |
 
-### A-17-01 — \<title\>
+### A-17-01 — `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check
 
-**Severity:** Critical / High / Medium / Low / Informational
+**Severity:** Informational
 
-**Component:** `path/to/thing`
+**Component:** `electron/electron.vite.config.ts`'s `syncTokensPlugin` (copies `web/src/tokens.css` → `electron/src/renderer/boot/tokens.css` at build time); `.github/workflows/ci.yml`'s generated-file drift check (only covers `web/src/theme.css`, `web/src/tokens.css`, `web/src/breakpoints.ts`)
 
-**Description** — what the defect is, mechanically (e.g., which WCAG success
-criterion fails and how).
+**Description** — `web/src/tokens.css` is the generated source of truth (`npm run tokens:generate`, checked by CI's `git diff --exit-code` step). `electron/src/renderer/boot/tokens.css` is a build-time *copy* of it (`copyFileSync` in `syncTokensPlugin`'s `buildStart` hook), committed separately so the Electron boot screen has a disk asset before the renderer bundle loads. Nothing checks that the committed copy matches the current generator output. Running `npm run build` in `electron/` regenerates it correctly (observed directly this session — it picked up the `FONT_INTEGRATION_NOTE` comment that's present in `web/src/tokens.css` but missing from the committed Electron copy), which means the two files are currently out of sync in the repo.
 
-**Impact** — who is blocked and how badly. If the honest answer is "narrow,
-one keyboard-user edge case," say that and rate it accordingly.
+**Impact** — None at runtime: every Electron build overwrites the file fresh before bundling, so a shipped build always gets current tokens regardless of what's committed. The impact is purely a repo-hygiene / future-confusion risk — a `git diff` after any Electron build looks "dirty" for a file nobody touched, and there's no automated signal telling anyone the committed copy is stale.
 
-**Preconditions** — what triggers it (specific browser, viewport, assistive
-tech, data state).
+**Preconditions** — Running an Electron build locally after `web/src/tokens.css` changes upstream, without also committing the resulting `electron/src/renderer/boot/tokens.css` diff.
 
-**Reproduction** — steps, ideally a Playwright test reference.
+**Reproduction** — `cd electron && npm run build`, then `git status` shows `electron/src/renderer/boot/tokens.css` modified.
 
-**Recommendation** — the specific fix, not a category of fix. Prefer native
-semantic HTML per `frontend-ui-engineering`'s push-back rule over an ARIA
-patch.
+**Recommendation** — Commit the regenerated file, and extend the CI drift-check step in `.github/workflows/ci.yml` to also run the Electron build (or just `copyFileSync`'s equivalent) and `git diff --exit-code` on this path, the same way it already does for the three `web/src/` generated files.
 
-**Resolution** — filled in when addressed, with the commit and issue number.
+**Resolution** — Open, filed for the findings gate.
+
+### A-17-02 — `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size
+
+**Severity:** Medium
+
+**Component:** `web/src/components/WorkGrid/WorkGrid.tsx:40-112,180` (mounts a wrapper `<li>`/`<div>` + `<Link>` + text for every item in `works`, unconditionally; only `GeneratedCover` is windowed via `coverFor(index)` to a sliding 40-item window); `web/src/screens/Library/Library.tsx:156-159,261` (accumulates every fetched page into one uncapped `allWorks` array)
+
+**Description** — At the phase's own 10,000-item scale target, this measured as a ~1.1-1.2s synchronous mount before the catalog is interactive (~1.9s at 20,000). Marginal cost is ~0.07-0.09 ms/item on top of a ~380-420ms fixed baseline; cold vs. warm navigation differ by only 5-10%, so the cost is DOM-mount-bound, not fetch/parse-bound — a production build would not remove this pattern, only shift the constant. Full measurements:
+
+| N | Cold nav | Warm reload | DOM nodes | JS heap | `/api/v1/library` payload |
+|---|---|---|---|---|---|
+| 500 | 460 ms | 362 ms | 3,939 | 48.1 MB | 88 KB |
+| 2,000 | 595 ms | 504 ms | 14,939 | — | — |
+| 10,000 | 1,175 ms | 1,109 ms | 73,606 | 179.3 MB | 1,768 KB |
+| 20,000 | 1,884 ms | 1,681 ms | 146,939 | 289.9 MB | 3,546 KB |
+
+Measured dev-mode (unminified Vite serving) via a throwaway Playwright script driving the real `/library` route; not a production-bundle measurement.
+
+**Impact** — Degrades but doesn't block: the page still renders and becomes interactive within ~2s at double the target scale, no reflow/collapse, and heap growth (~13-15 KB/item) is ordinary linear growth, not a leak. Scroll performance after mount is unaffected (see A-17-03).
+
+**Preconditions** — A library with several thousand or more items, scrolled through at least once (so `Library.tsx`'s accumulator has ingested every page).
+
+**Reproduction** — See the benchmark methodology recorded by the `web-performance-auditor` pass; the script is not checked into the repo (scratch-only per this task's constraints).
+
+**Recommendation** — Extend `WorkGrid`'s existing sliding-window tracking (`clampedStart`/`windowEnd`) to also skip mounting the wrapper element outside the window (fixed-height placeholder instead), following the fully-windowed pattern `web/e2e/benchmark/CoverGridHarness.tsx:38-44` already uses for the GeneratedCover benchmark harness. This is a real windowing change (scroll-position-driven, not just intersection-observer-sentinel-driven) and should be scoped as its own change rather than folded into a same-PR mechanical fix — per the roadmap's own risk table, which anticipated exactly this outcome and named escalation as the correct response.
+
+**Resolution** — Open, filed for the findings gate; escalate rather than fix inline per G0-5/risk table.
+
+### A-17-03 — Scroll frame rate holds ~60fps through 20,000 items
+
+**Severity:** Informational
+
+**Component:** `web/src/utilities.css:14-17` (`.cv-auto`, `content-visibility: auto` + `contain-intrinsic-size`), applied at `WorkGrid.tsx:187` (grid view only)
+
+**Description** — Scroll-frame interval median was 16.7ms (~60fps) at every tested N (500 / 2,000 / 10,000 / 20,000) with no degradation as N grows. Isolated single-frame spikes appear (worst frame 49.9ms at N=20,000) but aren't sustained jank and don't scale monotonically with N — consistent with occasional window-slide re-renders landing on a frame, not a scaling problem. This meets the phase's ≥55fps exit criterion with margin.
+
+**Impact** — None — confirmed-clean result, recorded so "no finding here" is an evidenced statement, not an absence of looking.
+
+**Recommendation** — Worth a permanent regression-watch benchmark (median frame-interval assertion, the way `benchmark.spec.ts` already asserts `GeneratedCover`'s timing budget) but not a fix.
+
+**Resolution** — Accepted — no action needed.
+
+### A-17-04 — List view never gets the grid view's `content-visibility` treatment
+
+**Severity:** Low
+
+**Component:** `WorkGrid.tsx:187` (`cv-auto` class on grid-view cell) vs. `WorkGrid.tsx:108-112` (list-view `<li>`, no `cv-auto`)
+
+**Description** — The list-view render path doesn't apply the `.cv-auto` utility its grid-view sibling uses, so list view gets none of A-17-03's paint/layout-skip benefit at scale. Not benchmarked directly — list rows are simpler DOM (no cover SVG/canvas layering) so the practical gap may be small, but this is unverified.
+
+**Impact** — Potential only, unmeasured, one view mode.
+
+**Recommendation** — Run the same benchmark against list view before deciding whether it needs `cv-auto` — don't assume parity either way.
+
+**Resolution** — Open, filed for the findings gate.
+
+### A-17-05 — `seedCache` module-level `Map` is unbounded
+
+**Severity:** Informational
+
+**Component:** `web/src/components/GeneratedCover/seedCache.ts:8-16`
+
+**Description** — Caches a derived seed per work identifier for the session's lifetime (deliberate, documented in-code), cleared only on full reload. At 10,000-20,000 unique identifiers this is 10-20k small numeric-struct entries — negligible at the tested scale.
+
+**Impact** — None at tested scale. Noted only for completeness since the Reader stress-test framing ("global/module-level caches that could accumulate") applies to this pattern generally, even though it sits in the catalog path.
+
+**Resolution** — Accepted — no action needed at current scale.
+
+### A-17-06 — Reader shows no leak pattern across pagination/open-close (static analysis)
+
+**Severity:** Informational
+
+**Component:** `web/src/screens/Reader/Reader.tsx:151-220`, `useDebouncedCallback.ts`, `epubBook.ts:40-62`, vendored `web/src/vendor/foliate/epub.js`
+
+**Description** — Traced explicitly: iframe reuse across chapter navigation (browser discards each chapter's realm on its own), per-chapter listener cleanup (`cleanupIframeListenersRef.current?.()` runs before attaching new listeners and again on unmount), debounce timer cleared on unmount, `loadBlob` explicitly rejected so foliate's blob-URL cache is genuinely unused dead code for this app (not a live leak, since it's never populated), and the reader query cache relies on TanStack Query's default 5-minute inactive-query GC rather than an unbounded override.
+
+**Impact** — None found via static code-path tracing. **Not live-measured** — no heap-snapshot diff was captured across repeated real open/close cycles this session; if the phase wants that as empirical exit-criteria evidence rather than code-reading, that's a follow-up.
+
+**Resolution** — Accepted for the static-analysis question asked; live heap-growth measurement remains a stated gap (see "What was not examined").
+
+### A-17-07 — Firefox/WebKit Playwright projects blocked in this dev sandbox
+
+**Severity:** Low
+
+**Component:** This development environment (missing `libicu74`, `libxml2`, `libflite1`), not the repo
+
+**Description** — `playwright.config.ts` now has `app-firefox` and `app-webkit`/`app-mobile-safari` (WebKit engine) projects per Gate 0 G0-4. The browser binaries downloaded successfully but the sandbox is missing system libraries; `sudo npx playwright install-deps` is the fix but wasn't run without explicit maintainer approval (privileged, machine-wide change). `app-mobile-chrome` (Chromium engine) was verified green, so the config itself is correct — only two engines are blocked from running *in this specific sandbox*. `.github/workflows/ci.yml` was updated to `npx playwright install --with-deps chromium firefox webkit`, which should work cleanly on a real GitHub Actions runner (this is a sandbox-specific limitation, not expected to recur in CI).
+
+**Impact** — Blocks local verification of the Firefox/WebKit legs of the cross-browser matrix in this environment; CI is expected to run them cleanly once this PR's workflow change lands. Rated Low rather than blocking because it's an environment gap with a known, low-risk fix, not a defect in the tests or the app.
+
+**Recommendation** — Run `sudo npx playwright install-deps` (or `sudo apt-get install libicu74 libxml2 libflite1`) if local Firefox/WebKit verification is wanted before the CI run confirms it; otherwise this resolves itself once the updated workflow runs in CI.
+
+**Resolution** — Open, pending either maintainer approval of the sudo install locally, or a green CI run on this branch's PR.
+
+### A-17-08 — `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names
+
+**Severity:** Critical
+
+**Component:** `web/src/theme.css` (generated by `scripts/generate-tokens.ts`, lines 39-48: `--spacing-xs: 8px`, `--spacing-md: 10px`, `--spacing-3xl: 20px`, etc.) — no `--container-*`/`--max-width-*` override exists in the same `@theme` block to take precedence
+
+**Description** — Tailwind v4 resolves `max-w-{key}` utilities against a scale keyed by the same names this project's custom spacing scale reuses (`xs`, `sm`, `md`, `lg`, `xl`, `2xl`, `3xl`). With no `--container-*`/`--max-width-*` override defined, Tailwind falls back to the `--spacing-*` namespace for these keys — so `max-w-md` resolves to `--spacing-md` (10px) instead of Tailwind's intended ~28rem, and `max-w-3xl` resolves to `--spacing-3xl` (20px) instead of ~48rem. Confirmed empirically (`test-engineer` pass): a bare `<div class="max-w-md">` computes `maxWidth: 10px` in a real browser.
+
+**Impact** — Confirmed broken on `/login`, `/setup`, `/forgot-password`, `/reset-password` (auth card collapses to ~25px wide, text wrapping letter-by-letter — screenshot captured) and `/settings/devices` (`max-w-3xl` container + its `max-w-md` confirm dialog). Grep confirms 17 files use `max-w-{xs,sm,md,lg,xl,2xl,3xl}` classes and are therefore at risk of the same collapse: `components/Modal/Modal.tsx`, `screens/Activity/Activity.tsx`, `screens/Auth/{AcceptInviteScreen,ForgotPasswordScreen,LoginScreen,MfaPromptModal,MfaSetupModal,ResetPasswordScreen,SetupScreen}.tsx`, `screens/Discover/Discover.tsx`, `screens/Import/Import.tsx`, `screens/Library/Library.tsx`, `screens/Network/{AccessScreen,ConnectScreen,DevicePairingModal}.tsx`, `screens/Settings/{DevicesSettings,NetworkSettings}.tsx`, `screens/Sources/SourceDetail.tsx`. This is rated Critical, not High, because it isn't narrow to one screen or one precondition — it's a repo-wide, every-browser, every-viewport breakage of the base `Modal` component and the primary authentication entry point, silently present since whenever this token collision was introduced (predates Phase 17; not caught earlier because jsdom-based unit tests don't compute real CSS layout, and no existing real-browser Playwright test asserted on these components' actual rendered width).
+
+**Preconditions** — None — reproduces on every load of an affected screen, in every browser.
+
+**Reproduction** — `npx playwright test --project=app e2e/auth-screens.app.spec.ts` (currently red — `toBeVisible()` on the auth card's labeled fields fails because the card is laid out at near-zero width); or manually, `page.goto('/login')` and read `getComputedStyle(document.querySelector('.max-w-md')).maxWidth`.
+
+**Recommendation** — Rename the generated `--spacing-*` scale's keys in `scripts/generate-tokens.ts`/`scripts/tokens/extract.ts` so they don't collide with Tailwind's default named scales (e.g. a `--spacing-` numeric scale instead of named `xs`/`sm`/`md`/…, or prefix them, e.g. `--spacing-space-md`), **or** add an explicit `--container-*`/`--max-width-*` block to `web/src/theme.css`'s `@theme` so Tailwind's intended max-width scale takes precedence regardless of the spacing scale's key names. The former is more correct (removes the ambiguity at the source) but is a generator change requiring re-validation of every consumer of the current `--spacing-*` names; the latter is the smaller, faster fix. This needs a maintainer decision on which, not a default pick, since the generator is shared with the Electron boot CSS (A-17-01) and any consumer already depending on the current `--spacing-{key}` utility class names (e.g. `p-md`, `gap-xs`) would be affected by a rename.
+
+**Resolution** — Open, filed for the findings gate. Recommend treating this as blocking Phase 17's close given its Critical rating and app-wide blast radius, independent of the rest of the Tier 1-3 sweep's timeline.
+
+### A-17-09 — Missing `<main>` landmark on public auth screens; `/settings/devices` has no `<h1>`
+
+**Severity:** Medium
+
+**Component:** `web/src/screens/Auth/{LoginScreen,SetupScreen,ForgotPasswordScreen,ResetPasswordScreen}.tsx` (no `<main>`/`role="main"` wrapping the centered card); `web/src/screens/Settings/DevicesSettings.tsx` (only an `<h2>Devices</h2>`, no route-level `<h1>` the way other screens get from shell chrome)
+
+**Description** — `axe-core` `landmark-one-main` (moderate) fires on all four auth screens: no landmark region contains the sign-in/setup/reset card, the field groups, or the footer link. `page-has-heading-one` (moderate) fires on `/settings/devices`: its only heading is an `<h2>`, with no `<h1>` anywhere on the page.
+
+**Impact** — Screen-reader users lose the "jump to main content" landmark navigation on every public auth screen — the exact entry point where a user with no prior context most needs it. The missing `<h1>` on Devices means AT users navigating by heading level see no page-level heading at all for that screen.
+
+**Preconditions** — None — present on every load, any assistive-tech context.
+
+**Reproduction** — `npx playwright test --project=app e2e/auth-screens.app.spec.ts` and `e2e/settings.app.spec.ts` (both currently red on this).
+
+**Recommendation** — Wrap each auth screen's card in a `<main>` (or add `role="main"`) landmark, matching whatever pattern the authenticated shell already uses for its route content. Add a visually-consistent `<h1>` to `DevicesSettings` (can visually match the existing `<h2>` styling while being the correct semantic level, per `frontend-ui-engineering`'s native-semantics-first rule).
+
+**Resolution** — Open, filed for the findings gate.
 
 ---
 
@@ -114,5 +285,30 @@ case for the class of issue. Inflated ratings train people to ignore ratings
 
 ## What was not examined
 
-Honest gaps in coverage. To be filled as the sweep runs — recorded as it
-happens, not reconstructed at the end.
+Honest gaps in coverage. Recorded as they happened, not reconstructed at the
+end.
+
+- **Production-bundle performance measurement.** The Tier 3 catalog benchmark
+  (A-17-02/A-17-03) ran against the dev-mode Vite server, not
+  `vite build && vite preview`. The linear-in-N DOM-mount pattern is
+  structural (React committing N nodes), so it's expected to hold in
+  production too, but the absolute millisecond numbers would shift and
+  weren't re-measured against a production build.
+- **List-view scroll performance.** Only grid view was benchmarked (A-17-04);
+  list view's lack of `content-visibility: auto` is a plausible but
+  unmeasured gap.
+- **Reader live heap-growth measurement.** A-17-06's "no leak found" is
+  static code-path tracing, not a DevTools heap-snapshot diff across
+  repeated real open/close cycles.
+- **Firefox/WebKit local execution.** Blocked in this sandbox (A-17-07);
+  expected to run cleanly in CI once the updated workflow lands, but not
+  independently confirmed by a local run as of this writing.
+- **Reader (`/read/:workId/:editionId`) automated axe coverage** — genuinely
+  blocked, not merely deferred: no shared MSW handler exists for the
+  reader-content endpoint. Adding one is a `src/` (well, `src/mocks/`)
+  change outside a test-only pass's scope; needs its own small task before
+  this route can get automated coverage.
+- **Manual keyboard-only walkthrough, screen-reader semantics review, and
+  320px reflow/touch-target audit (Tier 2)** — not yet performed as of this
+  writing; automated coverage (Tier 1) does not substitute for these per
+  Gate 0 G0-2/G0-4.
