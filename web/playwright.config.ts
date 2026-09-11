@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 // Three suites, each with its own dev server (D3, tasks/plan-p04-tier3/-tier4/
 // -tier5):
@@ -40,6 +40,35 @@ export default defineConfig({
       testDir: './e2e',
       testMatch: /(?:\.app|pairing)\.spec\.ts$/,
       use: { baseURL: 'http://localhost:5175' },
+    },
+    // Phase 17 (accessibility-and-qa/README.md, Gate 0 G0-4) cross-browser
+    // matrix: the same `.app.spec.ts` / `pairing.spec.ts` flows, run against
+    // the other engines and the two mobile viewports. Only the `app` project
+    // gets this treatment — `gallery` and `benchmark` are synthetic harnesses,
+    // not user-facing flows, so they stay Chromium-only.
+    {
+      name: 'app-firefox',
+      testDir: './e2e',
+      testMatch: /(?:\.app|pairing)\.spec\.ts$/,
+      use: { ...devices['Desktop Firefox'], baseURL: 'http://localhost:5175' },
+    },
+    {
+      name: 'app-webkit',
+      testDir: './e2e',
+      testMatch: /(?:\.app|pairing)\.spec\.ts$/,
+      use: { ...devices['Desktop Safari'], baseURL: 'http://localhost:5175' },
+    },
+    {
+      name: 'app-mobile-chrome',
+      testDir: './e2e',
+      testMatch: /(?:\.app|pairing)\.spec\.ts$/,
+      use: { ...devices['Pixel 5'], baseURL: 'http://localhost:5175' },
+    },
+    {
+      name: 'app-mobile-safari',
+      testDir: './e2e',
+      testMatch: /(?:\.app|pairing)\.spec\.ts$/,
+      use: { ...devices['iPhone 13'], baseURL: 'http://localhost:5175' },
     },
     {
       name: 'gallery',

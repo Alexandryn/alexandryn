@@ -1,4 +1,11 @@
+import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+
+// Same exclusion as the other *.app.spec.ts axe helpers: color-contrast is
+// owned by `npm run tokens:check-contrast`, not this sweep.
+function axe(page: import('@playwright/test').Page) {
+  return new AxeBuilder({ page }).disableRules(['color-contrast'])
+}
 
 test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
   test('happy path: host opens modal, second context pairs and logs in', async ({ browser, baseURL }) => {
@@ -13,6 +20,12 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await pageA.goto('/settings/network')
       await expect(pageA.getByRole('heading', { name: 'Network Access', level: 1 })).toBeVisible()
 
+      // Axe audit on /settings/network before the modal opens (Phase 17
+      // coverage sweep — this route otherwise has only this pairing-flow
+      // spec exercising it, with no axe assertion).
+      const networkPageAxe = await axe(pageA).analyze()
+      expect(networkPageAxe.violations).toEqual([])
+
       // Context A opens DevicePairingModal
       await pageA.getByRole('button', { name: 'Pair a new device' }).click()
       await expect(pageA.getByRole('dialog', { name: 'Pair a Device' })).toBeVisible()
@@ -23,6 +36,12 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       const code = (await pairingCodeEl.textContent())?.trim()
       expect(code).toBeTruthy()
       expect(code).toBe('ABCD-EFGH')
+
+      // Axe audit with the DevicePairingModal open (Phase 17 coverage
+      // sweep — the modal opens in this spec but was never audited while
+      // open).
+      const modalAxe = await axe(pageA).analyze()
+      expect(modalAxe.violations).toEqual([])
 
       // 2. Context B (Second Browser / Reader) navigates to /connect?c=<code>
       await pageB.goto(`/connect?c=${code}`)

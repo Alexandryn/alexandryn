@@ -151,11 +151,15 @@ jobs:
       # timing/frame-rate budgets on a shared runner — letting it run
       # first risked an intermittent, unrelated-looking slowdown here
       # silently skipping the secrets/MSW/audit checks for that run.
+      # Phase 17 (accessibility-and-qa/README.md, Gate 0 G0-4) added the
+      # app-firefox/app-webkit/app-mobile-safari projects, which need the
+      # Firefox and WebKit engines too — chromium alone is no longer enough.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      # One invocation, one worker (playwright.config.ts): the benchmark,
-      # app and gallery projects never run concurrently, so the
+      # One invocation, one worker (playwright.config.ts): none of the
+      # benchmark/app/app-firefox/app-webkit/app-mobile-chrome/
+      # app-mobile-safari/gallery projects run concurrently, so the
       # benchmark's tight initial-paint budget isn't starved by another
       # browser. CI retries cover a transient slow cold-start frame
       # without weakening the budget.
@@ -164,7 +168,9 @@ jobs:
       # real-browser @axe-core/playwright scan of every primitive —
       # distinct from the lint step above (eslint-plugin-jsx-a11y,
       # write-time/structural) and from the per-primitive jsdom axe tests
-      # in `npm test` (no layout engine). All three are required.
+      # in `npm test` (no layout engine). The app-* projects repeat the same
+      # `.app.spec.ts` / `pairing.spec.ts` suite across engines and mobile
+      # viewports (Phase 17 G0-4) — all are required.
       - name: Playwright — E2E, accessibility and cover benchmark
         run: npx playwright test
 
