@@ -32,7 +32,8 @@ export const SegmentedControl = forwardRef<
           key={option.value}
           value={option.value}
           className={cx(
-            'rounded-sm px-md py-4xs text-xs font-ui text-text-2',
+            // min-h-11 min-w-11: 44x44 touch-target minimum (audit 0017 A-17-10) — py-4xs alone measured 19px tall
+            'rounded-sm px-md py-4xs min-h-11 min-w-11 flex items-center justify-center text-xs font-ui text-text-2',
             'data-[state=checked]:bg-surface data-[state=checked]:text-text data-[state=checked]:shadow-sm',
             FOCUS_RING,
             'disabled:opacity-50 disabled:cursor-not-allowed',

@@ -51,13 +51,10 @@ export function ActivityScreen() {
       {isError && (
         <div className="mb-6 p-4 rounded-lg border border-error bg-surface flex items-center justify-between">
           <span className="text-sm text-error">Failed to load activity feed.</span>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className={cx('text-xs text-text font-medium underline', FOCUS_RING)}
-          >
+          {/* Shared Button, size="sm" (audit 0017 A-17-10): matches DevicesSettings' equivalent error-banner Retry, and picks up the 44px touch-target minimum from Button's own SIZE.sm */}
+          <Button variant="secondary" size="sm" onClick={() => refetch()}>
             Retry connection
-          </button>
+          </Button>
         </div>
       )}
 
