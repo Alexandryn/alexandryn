@@ -15,3 +15,15 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 280px;
 }
+
+/* Same technique as .cv-auto, sized for WorkGrid's list-view row instead
+ * of its grid-view card (audit 0017 A-17-04). Deliberately a separate
+ * class, not a shared one with a variable size: the 280px estimate above
+ * is tuned for the grid card's cover+title+author block, and reusing it
+ * here would make the browser reserve 280px for every off-screen list
+ * row (measured ~68px) — badly inflating scroll height until each row
+ * has rendered once. */
+.cv-auto-list {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 68px;
+}

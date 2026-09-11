@@ -109,6 +109,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 key={work.id}
                 ref={sentinel ? sentinelRef(sentinel) : undefined}
                 data-sentinel={sentinel}
+                className="cv-auto-list"
               >
                 <Link
                   to={`/book/${work.id}`}
