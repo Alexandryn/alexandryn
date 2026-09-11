@@ -100,31 +100,20 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
   })
 
   test('unhappy path: host revoke invalidates code for second context', async ({ browser, baseURL }) => {
-    // One shared context, not two (unlike the happy-path test above) is
-    // deliberate, not an oversight: the mock revoke state
-    // (alexandryn_mock_revoked, src/mocks/handlers.ts's pair/verify and
-    // DELETE pair/:id handlers) lives in localStorage, which is scoped
-    // per browser context — pageA's revoke would be invisible to pageB in
-    // a separate context. Confirmed by trying it (audit 0017 #325
-    // investigation): separating contexts breaks this test on every
-    // engine, not just Firefox.
-    // test.slow() (audit 0017 #325): CI evidence (a downloaded trace —
-    // the page never got past its boot spinner, and Playwright's own log
-    // showed it navigating to the same URL twice) points at Firefox
-    // reloading pageB once after it's already loaded, not at slow
-    // rendering — tripling the timeout gives that reload room to finish
-    // rather than papering over it with a guess at the mechanism.
-    test.slow()
-
-    const context = await browser.newContext({ baseURL })
-    const pageA = await context.newPage()
-    // Created and brought to front before pageB ever navigates (not
-    // after, like an earlier attempt at this fix) — Firefox's multi-page
-    // support (the "juggler" protocol) is more limited than Chromium's,
-    // and bringing a page forward mid-navigation is a plausible trigger
-    // for the double-navigation this test hit in CI.
-    const pageB = await context.newPage()
-    await pageB.bringToFront()
+    // One page per context, never two pages sharing one (audit 0017
+    // #325). Firefox, driven by Playwright, never claims a second page
+    // opened in a context whose service worker is already active: the
+    // registration reports `activated`, but that page's
+    // navigator.serviceWorker.controller stays null permanently, so MSW
+    // never intercepts, its worker.start() never resolves, and main.tsx
+    // — which calls render() in .finally() — leaves a blank page.
+    // Isolated against real Firefox: it reproduces with two bare pages
+    // and no pairing involved, survives a reload and a 40s wait, and
+    // does not happen with one page navigating twice or with one page
+    // per context (which is why the happy-path test above is fine).
+    const contextA = await browser.newContext({ baseURL })
+    const contextB = await browser.newContext({ baseURL })
+    const pageA = await contextA.newPage()
 
     try {
       // Context A opens modal
@@ -137,10 +126,25 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await pageA.getByRole('button', { name: 'Revoke' }).click()
       await expect(pageA.getByRole('dialog', { name: 'Pair a Device' })).toBeHidden()
 
+      // The mock backend's revoke state (alexandryn_mock_revoked, which
+      // src/mocks/handlers.ts's pair/verify handler reads, and its
+      // DELETE pair/:id handler writes) lives in localStorage, so it is
+      // per-context by construction. Assert the host's revoke actually
+      // set it — that is the half of the chain this test owns — then
+      // carry the mock backend's state into the second device's context,
+      // which a shared real backend would have done on its own.
+      await expect
+        .poll(() => pageA.evaluate(() => localStorage.getItem('alexandryn_mock_revoked')))
+        .toBe('true')
+      await contextB.addInitScript(() => {
+        window.localStorage.setItem('alexandryn_mock_revoked', 'true')
+      })
+
       // Context B tries to connect with code. Waiting for the code to
       // actually be prefilled (matching the happy-path test's own care)
       // instead of clicking immediately, so a slow-hydrating page fails
       // with a clear assertion here rather than a bare button-not-found.
+      const pageB = await contextB.newPage()
       await pageB.goto('/connect?c=ABCD-EFGH')
       await expect(pageB.getByLabel('Pairing Code')).toHaveValue('ABCD-EFGH')
       await pageB.getByRole('button', { name: 'Continue' }).click()
@@ -151,7 +155,8 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await expect(alert).toHaveText(/pairing code not recognised/)
       await expect(pageB.getByLabel('Pairing Code')).toBeFocused()
     } finally {
-      await context.close()
+      await contextA.close()
+      await contextB.close()
     }
   })
 })
