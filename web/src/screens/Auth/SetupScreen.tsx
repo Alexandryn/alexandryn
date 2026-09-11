@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { setupAdmin } from '../../data/auth'
 
 export function SetupScreen() {
@@ -62,74 +63,55 @@ export function SetupScreen() {
           </div>
         )}
 
+        {/* Shared Input, not hand-rolled <input>s (audit 0017 A-17-11): same verified focus-visible outline every other field in the app uses. Error state stays the single shared #setup-error banner above, not Input's own per-field error prop, so aria-invalid/aria-describedby are passed through directly. */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="username">
-              Admin Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="e.g. librarian"
-            />
-          </div>
+          <Input
+            label="Admin Username"
+            id="username"
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. librarian"
+          />
 
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="email">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="admin@example.com"
-            />
-          </div>
+          <Input
+            label="Email Address"
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="admin@example.com"
+          />
 
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              ref={passwordRef}
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={error?.includes('Password') ? true : undefined}
-              aria-describedby={error ? 'setup-error' : undefined}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            ref={passwordRef}
+            label="Password"
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={error?.includes('Password') ? true : undefined}
+            aria-describedby={error ? 'setup-error' : undefined}
+            placeholder="••••••••"
+          />
 
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-2" htmlFor="confirmPassword">
-              Confirm Password
-            </label>
-            <input
-              ref={confirmPasswordRef}
-              id="confirmPassword"
-              type="password"
-              required
-              minLength={8}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              aria-invalid={error === 'Passwords do not match' ? true : undefined}
-              aria-describedby={error === 'Passwords do not match' ? 'setup-error' : undefined}
-              className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            ref={confirmPasswordRef}
+            label="Confirm Password"
+            id="confirmPassword"
+            type="password"
+            required
+            minLength={8}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            aria-invalid={error === 'Passwords do not match' ? true : undefined}
+            aria-describedby={error === 'Passwords do not match' ? 'setup-error' : undefined}
+            placeholder="••••••••"
+          />
 
           <div className="mt-md">
             <Button type="submit" disabled={loading} className="w-full">

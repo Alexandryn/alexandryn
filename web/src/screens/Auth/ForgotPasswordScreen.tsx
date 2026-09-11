@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { requestPasswordReset } from '../../data/auth'
 
 export function ForgotPasswordScreen() {
@@ -57,21 +58,17 @@ export function ForgotPasswordScreen() {
               </div>
             )}
 
+            {/* Shared Input, not hand-rolled (audit 0017 A-17-11) */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-              <div className="flex flex-col gap-xs">
-                <label className="text-sm font-medium text-text-2" htmlFor="email">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-                  placeholder="you@example.com"
-                />
-              </div>
+              <Input
+                label="Email"
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
 
               <div className="mt-md">
                 <Button type="submit" disabled={loading} className="w-full">

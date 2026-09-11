@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { confirmPasswordReset } from '../../data/auth'
 
 export function ResetPasswordScreen() {
@@ -69,36 +70,27 @@ export function ResetPasswordScreen() {
               </div>
             )}
 
+            {/* Shared Input, not hand-rolled (audit 0017 A-17-11) */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-              <div className="flex flex-col gap-xs">
-                <label className="text-sm font-medium text-text-2" htmlFor="password">
-                  New password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-                  placeholder="••••••••"
-                />
-              </div>
+              <Input
+                label="New password"
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
 
-              <div className="flex flex-col gap-xs">
-                <label className="text-sm font-medium text-text-2" htmlFor="confirm">
-                  Confirm new password
-                </label>
-                <input
-                  id="confirm"
-                  type="password"
-                  required
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  className="px-md py-sm bg-background border border-border rounded text-text focus:outline-none focus:border-accent"
-                  placeholder="••••••••"
-                />
-              </div>
+              <Input
+                label="Confirm new password"
+                id="confirm"
+                type="password"
+                required
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+              />
 
               <div className="mt-md">
                 <Button type="submit" disabled={loading} className="w-full">
