@@ -24,7 +24,11 @@ mapfile -t GO_FILES < <(
 
 if [[ "${CHECK_GOFMT_SELF_TEST:-}" == "1" ]]; then
   _self_test() {
-    local tmp="$(mktemp -d)"
+    # Not `local`: the EXIT trap below still fires after this function
+    # returns (at the script's own `exit 0`), by which point a local
+    # would already be out of scope — an unbound-variable error under
+    # `set -u`. A plain assignment stays visible to the trap.
+    tmp="$(mktemp -d)"
     trap 'rm -rf "$tmp"' EXIT
 
     # A well-formatted file must pass.
