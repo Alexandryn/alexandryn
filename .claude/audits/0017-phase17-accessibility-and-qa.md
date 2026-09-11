@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Scope** | All routes listed in `.claude/roadmap/17-accessibility-and-qa/README.md` Scope/In — WCAG 2.1 AA, keyboard operability, cross-browser/viewport matrix, scale performance |
-| **Auditor** | Scaffold — sweep not yet run |
-| **Date** | — |
-| **Commit** | — |
-| **Verdict** | Not started |
+| **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
+| **Date** | 2026-09-11 |
+| **Commit** | `b114d20` |
+| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational). Reader (EPUB/PDF) and Import screen not yet examined. |
 
 ## Template deviation, stated per constitution §12
 
@@ -71,16 +71,16 @@ Tier 1 (automated conformance sweep) run 2026-09-11 against commit `0c9e65e`:
 
 | Screen/flow | WCAG axes checked | Method | Assumption being made |
 |---|---|---|---|
-| Auth/Login | | | |
-| Library Catalog | | | |
-| Book Detail | | | |
-| Collections | | | |
-| Reader (EPUB) | | | |
-| Reader (PDF) | | | |
-| Sources | | | |
-| Devices/Pairing | | | |
-| Settings | | | |
-| More/Activity | | | |
+| Auth/Login (`/login`, `/setup`, `/forgot-password`, `/reset-password`) | Landmarks, headings, form labels, 320px reflow, touch targets, focus visibility | Automated axe (new) + manual 320px/keyboard pass | None of these screens require MSW auth-state setup (public, outside `RequireAuth`) |
+| Library Catalog | Axe (existing), 320px reflow, touch targets, scroll-perf scale (10k/20k) | Automated axe (existing) + manual pass + `web-performance-auditor` benchmark | Benchmark used dev-mode Vite, not a production build |
+| Book Detail (`WorkDetail`) | Functional coverage; axe coverage confirmed pre-existing | Automated (`library.app.spec.ts`, pre-existing) | Not independently re-verified this session beyond confirming the test exists and passes |
+| Collections (`CollectionDetail`) | Same as Book Detail | Automated (`library.app.spec.ts`, pre-existing) | Same as Book Detail |
+| Reader (EPUB) | **Not examined** — see "What was not examined" | — | — |
+| Reader (PDF) | **Not examined** — see "What was not examined" | — | — |
+| Sources | Axe (existing), 320px reflow, touch targets | Automated axe (existing) + manual pass | — |
+| Devices/Pairing (`/settings/network`, `/settings/devices`, `DevicePairingModal`) | Landmarks, headings, 320px reflow, touch targets, modal focus | Automated axe (new) + manual pass | `/settings/devices`'s error state (mocked 404, no shared MSW handler) is the state audited, not a populated device list |
+| Settings (index) | Axe (new), 320px reflow, touch targets | Automated axe (new) + manual pass | — |
+| More/Activity | Axe (new), 320px reflow, touch targets | Automated axe (new) + manual pass | `/activity`'s error state (mocked 404, no shared MSW handler) is the state audited |
 
 ## Conformance questions asked (in place of "Adversarial questions asked")
 
@@ -119,6 +119,8 @@ README's G0-2/G0-4 and constitution §7.
 | A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | Open |
 | A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | Open |
 | A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | Open |
+| A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | Open |
+| A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | Open |
 
 ### A-17-01 — `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check
 
@@ -267,6 +269,42 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Resolution** — Open, filed for the findings gate.
 
+### A-17-10 — Numerous interactive controls fall short of the 44×44px touch-target minimum at mobile width
+
+**Severity:** Medium
+
+**Component:** Shell navigation (`web/src/components/NavList/NavList.tsx` and the tab-bar links it renders — 80×33px, height short of 44px), Library's filter radio-buttons (33×19 / 99×19), Sources' Edit/Remove row actions (44×19 / 66×19), Activity's "Retry connection" (89×15), Devices' "Retry" (47×21) — sampled via a manual 320px-viewport keyboard-tab walkthrough across `/library`, `/discover`, `/collections`, `/sources`, `/settings`, `/settings/network`, `/settings/devices`, `/activity`, `/more`, `/login`, `/setup` (11 routes; script not committed, throwaway per this session).
+
+**Description** — The phase's own exit criteria (and `frontend-ui-engineering`'s bar) set 44×44px as the mobile touch-target minimum. Nearly every route sampled has at least one, usually several, controls short of that — predominantly on the height axis (many controls are 15-21px tall). This reads as systemic rather than per-screen: the shell's own nav links (present on every route) are 33px tall everywhere, and several screens reuse the same undersized filter-chip/row-action pattern, so a handful of shared-component fixes would resolve most instances rather than needing a per-screen patch.
+
+**Impact** — Degrades touch usability (harder, more error-prone tapping) but doesn't block — every sampled control remained tappable, just below the ideal size. No route was unusable.
+
+**Preconditions** — Mobile/narrow viewport (~320-480px), touch input.
+
+**Reproduction** — Manual: load any listed route at 320px width, Tab through and inspect `getBoundingClientRect()` on each focusable element (method used this session, not committed as a test).
+
+**Recommendation** — Fix at the shared-component level first (`NavList`'s tab-bar link height, the filter-chip/row-action button pattern used across Library/Sources/Activity/Devices) rather than per-screen; re-audit afterward to see how much this closes automatically.
+
+**Resolution** — Open, filed for the findings gate.
+
+### A-17-11 — `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s with an unverified focus indicator
+
+**Severity:** Low
+
+**Component:** `web/src/screens/Auth/LoginScreen.tsx:92,107` (and the equivalent in `SetupScreen.tsx`) — `className="... focus:outline-none focus:border-accent"` on a raw `<input>`, versus the shared `web/src/components/Input/Input.tsx` used elsewhere, whose inputs showed a detectable focus outline/box-shadow in the same manual pass.
+
+**Description** — The manual keyboard-tab pass's detector (checks for a non-`none` CSS outline or a box-shadow) found no visible-focus signal on `/login` and `/setup`'s text inputs, while the shared `Input` component's fields elsewhere (`/library`, `/discover` search boxes) did register one. Reading the source shows why: these two screens suppress the default outline and rely on a border-color change to `accent` instead — a legitimate technique in principle, but this session did not verify its actual contrast against WCAG 2.4.7/1.4.11's focus-indicator requirements, so this is reported as an **inconsistency and an unverified claim**, not a confirmed violation. The detector's limitation (outline/box-shadow only) is stated plainly rather than overclaiming a defect from a script gap.
+
+**Impact** — Unverified. If the border-color change doesn't meet contrast requirements, this is a real Focus Visible failure on the auth entry point specifically; if it does, this is purely a consistency/reuse issue (bypassing the shared `Input` component `frontend-ui-engineering` would otherwise steer toward).
+
+**Preconditions** — Keyboard navigation on `/login` or `/setup`.
+
+**Reproduction** — Tab to either input field on `/login`; compare against tabbing to the search field on `/library`.
+
+**Recommendation** — Switch `LoginScreen`/`SetupScreen` to the shared `Input` component (removes the inconsistency regardless of the contrast question), or if there's a reason these screens can't use it, verify the border-color focus indicator's contrast ratio explicitly and record that verification.
+
+**Resolution** — Open, filed for the findings gate.
+
 ---
 
 ## Severity guide (adapted for accessibility/QA, not security)
@@ -308,7 +346,28 @@ end.
   reader-content endpoint. Adding one is a `src/` (well, `src/mocks/`)
   change outside a test-only pass's scope; needs its own small task before
   this route can get automated coverage.
-- **Manual keyboard-only walkthrough, screen-reader semantics review, and
-  320px reflow/touch-target audit (Tier 2)** — not yet performed as of this
-  writing; automated coverage (Tier 1) does not substitute for these per
-  Gate 0 G0-2/G0-4.
+- **Manual keyboard-only walkthrough and 320px reflow/touch-target audit** —
+  performed across 11 routes (`/library`, `/discover`, `/collections`,
+  `/sources`, `/settings`, `/settings/network`, `/settings/devices`,
+  `/activity`, `/more`, `/login`, `/setup`) via a throwaway script measuring
+  horizontal-scroll presence, tab-stop reachability, computed focus-indicator
+  presence, and touch-target size. Found A-17-10 and A-17-11. **Not**
+  covered by this pass: Book Detail, Collection Detail, Import, Reader (see
+  below), and any modal/dialog's internal tab order beyond
+  `DevicePairingModal` (already axe-audited) and `Sources`'s remove-confirm
+  dialog (functionally tested pre-existing, not re-walked manually this
+  session).
+- **Screen-reader semantics review** was performed structurally (ARIA
+  roles/labels/landmarks via axe, confirmed above) but **not** with an
+  actual screen reader (NVDA/VoiceOver/JAWS) reading the announced content
+  aloud — axe's ARIA-correctness checks are a proxy for, not equivalent to,
+  hearing the real announcement, especially for live-region timing and
+  reading-order edge cases axe can't evaluate structurally.
+- **Reader (EPUB & PDF)** — no automated coverage exists (genuine MSW gap,
+  not merely undone — see Scope and method) and no manual walkthrough was
+  performed this session. This is the single largest coverage gap in this
+  audit and should be prioritized before the phase closes, given the Reader
+  is a primary user-facing surface explicitly named in Scope.
+- **Import screen** — not examined by either the automated or manual passes
+  this session; no stated reason beyond time, recorded honestly rather than
+  silently.
