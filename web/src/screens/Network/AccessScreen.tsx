@@ -58,7 +58,8 @@ export function AccessScreen() {
   }
 
   return (
-    <div className="p-xl max-w-3xl mx-auto flex flex-col gap-2xl">
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key (audit 0017 A-17-08)
+    <div className="p-xl max-w-[48rem] mx-auto flex flex-col gap-2xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-ui font-medium text-text">Access</h1>

@@ -38,8 +38,9 @@ export function ResetPasswordScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-md">
-      <div className="w-full max-w-md bg-surface p-xl rounded-lg border border-border shadow-lg">
+    <main className="min-h-screen flex items-center justify-center bg-background p-md">
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Set a new password</h1>
           <p className="text-sm text-text-3">Choose a password you have not used here before.</p>
@@ -108,6 +109,6 @@ export function ResetPasswordScreen() {
           </>
         )}
       </div>
-    </div>
+    </main>
   )
 }

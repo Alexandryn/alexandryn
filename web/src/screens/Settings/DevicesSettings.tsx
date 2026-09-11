@@ -42,7 +42,8 @@ export function DevicesSettings() {
   }
 
   return (
-    <div className="p-xl max-w-3xl mx-auto flex flex-col gap-lg">
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key (audit 0017 A-17-08)
+    <div className="p-xl max-w-[48rem] mx-auto flex flex-col gap-lg">
       {/* Polite live region for screen-reader announcements (FR-7) */}
       <div
         role="status"
@@ -52,8 +53,8 @@ export function DevicesSettings() {
       />
 
       <div>
-        <h2 className="text-lg font-semibold text-text mb-xs">Devices</h2>
-        <p className="text-xs text-text-2 max-w-2xl">
+        <h1 className="text-lg font-semibold text-text mb-xs">Devices</h1>
+        <p className="text-xs text-text-2 max-w-[42rem]"> {/* --spacing-2xl collision, audit 0017 A-17-08 */}
           Devices paired with this library. Revoking a device prevents it from syncing reading progress and annotations.
         </p>
       </div>
@@ -180,7 +181,8 @@ export function DevicesSettings() {
           <RadixDialog.Content
             className={cx(
               'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
-              'w-full max-w-md bg-surface border border-border rounded-xl p-xl shadow-xl flex flex-col gap-md',
+              // max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08)
+              'w-full max-w-[28rem] bg-surface border border-border rounded-xl p-xl shadow-xl flex flex-col gap-md',
               FOCUS_RING,
             )}
           >

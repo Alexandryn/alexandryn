@@ -141,8 +141,9 @@ export function SourceDetail() {
       </div>
 
       {/* Search Input (only when canSearch: true) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
       {canSearch && (
-        <div className="max-w-md">
+        <div className="max-w-[28rem]">
           <Input
             label="Search this source"
             value={searchQuery}
