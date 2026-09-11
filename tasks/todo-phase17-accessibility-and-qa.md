@@ -78,6 +78,22 @@ Gate** (maintainer review) before Tier 4 remediation.
       `SegmentedControl`, `Button`'s shared `SIZE.sm`, Activity's Retry,
       Sources' Edit/Remove all raised to 44x44px. `app` 38/38, `gallery`
       3/3, vitest 539/539, lint clean.
-- [ ] A-17-01/04/07/11 (Low) — next, per severity order (user: "lowest
-      severity last")
+- [x] A-17-01 (#314, Low) — fixed `a114855`: resynced electron boot
+      tokens.css, added CI drift check to the Desktop job.
+- [x] A-17-04 (#318, Low) — fixed `5b9fa80`: `.cv-auto-list` sized for
+      the real measured list-row height (68px), not a copy of the grid
+      card's 280px estimate.
+- [x] A-17-11 (#320, Low) — fixed `af3d864`: auth screens switched to
+      the shared `Input` component, removing the focus-indicator
+      inconsistency outright.
+- [x] A-17-07 (#319, Low) — confirmed via 2 CI runs on PR #313: no code
+      change needed, was a sandbox-only limitation. Surfaced a new,
+      separate issue (#325 — Firefox-specific `pairing.spec.ts` timeout)
+      while confirming, filed rather than folded in.
+- [x] A-17-03/05/06 (Informational) — accepted, no action needed
+      (confirmed-clean results recorded in audit `0017`)
+- [x] **All 11 original findings closed or triaged.** 7 fixed, 1
+      escalated (A-17-02), 3 accepted (A-17-03/05/06).
+- [ ] #325 (new, Low, out of original scope) — Firefox-specific
+      `pairing.spec.ts` timeout, not yet investigated or fixed
 - [ ] Reader (EPUB/PDF) and Import screen — still unexamined
