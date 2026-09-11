@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | 11 original findings, all closed or triaged: **A-17-01, A-17-04, A-17-07, A-17-08, A-17-09, A-17-10, A-17-11 fixed**; A-17-02 escalated (maintainer-directed, not fixed here); A-17-03/05/06 accepted (confirmed-clean, no action needed). 0 open Critical/High/Medium/Low from the original sweep. One new issue (#325) surfaced while confirming A-17-07 in CI — a Firefox-specific test timeout in `pairing.spec.ts`, outside this audit's original findings, triaged separately. Reader (EPUB/PDF) and Import screen not yet examined. |
+| **Verdict** | 11 original findings, all closed or triaged: **A-17-01, A-17-04, A-17-07, A-17-08, A-17-09, A-17-10, A-17-11 fixed**; A-17-02 escalated (maintainer-directed, not fixed here); A-17-03/05/06 accepted (confirmed-clean, no action needed). 0 open Critical/High/Medium/Low from the original sweep. Reader and Import automated axe coverage closed (`fd1dfc9`) — the audit's stated largest coverage gap. One new issue (#325, investigation in progress) surfaced while confirming A-17-07 in CI — a Firefox-specific test timeout in `pairing.spec.ts`, outside this audit's original findings. **Still open:** manual keyboard/320px walkthrough of Reader and Import specifically. |
 
 ## Template deviation, stated per constitution §12
 
@@ -75,11 +75,11 @@ Tier 1 (automated conformance sweep) run 2026-09-11 against commit `0c9e65e`:
 | Library Catalog | Axe (existing), 320px reflow, touch targets, scroll-perf scale (10k/20k) | Automated axe (existing) + manual pass + `web-performance-auditor` benchmark | Benchmark used dev-mode Vite, not a production build |
 | Book Detail (`WorkDetail`) | Functional coverage; axe coverage confirmed pre-existing | Automated (`library.app.spec.ts`, pre-existing) | Not independently re-verified this session beyond confirming the test exists and passes |
 | Collections (`CollectionDetail`) | Same as Book Detail | Automated (`library.app.spec.ts`, pre-existing) | Same as Book Detail |
-| Reader (EPUB) | **Not examined** — see "What was not examined" | — | — |
-| Reader (PDF) | **Not examined** — see "What was not examined" | — | — |
+| Reader (EPUB) | Axe (new) — reader chrome + TOC panel | Automated axe (new, `e2e/reader.app.spec.ts`) | No PDF reader exists as separate code (confirmed by grep) — "Reader (PDF)" isn't a distinct surface. Manual keyboard/320px walkthrough not yet done. |
 | Sources | Axe (existing), 320px reflow, touch targets | Automated axe (existing) + manual pass | — |
 | Devices/Pairing (`/settings/network`, `/settings/devices`, `DevicePairingModal`) | Landmarks, headings, 320px reflow, touch targets, modal focus | Automated axe (new) + manual pass | `/settings/devices`'s error state (mocked 404, no shared MSW handler) is the state audited, not a populated device list |
 | Settings (index) | Axe (new), 320px reflow, touch targets | Automated axe (new) + manual pass | — |
+| Import | Axe (new) | Automated axe (new, `e2e/import.app.spec.ts`) | Manual keyboard/320px walkthrough not yet done |
 | More/Activity | Axe (new), 320px reflow, touch targets | Automated axe (new) + manual pass | `/activity`'s error state (mocked 404, no shared MSW handler) is the state audited |
 
 ## Conformance questions asked (in place of "Adversarial questions asked")
@@ -341,11 +341,18 @@ end.
 - **Firefox/WebKit local execution.** Blocked in this sandbox (A-17-07);
   expected to run cleanly in CI once the updated workflow lands, but not
   independently confirmed by a local run as of this writing.
-- **Reader (`/read/:workId/:editionId`) automated axe coverage** — genuinely
-  blocked, not merely deferred: no shared MSW handler exists for the
-  reader-content endpoint. Adding one is a `src/` (well, `src/mocks/`)
-  change outside a test-only pass's scope; needs its own small task before
-  this route can get automated coverage.
+- ~~**Reader (`/read/:workId/:editionId`) automated axe coverage**~~ —
+  **closed** (`fd1dfc9`): added a shared MSW handler serving
+  `reader.fixtures.ts`'s content by path suffix for any `editionId`.
+  `e2e/reader.app.spec.ts` covers the reader chrome and the TOC panel,
+  both axe-clean (iframe excluded — sandboxed `allow-same-origin` only,
+  axe can't inject its scanner, matching `Reader.test.tsx`'s jsdom-level
+  exclusion). PDF reading isn't a separate surface in this codebase (the
+  Reader only handles EPUB — confirmed no separate PDF route/component
+  exists), so "Reader (PDF)" in the Screens table above was carried over
+  from the phase README's scope language without verifying a PDF reader
+  actually exists as distinct code; it doesn't, so there's nothing further
+  to cover there.
 - **Manual keyboard-only walkthrough and 320px reflow/touch-target audit** —
   performed across 11 routes (`/library`, `/discover`, `/collections`,
   `/sources`, `/settings`, `/settings/network`, `/settings/devices`,
@@ -363,11 +370,11 @@ end.
   aloud — axe's ARIA-correctness checks are a proxy for, not equivalent to,
   hearing the real announcement, especially for live-region timing and
   reading-order edge cases axe can't evaluate structurally.
-- **Reader (EPUB & PDF)** — no automated coverage exists (genuine MSW gap,
-  not merely undone — see Scope and method) and no manual walkthrough was
-  performed this session. This is the single largest coverage gap in this
-  audit and should be prioritized before the phase closes, given the Reader
-  is a primary user-facing surface explicitly named in Scope.
-- **Import screen** — not examined by either the automated or manual passes
-  this session; no stated reason beyond time, recorded honestly rather than
-  silently.
+- ~~**Reader (EPUB & PDF)**~~ — automated axe coverage closed, `fd1dfc9`
+  (see above). No PDF reader exists as separate code to examine. **Still
+  not done:** a manual keyboard-only walkthrough / 320px pass over the
+  Reader specifically (chapter navigation, TOC/settings/marks panels,
+  the previous/next controls) — only the automated axe pass was added.
+- ~~**Import screen**~~ — automated axe coverage closed, `fd1dfc9`
+  (`e2e/import.app.spec.ts`, clean). **Still not done:** manual
+  keyboard-only walkthrough / 320px pass.
