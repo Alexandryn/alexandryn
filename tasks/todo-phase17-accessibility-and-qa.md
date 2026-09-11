@@ -57,8 +57,22 @@ Gate** (maintainer review) before Tier 4 remediation.
 - [x] Report delivered — 11 findings, 1 Critical (A-17-08), 3 Medium,
       3 Low, 4 Informational; audit doc `0017` commit `3a94a92`
 - [x] Issues filed — #314–#324
-- [ ] Remediation order + Medium/Low/Info triage decided
+- [x] Remediation order decided — A-17-08 (Critical) first; fix approach
+      chosen after an initial approved approach (explicit `--container-*`
+      override) was disproven empirically. Medium/Low/Info triage still
+      pending maintainer direction beyond A-17-09.
 
 ### Tier 4 — Remediation
 
-- [ ] (populated per issue once the gate clears)
+- [x] A-17-08 (#324, Critical) — `theme.css`'s `--spacing-*`/`max-w-*`
+      collision. Fixed `1b008ec`: replaced `max-w-{xs,sm,md,lg,xl,2xl,3xl}`
+      with arbitrary-value syntax across 17 files (named-scale override
+      approach didn't work — Tailwind always prefers spacing on collision).
+      RED → GREEN: `app` 38/38, `gallery` 3/3, vitest 539/539.
+- [x] A-17-09 (#316, Medium) — missing `<main>`/`<h1>`. Fixed same commit:
+      auth screens → `<main>`, `DevicesSettings` → `<h1>`.
+- [ ] A-17-02 (#315, Medium) — catalog wrapper-mount cost, escalate per
+      G0-5/risk table rather than fix inline
+- [ ] A-17-10 (#317, Medium) — touch-target sizes, shared-component fix
+- [ ] A-17-01/04/07/11 (Low) — maintainer triage pending
+- [ ] Reader (EPUB/PDF) and Import screen — still unexamined
