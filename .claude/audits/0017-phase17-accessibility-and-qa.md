@@ -108,19 +108,19 @@ README's G0-2/G0-4 and constitution §7.
 
 ## Findings
 
-| ID | Severity | Title | Status |
-|---|---|---|---|
-| A-17-01 | Informational | `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check | Open |
-| A-17-02 | Medium | `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size | Open |
-| A-17-03 | Informational | Scroll frame rate holds ~60fps through 20,000 items — confirmed clean, worth a regression-watch benchmark | Open |
-| A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | Open |
-| A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | Open |
-| A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | Open |
-| A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | Open |
-| A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | Open |
-| A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | Open |
-| A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | Open |
-| A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | Open |
+| ID | Severity | Title | Issue | Status |
+|---|---|---|---|---|
+| A-17-01 | Informational | `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check | #314 | Open |
+| A-17-02 | Medium | `WorkGrid` virtualizes only the cover image; wrapper-node mount cost scales linearly with catalog size | #315 | Open |
+| A-17-03 | Informational | Scroll frame rate holds ~60fps through 20,000 items — confirmed clean, worth a regression-watch benchmark | #321 | Open |
+| A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | #318 | Open |
+| A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | #322 | Open |
+| A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | #323 | Open |
+| A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | Open |
+| A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | Open |
+| A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | Open |
+| A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | Open |
+| A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | #320 | Open |
 
 ### A-17-01 — `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check
 
