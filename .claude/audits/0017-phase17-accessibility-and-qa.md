@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | 11 original findings, all closed or triaged: **A-17-01, A-17-04, A-17-07, A-17-08, A-17-09, A-17-10, A-17-11 fixed**; A-17-02 escalated (maintainer-directed, not fixed here); A-17-03/05/06 accepted (confirmed-clean, no action needed). 0 open Critical/High/Medium/Low from the original sweep. Reader and Import automated axe coverage closed (`fd1dfc9`) — the audit's stated largest coverage gap. One new issue (#325, investigation in progress) surfaced while confirming A-17-07 in CI — a Firefox-specific test timeout in `pairing.spec.ts`, outside this audit's original findings. **Still open:** manual keyboard/320px walkthrough of Reader and Import specifically. |
+| **Verdict** | 11 original findings, all closed or triaged: **A-17-01, A-17-04, A-17-07, A-17-08, A-17-09, A-17-10, A-17-11 fixed**; A-17-02 escalated (maintainer-directed, not fixed here); A-17-03/05/06 accepted (confirmed-clean, no action needed). 0 open Critical/High/Medium/Low from the original sweep. Reader and Import automated axe coverage closed (`fd1dfc9`) — the audit's stated largest coverage gap. One new issue (#325) surfaced while confirming A-17-07 in CI — a Firefox-specific `pairing.spec.ts` failure, outside this audit's original findings — now root-caused and fixed (`8c8741d`). **Full CI green** on PR #313 across Frontend/Backend/Desktop, cross-browser matrix included. **Still open:** manual keyboard/320px walkthrough of Reader and Import specifically. |
 
 ## Template deviation, stated per constitution §12
 
@@ -231,7 +231,9 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Run `sudo npx playwright install-deps` (or `sudo apt-get install libicu74 libxml2 libflite1`) if local Firefox/WebKit verification is wanted before the CI run confirms it; otherwise this resolves itself once the updated workflow runs in CI.
 
-**Resolution** — **Fixed**, no code change needed. Confirmed via 2 separate CI runs on PR #313: Firefox and WebKit both install and launch successfully on the real GitHub Actions runner — this was a sandbox-only limitation. `app-webkit`/`app-mobile-safari` ran clean. One thing CI did surface once the matrix actually ran: `app-firefox` consistently times out on `pairing.spec.ts`'s "host revoke invalidates code for second context" test specifically — a distinct, newly-discovered issue outside this finding's scope, filed separately as #325.
+**Resolution** — **Fixed**, no code change needed, but this finding's own premise was wrong and is corrected here rather than left standing: Firefox is **not** blocked in this dev sandbox. Playwright's install-time warning names Ubuntu package names (`libicu74` etc.) on an Arch host that already provides the Firefox equivalents — Firefox runs locally fine, and only WebKit genuinely needs the missing libs. That mistake cost real time: #325 below was chased through three ~14-minute CI cycles of guesswork before anyone simply tried running Firefox locally, which reproduced it in ~20 seconds. **Lesson worth keeping: verify a claimed environment limitation by attempting the thing, not by trusting a tool's own preflight warning.**
+
+CI confirmed Firefox and WebKit both install and run on the GitHub Actions runner. Once the matrix actually ran it surfaced `app-firefox` failing `pairing.spec.ts`'s "host revoke invalidates code for second context" — filed separately as #325, and now fixed (`8c8741d`): Firefox never claims a second page opened in a context whose service worker is already active, so MSW never intercepts and the page stays blank. One page per context is the fix, and the rule to follow for any future multi-device test.
 
 ### A-17-08 — `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names
 

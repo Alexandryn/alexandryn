@@ -94,6 +94,13 @@ Gate** (maintainer review) before Tier 4 remediation.
       (confirmed-clean results recorded in audit `0017`)
 - [x] **All 11 original findings closed or triaged.** 7 fixed, 1
       escalated (A-17-02), 3 accepted (A-17-03/05/06).
-- [ ] #325 (new, Low, out of original scope) — Firefox-specific
-      `pairing.spec.ts` timeout, not yet investigated or fixed
-- [ ] Reader (EPUB/PDF) and Import screen — still unexamined
+- [x] #325 (new, Low, out of original scope) — Firefox-specific
+      `pairing.spec.ts` failure. Root-caused and fixed (`8c8741d`):
+      Firefox never claims a second page in a context whose service
+      worker is already active, so MSW never intercepts and the page
+      stays blank. One page per context is the fix.
+- [x] Reader and Import automated axe coverage (`fd1dfc9`)
+- [x] **CI green** on PR #313 — Frontend, Backend and Desktop jobs all
+      pass, cross-browser/viewport matrix included. PR is MERGEABLE.
+- [ ] Manual keyboard/320px walkthrough of Reader and Import
+      specifically — the one remaining stated gap
