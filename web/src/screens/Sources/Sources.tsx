@@ -151,17 +151,20 @@ export function Sources() {
                   {/* Actions footer */}
                   <div className="mt-lg flex items-center justify-between border-t border-border/50 pt-sm">
                     <div className="flex items-center gap-2xs">
+                      {/* size="sm" not h-auto (audit 0017 A-17-10): h-auto opted out of the 44px touch-target minimum Button's own sm size provides */}
                       <Button
                         variant="ghost"
+                        size="sm"
                         onClick={() => setEditingSource(src)}
-                        className="text-xs px-2xs py-4xs h-auto"
+                        className="px-2xs min-w-11"
                       >
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
+                        size="sm"
                         onClick={() => setSourceToDelete(src)}
-                        className="text-xs px-2xs py-4xs h-auto text-error hover:bg-error/10"
+                        className="px-2xs min-w-11 text-error hover:bg-error/10"
                       >
                         Remove
                       </Button>

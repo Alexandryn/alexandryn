@@ -18,7 +18,8 @@ export function MobileTabBar() {
               to={item.to}
               className={({ isActive }) =>
                 cx(
-                  'flex flex-col items-center gap-4xs py-sm text-3xs font-ui',
+                  // min-h-11 (44px): 44x44 touch-target minimum (audit 0017 A-17-10) — py-sm alone measured 33px tall
+                  'flex flex-col items-center justify-center gap-4xs py-sm min-h-11 text-3xs font-ui',
                   isActive ? 'text-accent font-medium' : 'text-text-3',
                   FOCUS_RING,
                 )
