@@ -14,7 +14,12 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  use: { baseURL: 'http://localhost:5175' },
+  // Retained only on failure (audit 0017 #325): the Firefox-specific
+  // pairing.spec.ts timeout couldn't be reproduced locally (no Firefox
+  // available in this dev sandbox without a privileged install), so a
+  // trace/screenshot from the next CI failure is the only way to see
+  // what state the page is actually in when it times out.
+  use: { baseURL: 'http://localhost:5175', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   // One worker, never parallel: the benchmark project asserts a tight
   // initial-paint budget (frontend-generated-covers.md FR-4) and is
   // starved when it shares the machine with other browsers. Retries
