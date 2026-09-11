@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-08 (Critical) and A-17-09 (Medium) fixed** (`1b008ec`) — 0 open Critical, 2 open Medium remain (A-17-02, A-17-10). Reader (EPUB/PDF) and Import screen not yet examined. |
+| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-08, A-17-09, A-17-10 fixed** (`1b008ec`, `0f9ccdd`) — 0 open Critical, 0 open Medium (A-17-02 escalated, not fixed here — see its own resolution note). Reader (EPUB/PDF) and Import screen not yet examined. |
 
 ## Template deviation, stated per constitution §12
 
@@ -119,7 +119,7 @@ README's G0-2/G0-4 and constitution §7.
 | A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | Open |
 | A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | **Fixed** (`1b008ec`) |
 | A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | **Fixed** (`1b008ec`) |
-| A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | Open |
+| A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | **Fixed** (`0f9ccdd`) |
 | A-17-11 | Low | `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s instead of the shared `Input` component, with a border-color-only focus indicator not verified against contrast requirements | #320 | Open |
 
 ### A-17-01 — `electron/src/renderer/boot/tokens.css` can silently drift from its generator source; no CI check
@@ -269,7 +269,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Resolution** — **Fixed**, commit `1b008ece96cc8c64de83b96f323fa48fb3ee1934`. Auth screens' outer card wrapper (`LoginScreen`, `SetupScreen`, `ForgotPasswordScreen`, `ResetPasswordScreen`, plus `AcceptInviteScreen` — same pattern, not separately tested) promoted from `<div>` to `<main>`. `DevicesSettings`' heading promoted from `<h2>` to `<h1>`, visual styling unchanged.
 
-### A-17-10 — Numerous interactive controls fall short of the 44×44px touch-target minimum at mobile width
+### A-17-10 — Numerous interactive controls fall short of the 44×44px touch-target minimum at mobile width — **Fixed**
 
 **Severity:** Medium
 
@@ -285,7 +285,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Fix at the shared-component level first (`NavList`'s tab-bar link height, the filter-chip/row-action button pattern used across Library/Sources/Activity/Devices) rather than per-screen; re-audit afterward to see how much this closes automatically.
 
-**Resolution** — Open, filed for the findings gate.
+**Resolution** — **Fixed**, commit `0f9ccdd`. Correction: the tab-bar component is actually `web/src/app/shell/MobileTabBar.tsx`, not `NavList.tsx` (a different, unrelated component used by `/settings` and `/more`'s index lists) — fixed at the actual component. Also fixed `SegmentedControl` (`min-h-11 min-w-11`), `Button`'s shared `SIZE.sm` (`min-h-11` — this alone fixed Devices' Retry and every other `size="sm"` consumer app-wide), Activity's "Retry connection" (was a bare `<button>` bypassing the shared `Button` component entirely, inconsistent with Devices' identical pattern — switched to `Button variant="secondary" size="sm"`), and Sources' Edit/Remove (`h-auto` override opted out of `sm` sizing — switched to `size="sm"` plus a scoped `min-w-11`, since Edit's text alone left it 38px wide even at the corrected height). Manually re-measured all five originally-sampled controls at 320px — all ≥44×44px now.
 
 ### A-17-11 — `LoginScreen`/`SetupScreen` hand-roll raw `<input>`s with an unverified focus indicator
 

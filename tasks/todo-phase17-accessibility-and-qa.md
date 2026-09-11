@@ -71,8 +71,13 @@ Gate** (maintainer review) before Tier 4 remediation.
       RED → GREEN: `app` 38/38, `gallery` 3/3, vitest 539/539.
 - [x] A-17-09 (#316, Medium) — missing `<main>`/`<h1>`. Fixed same commit:
       auth screens → `<main>`, `DevicesSettings` → `<h1>`.
-- [ ] A-17-02 (#315, Medium) — catalog wrapper-mount cost, escalate per
-      G0-5/risk table rather than fix inline
-- [ ] A-17-10 (#317, Medium) — touch-target sizes, shared-component fix
-- [ ] A-17-01/04/07/11 (Low) — maintainer triage pending
+- [x] A-17-02 (#315, Medium) — left open, escalated per G0-5/risk table
+      rather than fixed inline (maintainer confirmed: file forward, deal
+      with it later)
+- [x] A-17-10 (#317, Medium) — fixed `0f9ccdd`: `MobileTabBar`,
+      `SegmentedControl`, `Button`'s shared `SIZE.sm`, Activity's Retry,
+      Sources' Edit/Remove all raised to 44x44px. `app` 38/38, `gallery`
+      3/3, vitest 539/539, lint clean.
+- [ ] A-17-01/04/07/11 (Low) — next, per severity order (user: "lowest
+      severity last")
 - [ ] Reader (EPUB/PDF) and Import screen — still unexamined
