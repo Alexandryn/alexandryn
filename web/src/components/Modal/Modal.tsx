@@ -45,7 +45,10 @@ export function Modal({
         <RadixDialog.Content
           className={cx(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-            'rounded-lg bg-surface p-xl shadow-lg max-w-3xl w-full',
+            // max-w-[48rem] not max-w-3xl: this project's --spacing-3xl
+            // token collides with Tailwind's max-w-3xl scale key, so the
+            // named class silently resolved to 20px (audit 0017 A-17-08).
+            'rounded-lg bg-surface p-xl shadow-lg max-w-[48rem] w-full',
             'transition-opacity data-[state=closed]:opacity-0 data-[state=open]:opacity-100 motion-reduce:transition-none',
             contentClassName,
           )}

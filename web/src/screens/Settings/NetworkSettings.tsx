@@ -78,8 +78,9 @@ export function NetworkSettings() {
   }
 
   if (error || !status) {
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collision, audit 0017 A-17-08
     return (
-      <div className="p-xl max-w-3xl mx-auto">
+      <div className="p-xl max-w-[48rem] mx-auto">
         <div className="rounded-md bg-error/10 border border-error/20 p-md text-sm text-error">
           Failed to load network status. The server may be unreachable.
         </div>
@@ -91,7 +92,7 @@ export function NetworkSettings() {
     status.tlsMode === 'static' || status.tlsMode === 'acme' ? 'configured' : 'not configured'
 
   return (
-    <div className="p-xl max-w-3xl mx-auto flex flex-col gap-2xl">
+    <div className="p-xl max-w-[48rem] mx-auto flex flex-col gap-2xl">
       {/* Toast feedback */}
       {toastError && (
         <div
@@ -200,7 +201,8 @@ export function NetworkSettings() {
               onChange={(e) => setHostNameInput(e.target.value)}
               placeholder="alexandryn.local"
               className={cx(
-                'rounded-md border border-border bg-surface px-md py-xs text-sm text-text font-mono max-w-md',
+                // max-w-[28rem] not max-w-md: --spacing-md collision, audit 0017 A-17-08
+                'rounded-md border border-border bg-surface px-md py-xs text-sm text-text font-mono max-w-[28rem]',
                 FOCUS_RING,
               )}
             />
@@ -221,7 +223,8 @@ export function NetworkSettings() {
               value={currentRememberDays}
               onChange={(e) => setRememberDaysInput(Number(e.target.value))}
               className={cx(
-                'rounded-md border border-border bg-surface px-md py-xs text-sm text-text max-w-xs',
+                // max-w-[20rem] not max-w-xs: --spacing-xs collision, audit 0017 A-17-08
+                'rounded-md border border-border bg-surface px-md py-xs text-sm text-text max-w-[20rem]',
                 FOCUS_RING,
               )}
             />

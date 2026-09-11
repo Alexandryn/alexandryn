@@ -198,7 +198,8 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
           }}
           className={cx(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-            'rounded-lg bg-surface p-xl shadow-lg max-w-lg w-full flex flex-col gap-lg',
+            // max-w-[32rem] not max-w-lg: --spacing-lg collides with Tailwind's max-w-lg key (audit 0017 A-17-08)
+            'rounded-lg bg-surface p-xl shadow-lg max-w-[32rem] w-full flex flex-col gap-lg',
             'transition-opacity data-[state=closed]:opacity-0 data-[state=open]:opacity-100 motion-reduce:transition-none',
           )}
         >

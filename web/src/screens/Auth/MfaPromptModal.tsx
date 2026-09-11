@@ -48,7 +48,7 @@ export function MfaPromptModal({ mfaTicket, enrolmentGrant, onSuccess, onCancel 
           ? 'Enter one of your 10-character recovery codes.'
           : 'Enter the 6-digit code from your authenticator app.'
       }
-      contentClassName="max-w-sm"
+      contentClassName="max-w-[24rem]" // --spacing-sm collision, audit 0017 A-17-08
     >
       {error && (
         <div className="mb-md mt-md rounded border border-error bg-surface p-sm text-sm text-error" role="alert">

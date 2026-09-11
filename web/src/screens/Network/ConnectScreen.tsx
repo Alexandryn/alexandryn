@@ -104,7 +104,8 @@ export function ConnectScreen() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-xl">
-      <div className="w-full max-w-md bg-surface border border-border rounded-lg shadow-sm p-2xl flex flex-col gap-xl">
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      <div className="w-full max-w-[28rem] bg-surface border border-border rounded-lg shadow-sm p-2xl flex flex-col gap-xl">
         <div>
           <h1 className="text-2xl font-ui font-medium text-text">Connect</h1>
           <p className="text-sm text-text-2 mt-4xs">

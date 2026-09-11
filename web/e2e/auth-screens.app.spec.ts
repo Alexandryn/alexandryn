@@ -48,7 +48,8 @@ test.describe('Public auth screens: axe coverage', () => {
     await expect(
       page.getByRole('heading', { name: 'Set a new password', level: 1 }),
     ).toBeVisible()
-    await expect(page.getByLabel('New password')).toBeVisible()
+    // exact: true — 'New password' otherwise partial-matches 'Confirm new password' too
+    await expect(page.getByLabel('New password', { exact: true })).toBeVisible()
 
     const results = await axe(page).analyze()
     expect(results.violations).toEqual([])

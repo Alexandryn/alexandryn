@@ -194,7 +194,7 @@ export function ActivityScreen() {
             ? `"${pendingCancel.title}" will stop downloading. Progress so far is discarded and you will need to start it again.`
             : undefined
         }
-        contentClassName="max-w-md"
+        contentClassName="max-w-[28rem]" // --spacing-md collision, audit 0017 A-17-08
       >
         <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
           <Button variant="ghost" size="sm" onClick={() => setPendingCancel(null)}>

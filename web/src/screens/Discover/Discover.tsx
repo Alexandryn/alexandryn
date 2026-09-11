@@ -141,7 +141,8 @@ export function Discover() {
         </h1>
 
         {/* Search Input (FR-1) */}
-        <div className="w-full max-w-md">
+        {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+        <div className="w-full max-w-[28rem]">
           <Input
             label="Search Open Library"
             placeholder="Search titles, authors..."

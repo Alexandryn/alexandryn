@@ -190,7 +190,8 @@ export function Library() {
         {/* Controls Bar: Search, Filters, Sort, View Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-md">
           <div className="flex flex-wrap items-center gap-md flex-1 min-w-64">
-            <div className="w-full max-w-xs">
+            {/* max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key (audit 0017 A-17-08) */}
+            <div className="w-full max-w-[20rem]">
               <Input
                 label="Search library"
                 placeholder="Search titles, authors..."

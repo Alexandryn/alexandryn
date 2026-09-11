@@ -210,7 +210,8 @@ function CandidateCard({
         <div className="flex items-center gap-xs">
           <FormatBadge format={candidate.fileReference.format} />
           <span
-            className="text-xs font-mono text-text-3 truncate max-w-xs"
+            // max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key (audit 0017 A-17-08)
+            className="text-xs font-mono text-text-3 truncate max-w-[20rem]"
             title={candidate.fileReference.id}
           >
             {candidate.fileReference.id}
@@ -327,7 +328,7 @@ function CandidateCard({
         onOpenChange={(open) => setShowRejectConfirm(open)}
         title="Reject this book?"
         description={`"${title || candidate.fileReference.id}" will be removed from your import candidates. You will need to re-scan the source if you want to import it later.`}
-        contentClassName="max-w-md"
+        contentClassName="max-w-[28rem]" // --spacing-md collision, audit 0017 A-17-08
       >
         <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
           <Button variant="ghost" size="sm" onClick={() => setShowRejectConfirm(false)}>
