@@ -187,10 +187,12 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
             e.preventDefault()
             void handleRevokeAndClose()
           }}
-          onInteractOutside={(e) => {
-            // An outside click, like Escape and the corner ×, must
-            // revoke the live pairing session and only close if that
-            // succeeds — never bypass the failed-cancel notice (#142).
+          onPointerDownOutside={(e) => {
+            // A backdrop click, like Escape and the corner ×, must revoke
+            // the live pairing session and only close if that succeeds —
+            // never bypass the failed-cancel notice (#142). Scoped to
+            // pointer-down (not onInteractOutside) so a focus shift
+            // during re-render cannot trigger it.
             e.preventDefault()
             void handleRevokeAndClose()
           }}
