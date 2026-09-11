@@ -108,9 +108,23 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
     // a separate context. Confirmed by trying it (audit 0017 #325
     // investigation): separating contexts breaks this test on every
     // engine, not just Firefox.
+    // test.slow() (audit 0017 #325): CI evidence (a downloaded trace —
+    // the page never got past its boot spinner, and Playwright's own log
+    // showed it navigating to the same URL twice) points at Firefox
+    // reloading pageB once after it's already loaded, not at slow
+    // rendering — tripling the timeout gives that reload room to finish
+    // rather than papering over it with a guess at the mechanism.
+    test.slow()
+
     const context = await browser.newContext({ baseURL })
     const pageA = await context.newPage()
+    // Created and brought to front before pageB ever navigates (not
+    // after, like an earlier attempt at this fix) — Firefox's multi-page
+    // support (the "juggler" protocol) is more limited than Chromium's,
+    // and bringing a page forward mid-navigation is a plausible trigger
+    // for the double-navigation this test hit in CI.
     const pageB = await context.newPage()
+    await pageB.bringToFront()
 
     try {
       // Context A opens modal
@@ -123,16 +137,11 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await pageA.getByRole('button', { name: 'Revoke' }).click()
       await expect(pageA.getByRole('dialog', { name: 'Pair a Device' })).toBeHidden()
 
-      // Context B tries to connect with code. bringToFront() (audit 0017
-      // #325 investigation) — pageB is a second, backgrounded tab in the
-      // same context as pageA; Firefox headless throttles background-tab
-      // rendering more aggressively than Chromium, which timed out
-      // waiting for Continue to appear. Also wait for the code to
+      // Context B tries to connect with code. Waiting for the code to
       // actually be prefilled (matching the happy-path test's own care)
       // instead of clicking immediately, so a slow-hydrating page fails
       // with a clear assertion here rather than a bare button-not-found.
       await pageB.goto('/connect?c=ABCD-EFGH')
-      await pageB.bringToFront()
       await expect(pageB.getByLabel('Pairing Code')).toHaveValue('ABCD-EFGH')
       await pageB.getByRole('button', { name: 'Continue' }).click()
 
