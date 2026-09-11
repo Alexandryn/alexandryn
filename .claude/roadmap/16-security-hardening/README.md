@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | In progress |
+| **Status** | Closed |
 | **Depends on** | Phase 14, Phase 15 |
 | **Blocks** | Phase 17 |
 | **Opened** | 2026-09-07 |
-| **Closed** | — |
+| **Closed** | 2026-09-11 |
 
 ## Gate 0 decisions (2026-09-07, maintainer)
 
@@ -212,4 +212,6 @@ and is covered by the redaction-proof test before this phase closes.
 - [x] Documentation updated (this README, the audit doc, audit README index,
       roadmap README, task list). ADR 0033 (coverage threshold) and ADR 0034
       (CI supply-chain posture) written.
-- [ ] Maintainer approval recorded
+- [x] Maintainer approval recorded — 2026-09-11, confirmed all 219
+      `phase-16`-labeled issues closed (0 open, 0 Critical/High) and this
+      phase ready to close.
