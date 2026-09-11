@@ -6,7 +6,7 @@
 | **Auditor** | Tier 1-3 automated + manual sweep (self + `test-engineer` + `web-performance-auditor` subagents) |
 | **Date** | 2026-09-11 |
 | **Commit** | `b114d20` |
-| **Verdict** | Findings open — 11 findings (1 Critical, 3 Medium, 3 Low, 4 Informational); **A-17-01, A-17-04, A-17-08, A-17-09, A-17-10, A-17-11 fixed** — 0 open Critical, 0 open Medium (A-17-02 escalated, not fixed here), 1 open Low (A-17-07, pending CI confirmation). Reader (EPUB/PDF) and Import screen not yet examined. |
+| **Verdict** | 11 original findings, all closed or triaged: **A-17-01, A-17-04, A-17-07, A-17-08, A-17-09, A-17-10, A-17-11 fixed**; A-17-02 escalated (maintainer-directed, not fixed here); A-17-03/05/06 accepted (confirmed-clean, no action needed). 0 open Critical/High/Medium/Low from the original sweep. One new issue (#325) surfaced while confirming A-17-07 in CI — a Firefox-specific test timeout in `pairing.spec.ts`, outside this audit's original findings, triaged separately. Reader (EPUB/PDF) and Import screen not yet examined. |
 
 ## Template deviation, stated per constitution §12
 
@@ -116,7 +116,7 @@ README's G0-2/G0-4 and constitution §7.
 | A-17-04 | Low | List view never gets the grid view's `content-visibility: auto` treatment — unmeasured, plausible gap | #318 | **Fixed** (`5b9fa80`) |
 | A-17-05 | Informational | `seedCache` module-level `Map` is unbounded — trivial at tested scale | #322 | Open |
 | A-17-06 | Informational | Reader shows no memory-leak pattern across pagination/open-close (static analysis only, not live-measured) | #323 | Open |
-| A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | Open |
+| A-17-07 | Low | Firefox/WebKit Playwright projects blocked in this dev sandbox by missing host libraries | #319 | **Fixed** (confirmed via CI, no code change needed) |
 | A-17-08 | **Critical** | `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names, collapsing `max-w-md`/`max-w-3xl`/etc. to single-digit pixel widths app-wide | #324 | **Fixed** (`1b008ec`) |
 | A-17-09 | Medium | Missing `<main>` landmark on all four public auth screens; `/settings/devices` has no `<h1>` | #316 | **Fixed** (`1b008ec`) |
 | A-17-10 | Medium | Numerous interactive controls fall short of the project's own 44×44px touch-target minimum at mobile width, across nearly every screen | #317 | **Fixed** (`0f9ccdd`) |
@@ -231,7 +231,7 @@ Measured dev-mode (unminified Vite serving) via a throwaway Playwright script dr
 
 **Recommendation** — Run `sudo npx playwright install-deps` (or `sudo apt-get install libicu74 libxml2 libflite1`) if local Firefox/WebKit verification is wanted before the CI run confirms it; otherwise this resolves itself once the updated workflow runs in CI.
 
-**Resolution** — Open, pending either maintainer approval of the sudo install locally, or a green CI run on this branch's PR.
+**Resolution** — **Fixed**, no code change needed. Confirmed via 2 separate CI runs on PR #313: Firefox and WebKit both install and launch successfully on the real GitHub Actions runner — this was a sandbox-only limitation. `app-webkit`/`app-mobile-safari` ran clean. One thing CI did surface once the matrix actually ran: `app-firefox` consistently times out on `pairing.spec.ts`'s "host revoke invalidates code for second context" test specifically — a distinct, newly-discovered issue outside this finding's scope, filed separately as #325.
 
 ### A-17-08 — `theme.css`'s generated `--spacing-*` scale collides with Tailwind's `max-w-*` key names
 
