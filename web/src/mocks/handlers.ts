@@ -3,6 +3,12 @@ import { delay, http, HttpResponse } from 'msw'
 import { generatedFixtures } from './fixtures/generated'
 import { bootstrapFixture } from './fixtures/handwritten/bootstrap'
 import { notFoundError } from './fixtures/handwritten/errors'
+import {
+  CONTAINER_XML,
+  CONTENT_OPF,
+  NAV_XHTML,
+  CHAPTER1_XHTML,
+} from '../screens/Reader/reader.fixtures'
 
 // The mock backend (frontend-shell-and-routing.md FR-6). Health handlers
 // serve the contract-generated fixtures (tier a); /api/bootstrap and the
@@ -152,9 +158,28 @@ export const handlers = [
     HttpResponse.json(generatedFixtures.rejectImportCandidate['200']),
   ),
 
-  // Reader — the content endpoint and reading API pass through to the real
-  // backend during dev; these stubs keep the frontend suite self-contained
-  // where a test does not install its own reader handlers.
+  // Reader content endpoint (audit 0017: this had no shared handler —
+  // the outdated claim that it "passes through to the real backend
+  // during dev" doesn't hold, since the /api/v1/* catch-all below 404s
+  // anything unmatched under MSW-active dev regardless). Served by path
+  // suffix, independent of editionId, so any e2e/dev navigation to
+  // /read/:workId/:editionId using the same reader.fixtures.ts content
+  // (Reader.test.tsx's own contentHandlers() mirrors this) just works
+  // without a per-test override.
+  http.get('*/reader/content/*', ({ request }) => {
+    const path = decodeURIComponent(new URL(request.url).pathname.split('/reader/content/')[1] ?? '')
+    const map: Record<string, string> = {
+      'META-INF/container.xml': CONTAINER_XML,
+      'OEBPS/content.opf': CONTENT_OPF,
+      'OEBPS/nav.xhtml': NAV_XHTML,
+      'OEBPS/chapter1.xhtml': CHAPTER1_XHTML,
+      'OEBPS/chapter2.xhtml': CHAPTER1_XHTML,
+    }
+    const body = map[path]
+    if (body === undefined) return HttpResponse.json({ code: 'not_found' }, { status: 404 })
+    return new HttpResponse(body, { headers: { 'Content-Type': 'application/xhtml+xml' } })
+  }),
+
   http.get('*/api/v1/reading/works/:workId/progress', () =>
     HttpResponse.json({ progress: null }),
   ),
