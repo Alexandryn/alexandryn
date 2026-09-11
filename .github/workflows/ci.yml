@@ -438,6 +438,14 @@ jobs:
       - name: Build
         run: npm run -w @alexandryn/desktop build
 
+      # audit 0017 A-17-01: electron-vite's syncTokensPlugin (buildStart
+      # hook) copies web/src/tokens.css into this file on every build —
+      # the Build step above just did that. Fail if the committed copy
+      # was stale, the same drift-check shape the frontend job's "Design
+      # tokens up to date" step uses for the three web/ generated files.
+      - name: Boot tokens.css up to date
+        run: git diff --exit-code -- electron/src/renderer/boot/tokens.css
+
       - name: Typecheck
         run: npm run -w @alexandryn/desktop typecheck
 
