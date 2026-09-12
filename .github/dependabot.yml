@@ -16,7 +16,7 @@ updates:
     # a breaking API change and deserves its own review, not a batch.
 
   # GitHub Actions used by the CI workflow(s). Actions are pinned to
-  # commit SHAs (audit 0016 #121); Dependabot bumps the SHA and the
+  # commit SHAs; Dependabot bumps the SHA and the
   # trailing `# vX` comment together.
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -30,9 +30,7 @@ updates:
           - "patch"
 
   # npm — the workspace root lockfile (package-lock.json), which covers
-  # every workspace member (web/, electron/). Added in phase 16
-  # (audit 0016 #126); those manifests did not exist when this file was
-  # first written.
+  # every workspace member (web/, electron/).
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

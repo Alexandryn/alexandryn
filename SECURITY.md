@@ -64,13 +64,14 @@ some things design.
 
 ## Supported versions
 
-None yet. The project is pre-release. Once there is a release, this section
-will state which versions receive fixes.
+| Version | Supported |
+|---|---|
+| Latest release (`main`) | :white_check_mark: |
 
 ## Our commitments
 
-- Security work happens continuously, not at the end. Each roadmap phase has a
-  security gate, and findings are recorded in `.claude/audits/`.
+- Security work happens continuously, not at the end. Substantial features undergo
+  adversarial security review, and findings are recorded in `.claude/audits/`.
 - The host binds to loopback by default and will not serve the network without
   authentication.
 - We don't log what you read.
