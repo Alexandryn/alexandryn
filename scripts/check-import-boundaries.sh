@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# Interim import-boundary lint (D0, tasks/plan.md). Three grep-based checks
-# Go's own internal/ visibility can't enforce on its own, since everything
-# here is internal to one module (architecture-backend.md FR-2/FR-3):
+# Import boundary check: enforces architectural boundaries across packages:
 #
-#   (a) internal/domain must not import internal/transport or
-#       internal/persistence, directly or transitively
-#   (b) only internal/config may read an environment variable or decode
-#       the TOML config file
-#   (c) no package-level var holds a logger, a connection pool, or a
-#       loaded config (backend-service-lifecycle.md FR-2's no-globals rule)
+#   (a) internal/domain must not import internal/transport or internal/persistence
+#   (b) only internal/config may read environment variables or decode TOML configuration
+#   (c) no package-level var holds a logger, connection pool, or loaded config
 #
-# Revisited as a golangci-lint custom rule or go/analysis pass once CI
-# exists to observe this running (ADR 0018). Exits non-zero and names the
-# offending file on the first violation category found; does not attempt
-# to report every violation in one run.
+# Exits non-zero and names the offending file on the first violation category found.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -51,7 +43,7 @@ strip_raw_strings() {
 if [ -d "$DOMAIN_DIR" ]; then
 	while IFS= read -r f; do
 		if strip_raw_strings "$f" | grep -Eq '"[^"]*/internal/(transport|persistence)(/|")'; then
-			add_violation "$f: internal/domain must not import internal/transport or internal/persistence (architecture-backend.md FR-2)"
+			add_violation "$f: internal/domain must not import internal/transport or internal/persistence"
 		fi
 	done < <(find "$DOMAIN_DIR" -name '*.go' -type f 2>/dev/null)
 fi
@@ -60,10 +52,7 @@ fi
 # The TOML half is scoped to actual import lines, not any string literal
 # containing "toml" — a fixture path or a comment shouldn't trip this.
 # An _integration_test.go file is exempt from the env-var half: reading
-# TEST_DATABASE_URL directly, not through internal/config, is
-# backend-test-harness.md FR-2's own explicit rule for the test harness
-# — test-only plumbing, distinct from the application's own runtime
-# configuration, not a violation of this check's intent.
+# TEST_DATABASE_URL directly is allowed for test harnesses.
 import_lines() {
 	strip_raw_strings "$1" | awk '
 		/^import \(/ { inblock = 1; next }
@@ -79,14 +68,14 @@ while IFS= read -r f; do
 	*_integration_test.go) continue ;;
 	esac
 	if strip_raw_strings "$f" | grep -Eq '\bos\.(Getenv|LookupEnv)\(' || import_lines "$f" | grep -Eiq 'toml'; then
-		add_violation "$f: only internal/config may read an environment variable or decode TOML (backend-configuration.md FR-1)"
+		add_violation "$f: only internal/config may read an environment variable or decode TOML"
 	fi
 done < <(find "$ROOT/internal" "$ROOT/cmd" -name '*.go' -type f 2>/dev/null)
 
 # (c) no package-level var holding a logger, pool, or config.
 while IFS= read -r f; do
 	if strip_raw_strings "$f" | grep -Eq '^var[[:space:]]+[A-Za-z0-9_]+[[:space:]]+\*?(slog\.Logger|pgxpool\.Pool|config\.Config)\b'; then
-		add_violation "$f: no package-level var may hold a logger, pool, or config (backend-service-lifecycle.md FR-2)"
+		add_violation "$f: no package-level var may hold a logger, pool, or config"
 	fi
 done < <(find "$ROOT/internal" "$ROOT/cmd" -name '*.go' -type f 2>/dev/null)
 

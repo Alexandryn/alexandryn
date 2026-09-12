@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Coverage non-regression floor (ADR 0033, audit 0016 #131). Fails when
-# the unit suite's combined statement coverage falls more than 1.0
-# percentage point below scripts/coverage-baseline.txt. Not a fixed
-# quality target — a proxy check that catches a net deletion of test
-# coverage a review missed. Raising the baseline is a deliberate commit.
+# Coverage non-regression floor: fails when unit suite statement coverage
+# falls more than 1.0 percentage point below scripts/coverage-baseline.txt.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -33,7 +30,7 @@ ok="$(awk -v a="$actual" -v f="$floor" 'BEGIN { print (a + 0 >= f + 0) ? "yes" :
 
 if [ "$ok" != "yes" ]; then
 	echo "check-coverage: coverage $actual% is below the floor $floor% (baseline $baseline%, tolerance $TOLERANCE)" >&2
-	echo "check-coverage: add tests, or lower scripts/coverage-baseline.txt with a recorded reason (ADR 0033)" >&2
+	echo "check-coverage: add tests, or lower scripts/coverage-baseline.txt with a recorded reason" >&2
 	exit 1
 fi
 

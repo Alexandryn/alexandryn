@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Licence presence and consistency (audit 0016 #130, ADR 0002). The repo
-# must carry the verbatim AGPL-3.0-or-later text at LICENSE, and every
-# published package.json must declare the same SPDX identifier so tooling
-# and downstreams agree with the file.
+# Licence presence and consistency check. The repository must carry the
+# verbatim AGPL-3.0-or-later text at LICENSE, and every package.json must
+# declare the same SPDX identifier.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -26,7 +25,7 @@ for pkg in "$ROOT/package.json" "$ROOT/web/package.json" "$ROOT/electron/package
 		|| fail "$pkg does not declare \"license\": \"$SPDX\""
 done
 
-# audit 0016 #204: Automated dependency license gate for production npm packages.
+# Dependency license gate for production npm packages.
 # Fails if any production package uses copyleft licenses (GPL, AGPL, LGPL).
 if [ -f "$ROOT/package-lock.json" ] && command -v python3 >/dev/null 2>&1; then
 	python3 -c "

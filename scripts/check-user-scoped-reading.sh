@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Reading-authorization discipline check (backend-reading-api.md FR-9,
-# review 0050 / audit 0012-C1). Every handler serving data a user owns —
-# reading progress, bookmarks, highlights, preferences, export — MUST
+# Reading-authorization check: every handler serving data a user owns —
+# reading progress, bookmarks, highlights, preferences, export — must
 # resolve the authenticated user and active library and call the
 # user-and-library-scoped repository method (…AndUser / SaveForUser /
 # DeleteAndUser / FindByUserAndDevice), never a bare-id or bare-work
 # variant. The scoped method existing is not the control; the handler
-# calling it is (CLAUDE.md Reflex).
+# calling it is.
 #
-# Grep-based and heuristic, same interim spirit as
-# check-parameterized-queries.sh. It flags a bare call on one of the
-# reading-API deps fields in the reading/reader transport files.
+# Flags a bare call on one of the reading-API deps fields in the
+# reading/reader transport files.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -55,21 +53,20 @@ for f in "${FILES[@]}"; do
 	[ -f "$path" ] || continue
 	for pat in "${forbidden[@]}"; do
 		while IFS= read -r line; do
-			violations="${violations}${f}: bare (non-user-scoped) reading-repository call — use the …AndUser / SaveForUser / DeleteAndUser variant (backend-reading-api.md FR-9): ${line# }
+			violations="${violations}${f}: bare (non-user-scoped) reading-repository call — use the …AndUser / SaveForUser / DeleteAndUser variant: ${line# }
 "
 		done < <(grep -nE "$pat" "$path" || true)
 	done
 done
 
-# Catalog surface (audit 0016 #88, #133). GET /api/v1/library and
-# GET /api/v1/works/{id} serve holdings scoped to the active library.
-# The handlers MUST resolve it, and work_repository.go's QueryLibrary /
-# FindWorkDetail SQL MUST carry a library_id predicate — the exact seam
-# audit 0012's per-phase certification missed.
+# Catalog surface: GET /api/v1/library and GET /api/v1/works/{id} serve
+# holdings scoped to the active library. The handlers MUST resolve it, and
+# work_repository.go's QueryLibrary / FindWorkDetail SQL MUST carry a
+# library_id predicate.
 LIBRARY_HANDLER="$ROOT/internal/transport/http/library.go"
 if [ -f "$LIBRARY_HANDLER" ]; then
 	if ! grep -q 'ActiveLibraryFromContext' "$LIBRARY_HANDLER"; then
-		violations="${violations}library.go: catalog handlers do not resolve ActiveLibraryFromContext — GET /library and GET /works/{id} must be library-scoped (audit 0016 #88)
+		violations="${violations}library.go: catalog handlers do not resolve ActiveLibraryFromContext — GET /library and GET /works/{id} must be library-scoped
 "
 	fi
 fi
@@ -79,7 +76,7 @@ if [ -f "$WORK_REPO" ]; then
 	for fn in QueryLibrary FindWorkDetail; do
 		block=$(awk -v f="func (r *WorkRepository) $fn" 'index($0,f){flag=1} flag{print} flag && /^}/{exit}' "$WORK_REPO")
 		if [ -n "$block" ] && ! grep -qE 'library_id = \$' <<<"$block"; then
-			violations="${violations}work_repository.go: $fn has no 'library_id = \$N' predicate — cross-library holdings disclosure (audit 0016 #88)
+			violations="${violations}work_repository.go: $fn has no 'library_id = \$N' predicate — cross-library holdings disclosure
 "
 		fi
 	done

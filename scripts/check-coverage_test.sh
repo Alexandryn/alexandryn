@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fixture proof for check-coverage.sh (ADR 0033).
+# Fixture test for check-coverage.sh.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECKER="$SCRIPT_DIR/check-coverage.sh"
