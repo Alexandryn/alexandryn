@@ -1,6 +1,6 @@
 # Roadmap
 
-Nineteen phases, ordered by dependency rather than by excitement. Each one has
+Twenty phases, ordered by dependency rather than by excitement. Each one has
 its own directory with an objective, scope, risks, test strategy, security
 considerations, and exit criteria.
 
@@ -10,7 +10,7 @@ A phase closes when its exit criteria are met — not when the happy path works.
 
 **Detail decreases with distance — but "distance" means undecided
 dependencies, not a fixed phase number.** Phases 00–11 are now specified in
-full: each has approved specs, not an outline. Phases 12–17 and 99 are
+full: each has approved specs, not an outline. Phases 12–18 and 99 are
 still outlines, and say so at the top, because their dependencies (
 authentication, network exposure, the reader) haven't closed yet. Writing
 detailed requirements for phase 14 before phase 12/13 exist produces
@@ -45,6 +45,7 @@ for what's currently true.
 | [15](15-observability/)        | Observability        | Metrics, queue visibility, diagnostics, Activity                        | Closed — implementation, verification, and audit 0015 complete                            |
 | [16](16-security-hardening/)   | Security hardening   | Threat model consolidation, external-review readiness                   | Closed — whole-app adversarial sweep, audit 0016, 219 issues filed and resolved, maintainer approval 2026-09-11 |
 | [17](17-accessibility-and-qa/) | Accessibility and QA | Conformance, the full test matrix, regression suite                     | In progress — Gate 0 scope drafted 2026-09-11, awaiting maintainer approval |
+| [18](18-codebase-hygiene/)     | Codebase hygiene     | Anti-AI cleanup, comment pruning, self-explaining code, release hygiene | Not started                                                                               |
 | [99](99-release/)              | Release              | Packaging, versioning, release process, `docs`/`website` repos stood up | Not started                                                                               |
 
 ## Dependency graph
@@ -76,7 +77,8 @@ graph TD
     P14 --> P16[16 Security hardening]
     P15 --> P16
     P16 --> P17[17 Accessibility and QA]
-    P17 --> P99[99 Release]
+    P17 --> P18[18 Codebase hygiene]
+    P18 --> P99[99 Release]
 ```
 
 ## Why the order is what it is
@@ -110,7 +112,7 @@ dangerous — it deserves a real corpus of files to defend against.
 
 ## Deviations from the original plan
 
-The master brief proposed a phase list. This one differs in six places, each
+The master brief proposed a phase list. This one differs in seven places, each
 deliberately:
 
 | Change                                                              | Reason                                                                                                                                         |
@@ -121,6 +123,7 @@ deliberately:
 | Async jobs became its own phase, placed at first need               | Avoids assuming RabbitMQ is warranted before anything needs it.                                                                                |
 | "Open Library" renamed to "Metadata"                                | A phase named after a vendor becomes a phase coupled to that vendor.                                                                           |
 | Accessibility and QA consolidation added as phase 17                | Per-phase accessibility work still leaves conformance testing and the cross-device matrix as real, separate work.                              |
+| Codebase hygiene and release hygiene added as phase 18              | Strips conversational AI residue, phase markers, and redundant comments; simplifies code without behavior changes before public release.        |
 
 ## Working a phase
 
