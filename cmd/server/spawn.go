@@ -16,34 +16,19 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
-// spawnState carries FR-1 step 5's spawn-once, wait-many state across
-// waitForPostgres's own bounded retry within a single run() invocation
-// (T25-D3, refined during implementation from
-// tasks/plan-t25-persistence-e2e.md's original postmaster.pid-reading
-// proposal: reading Postgres's own lock file from outside pg_ctl would
-// need distinguishing a lock-conflict process exit from a genuine
-// corruption exit, which this codebase's CommandRunner — an opaque
-// error, no exit-code/stderr detail — can't do without real empirical
-// testing against a real postgres binary, not available in this
-// environment). In-memory state closed over by the same long-lived
-// closure waitForPostgres calls repeatedly needs no such distinction:
-// the first call resolves the data directory, initializes it if needed,
-// picks a port, and spawns; every later call within the same run()
-// invocation reuses that port and only re-checks connectivity, never
-// re-runs initdb or re-spawns. A restart of the whole Alexandryn process
-// is a different scenario, already covered by
-// architecture-persistence.md's own named failure mode (a stale port
-// bind failing cleanly on next start) — out of this plan's scope.
+// spawnState tracks supervisor state across retry attempts within a single
+// run() invocation. The first call resolves the data directory, initializes it
+// if needed, selects a port, and spawns the PostgreSQL process. Subsequent
+// attempts within the same run() invocation reuse the existing port and verify
+// connectivity without re-running initdb or re-spawning.
 type spawnState struct {
 	dataDir string
 	started bool
 	port    int
 }
 
-// supervisorDeps bundles every dependency spawnPostgresOnce needs,
-// injected so a test can replace any one of them — most commonly just
-// runCommand, for the production-spawn-failure proof — without a real
-// postgres/initdb binary, a real filesystem, or a real network.
+// supervisorDeps bundles dependencies needed by spawnPostgresOnce,
+// injected to allow testing without requiring real PostgreSQL binaries.
 type supervisorDeps struct {
 	userConfigDir  func() (string, error)
 	lookup         supervisor.LookupFunc
@@ -55,8 +40,7 @@ type supervisorDeps struct {
 	attemptTimeout time.Duration
 }
 
-// productionSupervisorDeps is supervisorDeps' real implementation, every
-// field a thin wrapper around a real OS interaction.
+// productionSupervisorDeps returns supervisorDeps bound to real OS calls.
 func productionSupervisorDeps() supervisorDeps {
 	return supervisorDeps{
 		userConfigDir: os.UserConfigDir,
@@ -72,10 +56,8 @@ func productionSupervisorDeps() supervisorDeps {
 	}
 }
 
-// newSpawnPostgres returns FR-1 step 5's spawn function for
-// postgres.SelectStartupPath, closing over one spawnState for the
-// lifetime of the returned closure — constructed once (FR-2), not
-// package-level state.
+// newSpawnPostgres returns a spawn function for postgres.SelectStartupPath,
+// closing over one spawnState for the lifetime of the returned closure.
 func newSpawnPostgres(deps supervisorDeps) func(ctx context.Context) error {
 	state := &spawnState{}
 	return func(ctx context.Context) error {
@@ -83,11 +65,9 @@ func newSpawnPostgres(deps supervisorDeps) func(ctx context.Context) error {
 	}
 }
 
-// newObtainPostgres is FR-1 step 5's real Linux/Windows implementation:
-// spawn a bundled instance when DATABASE_URL is absent
-// (architecture-persistence.md FR-1/FR-8/FR-9), or connect directly when
-// present (backend-persistence.md FR-5) — exactly one of the two, chosen
-// by postgres.SelectStartupPath.
+// newObtainPostgres provides the Linux/Windows startup implementation:
+// spawn a bundled instance when DATABASE_URL is absent, or connect directly
+// when present, selected by postgres.SelectStartupPath.
 func newObtainPostgres() func(ctx context.Context, cfg *config.Config) error {
 	spawn := newSpawnPostgres(productionSupervisorDeps())
 	return func(ctx context.Context, cfg *config.Config) error {
@@ -95,23 +75,14 @@ func newObtainPostgres() func(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-// postgresSpawnAttemptTimeout bounds one spawnPostgresOnce call — the
-// same "give each retry-loop attempt its own internal bound, since the
-// outer ctx (run()'s own lifetime, canceled only on shutdown) has none"
-// pattern connectPostgresWithTimeout already establishes for the connect
-// path. Without this, a Postgres that starts but never becomes ready
-// would block a single retry attempt (and WaitForConnection's own loop
-// inside it) forever, never returning control to waitForPostgres's outer
-// loop to log progress or exhaust its attempt budget. Generous: covers a
-// from-scratch initdb plus PostgreSQL's own startup on a slow disk, not
-// just steady-state connectivity.
+// postgresSpawnAttemptTimeout bounds a single spawnPostgresOnce attempt.
+// Covers initdb execution and initial PostgreSQL process startup.
 const postgresSpawnAttemptTimeout = 30 * time.Second
 
-// spawnPostgresOnce performs FR-1 step 5's spawn path: locate binaries,
-// initialize the data directory if absent, pick a port, spawn with
-// platform orphan-prevention, and wait for it to accept connections. A
-// second call against the same state (state.started) skips straight to
-// the connectivity wait (T25-D3).
+// spawnPostgresOnce locates binaries, initializes the data directory if absent,
+// selects a port, spawns PostgreSQL with orphan prevention, and waits for
+// it to accept connections. Subsequent calls against an already-started state
+// skip directly to the connectivity check.
 func spawnPostgresOnce(ctx context.Context, state *spawnState, deps supervisorDeps) error {
 	attemptCtx, cancel := context.WithTimeout(ctx, deps.attemptTimeout)
 	defer cancel()

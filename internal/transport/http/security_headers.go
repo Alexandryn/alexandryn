@@ -5,17 +5,15 @@ import (
 	"strings"
 )
 
-// appCSP is the Content-Security-Policy for the app document
-// (backend-network-transport.md FR-5a, ADR 0028 §9). This is the OUTER
-// SPA's policy — the phase-11 reader iframe keeps its own stricter CSP
-// (ADR 0024), untouched.
+// appCSP is the Content-Security-Policy for the app document.
+// This is the OUTER
+// SPA's policy — the reader iframe keeps its own stricter CSP, untouched.
 //
 //   - default-src 'self' — everything the SPA loads is same-origin.
 //   - no 'unsafe-inline' on script-src: the Vite build emits no inline
 //     script.
 //   - style-src allows 'unsafe-inline' for dynamic runtime style attributes
-//     and elements inserted by React/Radix UI. The residual risk and rationale
-//     are documented in ADR 0035 (audit 0016 #191).
+//     and elements inserted by React/Radix UI.
 //   - connect-src 'self' — the API is same-origin; a reverse-proxy
 //     deployment on another hostname adds it via CORS, not here.
 //   - frame-ancestors 'none' + X-Frame-Options: DENY — belt and braces
@@ -42,7 +40,7 @@ const permissionsPolicy = "accelerometer=(), autoplay=(), camera=(), " +
 
 // SecurityHeaders sets the app-document security headers on EVERY response
 // on every bind — plaintext included, since clickjacking and
-// content-sniffing do not require TLS (FR-5a). It runs just inside logging
+// content-sniffing do not require TLS. It runs just inside logging
 // so it covers the SPA HTML, the SPA fallback, every /api/v1 response
 // (success and error), and the rate-limiter's 429 / CORS 403. The one
 // uncovered path is a request the limits layer rejects before this runs
@@ -63,7 +61,7 @@ func SecurityHeaders() Middleware {
 }
 
 // HSTS adds Strict-Transport-Security only when the server is actually
-// serving TLS in-process (FR-5) — a public bind, or a private bind with an
+// serving TLS in-process — a public bind, or a private bind with an
 // opt-in certificate. It MUST NOT be sent on a plaintext bind: HSTS
 // asserted over plaintext, or on a bare LAN IP, is pointless and
 // occasionally harmful. The decision is made once at startup from the

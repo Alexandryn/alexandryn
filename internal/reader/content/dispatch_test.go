@@ -36,7 +36,7 @@ func TestClassify(t *testing.T) {
 	if k, ct, err := content.Classify("images/a.png", pngBytes); err != nil || k != content.KindBinary || ct != "image/png" {
 		t.Fatalf("png: kind=%v ct=%q err=%v", k, ct, err)
 	}
-	// Standalone SVG is refused (FR-5), not sanitised-and-served.
+	// Standalone SVG is refused, not sanitised-and-served.
 	if _, _, err := content.Classify("images/cover.svg", []byte("<svg xmlns='http://www.w3.org/2000/svg'></svg>")); domain.CategoryOf(err) != domain.InvalidInput {
 		t.Fatalf("svg should be InvalidInput, got %v", err)
 	}

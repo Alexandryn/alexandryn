@@ -16,10 +16,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// backend-persistence.md FR-2: all 11 aggregate tables (normalized into
-// more physical tables where an aggregate owns a collection) plus the
-// outbox table (ADR 0021) exist after migrating to head.
-func TestSchema_AllPhase02TablesExistAfterMigration(t *testing.T) {
+// All aggregate tables plus the outbox table exist after migrating to head.
+func TestSchema_AllAggregateTablesExistAfterMigration(t *testing.T) {
 	db := testDB(t)
 	resetSchema(t, db)
 	if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL")); err != nil {
@@ -29,7 +27,7 @@ func TestSchema_AllPhase02TablesExistAfterMigration(t *testing.T) {
 	// Every query is a complete, static string literal — no dynamic
 	// identifier building, matching exactly how every real repository
 	// method's SQL looks (a table name is always compile-time-known in
-	// this codebase, never computed; backend-persistence.md FR-3).
+	// this codebase, never computed).
 	queries := []string{
 		"SELECT 1 FROM works LIMIT 1",
 		"SELECT 1 FROM work_authors LIMIT 1",
@@ -58,7 +56,7 @@ func TestSchema_AllPhase02TablesExistAfterMigration(t *testing.T) {
 	}
 }
 
-// domain-library.md FR-7: at most one LibraryEntry per Edition — proven
+// At most one LibraryEntry per Edition — proven
 // against the real UNIQUE constraint, not just application logic (R6's
 // own concurrency proof depends on this constraint actually existing).
 func TestSchema_LibraryEntriesUniqueByEdition(t *testing.T) {
@@ -73,7 +71,7 @@ func TestSchema_LibraryEntriesUniqueByEdition(t *testing.T) {
 	assertUniqueViolation(t, err)
 }
 
-// domain-source.md FR-2: unique by (Source, Edition, Format).
+// Unique by (Source, Edition, Format).
 func TestSchema_SourceOfferingsUniqueBySourceEditionFormat(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
@@ -96,7 +94,7 @@ func TestSchema_SourceOfferingsUniqueBySourceEditionFormat(t *testing.T) {
 	}
 }
 
-// backend-source-adapter.md FR-1/FR-6/FR-13: migration 00005 adds
+// Migration 00005 adds
 // source config, encrypted-credential, and health-state columns to the
 // phase-02 `sources` table.
 func TestSchema_Phase08SourceColumnsExist(t *testing.T) {
@@ -127,7 +125,7 @@ func TestSchema_Phase08SourceColumnsExist(t *testing.T) {
 	}
 }
 
-// domain-source.md FR-1: the schema does not constrain `kind` — an
+// The schema does not constrain `kind` — an
 // empty string (pre-phase-08 rows) and any other string are both
 // accepted. The closed local-folder/opds vocabulary lives in the HTTP
 // handler, not here.
@@ -138,7 +136,7 @@ func TestSchema_SourceKindNotConstrained(t *testing.T) {
 	mustExecPool(t, pool, "INSERT INTO sources (id, label, can_list, can_search, can_download, kind) VALUES ('s-legacy', 'L', true, false, true, 'kind-a')")
 }
 
-// FR-6: health_detail is a closed vocabulary; NULL is legal.
+// health_detail is a closed vocabulary; NULL is legal.
 func TestSchema_SourceHealthDetailConstrained(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
@@ -148,7 +146,7 @@ func TestSchema_SourceHealthDetailConstrained(t *testing.T) {
 	assertCheckViolation(t, err)
 }
 
-// FR-1: a credential belongs to an opds source only, and its two BYTEA
+// A credential belongs to an opds source only, and its two BYTEA
 // columns are written and cleared as a pair.
 func TestSchema_SourceCredentialConstraints(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -163,7 +161,7 @@ func TestSchema_SourceCredentialConstraints(t *testing.T) {
 	assertCheckViolation(t, err)
 }
 
-// backend-persistence.md acceptance criterion: a down migration is
+// Verifies that a down migration is
 // reversible. Migrate to head, roll 00005 back via goose, and confirm
 // the phase-02 `sources` shape is restored (the new column is gone) and
 // then re-applies cleanly.
@@ -203,7 +201,7 @@ func TestSchema_Phase08MigrationIsReversible(t *testing.T) {
 	}
 }
 
-// domain-reading.md FR-1: at most one ReadingProgress per Work.
+// At most one ReadingProgress per Work.
 func TestSchema_ReadingProgressUniqueByWork(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
@@ -215,11 +213,9 @@ func TestSchema_ReadingProgressUniqueByWork(t *testing.T) {
 	assertUniqueViolation(t, err)
 }
 
-// Migration 00008 (phase 11): reading_progress.epoch and
-// bookmarks/highlights.created_at exist, with their DEFAULT applied to
-// rows inserted without them (domain-reading.md FR-6 as amended;
-// reading-data-export.md FR-4).
-func TestSchema_Phase11ReaderColumns(t *testing.T) {
+// Migration 00008: reading_progress.epoch and bookmarks/highlights.created_at
+// exist, with their DEFAULT applied to rows inserted without them.
+func TestSchema_ReaderColumns(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()
 
@@ -249,7 +245,7 @@ func TestSchema_Phase11ReaderColumns(t *testing.T) {
 	}
 }
 
-// domain-bibliographic.md FR-8: an Edition cannot exist without a real
+// An Edition cannot exist without a real
 // parent Work — the FK constraint is this table's own enforcement of
 // the same guarantee the Go type gives structurally.
 func TestSchema_EditionsRequireARealWork(t *testing.T) {
@@ -266,9 +262,8 @@ func TestSchema_EditionsRequireARealWork(t *testing.T) {
 	}
 }
 
-// backend-persistence.md's own required acceptance criterion: a
-// migration applied to a database with existing rows succeeds and
-// leaves those rows intact. Migrating twice (the second call has
+// Verifies that a migration applied to a database with existing rows
+// succeeds and leaves those rows intact. Migrating twice (the second call has
 // nothing pending) with real data seeded between the two calls proves
 // the mechanism startup relies on every time the server starts.
 func TestSchema_ReMigratingLeavesExistingRowsIntact(t *testing.T) {

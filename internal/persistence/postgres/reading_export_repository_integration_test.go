@@ -11,9 +11,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// TestReadingExportRepository_ScopedToUser is the AUDIT-0012-C1
-// close-gate integration test for GET /api/v1/reading/export: the bulk
-// read returns only the calling user's rows, never the instance's.
+// TestReadingExportRepository_ScopedToUser verifies that reading export
+// bulk read returns only the calling user's rows.
 func TestReadingExportRepository_ScopedToUser(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

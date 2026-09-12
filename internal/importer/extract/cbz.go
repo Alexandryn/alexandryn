@@ -24,7 +24,7 @@ type comicInfoXML struct {
 	Notes     string   `xml:"Notes"`
 }
 
-// ExtractCBZ extracts metadata and cover from a CBZ comic archive (backend-file-extractors.md FR-10).
+// ExtractCBZ extracts metadata and cover from a CBZ comic archive.
 func ExtractCBZ(ctx context.Context, f *os.File) (meta ExtractedMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -79,7 +79,7 @@ func ExtractCBZ(ctx context.Context, f *os.File) (meta ExtractedMetadata, err er
 		if strings.HasPrefix(name, "__MACOSX/") || strings.HasPrefix(filepath.Base(name), ".") {
 			continue
 		}
-		// Non-UTF-8 entry names are excluded from the page list (FR-10, review 0049 finding 3)
+		// Non-UTF-8 entry names are excluded from the page list
 		if !utf8.ValidString(name) {
 			continue
 		}

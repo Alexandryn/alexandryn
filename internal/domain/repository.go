@@ -5,18 +5,12 @@ import (
 	"time"
 )
 
-// WorkRepository and AuthorRepository are declared by internal/domain,
-
-// satisfied by internal/persistence/postgres (phase 03's T24) — the
-// pattern ADR 0020 requires: a domain service performs IO through an
-// interface the domain itself owns, never a persistence-specific type
-// (go-backend-conventions/SKILL.md).
+// WorkRepository and AuthorRepository are declared by internal/domain
+// and satisfied by persistence implementations — a domain service performs IO
+// through an interface the domain itself owns, never a persistence-specific type.
 //
-// Both are minimal interfaces (E4, tasks/plan-phase02-domain.md): only
-// what WorkMergeService/AuthorMergeService/WorkContainmentService need to
-// enforce their own invariants, not backend-persistence.md FR-2's full
-// CRUD shape — phase 03's T24 will need a broader interface; reconciling
-// the two is that task's job, not this one's.
+// Both are minimal interfaces containing what domain services need to
+// enforce their own invariants.
 //
 // FindByID returns a *Error with category NotFound when id doesn't
 // exist — callers rely on CategoryOf to distinguish "not found" from any
@@ -27,22 +21,19 @@ type WorkRepository interface {
 	// FindMergedInto returns every Work whose MergedInto directly equals
 	// canonical (one hop, not transitive) — the primitive
 	// WorkContainmentService needs to compute the merge-resolved
-	// containment union FR-9's own amendment requires
-	// (domain-bibliographic.md: "a read of a canonical Work's ...
-	// containment references MUST return the union across that Work and
-	// every Work merged into it, transitively").
+	// containment union across that Work and every Work merged into it,
+	// transitively.
 	FindMergedInto(ctx context.Context, canonical WorkID) ([]*Work, error)
 
 	Save(ctx context.Context, w *Work) error
 
-	// QueryLibrary returns a cursor-paginated, filtered, sorted page of works
-	// (backend-library-api.md FR-1 through FR-4, FR-9).
+	// QueryLibrary returns a cursor-paginated, filtered, sorted page of works.
 	QueryLibrary(ctx context.Context, q LibraryQuery) (*LibraryPage, error)
 
 	// FindWorkDetail returns one Work's detail including owned editions and
-	// collection memberships (backend-library-api.md FR-5), scoped to
-	// libraryID: only that library's editions/memberships, and NotFound
-	// when the work is in no form present in that library (audit 0016 #88).
+	// collection memberships, scoped to libraryID: only that library's
+	// editions/memberships, and NotFound when the work is in no form present
+	// in that library.
 	FindWorkDetail(ctx context.Context, id WorkID, libraryID LibraryID) (*WorkDetail, error)
 }
 
@@ -51,14 +42,9 @@ type AuthorRepository interface {
 	Save(ctx context.Context, a *Author) error
 }
 
-// EditionRepository. FindByID and FindByWork were phase 02's own minimal
-// slice (E4) — FindByID backs LibraryService's Edition-existence check
-// (ADR 0020's own named example); FindByWork is what IsInLibrary needs
-// to walk a merge group's Editions (domain-library.md FR-2's
-// 2026-08-20 amendment, review 0048 finding 3). Save was added by T24
-// (tasks/plan-t24-repositories.md, T24-D2) — no phase 02 domain service
-// needed it, but real persistence does, and the interface belongs in
-// this package regardless of who's about to implement it.
+// EditionRepository provides access to persisted Editions. FindByID backs
+// LibraryService's Edition-existence check; FindByWork is what IsInLibrary
+// needs to walk a merge group's Editions.
 type EditionRepository interface {
 	FindByID(ctx context.Context, id EditionID) (*Edition, error)
 	FindByWork(ctx context.Context, workID WorkID) ([]*Edition, error)
@@ -66,15 +52,14 @@ type EditionRepository interface {
 }
 
 // LibraryEntryRepository backs LibraryService's at-most-one-per-Edition
-// check (FR-7) and IsInLibrary's existence check.
+// check and IsInLibrary's existence check.
 type LibraryEntryRepository interface {
 	// FindByEdition returns a *Error with category NotFound when no
 	// entry exists for editionID — never a sentinel error value.
 	FindByEdition(ctx context.Context, editionID EditionID) (*LibraryEntry, error)
 	// EditionInLibrary reports whether editionID is owned in libraryID.
 	// The reader-content path gates on this so a member of library X
-	// cannot stream the bytes of an edition owned only in library Y
-	// (AUDIT-0012-C1).
+	// cannot stream the bytes of an edition owned only in library Y.
 	EditionInLibrary(ctx context.Context, editionID EditionID, libraryID LibraryID) (bool, error)
 	// WorkInLibrary reports whether libraryID owns at least one edition of
 	// workID — the Work-keyed equivalent of EditionInLibrary, for gating
@@ -87,34 +72,31 @@ type LibraryEntryRepository interface {
 // CollectionRepository backs CollectionService's Create/Delete and its
 // member-mutation round-trips. Every method is scoped to one library:
 // collections belong to the Alexandryn library they were created in, and
-// a caller in another library must not see or mutate them (#87,
-// constitution §3/§6). A collection id that exists in a different library
-// is reported as NotFound — no cross-library existence oracle.
+// a caller in another library must not see or mutate them (constitution §3/§6).
+// A collection id that exists in a different library is reported as
+// NotFound — no cross-library existence oracle.
 type CollectionRepository interface {
 	FindByID(ctx context.Context, libraryID LibraryID, id CollectionID) (*Collection, error)
 	Save(ctx context.Context, libraryID LibraryID, c *Collection) error
 	Delete(ctx context.Context, libraryID LibraryID, id CollectionID) error
 
-	// FindAll returns every collection with its work count (backend-library-api.md FR-6).
+	// FindAll returns every collection with its work count.
 	FindAll(ctx context.Context, libraryID LibraryID) ([]*CollectionSummary, error)
 
-	// FindDetail returns one collection and its member Works (backend-library-api.md FR-6).
+	// FindDetail returns one collection and its member Works.
 	FindDetail(ctx context.Context, libraryID LibraryID, id CollectionID) (*CollectionDetail, error)
 
-	// AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
+	// AddMember adds a Work to a Collection idempotently.
 	AddMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID, addedAt time.Time) error
 
-	// RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
+	// RemoveMember removes a Work's membership from a Collection.
 	RemoveMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID) error
 
-	// Rename renames a Collection (backend-library-api.md FR-6).
+	// Rename renames a Collection.
 	Rename(ctx context.Context, libraryID LibraryID, id CollectionID, name string) error
 }
 
-// SourceRepository and SourceOfferingRepository back SourceRemovalService
-// (domain-source.md FR-6). Save on both was added by T24 (T24-D2) — phase
-// 02 never needed to persist a newly-constructed Source or SourceOffering,
-// only to read and remove them.
+// SourceRepository and SourceOfferingRepository back SourceRemovalService.
 type SourceRepository interface {
 	FindByID(ctx context.Context, id SourceID) (*Source, error)
 	Save(ctx context.Context, s *Source) error
@@ -126,32 +108,27 @@ type SourceOfferingRepository interface {
 	FindBySource(ctx context.Context, sourceID SourceID) ([]*SourceOffering, error)
 	// FindByEdition returns every SourceOffering for editionID, most
 	// recently observed first — the fallback order the reader's content
-	// path tries sources in (backend-reader-content.md FR-2). An empty
-	// slice (never a NotFound error) when the Edition has no offerings.
+	// path tries sources in. An empty slice (never a NotFound error)
+	// when the Edition has no offerings.
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*SourceOffering, error)
 	Save(ctx context.Context, o *SourceOffering) error
 	Delete(ctx context.Context, id SourceOfferingID) error
 }
 
 // ReadingProgressRepository, BookmarkRepository, HighlightRepository, and
-// ReadingPreferencesRepository are new interfaces added by T24 (T24-D2) —
-// domain-reading.md's four persisted aggregates had no repository
-// interface at all before this, since P20 (tasks/plan-phase02-domain.md)
-// only needed EditionRepository, nothing needed to read or write these
-// four directly.
+// ReadingPreferencesRepository manage reading state aggregates.
 type ReadingProgressRepository interface {
 	// FindByWork returns a *Error with category NotFound when no
-	// ReadingProgress exists for workID yet — FR-1's singleton-per-Work
+	// ReadingProgress exists for workID yet — singleton-per-Work
 	// invariant means this is the only lookup shape this type needs.
 	FindByWork(ctx context.Context, workID WorkID) (*ReadingProgress, error)
 	// FindByWorkForUpdate is FindByWork with a row lock (SELECT ... FOR
-	// UPDATE), for the reconcile-and-persist transaction
-	// (backend-reading-api.md FR-2) — the read and the write must be
-	// atomic or two concurrent reports lose an update. NotFound when
-	// none exists yet (the caller then inserts the first canonical row,
-	// racing on the work_id UNIQUE constraint).
+	// UPDATE), for the reconcile-and-persist transaction — the read and
+	// the write must be atomic or two concurrent reports lose an update.
+	// NotFound when none exists yet (the caller then inserts the first
+	// canonical row, racing on the work_id UNIQUE constraint).
 	FindByWorkForUpdate(ctx context.Context, workID WorkID) (*ReadingProgress, error)
-	// FindByWorkAndUser supports Phase 12 user- and library-scoped reading progress.
+	// FindByWorkAndUser supports user- and library-scoped reading progress.
 	FindByWorkAndUser(ctx context.Context, userID UserID, libraryID LibraryID, workID WorkID) (*ReadingProgress, error)
 	FindByWorkAndUserForUpdate(ctx context.Context, userID UserID, libraryID LibraryID, workID WorkID) (*ReadingProgress, error)
 	Save(ctx context.Context, p *ReadingProgress) error
@@ -162,7 +139,7 @@ type BookmarkRepository interface {
 	FindByID(ctx context.Context, id BookmarkID) (*Bookmark, error)
 	// FindByIDAndUser returns a *Error with category NotFound when the
 	// bookmark does not exist OR belongs to another user — a caller must
-	// not be able to tell the two apart (AUDIT-0012-C1).
+	// not be able to tell the two apart.
 	FindByIDAndUser(ctx context.Context, userID UserID, id BookmarkID) (*Bookmark, error)
 	FindByEdition(ctx context.Context, editionID EditionID) ([]*Bookmark, error)
 	FindByEditionAndUser(ctx context.Context, userID UserID, libraryID LibraryID, editionID EditionID) ([]*Bookmark, error)
@@ -184,7 +161,7 @@ type HighlightRepository interface {
 	// UpdateNoteCategoryAndUser updates only the note and category of a
 	// highlight the user owns, leaving edition_id and library_id
 	// untouched — a PATCH must not relocate the highlight into whatever
-	// library the request's active-library header names (PR #78 review).
+	// library the request's active-library header names.
 	// A foreign or missing id is a NotFound.
 	UpdateNoteCategoryAndUser(ctx context.Context, userID UserID, id HighlightID, note, category string) error
 	Delete(ctx context.Context, id HighlightID) error
@@ -193,17 +170,16 @@ type HighlightRepository interface {
 
 type ReadingPreferencesRepository interface {
 	// FindByDevice returns a *Error with category NotFound when no
-	// ReadingPreferences exists for deviceID yet — FR-5's "a new
-	// DeviceID's first ReadingPreferences MUST start from system
-	// defaults" is the caller's job (construct via NewReadingPreferences
-	// on a NotFound), not this repository's.
+	// ReadingPreferences exists for deviceID yet. Initializing default
+	// preferences is the caller's responsibility via NewReadingPreferences
+	// on a NotFound.
 	FindByDevice(ctx context.Context, deviceID DeviceID) (*ReadingPreferences, error)
 	FindByUserAndDevice(ctx context.Context, userID UserID, deviceID DeviceID) (*ReadingPreferences, error)
 	Save(ctx context.Context, p *ReadingPreferences) error
 	SaveForUser(ctx context.Context, userID UserID, p *ReadingPreferences) error
 }
 
-// Phase 12 Authentication & Tenancy Repositories
+// Authentication & Tenancy Repositories
 
 type UserRepository interface {
 	FindByID(ctx context.Context, id UserID) (*User, error)
@@ -259,7 +235,7 @@ type LibraryInvitationRepository interface {
 	Delete(ctx context.Context, id LibraryInvitationID) error
 }
 
-// Phase 13 Network Access & Device Pairing Repositories
+// Network Access & Device Pairing Repositories
 
 type PairingSessionRepository interface {
 	FindByID(ctx context.Context, id PairingSessionID) (*PairingSession, error)
@@ -293,14 +269,13 @@ type EnrolmentGrantJTIRepository interface {
 	// was the one that spent it. A second call with the same jti returns
 	// (false, nil). This is the single-use gate for an enrolment grant:
 	// a separate Exists-then-Record pair is a TOCTOU race under concurrent
-	// logins with the same grant (#250).
+	// logins with the same grant.
 	Claim(ctx context.Context, jti string, spentAt time.Time) (bool, error)
 }
 
 // MFATicketJTIRepository is the single-use gate for an MFA ticket. A
 // ticket carries a jti (auth.SignMFATicket); TOTPVerifyHandler claims it
-// on presentation so a captured ticket cannot be replayed within its TTL
-// (#189).
+// on presentation so a captured ticket cannot be replayed within its TTL.
 type MFATicketJTIRepository interface {
 	Claim(ctx context.Context, jti string, spentAt time.Time) (bool, error)
 }

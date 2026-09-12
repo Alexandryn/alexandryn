@@ -10,7 +10,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// DiscoverResult holds summary metrics for an import discovery run (backend-import-pipeline.md FR-1).
+// DiscoverResult holds summary metrics for an import discovery run.
 type DiscoverResult struct {
 	DiscoveredCount int      `json:"discoveredCount"`
 	SkippedCount    int      `json:"skippedCount"`
@@ -32,7 +32,7 @@ type JobEnqueuer interface {
 	EnqueueImportJob(ctx context.Context, payload ImportJobPayload) (string, error)
 }
 
-// DiscoveryCoordinator discovers source files, deduplicates against candidates/offerings, and enqueues jobs (FR-1).
+// DiscoveryCoordinator discovers source files, deduplicates against candidates/offerings, and enqueues jobs.
 type DiscoveryCoordinator struct {
 	checker  SourceChecker
 	lister   SourceLister
@@ -58,7 +58,7 @@ func NewDiscoveryCoordinator(
 	}
 }
 
-// Discover enumerates a source's files, checks deduplication, and creates queued candidate records and jobs (FR-1).
+// Discover enumerates a source's files, checks deduplication, and creates queued candidate records and jobs.
 func (c *DiscoveryCoordinator) Discover(ctx context.Context, sourceID string, now time.Time) (DiscoverResult, error) {
 	src, err := c.checker.GetSource(ctx, sourceID)
 	if err != nil {

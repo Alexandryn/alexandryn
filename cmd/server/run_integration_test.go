@@ -21,16 +21,11 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// T20's Integration layer cases that need a real PostgreSQL: cold start
-// to Ready, and the partial-migration-restart-detection path
-// (backend-persistence.md FR-7's territory, exercised here through the
-// full cmd/server startup sequence rather than the migration runner in
-// isolation). Follows internal/persistence/postgres/migrate_integration_test.go's
-// own TEST_DATABASE_URL/TestMain/resetSchema pattern.
+// Integration tests that require a real PostgreSQL instance: cold start
+// to Ready and partial migration restart detection, exercised through
+// the full server startup sequence.
 
-// TestMain gives this package its own isolated database
-// (testutil.WithPackageDatabase, backend-test-harness.md FR-3 Variant B,
-// T26-6) before any test in this file runs.
+// TestMain provisions an isolated database for this test package.
 func TestMain(m *testing.M) {
 	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, testutil.WithPackageDatabase("cmdserver", os.Getenv, os.Setenv, os.Stderr, m.Run), os.Stderr))
 }
@@ -66,15 +61,9 @@ func integrationConfig(dsn string) *config.Config {
 	}
 }
 
-// Cold start to Ready against a real, empty database — phase 03's own
-// exit criterion: migrations run, the pool connects, /readyz reaches 200
-// over real HTTP, driven through the real production obtainPostgres
-// (connect path, since DatabaseURL is set) and the real Migrate/NewPool.
-// Also Checkpoint R-E's own criterion (tasks/plan-t24-repositories.md,
-// R10): by the time the process reaches Ready, real repository
-// implementations — not stubs — have been constructed against the real
-// pool, proven here by capturing what newRepositories actually built and
-// asserting every field is populated.
+// Cold start to Ready against a real, empty database: migrations run,
+// the pool connects, /readyz reaches 200 over HTTP, and repository
+// implementations are constructed against the real connection pool.
 func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	resetSchema(t, testDB(t))
@@ -129,10 +118,7 @@ func TestIntegration_ColdStartToReadyAgainstRealPostgres(t *testing.T) {
 }
 
 // A data directory holding a migration applied partway: run() must exit
-// non-zero at the migrate step, distinct from "unreachable," and never
-// reach step 6 (pool construction) — backend-persistence.md FR-7's
-// restart-detection behavior, proven through the full startup sequence
-// rather than the migration runner in isolation.
+// non-zero at the migrate step and never reach pool construction.
 func TestIntegration_PartialMigrationStopsBeforePool(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	resetSchema(t, testDB(t))
@@ -189,10 +175,8 @@ func TestIntegration_PartialMigrationStopsBeforePool(t *testing.T) {
 	}
 }
 
-// assertRepositoriesConstructed proves Checkpoint R-E's own criterion:
-// every field newRepositories sets is populated, not a nil interface
-// left over from a stub — the R10 replacement for the T18-era TODO(D1)
-// comment that used to leave repository construction unimplemented.
+// assertRepositoriesConstructed verifies that every repository field
+// set by newRepositories is populated.
 func assertRepositoriesConstructed(t *testing.T, repos *repositories) {
 	t.Helper()
 	if repos == nil {
@@ -233,15 +217,8 @@ func assertRepositoriesConstructed(t *testing.T, repos *repositories) {
 	}
 }
 
-// backend-persistence.md FR-6 Observability: migration success and
-// migration failure each produce a captured log line at the level
-// backend-errors-and-logging.md FR-9 defines (info for success, error
-// for failure), and the failure line is distinguishable from an earlier,
-// separate connection-refused line from the *connect* step (FR-5) by a
-// field naming "migration" specifically. Proven here against a real
-// Postgres and a real migration outcome, not a fake — a SpyHandler
-// swapped in for quietLogger captures the actual structured records
-// cmd/server/run.go's own existing logging already produces.
+// Migration success and failure logging: verifies that migration outcomes
+// produce structured log lines distinguishable from connectivity failures.
 
 // spyLogger is quietLogger's own shape, but backed by a
 // testutil.SpyHandler so a test can inspect what was actually logged
@@ -394,9 +371,8 @@ func writeMigration(t *testing.T, dir, name, upSQL string) {
 	}
 }
 
-// audit 0016 #295: poolStatsProvider must report the live pool's numbers,
-// not the zeroed default the diagnostics endpoint falls back to when no
-// provider is wired.
+// poolStatsProvider must report live pool statistics to the diagnostics endpoint,
+// not zeroed defaults.
 func TestIntegration_PoolStatsProviderReportsLivePool(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	resetSchema(t, testDB(t))

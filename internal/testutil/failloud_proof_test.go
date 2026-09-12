@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-// FR-2 fail-loud-not-skip, for real (backend-test-harness.md): `go test
-// -tags=integration ./...` is invoked as a real subprocess against a
-// fixture package that uses testutil.IntegrationTestMain exactly as a
+// Verifies fail-loud gate behavior when TEST_DATABASE_URL is missing:
+// `go test -tags=integration ./...` is invoked as a real subprocess against
+// a fixture package that uses testutil.IntegrationTestMain exactly as a
 // real integration package will, with TEST_DATABASE_URL unset and,
 // separately, set to an empty string. Both must fail the run and name
 // the missing variable — not silently skip. To distinguish a real
@@ -26,11 +26,10 @@ import (
 // The fixture lives inside this module (underscore-prefixed, so `go
 // build ./...`/`go vet ./...` at the repo root ignore it while it
 // exists) rather than as a standalone module, because it imports
-// internal/testutil directly — Go's own internal/ visibility rule, the
-// same mechanism architecture-backend.md FR-1 relies on, refuses that
-// import from outside this module's tree even with a replace directive.
-// The fixture is created fresh and removed via t.Cleanup; it is never
-// committed.
+// internal/testutil directly — Go's own internal/ visibility rule
+// refuses that import from outside this module's tree even with a
+// replace directive. The fixture is created fresh and removed via
+// t.Cleanup; it is never committed.
 func TestFailLoudNotSkip_MissingTestDatabaseURL(t *testing.T) {
 	dir := filepath.Join(moduleRoot(t), fmt.Sprintf("_fixture_failloud_%d", os.Getpid()))
 	if err := os.RemoveAll(dir); err != nil {

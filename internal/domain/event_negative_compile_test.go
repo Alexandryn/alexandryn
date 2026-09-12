@@ -2,17 +2,13 @@
 
 package domain_test
 
-// This file is never built by `go test ./...` — the negativecompile tag
-// is never passed. It exists to prove FR-3's barrier is a compile-time
-// property, not a runtime one: a passing runtime test cannot demonstrate
-// the *absence* of a code path, only a build failure can.
-//
-// Verify with go vet (go build ignores _test.go files entirely, so it
-// can't be used to prove this) — it MUST fail:
+// This file is not built during standard `go test ./...` runs — the negativecompile tag
+// is not passed by default. It proves that sensitive events cannot be passed to a
+// public event sink at compile time:
 //
 //	go vet -tags negativecompile ./internal/domain/...
 //
-// Confirmed failure: "cannot use progress (variable of struct type
+// Expected compile failure: "cannot use progress (variable of struct type
 // domain.ReadingProgressUpdated) as domain.PublicEvent value in argument
 // to logSink: domain.ReadingProgressUpdated does not implement
 // domain.PublicEvent (missing method isPublicEvent)".

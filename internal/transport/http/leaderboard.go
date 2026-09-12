@@ -30,7 +30,7 @@ type finishedWorksResponse struct {
 const (
 	// finishedWorksDefaultLimit / finishedWorksMaxLimit bound one page of
 	// GET /api/v1/library/finished so the response can never be the
-	// library's entire completed-reads history (audit 0016 #112).
+	// library's entire completed-reads history.
 	finishedWorksDefaultLimit = 50
 	finishedWorksMaxLimit     = 200
 )
@@ -46,7 +46,7 @@ type leaderboardResponse struct {
 
 // FinishedWorksHandler serves GET /api/v1/library/finished.
 // Returns works finished by members (percentage >= 100) in the active library.
-// Structurally protects reading privacy (Constitution §8, FR-1, FR-2).
+// Structurally protects reading privacy.
 func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -142,8 +142,7 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 		}
 
 		// pgx's pool.Query returns before rows are fetched, so the query
-		// time is only known once the scan loop and rows.Err() are done
-		// (audit 0016 #182).
+		// time is only known once the scan loop and rows.Err() are done.
 		if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
 			slog.WarnContext(ctx, "slow finished works query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
 		}
@@ -168,7 +167,7 @@ func FinishedWorksHandler(pool *pgxpool.Pool) http.Handler {
 
 // LibraryLeaderboardHandler serves GET /api/v1/library/leaderboard.
 // Returns works ranked by completed reads (percentage >= 100) within the active library.
-// Structurally protects reading privacy (Constitution §8, FR-1, FR-5).
+// Structurally protects reading privacy.
 func LibraryLeaderboardHandler(pool *pgxpool.Pool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -240,7 +239,7 @@ func LibraryLeaderboardHandler(pool *pgxpool.Pool) http.Handler {
 		}
 
 		// pgx returns from Query before rows are fetched — time the scan
-		// loop, not the dispatch (audit 0016 #182).
+		// loop, not the dispatch.
 		if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
 			slog.WarnContext(ctx, "slow leaderboard query", "query_ms", elapsed.Milliseconds(), "library_id", string(activeLib), "correlation_id", corrID)
 		}

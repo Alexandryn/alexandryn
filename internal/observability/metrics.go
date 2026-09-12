@@ -11,9 +11,7 @@ import (
 )
 
 // DefaultLatencyBuckets defines histogram upper bounds in milliseconds.
-// Observations above the last bound land in the "+Inf" overflow bucket
-// (audit 0016 #302) — before that bucket existed a request slower than
-// 10s was counted in `count`/`sum` but in no bucket at all.
+// Observations above the last bound land in the "+Inf" overflow bucket.
 var DefaultLatencyBuckets = []float64{
 	1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000,
 }
@@ -237,8 +235,7 @@ func (r *Registry) Snapshot(ctx context.Context) (MetricsSnapshot, error) {
 		DBPool:     pool,
 	}
 
-	// Publish the same view into the expvar map ADR 0030 names as the
-	// read mechanism, refreshed at snapshot time (audit 0016 #302).
+	// Publish the current snapshot into expvar, refreshed at snapshot time.
 	r.expvarMap.Set("latencies", jsonVar{latencies})
 	r.expvarMap.Set("queue_depth", jsonVar{queue})
 	r.expvarMap.Set("db_pool", jsonVar{pool})

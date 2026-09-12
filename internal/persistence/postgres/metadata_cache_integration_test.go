@@ -73,7 +73,7 @@ func TestMetadataCacheRepository_SaveAndGetWork_RoundTrip(t *testing.T) {
 		t.Errorf("unexpected editions: %+v", cached.Editions)
 	}
 
-	// 3. Test 30-day staleness window (FR-3)
+	// 3. Test 30-day staleness window
 	// Fast-forward clock by 31 days
 	currentTime = fixedTime.Add(31 * 24 * time.Hour)
 	staleCached, hit, err := repo.GetWork(ctx, "OL82563W")

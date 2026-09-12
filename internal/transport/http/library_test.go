@@ -45,7 +45,7 @@ var _ domain.WorkRepository = (*mockWorkRepository)(nil)
 
 // withLibraryUser attaches an authenticated user and active library to a
 // request, as AuthMiddleware does in production — the catalog handlers
-// resolve both and verify membership (audit 0016 #88).
+// resolve both and verify membership.
 func withLibraryUser(req *http.Request, lib domain.LibraryID) *http.Request {
 	ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{
 		UserID:    "user-test",

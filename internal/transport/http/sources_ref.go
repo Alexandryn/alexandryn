@@ -10,16 +10,15 @@ import (
 )
 
 // SourceCrypto bundles the credential encryptor and the cursor codec —
-// both derived from the same key file (backend-source-adapter.md FR-13,
-// FR-7), set together once persistence is ready.
+// both derived from the same key file, set together once persistence is ready.
 type SourceCrypto struct {
 	Encryptor *crypto.Service
 	Codec     *sources.CursorCodec
 }
 
-// The phase-08 source surface needs three things that only exist once
-// the pool is up: the full-row repository, the atomic removal service
-// (domain-source.md FR-6), and the credential/cursor crypto. They ride
+// The source surface needs three things that only exist once
+// the pool is up: the full-row repository, the atomic removal service,
+// and the credential/cursor crypto. They ride
 // on PoolRef alongside metadataCache/coverCache for the same reason
 // those do — the router builds handlers before persistence is ready, so
 // the handlers reach these lazily.
@@ -30,7 +29,7 @@ type sourceRefs struct {
 	// allowPrivateAddrs mirrors config.SourceAllowPrivateAddresses. When
 	// false (the default) the outbound OPDS client refuses loopback and
 	// RFC 1918 / ULA targets and re-checks the resolved IP at dial time
-	// (audit 0016 #86 — SSRF / DNS rebinding).
+	// to prevent SSRF and DNS rebinding.
 	allowPrivateAddrs atomic.Bool
 }
 

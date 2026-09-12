@@ -1,13 +1,6 @@
-// Package crypto is Alexandryn's credential-at-rest service
-// (backend-source-adapter.md FR-13): AES-256-GCM authenticated
-// encryption for stored source credentials, keyed by a single 32-byte
-// key held in a 0600 key file under the app-data directory.
-//
-// Dependency justification (constitution §9): no third party. Go's
-// standard library (crypto/aes, crypto/cipher, crypto/rand,
-// crypto/hkdf) covers every primitive here. Hand-rolling the
-// construction would be the risk; the stdlib is not a dependency in the
-// sense §9 is about.
+// Package crypto provides credential-at-rest encryption for Alexandryn:
+// AES-256-GCM authenticated encryption for stored credentials, keyed by
+// a single 32-byte key held in a 0600 key file under the app data directory.
 package crypto
 
 import (
@@ -53,11 +46,7 @@ func NewService(key []byte) (*Service, error) {
 }
 
 // ErrDecrypt is returned by Decrypt when the ciphertext fails
-// authentication — a corrupted file, a truncated value, or (the case
-// FR-13 documents) a key that has been regenerated since the ciphertext
-// was written. Callers map this to a source's health check failing with
-// detail "auth-rejected", indistinguishable from a wrong password by
-// design.
+// authentication (e.g. corrupted data, truncated value, or mismatched key).
 var ErrDecrypt = errors.New("crypto: credential could not be decrypted")
 
 // Encrypt returns the GCM ciphertext and the fresh random nonce used to
@@ -85,11 +74,9 @@ func (s *Service) Decrypt(ciphertext, nonce []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// DeriveSubkey returns a 32-byte key derived from the service's own key
-// via HKDF-SHA256 with the given info label. Used for the browse/search
-// cursor's HMAC key (backend-source-adapter.md FR-7/FR-11) so the cursor
-// signature and the credential ciphertext never share key material
-// directly, without a second key file to manage.
+// DeriveSubkey returns a 32-byte key derived from the service's master key
+// via HKDF-SHA256 with the given info context string, allowing distinct
+// subkeys for purposes like cursor HMAC signing without additional key files.
 func (s *Service) DeriveSubkey(info string) ([]byte, error) {
 	out, err := hkdf.Key(sha256.New, s.key, nil, info, KeyLen)
 	if err != nil {

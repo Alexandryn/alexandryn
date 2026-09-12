@@ -9,11 +9,11 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// exportSchemaVersion is the versioned envelope's contract (reading-data-export.md
-// FR-1) — a change to the document shape bumps this, never edits in place.
+// exportSchemaVersion is the versioned envelope's contract —
+// a change to the document shape bumps this, never edits in place.
 const exportSchemaVersion = 1
 
-// exportMaxBytes bounds the assembled document (FR-6) — a reasoned
+// exportMaxBytes bounds the assembled document — a reasoned
 // placeholder; a realistic annotated library stays well under it.
 const exportMaxBytes = 25 * 1024 * 1024
 
@@ -42,9 +42,9 @@ type exportEdition struct {
 	Highlights []wireHighlight `json:"highlights"`
 }
 
-// ReadingExportHandler: GET /api/v1/reading/export (+ ?workId=) —
-// reading-data-export.md FR-1/FR-2. Read-only; no writes, no source
-// calls; logs counts only, never a title, CFI, label, or note (§8).
+// ReadingExportHandler: GET /api/v1/reading/export (+ ?workId=).
+// Read-only; no writes, no source
+// calls; logs counts only, never a title, CFI, label, or note.
 func ReadingExportHandler(poolRef *PoolRef, logger *slog.Logger, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		correlationID := CorrelationIDFromContext(r.Context())

@@ -1,6 +1,5 @@
-// Package logging constructs Alexandryn's one structured logger
-// (backend-errors-and-logging.md FR-6): log/slog, JSON, built once at
-// startup and passed by injection — never a package-level default.
+// Package logging constructs Alexandryn's structured logger:
+// log/slog with JSON formatting, built once at startup and injected into dependencies.
 package logging
 
 import (
@@ -9,13 +8,9 @@ import (
 	"strings"
 )
 
-// New constructs a JSON-handler *slog.Logger writing to w, at the level
-// named by level ("debug"/"info"/"warn"/"error", matched case-
-// insensitively, matching backend-configuration.md FR-4's own LOG_LEVEL
-// validation). An unrecognized or empty level string defaults to info,
-// the same default backend-configuration.md's own compiled default uses
-// — New never panics on a bad level string, it degrades to the safe
-// default (FR-9: the default level must not emit debug lines).
+// New constructs a JSON-handler *slog.Logger writing to w at the specified level
+// ("debug", "info", "warn", "error", matched case-insensitively). An unrecognized
+// or empty level string defaults safely to info.
 func New(level string, w io.Writer) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{Level: parseLevel(level)}))
 }

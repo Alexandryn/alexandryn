@@ -8,20 +8,15 @@ import (
 	"time"
 )
 
-// Device pairing (domain-device-pairing.md). A pairing is a thin
-// host-initiated bootstrap that proves "the host operator intends this
-// device" and carries the host address to it; the device still
-// authenticates with a phase-12 account afterwards (ADR 0028 §6). These
-// are pure types — no networking, no crypto beyond a constant-time
-// compare, no persistence. Random-byte generation lives in an adapter
-// (backend-network-transport.md FR-9); the domain takes the generated
-// value.
+// Device pairing. A pairing is a thin host-initiated bootstrap that proves
+// "the host operator intends this device" and carries the host address to it;
+// the device still authenticates with an account afterwards.
+// These are pure types — no networking, no crypto beyond a constant-time
+// compare, no persistence. Random-byte generation lives in an adapter; the
+// domain takes the generated value.
 //
 // Sentinel errors: unlike the rest of internal/domain, this file exports
-// errors.Is targets. domain-device-pairing.md's Failure-modes table
-// names them (ErrPairingExpired, ErrPairingWrongState, …) and its
-// acceptance criteria require an illegal transition to return "the right
-// typed error" — a caller (and a test) must be able to tell expiry from
+// errors.Is targets. A caller (and a test) must be able to tell expiry from
 // a wrong-state move from a code mismatch without matching on a message
 // string. Each is still wrapped in *Error for its Category.
 var (
@@ -34,32 +29,28 @@ var (
 )
 
 // CrockfordAlphabet is the Crockford base32 alphabet (uppercase, no
-// padding), excluding I, L, O and U. domain-device-pairing.md FR-2
-// rejects a non-Crockford character rather than leniently decoding
-// I->1 / O->0. Exported so the one other place that needs it —
+// padding), excluding I, L, O and U. Non-Crockford characters are rejected
+// rather than leniently decoded. Exported so the one other place that needs it —
 // internal/pairing's crypto/rand-backed generator, which must encode
 // into exactly the alphabet this package's constructor validates against
 // — references this single copy instead of keeping its own.
 const CrockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 // pairingCodeLen is the fixed shape: eight Crockford characters, the
-// smallest fixed format that can carry the >= 40 bits of entropy
-// GeneratePairingCode reads from crypto/rand (backend-network-transport.md
-// FR-9 — that entropy floor is the generator's acceptance criterion, not
-// this constructor's, which can only check shape).
+// smallest fixed format that can carry the required entropy floor.
 const pairingCodeLen = 8
 
 // PairingCode is a value object wrapping a normalized code. The wrapped
 // value is a []byte, not a string, deliberately: it makes the type
 // non-comparable, so `==` on two PairingCode values is a compile error
-// and Equal (constant-time) is the only comparison path (FR-1).
+// and Equal (constant-time) is the only comparison path.
 type PairingCode struct {
 	b []byte
 }
 
 // NewPairingCode constructs a PairingCode from an untrusted string. It
 // case-folds, strips the display hyphen, and rejects anything that is
-// not exactly pairingCodeLen Crockford characters (FR-1/FR-2).
+// not exactly pairingCodeLen Crockford characters.
 func NewPairingCode(untrusted string) (PairingCode, error) {
 	n := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(untrusted), "-", ""))
 	if len(n) != pairingCodeLen {
@@ -82,7 +73,7 @@ func NewPairingCode(untrusted string) (PairingCode, error) {
 }
 
 // Equal reports whether other holds the same normalized value, compared
-// in constant time (FR-1 — a non-constant-time compare of a 40-bit
+// in constant time (a non-constant-time compare of a 40-bit
 // secret over a LAN is a realistic side channel). A zero-value
 // PairingCode never equals anything, itself included: subtle.ConstantTimeCompare
 // treats nil==nil as a match, which on the credential path must not read
@@ -95,8 +86,8 @@ func (c PairingCode) Equal(other PairingCode) bool {
 }
 
 // Normalized returns the 8-character uppercase form — for the persistence
-// layer to encrypt (backend-network-api.md FR-7) and the API to return in
-// the initiate response. Callers MUST NOT log it (Observability NFR).
+// layer to encrypt and the API to return in the initiate response. Callers
+// MUST NOT log it.
 func (c PairingCode) Normalized() string { return string(c.b) }
 
 // Display returns the grouped XXXX-XXXX form for a UI or a QR payload.
@@ -113,8 +104,8 @@ func (c PairingCode) Display() string {
 // or Display explicitly.
 func (c PairingCode) String() string { return "[pairing code]" }
 
-// PairingState is the pairing session lifecycle (FR-4). consumed and
-// expired are terminal.
+// PairingState is the pairing session lifecycle. consumed and expired are
+// terminal.
 type PairingState string
 
 const (
@@ -133,7 +124,7 @@ func (s PairingState) valid() bool {
 	}
 }
 
-// maxPairingTTL is the ceiling enforced at construction (FR-3), not left
+// maxPairingTTL is the ceiling enforced at construction, not left
 // to the caller — a future endpoint cannot widen the guessing window by
 // passing a larger ttl. Shortening it is allowed.
 const maxPairingTTL = 5 * time.Minute
@@ -151,7 +142,7 @@ type PairingSession struct {
 	deviceID    *DeviceID
 }
 
-// NewPairingSession constructs a fresh pending session (FR-3). ttl must
+// NewPairingSession constructs a fresh pending session. ttl must
 // be > 0 and <= maxPairingTTL.
 func NewPairingSession(id PairingSessionID, initiatedBy UserID, code PairingCode, ttl time.Duration, now time.Time) (*PairingSession, error) {
 	if strings.TrimSpace(string(id)) == "" {
@@ -174,12 +165,10 @@ func NewPairingSession(id PairingSessionID, initiatedBy UserID, code PairingCode
 }
 
 // RehydratePairingSession reconstructs a session from a persisted row.
-// Unlike the RehydrateWork family it re-validates every invariant
-// (domain-device-pairing.md Reliability NFR: "a row that violates an
-// invariant MUST fail re-hydration loudly, not load a malformed
-// aggregate"). The PairingCode is handed in already reconstructed and
-// validated by NewPairingCode in the repository (ADR 0028 §6 — codes are
-// stored encrypted, not hashed, precisely so this is possible).
+// Unlike the RehydrateWork family it re-validates every invariant: a row
+// that violates an invariant fails re-hydration loudly rather than loading
+// a malformed aggregate. The PairingCode is passed in already reconstructed
+// and validated by NewPairingCode in the repository.
 func RehydratePairingSession(
 	id PairingSessionID,
 	initiatedBy UserID,
@@ -245,14 +234,14 @@ func (s *PairingSession) isExpired(now time.Time) bool {
 }
 
 // terminal reports whether the session can never change state again.
-// consumed and expired are terminal (FR-4); no method, expiry included,
+// consumed and expired are terminal; no method, expiry included,
 // touches a terminal session.
 func (s *PairingSession) terminal() bool {
 	return s.state == PairingConsumed || s.state == PairingExpired
 }
 
 // ExpireAt moves a pending or verified session to expired when now is at
-// or after ExpiresAt (FR-5). It is a no-op — no error, no mutation —
+// or after ExpiresAt. It is a no-op — no error, no mutation —
 // otherwise or when the session is already terminal.
 func (s *PairingSession) ExpireAt(now time.Time) {
 	if s.state != PairingPending && s.state != PairingVerified {
@@ -264,9 +253,9 @@ func (s *PairingSession) ExpireAt(now time.Time) {
 }
 
 // checkAdvanceable is Verify and Consume's shared preamble: reject a
-// terminal session outright with no mutation (FR-4), expire a stale
-// pending/verified session (FR-5 — this is the one legal mutation a
-// rejected call can still make), then reject if the session isn't in the
+// terminal session outright with no mutation, expire a stale
+// pending/verified session (this is the one legal mutation a rejected
+// call can still make), then reject if the session isn't in the
 // one state the caller expects. expiredMsg differs per caller: Verify
 // passes the same generic "not recognised" text a wrong code returns (no
 // oracle on the unauthenticated pairing route); Consume names the expiry
@@ -293,12 +282,11 @@ func (s *PairingSession) checkAdvanceable(now time.Time, expected PairingState, 
 	return nil
 }
 
-// Verify checks the shared preamble (FR-4/FR-5), then the caller's
-// device ID, then the submitted code in constant time (FR-6). A wrong
-// code returns ErrPairingCodeMismatch and does NOT change state —
-// burning the session on a wrong guess would let an unauthenticated LAN
-// client grief a real pairing. On a match it sets the DeviceID and moves
-// to verified.
+// Verify checks the shared preamble, then the caller's device ID, then
+// the submitted code in constant time. A wrong code returns
+// ErrPairingCodeMismatch and does NOT change state — burning the
+// session on a wrong guess would let an unauthenticated LAN client grief
+// a real pairing. On a match it sets the DeviceID and moves to verified.
 func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID DeviceID) error {
 	if err := s.checkAdvanceable(now, PairingPending, "verified", "pairing code not recognised"); err != nil {
 		return err
@@ -318,10 +306,10 @@ func (s *PairingSession) Verify(now time.Time, submitted PairingCode, deviceID D
 	return nil
 }
 
-// Consume moves a verified session to consumed (FR-7) — the point at
-// which the enrolment grant has been issued to the device. Expressible
-// as a single call so the repository can run it inside the same
-// transaction that writes the PairedDevice row (ADR 0021).
+// Consume moves a verified session to consumed — the point at which
+// the enrolment grant has been issued to the device. Expressible as a
+// single call so the repository can run it inside the same transaction
+// that writes the PairedDevice row.
 func (s *PairingSession) Consume(now time.Time) error {
 	if err := s.checkAdvanceable(now, PairingVerified, "consumed", "pairing session has expired"); err != nil {
 		return err
@@ -330,10 +318,10 @@ func (s *PairingSession) Consume(now time.Time) error {
 	return nil
 }
 
-// DeviceClass is a coarse classification the API layer supplies (FR-8),
+// DeviceClass is a coarse classification the API layer supplies,
 // derived outside this package from a request header. The domain stores
 // the enum, never parses a header — no raw client identifier enters the
-// pairing types (FR-10).
+// pairing types.
 type DeviceClass string
 
 const (
@@ -353,10 +341,7 @@ func (c DeviceClass) valid() bool {
 	}
 }
 
-// EnrolledVia records how a device joined (FR-8). Phase 13 only ever
-// writes EnrolledViaPairingCode; EnrolledViaPasswordLogin is reserved for
-// phase 14's device inventory so the persisted check constraint does not
-// need a later migration.
+// EnrolledVia records how a device joined.
 type EnrolledVia string
 
 const (
@@ -370,9 +355,9 @@ func (v EnrolledVia) valid() bool {
 
 const maxDeviceLabelRunes = 100
 
-// PairedDevice records a completed enrolment (FR-8). Owner is the user
+// PairedDevice records a completed enrolment. Owner is the user
 // who completed POST /api/v1/auth/login carrying the enrolment grant —
-// NOT the admin who initiated the PairingSession (ADR 0028 §6).
+// NOT the admin who initiated the PairingSession.
 type PairedDevice struct {
 	id           DeviceID
 	owner        UserID
@@ -475,7 +460,7 @@ func (d *PairedDevice) LastSyncedAt() *time.Time { return d.lastSyncedAt }
 // RevokedAt is nil for an active device.
 func (d *PairedDevice) RevokedAt() *time.Time { return d.revokedAt }
 
-// Revoke marks the device revoked (FR-9). A double-revoke is a caller
+// Revoke marks the device revoked. A double-revoke is a caller
 // bug worth surfacing — idempotent in effect but returned as an error.
 func (d *PairedDevice) Revoke(now time.Time) error {
 	if d.revokedAt != nil {
@@ -487,8 +472,7 @@ func (d *PairedDevice) Revoke(now time.Time) error {
 }
 
 // Touch advances LastSeenAt forward only, never backward under clock
-// skew, and fails on a revoked device (FR-9). No phase-13 caller — kept
-// for phase 14's inventory and covered by the phase-13 tests.
+// skew, and fails on a revoked device.
 func (d *PairedDevice) Touch(now time.Time) error {
 	if d.revokedAt != nil {
 		return &Error{Category: Conflict, Message: "paired device is revoked", Err: ErrDeviceRevoked}
@@ -499,7 +483,7 @@ func (d *PairedDevice) Touch(now time.Time) error {
 	return nil
 }
 
-// AdvanceCursor advances the sync cursor to a strictly higher value and records the sync timestamp (FR-5).
+// AdvanceCursor advances the sync cursor to a strictly higher value and records the sync timestamp.
 // Fails if the device is revoked or if newCursor <= current.
 func (d *PairedDevice) AdvanceCursor(newCursor int64, at time.Time) error {
 	if d.revokedAt != nil {

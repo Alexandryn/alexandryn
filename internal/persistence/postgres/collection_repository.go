@@ -13,7 +13,7 @@ import (
 )
 
 // CollectionRepository is internal/persistence/postgres's
-// domain.CollectionRepository implementation (T24, R6). A Collection
+// domain.CollectionRepository implementation. A Collection
 // spans two physical tables (collections, collection_members); Save
 // replaces every member row for this Collection's id on each call, the
 // same replace-on-Save shape as WorkRepository/AuthorRepository/
@@ -271,7 +271,7 @@ func (r *CollectionRepository) FindDetail(ctx context.Context, libraryID domain.
 	}, nil
 }
 
-// AddMember adds a Work to a Collection idempotently (backend-library-api.md FR-7).
+// AddMember adds a Work to a Collection idempotently.
 func (r *CollectionRepository) AddMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID, addedAt time.Time) error {
 	exec := executorFrom(ctx, r.pool)
 
@@ -301,7 +301,7 @@ func (r *CollectionRepository) AddMember(ctx context.Context, libraryID domain.L
 	return nil
 }
 
-// RemoveMember removes a Work's membership from a Collection (backend-library-api.md FR-7).
+// RemoveMember removes a Work's membership from a Collection.
 func (r *CollectionRepository) RemoveMember(ctx context.Context, libraryID domain.LibraryID, collectionID domain.CollectionID, workID domain.WorkID) error {
 	exec := executorFrom(ctx, r.pool)
 
@@ -323,7 +323,7 @@ func (r *CollectionRepository) RemoveMember(ctx context.Context, libraryID domai
 	return nil
 }
 
-// Rename renames a Collection after validating the new name (backend-library-api.md FR-6).
+// Rename renames a Collection after validating the new name.
 func (r *CollectionRepository) Rename(ctx context.Context, libraryID domain.LibraryID, id domain.CollectionID, name string) error {
 	if err := domain.ValidateBoundedText("name", name, 100); err != nil {
 		return err

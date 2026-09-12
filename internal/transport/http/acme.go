@@ -10,11 +10,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// NewACMEManager builds the autocert.Manager for a Mode A ACME bind
-// (backend-network-transport.md FR-3, ADR 0028 §2). §9 record for
-// golang.org/x/crypto/acme/autocert is in ADR 0028 §2 — it is a
-// sub-package of golang.org/x/crypto, already a direct dependency
-// (Argon2id), so no new module.
+// NewACMEManager builds the autocert.Manager for an ACME TLS configuration.
+// It uses golang.org/x/crypto/acme/autocert from the existing golang.org/x/crypto dependency.
 //
 //   - HostPolicy is pinned to exactly ACME_DOMAIN: a client presenting
 //     any other SNI gets no certificate and no issuance attempt. This is
@@ -35,7 +32,7 @@ func NewACMEManager(cfg *config.Config, cacheDir string) *autocert.Manager {
 
 // HTTPSRedirect returns a handler that 308-redirects every request to the
 // https:// form of the same path. It runs on the :80 listener for every
-// public bind (FR-3) — for a static-cert bind on its own, and behind
+// public bind — for a static-cert bind on its own, and behind
 // autocert.Manager.HTTPHandler for an ACME bind (which serves the HTTP-01
 // challenge and delegates everything else here). It never serves
 // application content.

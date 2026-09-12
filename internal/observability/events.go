@@ -7,7 +7,7 @@ import (
 	"unicode"
 )
 
-// Standard system event kind constants (ADR 0031).
+// Standard system event kind constants.
 const (
 	EventJobEnqueued    = "job.enqueued"
 	EventJobRunning     = "job.running"
@@ -29,10 +29,8 @@ var prohibitedPayloadKeys = []string{
 }
 
 // prohibitedKeySet is prohibitedPayloadKeys lowercased, for exact
-// matching against a candidate key's words. Substring matching (the
-// previous approach) wrongly dropped innocent keys whose text merely
-// contains a prohibited word — "disposition"/"position",
-// "allocation"/"location", "exposition"/"position" (audit 0016 #297).
+// matching against a candidate key's words. Word-based matching ensures
+// keys like "disposition" or "allocation" are not falsely flagged.
 var prohibitedKeySet = func() map[string]struct{} {
 	set := make(map[string]struct{}, len(prohibitedPayloadKeys))
 	for _, k := range prohibitedPayloadKeys {
@@ -115,11 +113,9 @@ func (e NewSystemEvent) CalculatePurgeAt(now time.Time) time.Time {
 }
 
 // SanitizedPayload returns a deep copy of the payload with every
-// prohibited sensitive key removed at any nesting depth. Recursion
-// matters: a reading-progress event carries its cfi/percentage inside a
-// nested "detail" object, and a highlight event carries the highlighted
-// passage under "note" — a top-level-only strip let both through into
-// system_events and the activity feed (audit 0016 #296).
+// prohibited sensitive key removed at any nesting depth. Recursive traversal
+// ensures nested fields (such as reading progress or notes) are redacted
+// before persistence in system_events.
 func (e NewSystemEvent) SanitizedPayload() map[string]any {
 	if e.Payload == nil {
 		return map[string]any{}

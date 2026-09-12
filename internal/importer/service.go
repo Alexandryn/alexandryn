@@ -22,7 +22,7 @@ type CandidateRepository interface {
 	ExistsBySourceAndFileRefID(ctx context.Context, sourceID string, fileRefID string) (bool, error)
 }
 
-// Service manages import candidate lifecycle, auto-acceptance, and user confirmation (backend-import-pipeline.md FR-5, FR-6, FR-7).
+// Service manages import candidate lifecycle, auto-acceptance, and user confirmation.
 type Service struct {
 	works           domain.WorkRepository
 	editions        domain.EditionRepository
@@ -60,7 +60,7 @@ func NewService(
 	}
 }
 
-// AutoImport attaches a verified file to an existing owned Edition in one transaction (FR-5, FR-6).
+// AutoImport attaches a verified file to an existing owned Edition in one transaction.
 // It updates the persisted FileReference format to the content-sniffed verified format.
 func (s *Service) AutoImport(
 	ctx context.Context,
@@ -91,7 +91,7 @@ func (s *Service) AutoImport(
 	})
 }
 
-// ConfirmAttachExisting attaches a pending candidate to a user-selected existing Edition (FR-7).
+// ConfirmAttachExisting attaches a pending candidate to a user-selected existing Edition.
 func (s *Service) ConfirmAttachExisting(ctx context.Context, candidateID string, editionID string, now time.Time) error {
 	cand, err := s.candidates.Get(ctx, candidateID)
 	if err != nil {
@@ -116,7 +116,7 @@ func (s *Service) ConfirmAttachExisting(ctx context.Context, candidateID string,
 	})
 }
 
-// ConfirmCreateNew creates a new Work, Edition, and Author from extracted metadata alone (FR-7).
+// ConfirmCreateNew creates a new Work, Edition, and Author from extracted metadata alone.
 func (s *Service) ConfirmCreateNew(ctx context.Context, candidateID string, meta extract.ExtractedMetadata, now time.Time) error {
 	cand, err := s.candidates.Get(ctx, candidateID)
 	if err != nil {
@@ -182,7 +182,7 @@ func (s *Service) ConfirmCreateNew(ctx context.Context, candidateID string, meta
 	})
 }
 
-// ConfirmOpenLibraryMatch constructs Work/Edition from Open Library detail response (FR-7).
+// ConfirmOpenLibraryMatch constructs Work/Edition from Open Library detail response.
 func (s *Service) ConfirmOpenLibraryMatch(
 	ctx context.Context,
 	candidateID string,
@@ -288,7 +288,7 @@ func (s *Service) ConfirmOpenLibraryMatch(
 	})
 }
 
-// Reject transitions a pending candidate to rejected (FR-7).
+// Reject transitions a pending candidate to rejected.
 func (s *Service) Reject(ctx context.Context, candidateID string, now time.Time) error {
 	cand, err := s.candidates.Get(ctx, candidateID)
 	if err != nil {

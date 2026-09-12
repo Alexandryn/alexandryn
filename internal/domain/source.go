@@ -1,23 +1,18 @@
 package domain
 
-// maxSourceLabelLength is a reasoned placeholder (no spec gives a
-// number), matching this project's other short-label bounds.
+// maxSourceLabelLength defines the maximum allowed length for a source label.
 const maxSourceLabelLength = 100
 
-// SourceCapabilities (domain-source.md FR-1) is a fixed, small,
-// extensible set — the domain never infers what a Source can do from its
-// type, a Source declares it.
+// SourceCapabilities represents what operations a Source supports.
+// The domain never infers capabilities from source type; a Source declares them explicitly.
 type SourceCapabilities struct {
 	CanList     bool
 	CanSearch   bool
 	CanDownload bool
 }
 
-// Source (FR-1) — internal ID, user-assigned label, declared
-// capabilities. Kind is an optional, coarse display tag (an icon, a
-// grouping label) — a category, not protocol configuration; it implies
-// nothing about capabilities and phase 08 owns what values exist, so
-// this domain doesn't validate it against a closed vocabulary.
+// Source represents a content provider with internal ID, user-assigned label,
+// and declared capabilities. Kind is an optional, coarse display tag.
 type Source struct {
 	id           SourceID
 	label        string

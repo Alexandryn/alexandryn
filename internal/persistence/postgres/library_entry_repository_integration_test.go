@@ -73,7 +73,7 @@ func TestLibraryEntryRepository_DeleteByEdition(t *testing.T) {
 	}
 }
 
-// domain-library.md FR-7: at most one LibraryEntry per Edition — proven
+// At most one LibraryEntry per Edition — proven
 // under real concurrent load, not just sequentially. Two goroutines Save
 // distinct LibraryEntry values for the same EditionID at the same time;
 // the real UNIQUE constraint on library_entries.edition_id must let

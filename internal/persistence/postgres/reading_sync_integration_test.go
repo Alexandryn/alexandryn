@@ -270,7 +270,7 @@ func TestReadingSyncRepository_DeltaIsPageBounded(t *testing.T) {
 	}
 }
 
-// TestReadingSyncRepository_ConcurrentPushPull is audit 0016 #137: many
+// TestReadingSyncRepository_ConcurrentPushPull verifies that many
 // devices writing reading progress while others poll the sync delta must
 // not lose a write, must each get a distinct sync_sequence, and a pull
 // from cursor 0 must eventually deliver every write with no permanent

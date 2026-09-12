@@ -13,15 +13,14 @@ import (
 )
 
 const (
-	// maxResponseBytes caps every OPDS response body
-	// (backend-source-adapter.md FR-6).
+	// maxResponseBytes caps every OPDS response body.
 	maxResponseBytes = 5 << 20 // 5 MiB
-	// requestTimeout bounds every outbound call (FR-6).
+	// requestTimeout bounds every outbound call.
 	requestTimeout = 5 * time.Second
 	acceptHeader   = "application/atom+xml, application/opds+json, application/json;q=0.9, */*;q=0.1"
 )
 
-// fetchError carries a health-check detail category (FR-6) alongside the
+// fetchError carries a health-check detail category alongside the
 // error, so Probe can classify a failure without inspecting a raw
 // message and List/Search can map it to a domain category.
 type fetchError struct {
@@ -34,15 +33,14 @@ func (e *fetchError) Error() string { return e.msg }
 // asDomain maps a fetchError to the *domain.Error a browse/search call
 // returns — every failure category collapses to Unavailable there,
 // since "this call cannot proceed" is functionally identical to the
-// caller whether the source is down, redirecting, or rejecting auth
-// (FR-13). The distinguishing detail is surfaced by the next health
-// check, not here.
+// caller whether the source is down, redirecting, or rejecting auth.
+// The distinguishing detail is surfaced by the next health check, not here.
 func (e *fetchError) asDomain() *domain.Error {
 	return &domain.Error{Category: domain.Unavailable, Message: "source is unavailable right now"}
 }
 
 // httpClient is the shared outbound client for one source. Redirects are
-// disabled entirely (FR-11): a 3xx is that call's own failure, never
+// disabled entirely: a 3xx is that call's own failure, never
 // followed, closing the gap an origin check on the initial URL alone
 // would leave open.
 type httpClient struct {
@@ -68,9 +66,9 @@ func newHTTPClient(sem *sources.Semaphore, cred sources.Credential, hasAuth, all
 }
 
 // get fetches rawURL. The caller MUST have already validated rawURL as
-// same-origin with the source's configured baseUrl (FR-11) — this
+// same-origin with the source's configured baseUrl — this
 // method does not re-check. It returns the response body on a 2xx, or a
-// *fetchError classified into FR-6's closed vocabulary.
+// *fetchError classified into closed vocabulary detail categories.
 func (c *httpClient) get(ctx context.Context, rawURL string) ([]byte, *fetchError) {
 	if c.sem != nil && !c.sem.TryAcquire() {
 		return nil, &fetchError{detail: sources.DetailTimeout, msg: "outbound concurrency cap reached"}
@@ -88,7 +86,7 @@ func (c *httpClient) get(ctx context.Context, rawURL string) ([]byte, *fetchErro
 	}
 	req.Header.Set("Accept", acceptHeader)
 	if c.hasAuth && !c.cred.IsZero() {
-		// FR-4: the credential is sent on every request, unconditionally
+		// The credential is sent on every request, unconditionally
 		// — never "try without auth first".
 		user, pass := c.cred.Reveal()
 		req.SetBasicAuth(user, pass)

@@ -7,10 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// E1: testutil.FakeIDGenerator (built in phase 03's T1) must satisfy
-// domain.IDGenerator without any change on the testutil side — the
-// interface is written to match the fake's existing shape, not the
-// other way around.
+// testutil.FakeIDGenerator must satisfy domain.IDGenerator without any
+// change on the testutil side.
 var _ domain.IDGenerator = (*testutil.FakeIDGenerator)(nil)
 
 func TestIDGenerator_FakeYieldsConfiguredSequenceThroughTheInterface(t *testing.T) {
@@ -27,13 +25,11 @@ func TestIDGenerator_FakeYieldsConfiguredSequenceThroughTheInterface(t *testing.
 	}
 }
 
-// E0: each aggregate has its own named ID type. This is a compile-time
+// Each aggregate has its own named ID type. This is a compile-time
 // property — WorkID and AuthorID are distinct types with no implicit
 // conversion between them, so a call site that mixes them up fails to
-// build. There is nothing to assert about that at runtime; declaring one
-// of each here and using each only where its own type is expected is the
-// proof — if this file compiles, no code doing (for example) f(AuthorID)
-// with a WorkID value compiles either.
+// build. Declaring one of each here and using each only where its own
+// type is expected verifies this distinctness.
 func TestIDTypes_AreDistinctAcrossAggregates(t *testing.T) {
 	var work domain.WorkID = "work-1"
 	var edition domain.EditionID = "edition-1"

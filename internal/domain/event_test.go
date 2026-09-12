@@ -7,11 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// FR-1/FR-2 (domain-events.md): every event in the 23-type catalog
-// implements exactly one of PublicEvent/SensitiveEvent, fixed at the
-// type. Re-counted directly against domain-events.md's Domain model
-// section before writing this table (13 public + 10 sensitive), not
-// trusted from a cached figure.
+// TestEventCatalog_EachTypeImplementsExactlyOneMarker verifies that every event in
+// the catalog implements exactly one of PublicEvent or SensitiveEvent.
 func TestEventCatalog_EachTypeImplementsExactlyOneMarker(t *testing.T) {
 	now := time.Now()
 
@@ -31,7 +28,7 @@ func TestEventCatalog_EachTypeImplementsExactlyOneMarker(t *testing.T) {
 		domain.NewSourceOfferingRemoved("offering-1", now),
 	}
 	if len(publicEvents) != 13 {
-		t.Fatalf("got %d public events listed, want 13 (domain-events.md's own catalog count)", len(publicEvents))
+		t.Fatalf("got %d public events listed, want 13", len(publicEvents))
 	}
 	for _, e := range publicEvents {
 		if _, ok := e.(domain.PublicEvent); !ok {
@@ -55,7 +52,7 @@ func TestEventCatalog_EachTypeImplementsExactlyOneMarker(t *testing.T) {
 		domain.NewHighlightCreated("highlight-1", now),
 	}
 	if len(sensitiveEvents) != 10 {
-		t.Fatalf("got %d sensitive events listed, want 10 (domain-events.md's own catalog count)", len(sensitiveEvents))
+		t.Fatalf("got %d sensitive events listed, want 10", len(sensitiveEvents))
 	}
 	for _, e := range sensitiveEvents {
 		if _, ok := e.(domain.SensitiveEvent); !ok {
@@ -82,9 +79,8 @@ func TestEvent_CarriesAggregateIDAndOccurredAt(t *testing.T) {
 	}
 }
 
-// FR-4: a Sensitive event may be consumed by a sink declared over Event
-// (both classes) — the Activity-feed exemption actually works, not just
-// FR-3's restriction.
+// TestEvent_BothClassesFlowThroughAWideSink verifies that a sink accepting the base
+// Event interface can receive both public and sensitive events.
 func TestEvent_BothClassesFlowThroughAWideSink(t *testing.T) {
 	var received []domain.Event
 	sink := func(e domain.Event) { received = append(received, e) }

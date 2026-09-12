@@ -211,8 +211,7 @@ func TestSourceRecordRepository_CountWithCredential(t *testing.T) {
 }
 
 // Concurrent health-probe writebacks against one row: last-writer-wins,
-// no deadlock, row stays consistent (backend-source-adapter.md
-// reliability — "concurrent health probe updates").
+// no deadlock, row stays consistent under concurrent execution.
 func TestSourceRecordRepository_ConcurrentHealthUpdates(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

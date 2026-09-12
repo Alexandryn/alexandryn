@@ -1,19 +1,16 @@
 package sources
 
-// Semaphore is the global cap on outbound source requests
-// (backend-source-adapter.md FR-14): at most 50 in flight across every
-// configured source combined — health checks, browse, search, and
-// continuation-link fetches alike. Unlike the metadata adapter's shared
-// rate limiter (one external service with a stated policy), sources are
-// independent hosts with no shared external ceiling, so this exists
-// purely to bound this system's own goroutines and connections. A
-// request arriving at the cap is rejected immediately, never queued —
-// there is no external limit to wait out.
+// Semaphore is the global cap on outbound source requests:
+// at most 50 in flight across every configured source combined — health checks,
+// browse, search, and continuation-link fetches alike. Unlike a shared rate limiter
+// for a single external service, sources are independent hosts with no shared
+// external ceiling, so this exists purely to bound local goroutines and connections.
+// A request arriving at the cap is rejected immediately, never queued.
 type Semaphore struct {
 	slots chan struct{}
 }
 
-// DefaultOutboundLimit is FR-14's figure.
+// DefaultOutboundLimit is the default maximum number of concurrent outbound requests.
 const DefaultOutboundLimit = 50
 
 // NewSemaphore builds a Semaphore with n slots. n <= 0 is treated as

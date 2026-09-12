@@ -1,20 +1,16 @@
 // Package contracttest provides OpenAPI contract validation helpers for
-// integration tests (backend-library-api.md FR-8, architecture-contracts.md
-// FR-3). Uses kin-openapi (github.com/getkin/kin-openapi) — the tool
-// backend-library-api.md FR-8 names explicitly — to validate real HTTP
-// responses against api/openapi.yaml.
+// integration tests. Uses kin-openapi (github.com/getkin/kin-openapi)
+// to validate real HTTP responses against api/openapi.yaml.
 //
-// Invariants this package enforces, per FR-8's own text:
+// Invariants this package enforces:
 //
 //  1. Response-shape validation: every response from a handler must
 //     match its OpenAPI schema or the test fails.
 //
 //  2. Route-completeness check: every path in api/openapi.yaml must
 //     have a registered handler, and every handler registered under
-//     /api/v1/ must appear in api/openapi.yaml — catching the gap
-//     architecture-contracts.md's Failure modes table flagged: "does
-//     the contract test catch *missing* endpoints, or only *mismatched*
-//     ones?"
+//     /api/v1/ must appear in api/openapi.yaml — catching both
+//     missing endpoints and mismatched ones.
 package contracttest
 
 import (
@@ -103,8 +99,8 @@ func (v *Validator) ValidateResponse(t testing.TB, handler http.Handler, req *ht
 		Header: rr.Header(),
 		Body:   io.NopCloser(bytes.NewReader(bodyBytes)),
 		Options: &openapi3filter.Options{
-			// Do not require auth headers — every Phase 06 endpoint opts
-			// out of auth (security: []) until phase 12.
+			// Bypass request authentication during response shape validation;
+			// authentication middleware and credential flows are tested separately.
 			AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
 		},
 	}

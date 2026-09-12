@@ -168,7 +168,7 @@ func NormaliseSearchResponse(body []byte, limit, offset int) (*NormalisedSearchR
 		titleRaw, _ := doc["title"].(string)
 		title, ok := validateTitle(titleRaw)
 		if !ok {
-			// FR-5: list item missing valid title is dropped
+			// List items missing a valid title are dropped.
 			continue
 		}
 
@@ -264,7 +264,7 @@ func NormaliseWork(body []byte) (*NormalisedWork, error) {
 	titleRaw, _ := raw["title"].(string)
 	title, ok := validateTitle(titleRaw)
 	if !ok {
-		// FR-5: missing required title in top-level work returns Internal
+		// Missing required title in top-level work is treated as an internal error.
 		return nil, &domain.Error{Category: domain.Internal, Message: "upstream Open Library work record is missing a valid title"}
 	}
 

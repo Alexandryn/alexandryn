@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// bindClass is BIND_ADDRESS's classification per ADR 0028 §1 / ADR 0017.
+// bindClass is BIND_ADDRESS's classification.
 type bindClass int
 
 const (
@@ -35,14 +35,9 @@ func (c bindClass) reachability() string {
 	}
 }
 
-// classifyBindHost classifies BIND_ADDRESS's host WITHOUT any DNS
-// resolution (architecture-testing.md FR-6 — this package performs no
-// network I/O). An IP literal is classified by range; the literal string
-// "localhost" is loopback; every other host string is a DNS name and is
-// classified public — the fail-closed default for "a name we cannot
-// classify locally is one that requires in-process TLS." An operator who
-// runs a name behind a reverse proxy and wants Mode B sets BIND_ADDRESS
-// to the private IP the proxy forwards to, not the name.
+// classifyBindHost classifies BIND_ADDRESS's host without performing DNS resolution.
+// An IP literal is classified by range; the literal string "localhost" is loopback;
+// every other host string is treated as a DNS name and classified as public (fail-closed).
 func classifyBindHost(host string) bindClass {
 	if host == "localhost" {
 		return classLoopback
@@ -64,7 +59,7 @@ func classifyBindHost(host string) bindClass {
 	return classPublic
 }
 
-// validateBindAddress enforces ADR 0028 §1 / ADR 0017 at config-load
+// validateBindAddress enforces TLS requirements for the bind address at config-load
 // time. It fails closed: a publicly routable bind with no usable
 // certificate never produces a running configuration, and an
 // invalid/expired certificate is a startup error, never a degrade to
@@ -105,10 +100,9 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 				cfg.BindAddress)
 		}
 		if hasStaticCert {
-			// Opt-in in-process TLS on a private bind (ADR 0028 §1): a
-			// present pair must be valid; a present-but-broken cert is a
-			// mistake, not a fall-through to plaintext. No SAN check — a
-			// private bind is often reached by IP.
+			// Opt-in in-process TLS on a private bind: a present pair
+			// must be valid; an invalid certificate is a configuration error.
+			// No SAN check is performed because private binds are commonly addressed by IP.
 			cert, err := loadAndValidateCert(cfg, readFile, "")
 			if err != nil {
 				return err
@@ -128,9 +122,8 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 			cfg.namedBindHost = host
 		}
 		if cfg.ACMEEnabled {
-			// Mode A via ACME (ADR 0028 §2). config performs no network
-			// I/O — it only checks the material is coherent; the
-			// autocert.Manager is built in cmd/server.
+			// In-process TLS via ACME. config performs no network
+			// I/O — it only checks that the configuration is coherent.
 			if cfg.ACMEDomain == "" {
 				return fmt.Errorf("BIND_ADDRESS %s has ACME_ENABLED but ACME_DOMAIN is not set", cfg.BindAddress)
 			}
@@ -149,7 +142,7 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 				cfg.BindAddress)
 		}
 		// SAN name check only when the host is a DNS name — a name-match
-		// check on a bare IP is meaningless (ADR 0028 §1).
+		// check on a bare IP is meaningless.
 		sanHost := ""
 		if isName {
 			sanHost = host
@@ -163,10 +156,7 @@ func validateBindAddress(cfg *Config, readFile func(string) ([]byte, error)) err
 		return nil
 
 	default:
-		// Unreachable today (classifyBindHost returns one of the two
-		// constants above). Kept as a fail-closed guard: this is the
-		// constitution §6 gate, and a future third class must not slip
-		// through as "accepted" by falling off the switch.
+		// Fall-through guard: ensures unclassified addresses cannot pass.
 		return fmt.Errorf("BIND_ADDRESS %s could not be classified", cfg.BindAddress)
 	}
 }

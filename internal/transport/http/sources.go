@@ -195,7 +195,7 @@ func parseLimit(limitStr string) (int, error) {
 	return l, nil
 }
 
-// CreateSourceHandler returns the HTTP handler for POST /api/v1/sources (backend-source-adapter.md FR-1).
+// CreateSourceHandler returns the HTTP handler for POST /api/v1/sources.
 func CreateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sources.Semaphore, idGen domain.IDGenerator, logger *slog.Logger) http.Handler {
 	if idGen == nil {
 		idGen = idgen.New()
@@ -341,7 +341,7 @@ func CreateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 	})
 }
 
-// ListSourcesHandler returns the HTTP handler for GET /api/v1/sources (backend-source-adapter.md FR-2).
+// ListSourcesHandler returns the HTTP handler for GET /api/v1/sources.
 func ListSourcesHandler(repo SourceRecordRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -363,7 +363,7 @@ func ListSourcesHandler(repo SourceRecordRepository) http.Handler {
 	})
 }
 
-// GetSourceHandler returns the HTTP handler for GET /api/v1/sources/{id} (backend-source-adapter.md FR-2).
+// GetSourceHandler returns the HTTP handler for GET /api/v1/sources/{id}.
 func GetSourceHandler(repo SourceRecordRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -386,7 +386,7 @@ func GetSourceHandler(repo SourceRecordRepository) http.Handler {
 	})
 }
 
-// UpdateSourceHandler returns the HTTP handler for PATCH /api/v1/sources/{id} (backend-source-adapter.md FR-2).
+// UpdateSourceHandler returns the HTTP handler for PATCH /api/v1/sources/{id}.
 func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sources.Semaphore, logger *slog.Logger) http.Handler {
 	if sem == nil {
 		sem = sources.NewSemaphore(sources.DefaultOutboundLimit)
@@ -556,7 +556,7 @@ func UpdateSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 	})
 }
 
-// DeleteSourceHandler returns the HTTP handler for DELETE /api/v1/sources/{id} (backend-source-adapter.md FR-2, domain-source.md FR-6).
+// DeleteSourceHandler returns the HTTP handler for DELETE /api/v1/sources/{id}.
 func DeleteSourceHandler(repo SourceRecordRepository, poolRef *PoolRef) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -587,7 +587,7 @@ func DeleteSourceHandler(repo SourceRecordRepository, poolRef *PoolRef) http.Han
 	})
 }
 
-// HealthCheckSourceHandler returns the HTTP handler for POST /api/v1/sources/{id}/health-check (backend-source-adapter.md FR-6).
+// HealthCheckSourceHandler returns the HTTP handler for POST /api/v1/sources/{id}/health-check.
 func HealthCheckSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sources.Semaphore, logger *slog.Logger) http.Handler {
 	if sem == nil {
 		sem = sources.NewSemaphore(sources.DefaultOutboundLimit)
@@ -697,7 +697,7 @@ func HealthCheckSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem
 	})
 }
 
-// BrowseSourceHandler returns the HTTP handler for GET /api/v1/sources/{id}/browse (backend-source-adapter.md FR-7).
+// BrowseSourceHandler returns the HTTP handler for GET /api/v1/sources/{id}/browse.
 func BrowseSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sources.Semaphore, logger *slog.Logger) http.Handler {
 	if sem == nil {
 		sem = sources.NewSemaphore(sources.DefaultOutboundLimit)
@@ -791,7 +791,7 @@ func BrowseSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sou
 	})
 }
 
-// SearchSourceHandler returns the HTTP handler for GET /api/v1/sources/{id}/search (backend-source-adapter.md FR-8).
+// SearchSourceHandler returns the HTTP handler for GET /api/v1/sources/{id}/search.
 func SearchSourceHandler(repo SourceRecordRepository, poolRef *PoolRef, sem *sources.Semaphore, logger *slog.Logger) http.Handler {
 	if sem == nil {
 		sem = sources.NewSemaphore(sources.DefaultOutboundLimit)

@@ -2,12 +2,9 @@ package domain
 
 import "time"
 
-// Bookmark (domain-reading.md FR-3/FR-4) MUST attach to Edition, not
-// Work — EditionID is a required positional argument. Position is
-// opaque (same "phase 11 decides the format" status as
-// PrecisePosition.Value); Label is optional. CreatedAt records when the
-// mark was made (reading-data-export.md FR-4) — the caller passes the
-// server time on a fresh bookmark, or the stored value on a read.
+// Bookmark attaches to Edition, not Work — EditionID is a required
+// positional argument. Position is an opaque edition-scoped position
+// string; Label is optional. CreatedAt records when the mark was made.
 type Bookmark struct {
 	id        BookmarkID
 	editionID EditionID
@@ -30,19 +27,8 @@ func (b *Bookmark) Label() string { return b.label }
 
 func (b *Bookmark) CreatedAt() time.Time { return b.createdAt }
 
-// Highlight (FR-3/FR-4) MUST attach to Edition and records a start and
-// end position, both Edition-scoped. Note and category are optional.
-//
-// Not enforced here: FR-4's "end position not preceding start position."
-// ADR 0020 carves this out as a single-value, construction-time
-// invariant in principle — but Position's own format is deliberately
-// undecided (domain-reading.md's Non-goals, same status as
-// PrecisePosition.Value), and a generic ordering check over an opaque
-// string (naive lexicographic comparison) would not mean "earlier in the
-// book" for most real position formats a future CFI or page-number
-// representation might use — it would be actively wrong, not just
-// incomplete. Implementing it honestly needs the concrete format phase
-// 11 picks; recorded here as a known gap, not silently skipped.
+// Highlight attaches to Edition and records a start and end position,
+// both Edition-scoped. Note and category are optional.
 type Highlight struct {
 	id            HighlightID
 	editionID     EditionID

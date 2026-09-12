@@ -1,10 +1,9 @@
-// Package config resolves Alexandryn's backend configuration: one
-// compiled-in default, then a config file, then an environment variable,
-// each overriding the previous source for that one key independently
-// (backend-configuration.md FR-2). This is the one package allowed to
-// read an environment variable or the config file directly
-// (architecture-backend.md FR-1) — everything else receives a *Config,
-// constructed once at startup.
+// Package config resolves Alexandryn's backend configuration: compiled-in
+// defaults, then an optional config file, then environment variables,
+// each overriding the previous source for that key independently.
+// This is the sole package permitted to read environment variables or
+// configuration files directly; all other components receive a validated
+// *Config constructed once at startup.
 package config
 
 import (
@@ -28,12 +27,10 @@ import (
 // Load either returns one of these with every field valid, or an error —
 // never a partially populated value.
 type Config struct {
-	// DatabaseURL is optional with no compiled default: its absence is
-	// itself a meaningful signal backend-persistence.md FR-5 uses to
-	// choose between connecting to it and spawning a bundled instance
-	// (backend-configuration.md FR-3's third category). Its type carries
-	// FR-7's redaction — call .Reveal() to get the real value, never log
-	// or print this field directly by any other means.
+	// DatabaseURL is optional with no compiled default. Its absence signals
+	// the server to spawn a bundled PostgreSQL instance rather than connecting
+	// to an external database. Its type carries redaction — call .Reveal()
+	// to obtain the raw value; never log or format this field directly.
 	DatabaseURL RedactedString
 
 	// LogLevel is one of "debug", "info", "warn", "error", matched
@@ -42,11 +39,7 @@ type Config struct {
 
 	ShutdownGracePeriod time.Duration
 
-	// DBPoolMaxConns' and the four fields below's real default values are
-	// backend-persistence.md and backend-http-transport.md's to fix
-	// (backend-configuration.md FR-4's table); this package only reserves
-	// the key and a provisional default, both replaced when those specs
-	// land (T8/T13 of tasks/plan.md).
+	// DBPoolMaxConns sets the maximum number of open database connections.
 	DBPoolMaxConns int
 
 	HTTPMaxBodyBytes int64
@@ -54,29 +47,23 @@ type Config struct {
 	HTTPWriteTimeout time.Duration
 	HTTPIdleTimeout  time.Duration
 
-	// OpenLibraryUserAgent has no compiled default: a placeholder value
-	// would misidentify this client to Open Library, which FR-3's
-	// required category exists to prevent.
+	// OpenLibraryUserAgent is required and must identify this Alexandryn deployment
+	// when querying Open Library APIs.
 	OpenLibraryUserAgent string
 
-	// BindAddress is classified per FR-8/ADR 0017: loopback or a private
-	// range is always legal; a publicly routable address is legal only
-	// with TLSCertFile/TLSKeyFile both present and valid.
+	// BindAddress specifies the host:port to listen on. Loopback or private
+	// addresses are permitted for plaintext; publicly routable addresses require
+	// valid TLS certificates or ACME configuration.
 	BindAddress string
 
-	// TLSCertFile and TLSKeyFile are required only when BindAddress
-	// resolves to a publicly routable address; otherwise unread
-	// (backend-configuration.md FR-4).
+	// TLSCertFile and TLSKeyFile supply static TLS credentials when binding
+	// to a publicly routable address or when in-process TLS is desired.
 	TLSCertFile string
 	TLSKeyFile  string
 
-	// Phase 13 network keys (backend-configuration.md FR-4 amendment,
-	// ADR 0028). ACMEEnabled selects the certificate provisioning source
-	// for a public bind — ACME issuance vs. the static TLSCertFile/
-	// TLSKeyFile pair; it is not a security toggle (both branches fail
-	// closed). ACMECacheDir empty means "the acme/ subdirectory of the
-	// per-user data directory" — resolved at startup where that path is
-	// known, not here.
+	// ACMEEnabled selects ACME certificate provisioning for public binds.
+	// ACMECacheDir specifies the storage directory for ACME certificates;
+	// when empty, a subdirectory under the user data directory is used.
 	ACMEEnabled  bool
 	ACMEDomain   string
 	ACMEEmail    string
@@ -88,31 +75,28 @@ type Config struct {
 	CORSAllowedOrigins []string
 
 	// TrustedProxyCIDRs lists the networks a reverse proxy in front of the
-	// server binds from (ADR 0017's upstream-TLS mode). Empty by default:
-	// with no entry, rate-limit keys come from the connection's RemoteAddr
-	// and a client-supplied X-Forwarded-For is ignored. When RemoteAddr
-	// falls in one of these ranges, the last X-Forwarded-For hop is taken
-	// as the client address instead (#195). Comma-separated CIDRs, e.g.
-	// "127.0.0.1/32,::1/128".
+	// server binds from (upstream-TLS mode). Empty by default: with no entry,
+	// rate-limit keys come from the connection's RemoteAddr and a client-supplied
+	// X-Forwarded-For is ignored. When RemoteAddr falls in one of these ranges,
+	// the last X-Forwarded-For hop is taken as the client address instead.
+	// Comma-separated CIDRs, e.g. "127.0.0.1/32,::1/128".
 	TrustedProxyCIDRs []netip.Prefix
 
 	// DevicePairingSecret is an optional operator-set extra factor on
-	// POST /api/v1/network/pair/initiate (ADR 0028 §6). Redacted — never
-	// log or print this field directly; call .Reveal() for the real
-	// value.
+	// POST /api/v1/network/pair/initiate. Redacted — never log or print
+	// this field directly; call .Reveal() for the real value.
 	DevicePairingSecret RedactedString
 
 	// SourceAllowPrivateAddresses permits outbound source (OPDS) requests
 	// to reach loopback and RFC 1918 / IPv6-ULA private addresses. Off by
-	// default: a source base URL is attacker-chosen input (§4), and the
+	// default: a source base URL is attacker-chosen input, and the
 	// outbound client blocks non-public targets and defends DNS rebinding.
 	// A self-hoster whose OPDS server runs on the same machine or their
 	// own LAN sets this true. Link-local (cloud metadata), CGNAT, and
 	// multicast stay blocked regardless.
 	SourceAllowPrivateAddresses bool
 
-	// DesktopParentPID is optional: when set by the Electron desktop host
-	// (architecture-desktop-host.md FR-8, desktop-host-process-model.md FR-6),
+	// DesktopParentPID is optional: when set by the Electron desktop host,
 	// the server watches this PID for termination and self-exits if the parent dies.
 	DesktopParentPID int
 
@@ -124,7 +108,7 @@ type Config struct {
 	tlsCert *tls.Certificate
 
 	// reachability and tlsMode are set by validateBindAddress from
-	// BIND_ADDRESS's class plus the certificate/ACME state (ADR 0028 §1).
+	// BIND_ADDRESS's class plus the certificate/ACME state.
 	// reachability: "loopback" | "private" | "public".
 	// tlsMode:      "none" (plaintext, upstream TLS may terminate) |
 	//               "static" (in-process, file cert) |
@@ -152,14 +136,13 @@ func (c *Config) NamedBindHost() string { return c.namedBindHost }
 func (c *Config) TLSCertificate() *tls.Certificate { return c.tlsCert }
 
 // Reachability reports whether BIND_ADDRESS is "loopback", "private", or
-// "public" (ADR 0028 §1). "public" is Mode A — in-process TLS mandatory
-// and a :80 HTTP->HTTPS redirect listener runs.
+// "public". "public" requires in-process TLS and runs an HTTP->HTTPS
+// redirect listener on port 80.
 func (c *Config) Reachability() string { return c.reachability }
 
 // TLSMode reports how TLS terminates: "none" (plaintext on this
 // listener), "static" (in-process, TLS_CERT_FILE/TLS_KEY_FILE), or "acme"
-// (in-process, autocert). backend-network-api.md FR-4's /network/status
-// reports it.
+// (in-process, autocert).
 func (c *Config) TLSMode() string { return c.tlsMode }
 
 type category int
@@ -172,8 +155,7 @@ const (
 	// one.
 	categoryOptionalDefault
 	// categoryOptionalNoDefault: absence is itself a meaningful signal,
-	// checked explicitly by the caller — never used as a "usually fine
-	// to omit" escape hatch (backend-configuration.md FR-3).
+	// checked explicitly by the caller rather than using a default.
 	categoryOptionalNoDefault
 )
 
@@ -334,14 +316,11 @@ var defaults = map[string]any{
 }
 
 // Load resolves and validates every configuration key and returns a
-// fully populated Config, or the first error encountered — never a
-// partially populated value (backend-configuration.md FR-1).
+// fully populated Config, or the first error encountered.
 //
-// configPath is the operator-supplied --config value, or "" if the flag
-// was absent (in which case userConfigDir locates the well-known
-// fallback location, per FR-5). readFile and userConfigDir are injected
-// so Load never touches the real filesystem in a test — production
-// callers pass os.ReadFile and os.UserConfigDir directly.
+// configPath is the operator-supplied configuration file path, or "" to use
+// the default platform location. readFile and userConfigDir are injected to
+// facilitate testing without filesystem dependencies.
 func Load(configPath string, readFile func(path string) ([]byte, error), userConfigDir func() (string, error)) (*Config, error) {
 	fileValues, err := loadFileValues(configPath, readFile, userConfigDir)
 	if err != nil {
@@ -393,9 +372,9 @@ func parseHostPort(raw string) (any, error) {
 }
 
 // loadFileValues resolves the config file's path (explicit --config, or
-// the well-known fallback) and, if a file is present, parses it into a
-// key-to-string map every field's own parse function can consume the
-// same way it consumes an environment value (ADR 0019).
+// the platform fallback) and, if a file is present, parses it into a
+// key-to-string map that field parse functions can consume identically
+// to environment variables.
 func loadFileValues(configPath string, readFile func(string) ([]byte, error), userConfigDir func() (string, error)) (map[string]string, error) {
 	path := configPath
 	explicit := configPath != ""
@@ -413,9 +392,8 @@ func loadFileValues(configPath string, readFile func(string) ([]byte, error), us
 			if explicit {
 				return nil, fmt.Errorf("config file %s does not exist", path)
 			}
-			// No --config flag and nothing at the fallback location:
-			// not an error (FR-5) — every key resolves from the
-			// environment or its default.
+			// No config flag provided and no file at default location:
+			// resolve configuration entirely from environment and defaults.
 			return map[string]string{}, nil
 		}
 		return nil, fmt.Errorf("could not read config file %s: %w", path, err)
@@ -423,11 +401,8 @@ func loadFileValues(configPath string, readFile func(string) ([]byte, error), us
 
 	var raw map[string]any
 	if err := toml.Unmarshal(data, &raw); err != nil {
-		// Deliberately never include the underlying parser error's own
-		// text: it can echo the offending line's raw content verbatim,
-		// which is exactly what FR-6 forbids when that line holds
-		// DATABASE_URL or any future sensitive key. Position (line,
-		// column) is safe; the parser's own formatted message is not.
+		// Do not include the raw parser error message, which may leak sensitive
+		// values (such as database credentials in invalid lines).
 		var decodeErr *toml.DecodeError
 		if errors.As(err, &decodeErr) {
 			row, col := decodeErr.Position()
@@ -509,14 +484,14 @@ func parseBool(raw string) (any, error) {
 
 // parseOriginList splits a comma-separated CORS_ALLOWED_ORIGINS value,
 // trims each entry, validates it is a bare scheme://host[:port] with an
-// http/https scheme, a host, and no path/query/fragment (ADR 0028 §4:
-// CORS matching is exact string equality, so a malformed entry could
+// http/https scheme, a host, and no path/query/fragment (CORS
+// matching is exact string equality, so a malformed entry could
 // never match and is rejected loudly instead), and normalizes it to the
 // serialized-origin form the browser actually sends (RFC 6454 §6.1):
 // host lower-cased, and the scheme's default port (:443 for https, :80
-// for http) dropped. Without this, the reverse-proxy config ADR 0028 §4
-// describes — an operator pasting https://host:443 straight from a proxy
-// file — would sit in the list as an entry no Origin header can match.
+// for http) dropped. Without this, reverse-proxy configurations
+// where an operator pastes https://host:443 straight from a proxy
+// file would sit in the list as an entry no Origin header can match.
 // Normalization only ever tightens an eventual exact match, never loosens
 // it. (url.Parse already lower-cases the scheme.)
 func parseOriginList(raw string) (any, error) {
@@ -553,7 +528,7 @@ func parseOriginList(raw string) (any, error) {
 	return out, nil
 }
 
-// parseCIDRList parses a comma-separated list of CIDR prefixes (#195).
+// parseCIDRList parses a comma-separated list of CIDR prefixes.
 func parseCIDRList(raw string) (any, error) {
 	var out []netip.Prefix
 	for _, part := range strings.Split(raw, ",") {

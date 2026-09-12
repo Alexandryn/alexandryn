@@ -27,7 +27,7 @@ const (
 	MatchConfidenceLow    MatchConfidence = "low"
 )
 
-// MatchCandidate represents a suggested bibliographic match (backend-import-pipeline.md FR-4).
+// MatchCandidate represents a suggested bibliographic match.
 type MatchCandidate struct {
 	Type               MatchCandidateType `json:"type"`
 	Confidence         MatchConfidence    `json:"confidence"`
@@ -43,12 +43,12 @@ type ExistingLibraryFinder interface {
 	FindOwnedByISBN(ctx context.Context, isbn string) ([]postgres.ExistingEditionHit, error)
 }
 
-// OpenLibrarySearcher is the metadata search capability from phase 07.
+// OpenLibrarySearcher is the metadata search capability for Open Library.
 type OpenLibrarySearcher interface {
 	Search(ctx context.Context, q string, limit, offset int) (*openlibrary.NormalisedSearchResponse, error)
 }
 
-// Matcher evaluates extracted metadata against existing library and Open Library (FR-4).
+// Matcher evaluates extracted metadata against existing library records and Open Library.
 type Matcher struct {
 	library     ExistingLibraryFinder
 	openLibrary OpenLibrarySearcher
@@ -71,12 +71,12 @@ func normalizeText(s string) string {
 }
 
 // Match runs both existing-library lookup and Open Library search, returning
-// candidates and whether the narrow auto-accept condition is met (FR-4, FR-5).
+// candidates and whether the auto-accept condition is met.
 func (m *Matcher) Match(ctx context.Context, meta extract.ExtractedMetadata) ([]MatchCandidate, bool, error) {
 	var candidates []MatchCandidate
 	var exactHitsCount int
 
-	// 1. Existing library lookup (FR-4(a))
+	// 1. Existing library lookup
 	if meta.ISBN != nil && *meta.ISBN != "" && m.library != nil {
 		hits, err := m.library.FindOwnedByISBN(ctx, *meta.ISBN)
 		if err == nil {
@@ -100,7 +100,7 @@ func (m *Matcher) Match(ctx context.Context, meta extract.ExtractedMetadata) ([]
 		}
 	}
 
-	// 2. Open Library search (FR-4(b))
+	// 2. Open Library search
 	if m.openLibrary != nil && meta.Title != "" {
 		query := meta.Title
 		if len(meta.Authors) > 0 {
@@ -129,13 +129,13 @@ func (m *Matcher) Match(ctx context.Context, meta extract.ExtractedMetadata) ([]
 		}
 	}
 
-	// Auto-accept rule (FR-5): exactly ONE exact-confidence existing-library match
+	// Auto-accept rule: exactly ONE exact-confidence existing-library match.
 	autoAccept := (exactHitsCount == 1)
 
 	return candidates, autoAccept, nil
 }
 
-// ScoreOpenLibraryResult computes confidence for an Open Library result (FR-4, review 0049 finding 1).
+// ScoreOpenLibraryResult computes confidence for an Open Library result.
 func (m *Matcher) ScoreOpenLibraryResult(meta extract.ExtractedMetadata, item openlibrary.NormalisedSearchResult) MatchConfidence {
 	metaTitle := normalizeText(meta.Title)
 	itemTitle := normalizeText(item.Title)

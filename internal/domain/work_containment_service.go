@@ -6,13 +6,11 @@ import (
 )
 
 // WorkContainmentService owns adding and removing an omnibus "contains"
-// reference (domain-bibliographic.md FR-9), holding the repository
-// interface internal/domain itself declares. The cycle check runs over
-// the merge-resolved graph, not the raw one: both container and containee
-// are resolved to their canonical Work before comparison, and the
-// existing containment closure is walked with the same resolution applied
-// at every step — the same reasoning WorkMergeService applies to merge
-// cycles, per ADR 0020.
+// reference, holding the repository interface internal/domain declares.
+// The cycle check runs over the merge-resolved graph, not the raw one:
+// both container and containee are resolved to their canonical Work before
+// comparison, and the existing containment closure is walked with the same
+// resolution applied at every step.
 type WorkContainmentService struct {
 	works WorkRepository
 }
@@ -59,8 +57,7 @@ func (s *WorkContainmentService) AddContains(ctx context.Context, container, con
 }
 
 // RemoveContains removes exactly the given containee reference from
-// container's raw Contains list — no cascade, matching FR-6's
-// non-cascading reasoning for LibraryEntry removal, applied here.
+// container's raw Contains list without cascading.
 func (s *WorkContainmentService) RemoveContains(ctx context.Context, container, containee WorkID, occurredAt time.Time) (WorkContainsRemoved, error) {
 	containerWork, err := s.works.FindByID(ctx, container)
 	if err != nil {

@@ -7,9 +7,8 @@ import (
 	"testing"
 )
 
-// backend-network-transport.md FR-9: the pairing-code generator returns a
-// crypto/rand failure, it never falls back to a weaker source. Enforced
-// as a source audit — no file in internal/pairing imports math/rand.
+// TestPairing_NoMathRand verifies that non-test files in internal/pairing
+// do not import math/rand, ensuring all pairing entropy is derived from crypto/rand.
 func TestPairing_NoMathRand(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {

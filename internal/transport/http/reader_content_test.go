@@ -104,7 +104,7 @@ func TestReaderContent_UnownedEditionIs404(t *testing.T) {
 	}
 }
 
-// TestReaderContent_CrossLibraryIs404 is the AUDIT-0012-C1 close-gate
+// TestReaderContent_CrossLibraryIs404 is the cross-tenant authorization
 // test for the reader-content path: a member of library X cannot stream
 // the bytes of an edition owned only in library Y.
 func TestReaderContent_CrossLibraryIs404(t *testing.T) {
@@ -160,7 +160,7 @@ func TestReaderContent_PathTraversalNeverServesContent(t *testing.T) {
 }
 
 // A dot-segment path that survives mux normalisation is rejected by the
-// handler's own FR-1 validation, before any entry lookup.
+// handler's own input validation, before any entry lookup.
 func TestReaderContent_DotSegmentIs400(t *testing.T) {
 	h := transporthttp.ReaderContentHandler(readyContentPoolRef(t), nil)
 	rr := httptest.NewRecorder()

@@ -63,22 +63,17 @@ type jobObjectExtendedLimitInformation struct {
 
 // SpawnWithOrphanPrevention creates a Windows Job Object with
 // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, *then* starts cmd and assigns it
-// to that job (architecture-persistence.md FR-9) — the parent-side,
-// spawn-time mechanism architecture-desktop-host.md FR-9 specifies for
-// Electron→Go-server, applied one level down. This requires no changes
-// to PostgreSQL's own source, the same "third-party binary, no
-// cooperation needed" property SpawnWithOrphanPrevention's Linux
-// counterpart has.
+// to that job — the parent-side, spawn-time mechanism used for orphan
+// prevention. This requires no changes to PostgreSQL's own source,
+// ensuring third-party binary orphan prevention without binary modification.
 //
-// Residual race, not fully closed (found by a post-commit security
-// review of this task and left honestly documented rather than silently
-// narrowed and forgotten): between cmd.Start() returning and
+// Residual race, documented honestly: between cmd.Start() returning and
 // AssignProcessToJobObject completing, the process is running but not
 // yet protected — if this process dies in that exact window, PostgreSQL
-// would orphan anyway, precisely what FR-9 exists to prevent. Doing job
-// creation and limit configuration *before* Start() (this function's
-// actual shape) shrinks that window to one syscall instead of three, but
-// doesn't eliminate it. A fully race-free fix needs CREATE_SUSPENDED —
+// would orphan anyway. Doing job creation and limit configuration *before*
+// Start() (this function's actual shape) shrinks that window to one
+// syscall instead of three, but doesn't eliminate it. A fully race-free
+// fix needs CREATE_SUSPENDED —
 // start the process suspended, assign it to the job while no code in it
 // can run yet, then resume its main thread — but Go's os/exec closes the
 // new process's thread handle immediately after CreateProcess returns

@@ -17,8 +17,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// The phase-13 middleware-chain assembly (backend-http-transport.md FR-1
-// as amended for ADR 0028): the security-headers, CORS and public
+// Middleware chain assembly: security-headers, CORS, and public
 // rate-limit middlewares are mounted in newProductionRouter, in order,
 // before auth.
 
@@ -39,8 +38,8 @@ func TestChain_SecurityHeadersOnEveryResponse(t *testing.T) {
 	if csp := rec.Header().Get("Content-Security-Policy"); csp == "" {
 		t.Error("no Content-Security-Policy on /healthz")
 	}
-	// audit 0016 #159: the served SPA HTML document, not only /api and
-	// /healthz, must carry the CSP — it is the framing/injection target.
+	// The served SPA HTML document, not only /api and /healthz, must carry
+	// the CSP — it is the framing/injection target.
 	spaRec := httptest.NewRecorder()
 	chainTestRouter(t, nil).ServeHTTP(spaRec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if !strings.HasPrefix(spaRec.Header().Get("Content-Type"), "text/html") {
@@ -155,10 +154,9 @@ func TestChain_RateLimitRunsBeforeCORSPreflight(t *testing.T) {
 	}
 }
 
-// FR-12 (backend-network-transport.md): opening the bind must not make any
-// route public. This is the characterization test — the set is exactly
-// what phase 12 established until Tier 4 adds POST /network/pair/verify.
-func TestFR12_IsPublicPathUnchanged(t *testing.T) {
+// Opening the bind must not make routes public unintentionally.
+// Tests the set of paths marked public without authentication.
+func TestIsPublicPathContract(t *testing.T) {
 	public := []string{"/healthz", "/readyz", "/api/v1/auth/setup/status", "/api/v1/auth/setup", "/api/v1/auth/login"}
 	notPublic := []string{
 		"/api/v1/library", "/api/v1/reading/export", "/api/v1/network/status",

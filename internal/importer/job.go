@@ -14,7 +14,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// ImportJobPayload carries the arguments for an import execution job (backend-import-pipeline.md FR-2).
+// ImportJobPayload carries the arguments for an import execution job.
 type ImportJobPayload struct {
 	CandidateID   string               `json:"candidateId"`
 	SourceID      string               `json:"sourceId"`
@@ -26,7 +26,7 @@ type SourceResolver interface {
 	Resolve(ctx context.Context, sourceID string, fileRef domain.FileReference) (io.ReadCloser, error)
 }
 
-// NewJobHandler constructs the job runner handler for kind "import" (FR-2).
+// NewJobHandler constructs the job runner handler for kind "import".
 func NewJobHandler(
 	resolver SourceResolver,
 	candRepo CandidateRepository,

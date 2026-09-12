@@ -12,15 +12,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// reaperLastError is the fixed last_error a reaper reclaim records
-// (backend-job-queue.md FR-5).
+// reaperLastError is the fixed last_error a reaper reclaim records.
 const reaperLastError = "worker lease expired without heartbeat"
 
 // Store is the jobs table's data-access layer. It owns no clock: every
 // method that reads or writes a time takes it as an explicit parameter,
 // sourced from the engine's injected clock, never SQL's own now() — so a
 // test governs claimability and lease expiry by advancing a FakeClock
-// with no real sleep (FR-4/FR-5).
+// with no real sleep.
 type Store struct {
 	pool          *pgxpool.Pool
 	ids           domain.IDGenerator
@@ -66,8 +65,8 @@ func (s *Store) Enqueue(ctx context.Context, j NewJob) error {
 }
 
 // ClaimNext claims the single oldest claimable job whose kind is in
-// kinds (nil means any), moving it to running with a fresh lease token
-// (FR-4). It returns nil, nil when nothing is claimable.
+// kinds (nil means any), moving it to running with a fresh lease token.
+// It returns nil, nil when nothing is claimable.
 //
 // The correctness property is FOR UPDATE's row lock, held to commit: two
 // concurrent workers cannot both read the same row and both write
@@ -125,7 +124,7 @@ func (s *Store) ClaimNext(ctx context.Context, workerID string, kinds []Kind, no
 
 // Heartbeat extends the lease of a running job the caller still owns.
 // It reports false when zero rows matched — the lease has been reclaimed
-// (the token no longer matches) and the caller must stop (FR-5).
+// (the token no longer matches) and the caller must stop.
 func (s *Store) Heartbeat(ctx context.Context, id ID, leaseToken string, now time.Time) (bool, error) {
 	tag, err := s.pool.Exec(ctx, `UPDATE jobs SET locked_until = $3, updated_at = $4
 		WHERE id = $1 AND lease_token = $2 AND status = 'running'`,
@@ -136,7 +135,7 @@ func (s *Store) Heartbeat(ctx context.Context, id ID, leaseToken string, now tim
 	return tag.RowsAffected() == 1, nil
 }
 
-// Complete marks a job completed, fenced on the lease token (FR-6). It
+// Complete marks a job completed, fenced on the lease token. It
 // reports false when the lease was already reclaimed and the write hit
 // zero rows — the caller discards its result and logs it as a harmless
 // late write, not a new failure.
@@ -151,7 +150,7 @@ func (s *Store) Complete(ctx context.Context, id ID, leaseToken string, now time
 	return tag.RowsAffected() == 1, nil
 }
 
-// Fail applies FR-6's outcome for a handler failure, fenced on the lease
+// Fail applies the outcome for a handler failure, fenced on the lease
 // token. deadLetter chooses dead_letter (attempts exhausted, or a
 // Permanent error) over retrying; nextRunAt is the backoff-delayed
 // available_at for the retrying case (ignored for dead_letter). cause's
@@ -174,7 +173,7 @@ func (s *Store) Fail(ctx context.Context, id ID, leaseToken string, now, nextRun
 
 // UpdateProgress writes a handler's sub-progress in its own statement,
 // fenced on the lease token so a reclaimed worker cannot write progress
-// for a job it no longer owns (FR-8). A zero-row write is a no-op, not
+// for a job it no longer owns. A zero-row write is a no-op, not
 // an error — progress is best-effort and must never block the job.
 func (s *Store) UpdateProgress(ctx context.Context, id ID, leaseToken string, current, total int, now time.Time) error {
 	p, err := json.Marshal(Progress{Current: current, Total: total})
@@ -190,10 +189,10 @@ func (s *Store) UpdateProgress(ctx context.Context, id ID, leaseToken string, cu
 	return nil
 }
 
-// RecoverStale is the reaper sweep (FR-5): every running job whose lease
+// RecoverStale is the reaper sweep: every running job whose lease
 // expired with no heartbeat is reclaimed in its own short transaction —
 // a new lease token (so the original worker's token is stale
-// everywhere), FR-6's retry/dead-letter comparison against the attempts
+// everywhere), retry/dead-letter comparison against the attempts
 // value the original claim already set (never re-incremented here), and
 // a fixed last_error. backoffFor computes the retrying delay; it is
 // passed in so the engine owns the jitter source. Returns how many jobs
@@ -366,8 +365,7 @@ func (s *Store) CancelJob(ctx context.Context, id ID, now time.Time) error {
 // RetryJob re-enqueues a dead-letter job as a fresh record (new id,
 // attempts = 0, available_at = now). Only a dead-letter job is
 // retryable: retrying a queued, running, or retrying job would put a
-// duplicate copy on the queue, and a completed job has already run
-// (audit 0016 #298).
+// duplicate copy on the queue, and a completed job has already run.
 func (s *Store) RetryJob(ctx context.Context, id ID, newID ID, now time.Time) (ID, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

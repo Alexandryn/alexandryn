@@ -57,8 +57,8 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		t.Fatal("expected non-nil doc")
 	}
 
-	// Confirm all Phase 06 and Phase 07 paths are present in the spec (L01 + L02
-	// cross-check). A missing path means openapi.yaml was not updated.
+	// Confirm all expected paths are present in the spec.
+	// A missing path means openapi.yaml was not updated.
 	phasePaths := []string{
 		"/api/v1/library",
 		"/api/v1/works/{id}",
@@ -79,7 +79,7 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/import/candidates/{id}/confirm",
 		"/api/v1/import/candidates/{id}/reject",
 		"/api/v1/import/candidates/{id}/cover",
-		// Phase 11 — reader content + reading API + export.
+		// Reader content, reading API, export.
 		"/api/v1/library/editions/{editionId}/reader/content/{path}",
 		"/api/v1/reading/works/{workId}/progress",
 		"/api/v1/reading/editions/{editionId}/bookmarks",
@@ -88,14 +88,14 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/reading/highlights/{highlightId}",
 		"/api/v1/reading/preferences",
 		"/api/v1/reading/export",
-		// Phase 13 — network access & device pairing.
+		// Network access & device pairing.
 		"/api/v1/network/pair/initiate",
 		"/api/v1/network/pair/verify",
 		"/api/v1/network/pair/{id}/qr",
 		"/api/v1/network/status",
 		"/api/v1/network/settings",
 		"/api/v1/network/pair/{id}",
-		// Phase 14 — devices & sync.
+		// Devices & sync.
 		"/api/v1/devices",
 		"/api/v1/devices/{id}",
 		"/api/v1/sync/reading",
@@ -108,10 +108,8 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 	}
 }
 
-// TestBrokenHandlerFailsContractTest proves — in the negative direction —
-// that ValidateResponse catches a handler returning a schema-violating
-// body (backend-library-api.md FR-8: "the contract test fails on a
-// deliberately malformed handler response").
+// TestBrokenHandlerFailsContractTest proves that ValidateResponse catches
+// a handler returning a schema-violating body.
 //
 // Uses fakeT to intercept the validation failure so it doesn't propagate
 // as an outer-test failure — the outer test asserts the inner failure
@@ -143,8 +141,7 @@ func TestBrokenHandlerFailsContractTest(t *testing.T) {
 }
 
 // TestUndocumentedRouteNotInSpec proves that a path not present in
-// api/openapi.yaml is detectable via Doc().Paths.Find (the
-// route-completeness direction of FR-8's dual check). This does not hit
+// api/openapi.yaml is detectable via Doc().Paths.Find. This does not hit
 // an actual handler — it only inspects the spec's path set.
 func TestUndocumentedRouteNotInSpec(t *testing.T) {
 	v := contracttest.New(t)
@@ -279,10 +276,8 @@ func TestValidDiscoverCoverPassesContractTest(t *testing.T) {
 	}
 }
 
-// ── Phase 08: Sources ────────────────────────────────────────────────
-// backend-source-adapter.md FR-2/FR-6/FR-7. These validate the spec's
-// own shapes against hand-built valid bodies — the real handlers land in
-// Tier 3 and get their own contract coverage then.
+// ── Sources ──────────────────────────────────────────────────────────
+// Validates the spec's own shapes against hand-built valid bodies.
 
 func serveJSON(status int, body string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -659,7 +654,7 @@ func TestRealImportHandlersPassContractTest(t *testing.T) {
 	})
 }
 
-// --- Phase 11: reader content + reading API contract responses ---------
+// --- Reader content + reading API contract responses ---------
 
 type ctReadingProgress struct{ p *domain.ReadingProgress }
 
@@ -693,7 +688,7 @@ func (ctExport) ListMarks(context.Context, domain.UserID, domain.LibraryID, stri
 	return nil, nil
 }
 
-func TestPhase11ContractResponses(t *testing.T) {
+func TestReadingContractResponses(t *testing.T) {
 	v := contracttest.New(t)
 	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
 
@@ -703,9 +698,7 @@ func TestPhase11ContractResponses(t *testing.T) {
 		Export:   ctExport{},
 	})
 
-	// The reading handlers now require an authenticated user + active
-	// library in context (AUDIT-0012-C1). The auth middleware supplies it
-	// in production; here it is injected directly.
+	// The reading handlers require an authenticated user + active library in context.
 	withReadingScope := func(req *http.Request) *http.Request {
 		ctx := transporthttp.WithUser(req.Context(), &transporthttp.AuthenticatedUser{UserID: "ct-user"})
 		ctx = transporthttp.WithActiveLibrary(ctx, domain.DefaultLibraryID)
@@ -770,7 +763,7 @@ func (ctMemberships) FindByUser(context.Context, domain.UserID) ([]*domain.Libra
 func (ctMemberships) Save(context.Context, *domain.LibraryMembership) error         { return nil }
 func (ctMemberships) Delete(context.Context, domain.LibraryID, domain.UserID) error { return nil }
 
-func TestPhase12ContractResponses(t *testing.T) {
+func TestAuthContractResponses(t *testing.T) {
 	v := contracttest.New(t)
 
 	t.Run("GET /api/v1/auth/setup/status → { isSetup: false }", func(t *testing.T) {
@@ -918,7 +911,7 @@ func (s *ctNetworkSettings) Upsert(_ context.Context, settings *domain.NetworkSe
 	return nil
 }
 
-func TestPhase13ContractResponses(t *testing.T) {
+func TestNetworkContractResponses(t *testing.T) {
 	v := contracttest.New(t)
 	now := func() time.Time { return time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC) }
 	code, err := domain.NewPairingCode("3ABCDEFG")
@@ -1103,7 +1096,7 @@ func (ctIDs) NewID() string {
 	return "test-id"
 }
 
-func TestPhase14ContractResponses(t *testing.T) {
+func TestSyncContractResponses(t *testing.T) {
 	v := contracttest.New(t)
 	now := func() time.Time { return time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC) }
 

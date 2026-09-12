@@ -5,15 +5,9 @@ import (
 	"time"
 )
 
-// SourceRemovalService owns removing a Source (domain-source.md FR-6):
-// every SourceOffering referencing it MUST be removed, and no
-// LibraryEntry MUST be touched. The second half of that guarantee is
-// structural, not a check this service performs — it never holds a
-// LibraryEntryRepository at all, so there is nothing here that could
-// reach one. The cascade MUST apply atomically (FR-6's 2026-08-21
-// amendment) — composed through the Transactor ADR 0021 declares, since
-// Source and SourceOffering are separate repositories and no single
-// repository method could own both writes.
+// SourceRemovalService owns removing a Source: every SourceOffering referencing
+// it is removed atomically, and no LibraryEntry is touched. The cascade applies
+// atomically through the Transactor.
 type SourceRemovalService struct {
 	sources   SourceRepository
 	offerings SourceOfferingRepository

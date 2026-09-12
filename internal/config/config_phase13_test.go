@@ -8,9 +8,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// Phase 13 (backend-configuration.md FR-4 amendment, ADR 0028) adds six
-// keys: ACME_ENABLED, ACME_DOMAIN, ACME_EMAIL, ACME_CACHE_DIR,
-// CORS_ALLOWED_ORIGINS, DEVICE_PAIRING_SECRET.
+// Tests for network configuration keys: ACME_ENABLED, ACME_DOMAIN, ACME_EMAIL,
+// ACME_CACHE_DIR, CORS_ALLOWED_ORIGINS, DEVICE_PAIRING_SECRET.
 
 func TestLoad_ACMEEnabled_DefaultsFalse(t *testing.T) {
 	validEnv(t)

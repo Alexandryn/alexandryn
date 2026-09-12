@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 // runHelperParent spawns a real, long-running child (sleep) via
 // SpawnWithOrphanPrevention, prints the child's PID so the real test can
 // learn it, then blocks on stdin until killed — standing in for
-// PostgreSQL in FR-8's "this process dies, PostgreSQL must die too"
+// PostgreSQL in the "this process dies, PostgreSQL must die too"
 // scenario, with this helper itself standing in for cmd/server.
 func runHelperParent() {
 	cmd := exec.Command("sleep", "30")
@@ -57,7 +57,7 @@ func runHelperParent() {
 	os.Exit(0)
 }
 
-// architecture-persistence.md FR-8: a real spawned child dies when its
+// Verifies that a real spawned child dies when its
 // parent dies for any reason, including an ungraceful kill — proven here
 // against a real process tree, not asserted from documentation. The
 // "parent" in this test is itself a spawned process (this same test

@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// DefaultLibraryID is the well-known identifier for the auto-created system library (ADR 0026).
+// DefaultLibraryID is the well-known identifier for the auto-created system library.
 const DefaultLibraryID = LibraryID("00000000-0000-0000-0000-000000000001")
 
-// Library is the top-level aggregate representing a distinct library namespace (ADR 0026, backend-library-namespaces.md).
+// Library is the top-level aggregate representing a distinct library namespace.
 type Library struct {
 	id                 LibraryID
 	name               string

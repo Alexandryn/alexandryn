@@ -130,9 +130,8 @@ func TestEventStore_PurgeExpired(t *testing.T) {
 	}
 }
 
-// TestReaper_Start_PurgesOnTick is the audit 0016 #294 regression: the
-// reaper's ticker loop (the thing cmd/server wires) actually deletes an
-// expired row, not just the directly-called RunSweep.
+// TestReaper_Start_PurgesOnTick verifies that the reaper's background ticker
+// loop automatically deletes expired events on each tick.
 func TestReaper_Start_PurgesOnTick(t *testing.T) {
 	pool := migratedPool(t)
 	ctx, cancel := context.WithCancel(context.Background())

@@ -37,6 +37,5 @@ func TestGeneratePairingCode(t *testing.T) {
 	}
 }
 
-// The generator must not import math/rand — a crypto/rand failure is
-// returned, never downgraded. Proven structurally in
-// internal/pairing/audit_test.go.
+// The generator uses crypto/rand exclusively; crypto failures are returned
+// rather than downgraded. This invariant is verified by TestPairing_NoMathRand.

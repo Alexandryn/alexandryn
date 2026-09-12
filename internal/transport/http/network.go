@@ -18,7 +18,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Wire types for network API (backend-network-api.md FR-1 through FR-6)
+// Wire types for network API
 
 type InitiatePairingRequestWire struct {
 	Secret string `json:"secret,omitempty"`
@@ -32,10 +32,10 @@ type InitiatePairingResponseWire struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-// maxNetworkRequestBodyBytes enforces the strict 4 KiB body cap on network endpoints (FR-10).
+// maxNetworkRequestBodyBytes enforces the strict 4 KiB body cap on network endpoints.
 const maxNetworkRequestBodyBytes = 4096
 
-// checkJSONContentType validates that requests with a body declare application/json (FR-10).
+// checkJSONContentType validates that requests with a body declare application/json.
 func checkJSONContentType(r *http.Request) bool {
 	if r.ContentLength == 0 {
 		return true
@@ -44,7 +44,7 @@ func checkJSONContentType(r *http.Request) bool {
 	return strings.HasPrefix(strings.ToLower(ct), "application/json")
 }
 
-// InitiatePairingHandler creates a new 5-minute PairingSession (FR-1).
+// InitiatePairingHandler creates a new 5-minute PairingSession.
 // Requires admin role and constant-time match of DEVICE_PAIRING_SECRET if configured.
 func InitiatePairingHandler(
 	sessionRepo domain.PairingSessionRepository,
@@ -142,7 +142,7 @@ func InitiatePairingHandler(
 	})
 }
 
-// PairingVerifier abstracts atomic verification and provisional device enrollment (T3.4 / ADR 0021).
+// PairingVerifier abstracts atomic verification and provisional device enrollment.
 type PairingVerifier interface {
 	VerifyAndConsume(
 		ctx context.Context,
@@ -185,7 +185,7 @@ func parseDeviceClass(userAgent string) domain.DeviceClass {
 }
 
 // VerifyPairingHandler verifies a pairing code, marks the session consumed,
-// inserts a provisional PairedDevice, and issues an enrolment grant (FR-2).
+// inserts a provisional PairedDevice, and issues an enrolment grant.
 // Unauthenticated, Origin-checked, rate-limited.
 func VerifyPairingHandler(
 	verifier PairingVerifier,
@@ -239,7 +239,7 @@ func VerifyPairingHandler(
 
 		session, err := verifier.VerifyAndConsume(r.Context(), code, devID, label, deviceClass, currentTime)
 		if err != nil {
-			// FR-2: wrong / expired / never-existed -> byte-identical generic 404
+			// Wrong / expired / never-existed -> byte-identical generic 404
 			WriteError(w, domain.NotFound, genericPairingNotFoundMsg, corrID)
 			return
 		}
@@ -280,7 +280,7 @@ type PairingQRResponseWire struct {
 }
 
 // PairingQRHandler returns the pairing payload, address, code, and state for
-// the initiating admin only (FR-3). Cross-admin attempts return 404.
+// the initiating admin only. Cross-admin attempts return 404.
 func PairingQRHandler(
 	sessionRepo domain.PairingSessionRepository,
 	serverAddress string,
@@ -314,7 +314,7 @@ func PairingQRHandler(
 			return
 		}
 
-		// FR-3 / security requirement: cross-admin enumeration defence -> 404, not 403
+		// Security requirement: cross-admin enumeration defence -> 404, not 403
 		if session.InitiatedBy() != user.UserID {
 			WriteError(w, domain.NotFound, "pairing session not found", corrID)
 			return
@@ -372,7 +372,7 @@ type NetworkStatusAdminWire struct {
 	ACMEDomain   string               `json:"acmeDomain,omitempty"`
 }
 
-// NetworkStatusHandler returns reachability, TLS mode, and address info scoped by role (FR-4).
+// NetworkStatusHandler returns reachability, TLS mode, and address info scoped by role.
 // Reader gets minimal status; Admin gets full interface list, hostName, and ACME domain.
 // Neither response contains secrets, filesystem paths, or unscrubbed config.
 func NetworkStatusHandler(
@@ -390,7 +390,7 @@ func NetworkStatusHandler(
 		info := infoProvider()
 
 		// Determine address: match client Host against known server addresses,
-		// never reflect an unverified client Host header directly (FR-4).
+		// never reflect an unverified client Host header directly.
 		matchedAddress := ""
 		scheme := "http"
 		if info.TLSMode != "none" {
@@ -457,7 +457,7 @@ type NetworkSettingsResponseWire struct {
 
 // defaultNetworkSettings is the row the update handler synthesises when
 // none is saved yet; GetNetworkSettingsHandler returns the same shape so
-// the settings form has real values to pre-fill (audit 0016 #143).
+// the settings form has real values to pre-fill.
 func defaultNetworkSettings(now func() time.Time) *domain.NetworkSettings {
 	return &domain.NetworkSettings{
 		HostName:           "alexandryn.local",
@@ -466,7 +466,7 @@ func defaultNetworkSettings(now func() time.Time) *domain.NetworkSettings {
 	}
 }
 
-// GetNetworkSettingsHandler serves GET /api/v1/network/settings (FR-5).
+// GetNetworkSettingsHandler serves GET /api/v1/network/settings.
 // Admin only. Returns the saved runtime-safe settings, or the defaults
 // when none has been saved.
 func GetNetworkSettingsHandler(settingsRepo domain.NetworkSettingsRepository, now func() time.Time) http.Handler {
@@ -504,7 +504,7 @@ func GetNetworkSettingsHandler(settingsRepo domain.NetworkSettingsRepository, no
 	})
 }
 
-// UpdateNetworkSettingsHandler updates runtime-safe network settings (FR-5).
+// UpdateNetworkSettingsHandler updates runtime-safe network settings.
 // Admin only. Strictly allows hostName and rememberDeviceDays; any other key
 // (or restart-only keys) returns 400 InvalidInput.
 func UpdateNetworkSettingsHandler(
@@ -545,7 +545,7 @@ func UpdateNetworkSettingsHandler(
 			return
 		}
 
-		// Enforce strict allowlist and give helpful error messages on forbidden/restart-only keys (FR-5)
+		// Enforce strict allowlist and give helpful error messages on forbidden/restart-only keys
 		for key := range rawMap {
 			switch key {
 			case "hostName", "rememberDeviceDays":
@@ -622,7 +622,7 @@ func UpdateNetworkSettingsHandler(
 	})
 }
 
-// DeletePairingHandler deletes or revokes a pairing session/device (FR-6).
+// DeletePairingHandler deletes or revokes a pairing session/device.
 // Admin only, initiator only (returns 404 for another admin's session).
 // Non-terminal session -> expired.
 // Consumed session -> revokes the PairedDevice produced.

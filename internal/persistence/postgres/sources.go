@@ -11,11 +11,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// SourceRecord is the full persisted row for a phase-08 source: what
-// domain-source.md deliberately keeps out of the domain model
-// (backend-source-adapter.md — kind-specific config, an encrypted
-// credential, health and capability state). It is a persistence-layer
-// type, not a domain aggregate; the thin domain.SourceRepository still
+// SourceRecord is the full persisted row for a source: kind-specific config,
+// an encrypted credential, and health and capability state. It is a
+// persistence-layer type, not a domain aggregate; the domain.SourceRepository
 // owns identity/label/capabilities for SourceRemovalService's atomic
 // cascade.
 type SourceRecord struct {
@@ -39,7 +37,7 @@ func (r SourceRecord) HasCredential() bool { return len(r.CredentialCiphertext) 
 
 // SourceRecordRepository persists SourceRecord rows. It exposes no
 // Delete — removing a source goes through domain.SourceRemovalService so
-// the SourceOffering cascade is atomic (domain-source.md FR-6).
+// the SourceOffering cascade is atomic.
 type SourceRecordRepository struct {
 	pool *pgxpool.Pool
 }
@@ -106,9 +104,8 @@ func (r *SourceRecordRepository) List(ctx context.Context) ([]SourceRecord, erro
 	return out, nil
 }
 
-// UpdateConfig updates a source's label and kind-specific config
-// (backend-source-adapter.md FR-2). It does not touch the credential or
-// health state.
+// UpdateConfig updates a source's label and kind-specific config.
+// It does not touch the credential or health state.
 func (r *SourceRecordRepository) UpdateConfig(ctx context.Context, id, label, basePath, baseURL string) error {
 	exec := executorFrom(ctx, r.pool)
 	tag, err := exec.Exec(ctx, `UPDATE sources
@@ -120,9 +117,8 @@ func (r *SourceRecordRepository) UpdateConfig(ctx context.Context, id, label, ba
 	return notFoundIfNoRows(tag.RowsAffected())
 }
 
-// SetCredential replaces or clears a source's stored credential
-// (FR-2 — a credential update replaces the value entirely). Pass nil
-// ciphertext and nonce to clear it.
+// SetCredential replaces or clears a source's stored credential (a credential
+// update replaces the value entirely). Pass nil ciphertext and nonce to clear it.
 func (r *SourceRecordRepository) SetCredential(ctx context.Context, id string, ciphertext, nonce []byte) error {
 	exec := executorFrom(ctx, r.pool)
 	tag, err := exec.Exec(ctx, `UPDATE sources
@@ -135,8 +131,7 @@ func (r *SourceRecordRepository) SetCredential(ctx context.Context, id string, c
 }
 
 // UpdateHealth writes the result of a health check: reachability, the
-// re-detected capabilities, and the origin-validated search link
-// (FR-5, FR-6, FR-11).
+// re-detected capabilities, and the origin-validated search link.
 func (r *SourceRecordRepository) UpdateHealth(ctx context.Context, id, status, detail string, checkedAt time.Time, caps domain.SourceCapabilities, searchLinkURL string) error {
 	exec := executorFrom(ctx, r.pool)
 	tag, err := exec.Exec(ctx, `UPDATE sources SET
@@ -151,9 +146,7 @@ func (r *SourceRecordRepository) UpdateHealth(ctx context.Context, id, status, d
 	return notFoundIfNoRows(tag.RowsAffected())
 }
 
-// CountWithCredential reports how many sources hold an encrypted
-// credential — crypto.LoadOrCreateKey's first-run vs. lost-key check
-// (FR-13).
+// CountWithCredential reports how many sources hold an encrypted credential.
 func (r *SourceRecordRepository) CountWithCredential(ctx context.Context) (int, error) {
 	if r == nil || r.pool == nil {
 		return 0, nil

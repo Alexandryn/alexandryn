@@ -7,13 +7,13 @@ import (
 )
 
 // ProgressStore is the row-locking slice of ReadingProgressRepository the
-// reconcile transaction needs (backend-reading-api.md FR-2).
+// reconcile transaction needs.
 type ProgressStore interface {
 	FindByWorkForUpdate(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error)
 	Save(ctx context.Context, p *domain.ReadingProgress) error
 }
 
-// Transactor runs fn inside one transaction (ADR 0021).
+// Transactor runs fn inside one transaction.
 type Transactor interface {
 	InTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
@@ -23,7 +23,7 @@ type IDs interface {
 	NewID() string
 }
 
-// ReportProgress runs FR-2's reconcile-and-persist atomically: inside one
+// ReportProgress runs reconcile-and-persist atomically: inside one
 // transaction it takes a row lock on the singleton ReadingProgress for
 // the Work, folds the report through ReconcileProgress (or
 // OverrideProgress when override is set), and persists only when the
@@ -72,16 +72,15 @@ func ReportProgress(ctx context.Context, tx Transactor, store ProgressStore, ids
 }
 
 // ErrEditionWorkMismatch is returned by CheckPrecisePositionWork when the
-// tagged Edition does not belong to the reported Work (FR-5).
+// tagged Edition does not belong to the reported Work.
 var ErrEditionWorkMismatch = &domain.Error{Category: domain.InvalidInput, Message: "precisePosition.editionId does not belong to this work"}
 
-// EditionLookup is the slice of EditionRepository FR-5's boundary check needs.
+// EditionLookup is the slice of EditionRepository needed for boundary checks.
 type EditionLookup interface {
 	FindByID(ctx context.Context, id domain.EditionID) (*domain.Edition, error)
 }
 
-// CheckPrecisePositionWork restates domain-reading.md's illegal-transition
-// rule at the transport boundary (FR-5): a PrecisePosition's tagged
+// CheckPrecisePositionWork restates the boundary rule: a PrecisePosition's tagged
 // Edition MUST belong to the ReadingProgress's own Work.
 func CheckPrecisePositionWork(ctx context.Context, editions EditionLookup, workID domain.WorkID, pos *domain.PrecisePosition) error {
 	if pos == nil {

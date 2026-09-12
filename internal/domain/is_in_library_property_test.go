@@ -10,12 +10,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Checkpoint P-E (tasks/plan-phase02-domain.md): a property-based test
-// proving FR-2's computed-not-stored invariant — "Work in library" always
-// matches "at least one Edition has an entry" — for any generated
-// sequence of entry creations/removals, generated adversarially rather
-// than hand-picked. Deterministic seed: a failure must be reproducible,
-// not a one-off flake.
+// Property-based test proving that "Work in library" always matches
+// "at least one Edition has an entry" for any generated sequence of
+// entry creations/removals.
 func TestIsInLibrary_ComputedNotStoredInvariant_PropertyBased(t *testing.T) {
 	ctx := context.Background()
 	rng := rand.New(rand.NewSource(20260820))

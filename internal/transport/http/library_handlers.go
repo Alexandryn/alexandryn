@@ -40,7 +40,7 @@ func wireLibrary(l *domain.Library) LibraryWire {
 	}
 }
 
-// ListLibrariesHandler returns all libraries accessible to the authenticated user (FR-1).
+// ListLibrariesHandler returns all libraries accessible to the authenticated user.
 func ListLibrariesHandler(libRepo domain.LibraryRepository, memRepo domain.LibraryMembershipRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -74,7 +74,7 @@ func ListLibrariesHandler(libRepo domain.LibraryRepository, memRepo domain.Libra
 	})
 }
 
-// CreateLibraryHandler creates a new named library (requires Admin) (FR-1).
+// CreateLibraryHandler creates a new named library (requires Admin).
 func CreateLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.LibraryMembershipRepository, idGen domain.IDGenerator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -141,7 +141,7 @@ func callerIsLibraryMember(r *http.Request, memRepo domain.LibraryMembershipRepo
 
 // callerIsLibraryAdmin reports whether the authenticated user administers
 // library libID: a global admin, or a member whose role in that library
-// is admin (FR-2).
+// is admin.
 func callerIsLibraryAdmin(r *http.Request, memRepo domain.LibraryMembershipRepository, libID domain.LibraryID) bool {
 	user := UserFromContext(r.Context())
 	if user == nil {
@@ -154,7 +154,7 @@ func callerIsLibraryAdmin(r *http.Request, memRepo domain.LibraryMembershipRepos
 	return err == nil && m != nil && m.Role() == domain.RoleAdmin
 }
 
-// GetLibraryHandler returns details for one library (FR-1).
+// GetLibraryHandler returns details for one library.
 func GetLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.LibraryMembershipRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -177,7 +177,7 @@ func GetLibraryHandler(libRepo domain.LibraryRepository, memRepo domain.LibraryM
 	})
 }
 
-// UpdateLibraryHandler updates a library's name, description, or ingestion policy (FR-1).
+// UpdateLibraryHandler updates a library's name, description, or ingestion policy.
 func UpdateLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -237,7 +237,7 @@ func UpdateLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
 	})
 }
 
-// DeleteLibraryHandler deletes a custom library (FR-1).
+// DeleteLibraryHandler deletes a custom library.
 func DeleteLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -268,15 +268,14 @@ func DeleteLibraryHandler(libRepo domain.LibraryRepository) http.Handler {
 	})
 }
 
-// ListMembersHandler returns all members of a library (FR-2).
+// ListMembersHandler returns all members of a library.
 func ListMembersHandler(memRepo domain.LibraryMembershipRepository, userRepo domain.UserRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
 		id := domain.LibraryID(r.PathValue("id"))
 
-		// FR-2: the member list (usernames + emails) is admin-only. Any
-		// authenticated reader could previously enumerate every member of
-		// any library (audit 0016 #262).
+		// The member list (usernames + emails) is admin-only, preventing
+		// enumeration of library members by unauthorized users.
 		if !callerIsLibraryAdmin(r, memRepo, id) {
 			writeForbidden(w, "you must be an admin of that library", corrID)
 			return
@@ -312,7 +311,7 @@ func ListMembersHandler(memRepo domain.LibraryMembershipRepository, userRepo dom
 	})
 }
 
-// CreateInvitationHandler generates an invitation token for a library (FR-2).
+// CreateInvitationHandler generates an invitation token for a library.
 func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo domain.LibraryMembershipRepository, idGen domain.IDGenerator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -324,8 +323,8 @@ func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo
 
 		libID := domain.LibraryID(r.PathValue("id"))
 
-		// FR-2: only an admin OF THIS LIBRARY may invite to it — not any
-		// global admin, and never a plain reader (audit 0016 #262).
+		// Only an admin of this library may invite to it — not any
+		// global admin, and never a plain reader.
 		if !callerIsLibraryAdmin(r, memRepo, libID) {
 			writeForbidden(w, "you must be an admin of that library to invite members", corrID)
 			return
@@ -376,7 +375,7 @@ func CreateInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo
 	})
 }
 
-// AcceptInvitationHandler adds the authenticated user to the invited library (FR-2).
+// AcceptInvitationHandler adds the authenticated user to the invited library.
 func AcceptInvitationHandler(invRepo domain.LibraryInvitationRepository, memRepo domain.LibraryMembershipRepository, idGen domain.IDGenerator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())

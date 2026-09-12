@@ -5,12 +5,10 @@ import (
 	"time"
 )
 
-// LibraryService owns adding and removing a LibraryEntry
-// (domain-library.md FR-1/FR-3/FR-6/FR-7), holding the repository
-// interfaces internal/domain itself declares. The Edition-existence
-// check (ADR 0020's own named example) and the at-most-one-per-Edition
-// uniqueness check (FR-7) both require reading other records, so both
-// live here rather than at construction.
+// LibraryService owns adding and removing a LibraryEntry, holding the
+// repository interfaces internal/domain declares. The Edition-existence
+// check and at-most-one-per-Edition uniqueness check both require reading
+// persisted state, so both live here rather than at construction.
 type LibraryService struct {
 	editions EditionRepository
 	entries  LibraryEntryRepository
@@ -22,10 +20,8 @@ func NewLibraryService(editions EditionRepository, entries LibraryEntryRepositor
 
 // AddEntry creates a LibraryEntry for editionID, rejecting if the
 // Edition doesn't exist. If an entry already exists for this Edition,
-// this is a no-op (FR-7: "adding an already-owned Edition again is a
-// no-op, not a second row") — the existing entry is returned unchanged
-// and the returned event is nil, since nothing actually changed
-// (FR-5: exactly one event per logical change, and a no-op is not one).
+// this is an idempotent no-op — the existing entry is returned unchanged
+// and the returned event is nil, since nothing actually changed.
 func (s *LibraryService) AddEntry(ctx context.Context, editionID EditionID, addedAt time.Time) (*LibraryEntry, *LibraryEntryAdded, error) {
 	if _, err := s.editions.FindByID(ctx, editionID); err != nil {
 		return nil, nil, err
@@ -39,7 +35,7 @@ func (s *LibraryService) AddEntry(ctx context.Context, editionID EditionID, adde
 		return nil, nil, err
 	}
 
-	entryID := LibraryEntryID(string(editionID)) // FR-7's uniqueness key is the Edition itself; the entry's own ID is derived from it, not independently generated, since at most one can ever exist per Edition.
+	entryID := LibraryEntryID(string(editionID)) // The uniqueness key is the Edition itself; at most one entry exists per Edition.
 	entry := NewLibraryEntry(entryID, editionID, addedAt)
 	if err := s.entries.Save(ctx, entry); err != nil {
 		return nil, nil, err
@@ -48,10 +44,8 @@ func (s *LibraryService) AddEntry(ctx context.Context, editionID EditionID, adde
 	return entry, &event, nil
 }
 
-// RemoveEntry deletes the LibraryEntry for editionID. MUST NOT cascade to
-// Work or Edition (FR-6) — this method never touches either repository.
-// If no entry exists, this is a no-op (symmetric with AddEntry's own
-// no-op case; domain-library.md doesn't name a required error here).
+// RemoveEntry deletes the LibraryEntry for editionID. Does not cascade to
+// Work or Edition. If no entry exists, this is a no-op.
 func (s *LibraryService) RemoveEntry(ctx context.Context, editionID EditionID, occurredAt time.Time) (*LibraryEntryRemoved, error) {
 	existing, err := s.entries.FindByEdition(ctx, editionID)
 	if err != nil {

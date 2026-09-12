@@ -221,7 +221,7 @@ func TestLeaderboard_PrivacyAndTenantIsolation(t *testing.T) {
 		}
 	})
 
-	// --- T3.4 / FR-6: IDOR and authorization tests ---
+	// --- IDOR and authorization tests ---
 	t.Run("IDOR: non-member of library receives 403 Forbidden", func(t *testing.T) {
 		daveUser := &transporthttp.AuthenticatedUser{
 			UserID:    domain.UserID(userDave),
@@ -360,7 +360,7 @@ func TestLeaderboard_PrivacyAndTenantIsolation(t *testing.T) {
 	})
 }
 
-// audit 0016 #112: GET /api/v1/library/finished returns one bounded page
+// GET /api/v1/library/finished returns one bounded page
 // of works with a keyset cursor, never the whole completed-reads history.
 func TestFinishedWorks_Pagination(t *testing.T) {
 	pool := migratedPool(t)

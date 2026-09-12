@@ -7,9 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// --- FR-8 (ADR 0017): BIND_ADDRESS classified into loopback/private
-// (always legal, Mode B) or publicly routable (legal only with a valid
-// certificate, Mode A) ---
+// Tests verifying that BIND_ADDRESS is classified into loopback/private
+// (permitted for plaintext) or publicly routable (requires valid TLS certificate).
 
 func TestLoad_BindAddress_LoopbackAndPrivateAlwaysAccepted(t *testing.T) {
 	cases := []string{
@@ -56,8 +55,7 @@ func TestLoad_BindAddress_PubliclyRoutableWithNoCertRejected(t *testing.T) {
 
 func TestLoad_BindAddress_UnrecognizedHostRejected(t *testing.T) {
 	// A hostname that isn't "localhost" or a literal IP is classified
-	// publicly routable without a DNS lookup (ADR 0028 §1); with no
-	// certificate configured it is refused.
+	// as publicly routable without DNS lookup; with no certificate configured it is rejected.
 	validEnv(t)
 	t.Setenv("BIND_ADDRESS", "example.com:8080")
 
@@ -82,19 +80,6 @@ func TestLoad_BindAddress_MalformedRejected(t *testing.T) {
 		t.Fatalf("error %q doesn't name BIND_ADDRESS", err.Error())
 	}
 }
-
-// --- New cases (T6, tasks/plan.md): the two-mode rule ADR 0017 added,
-// not present in the test plan written before that amendment ---
-
-// Superseded by phase 13 Tier 0 (bindaddress_phase13_test.go): a public
-// bind with a valid static certificate is now accepted, and cmd/server
-// serves it over in-process TLS (tls.NewListener). The old
-// "reject even with a valid cert" guard existed only while no TLS-serving
-// path existed; that path is wired now for the static-certificate case
-// (ACME issuance stays Tier 2).
-//
-// See: TestBind_PublicIP_WithValidStaticCert_Accepted,
-//      TestBind_PublicDNSName_CertSANMustMatch.
 
 func TestLoad_BindAddress_PubliclyRoutableWithInvalidCertRejected(t *testing.T) {
 	cases := []struct {

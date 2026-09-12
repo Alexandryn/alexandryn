@@ -9,17 +9,13 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
-// T25-D1: these assertions run only on real Windows (GOOS=windows) and
+// These assertions run only on real Windows (GOOS=windows) and
 // don't need a live spawned process — the struct layout and constant
 // value this package's raw kernel32.dll calls depend on, checked
-// directly against the documented Win32 shape. This file cannot be
-// executed in this Linux authoring environment; only cross-compiled and
-// type-checked here (`GOOS=windows go vet ./...`) — first real execution
-// happens on Windows CI, not in this session.
-
+// directly against the documented Win32 shape.
+//
 // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE per the Win32 JOBOBJECT_BASIC_LIMIT_INFORMATION
-// docs — the flag architecture-persistence.md FR-9 requires be set so the
-// spawned process dies when this process's job handle closes.
+// docs — the flag required so the spawned process dies when this process's job handle closes.
 const wantJobObjectLimitKillOnJobClose = 0x00002000
 
 func TestJobObjectLimitKillOnJobClose_MatchesTheDocumentedWin32Value(t *testing.T) {

@@ -18,10 +18,8 @@ func mustNewEdition(t *testing.T, id domain.EditionID, workID domain.WorkID) *do
 	return e
 }
 
-// domain-library.md FR-1/FR-3: a LibraryEntry's existence MUST NOT
-// depend on current availability, and creating one requires the Edition
-// to actually exist (ADR 0020's own named example — rejected by the
-// domain service, not at construction).
+// A LibraryEntry's existence does not depend on current availability,
+// and creating one requires the referenced Edition to exist.
 func TestLibraryService_AddEntry(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
@@ -58,8 +56,7 @@ func TestLibraryService_AddEntry(t *testing.T) {
 		}
 	})
 
-	// FR-7: adding an already-owned Edition again is a no-op, not a
-	// second row.
+	// Adding an already-owned Edition again is an idempotent no-op.
 	t.Run("adding the same Edition twice is a no-op, not a second entry", func(t *testing.T) {
 		edition := mustNewEdition(t, "edition-1", "work-1")
 		editions := newFakeEditionRepository(edition)
@@ -87,12 +84,8 @@ func TestLibraryService_AddEntry(t *testing.T) {
 	})
 }
 
-// FR-6: removing a LibraryEntry MUST NOT cascade-delete the Work or
-// Edition themselves, and MUST NOT touch Collection membership at all —
-// this test proves the LibraryService side (no Work/Edition mutation);
-// the Collection-independence side is domain-library.md's own
-// architectural fact (Collections hold Works, never LibraryEntrys, so
-// there is nothing here that could touch one).
+// Removing a LibraryEntry does not cascade-delete the Work or
+// Edition themselves, and does not touch Collection membership.
 func TestLibraryService_RemoveEntry(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

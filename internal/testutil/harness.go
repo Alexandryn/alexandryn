@@ -8,9 +8,8 @@ import (
 // IntegrationTestMain gates an integration-tagged package's TestMain. If
 // TEST_DATABASE_URL is absent or empty, it writes a message naming the
 // variable to out and returns a non-zero exit code without ever calling
-// run — no test function in the package executes, which is what makes
-// this a real fail-loud gate rather than a per-test skip that would still
-// let other tests in the package run (backend-test-harness.md FR-2).
+// run — no test function in the package executes, providing an immediate
+// failure rather than per-test skips that might let unconfigured suites pass silently.
 // Otherwise it calls run (typically m.Run) and returns its result
 // unchanged.
 //

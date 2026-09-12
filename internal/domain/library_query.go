@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// LibraryFilter represents the closed filter vocabulary (backend-library-api.md FR-3).
+// LibraryFilter represents the closed filter vocabulary for library queries.
 type LibraryFilter string
 
 const (
@@ -15,7 +15,7 @@ const (
 	FilterAll    LibraryFilter = "all"
 )
 
-// LibrarySort represents the closed sort vocabulary (backend-library-api.md FR-4).
+// LibrarySort represents the closed sort vocabulary for library queries.
 type LibrarySort string
 
 const (
@@ -32,7 +32,7 @@ type LibraryQuery struct {
 	Sort   LibrarySort
 	// LibraryID is the active library the request is scoped to. Empty
 	// means the default library. Every library_entries / collection
-	// reference in the resulting query is filtered by it (audit 0016 #88).
+	// reference in the resulting query is filtered by it.
 	LibraryID LibraryID
 }
 
@@ -60,7 +60,7 @@ type LibraryPage struct {
 	NextCursor string
 }
 
-// OwnedEdition represents an owned Edition in a WorkDetail response (FR-5).
+// OwnedEdition represents an owned Edition in a WorkDetail response.
 type OwnedEdition struct {
 	ID              EditionID
 	Language        string
@@ -83,7 +83,7 @@ type WorkDetail struct {
 	Collections      []CollectionRef
 }
 
-// EncodeAddedAtCursor encodes (added_at, id) into an opaque base64 string (FR-1, FR-4).
+// EncodeAddedAtCursor encodes (added_at, id) into an opaque base64 string.
 func EncodeAddedAtCursor(addedAt time.Time, id WorkID) string {
 	payload := addedAt.Format(time.RFC3339Nano) + "\x00" + string(id)
 	return base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -109,7 +109,7 @@ func DecodeAddedAtCursor(cursor string) (time.Time, WorkID, error) {
 	return t, WorkID(parts[1]), nil
 }
 
-// EncodeTitleCursor encodes (title, id) into an opaque base64 string (FR-1, FR-4).
+// EncodeTitleCursor encodes (title, id) into an opaque base64 string.
 func EncodeTitleCursor(title string, id WorkID) string {
 	payload := title + "\x00" + string(id)
 	return base64.RawURLEncoding.EncodeToString([]byte(payload))

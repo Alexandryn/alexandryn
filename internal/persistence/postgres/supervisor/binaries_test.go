@@ -8,8 +8,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
-// T25-D4: binary location via an injected lookup function, so this
-// doesn't depend on what's actually on this machine's PATH.
+// Binary location via an injected lookup function, ensuring test isolation
+// from the host machine's PATH.
 func TestLocateBinaries_ResolvesBothBinaries(t *testing.T) {
 	lookup := func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
@@ -27,9 +27,8 @@ func TestLocateBinaries_ResolvesBothBinaries(t *testing.T) {
 	}
 }
 
-// backend-service-lifecycle.md FR-3: a specific, named error identifying
-// which binary is missing — never exec.LookPath's own bare error as the
-// only surfaced detail.
+// A specific, named error must identify which binary is missing,
+// rather than exec.LookPath's bare error as the only surfaced detail.
 func TestLocateBinaries_MissingPostgresNamesWhichBinary(t *testing.T) {
 	lookupErr := errors.New("exec: \"postgres\": executable file not found in $PATH")
 	lookup := func(file string) (string, error) {
@@ -51,10 +50,9 @@ func TestLocateBinaries_MissingPostgresNamesWhichBinary(t *testing.T) {
 	}
 }
 
-// audit 0016 #264: if PATH contains a relative or current-directory
-// entry, exec.LookPath can resolve "postgres" to a relative path. Running
-// that would execute a binary from an attacker-controlled directory —
-// refuse it.
+// If PATH contains a relative or current-directory entry, exec.LookPath
+// can resolve "postgres" to a relative path. Running that would execute a binary
+// from an untrusted directory, so it must be rejected.
 func TestLocateBinaries_RejectsNonAbsoluteResolution(t *testing.T) {
 	lookup := func(file string) (string, error) {
 		return "./" + file, nil

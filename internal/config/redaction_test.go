@@ -43,10 +43,7 @@ func TestRedactedString_RevealReturnsTheRealValue(t *testing.T) {
 	}
 }
 
-// --- FR-7: both call sites, via a real slog.JSONHandler — production's
-// actual handler, not a test spy, since the spec's own concern is
-// specifically how the JSON handler resolves a value, not a generic
-// capture mechanism ---
+// Tests verifying that structured logging with slog.JSONHandler preserves redaction.
 
 func TestConfigRedaction_FieldLoggedDirectly(t *testing.T) {
 	cfg := &config.Config{DatabaseURL: config.RedactedString(secretDSN)}
@@ -63,20 +60,15 @@ func TestConfigRedaction_FieldLoggedDirectly(t *testing.T) {
 	}
 }
 
-// logValuerOnlyString implements only slog.LogValuer, deliberately not
-// json.Marshaler — the exact single-interface gap FR-7 exists to close.
-// Never used outside this test.
+// logValuerOnlyString implements only slog.LogValuer without json.Marshaler,
+// used to demonstrate why implementing both interfaces is required.
 type logValuerOnlyString string
 
 func (s logValuerOnlyString) LogValue() slog.Value { return slog.StringValue("[redacted]") }
 
 func TestConfigRedaction_WholeStructAsOneAttribute(t *testing.T) {
-	// First, prove the test itself can detect the real gap: a
-	// LogValuer-only field leaks its real value when the *containing*
-	// struct is logged as one attribute via slog.Any, because the JSON
-	// handler falls back to encoding/json's reflection-based marshaling
-	// for a struct it doesn't otherwise recognize — and encoding/json
-	// has no knowledge of slog.LogValuer, only json.Marshaler.
+	// Verify that a LogValuer-only type would leak when the containing struct
+	// is marshaled via JSON reflection:
 	type logValuerOnlyStub struct {
 		DatabaseURL logValuerOnlyString
 	}
@@ -88,8 +80,7 @@ func TestConfigRedaction_WholeStructAsOneAttribute(t *testing.T) {
 		t.Fatalf("test assumption broken: expected the LogValuer-only stub to leak through the JSON reflection fallback, so this test can't prove it detects the real gap.\noutput: %s", stubBuf.String())
 	}
 
-	// Now the real Config, implementing both interfaces, must not leak
-	// the same way.
+	// Now verify that Config, which implements both interfaces, does not leak.
 	cfg := &config.Config{DatabaseURL: config.RedactedString(secretDSN)}
 
 	var buf bytes.Buffer
@@ -103,7 +94,7 @@ func TestConfigRedaction_WholeStructAsOneAttribute(t *testing.T) {
 	}
 }
 
-// --- FR-7 on a failed load ---
+// Redaction on load failure:
 
 func TestLoad_FailedLoadNeverIncludesDatabaseURLInTheError(t *testing.T) {
 	t.Setenv("OPEN_LIBRARY_USER_AGENT", "Alexandryn/dev (test)")

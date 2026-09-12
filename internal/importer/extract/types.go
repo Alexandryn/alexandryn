@@ -8,7 +8,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Format is the content-sniffed file format (backend-file-extractors.md FR-2).
+// Format is the content-sniffed file format.
 type Format string
 
 const (
@@ -18,7 +18,7 @@ const (
 	FormatUnknown Format = "unknown"
 )
 
-// Standard extraction errors (backend-file-extractors.md Failure modes table).
+// Standard extraction errors.
 var (
 	ErrOversized      = errors.New("file or decompressed content exceeds size limit")
 	ErrTooManyEntries = errors.New("zip archive exceeds 10,000 entry limit")
@@ -26,7 +26,7 @@ var (
 	ErrNoTitle        = errors.New("file contains no title metadata")
 )
 
-// Bounds per backend-file-extractors.md FR-1, FR-3, FR-4, FR-5.
+// Bounds for extracted files, decompressed content, and metadata fields.
 const (
 	MaxRawSpoolBytes         = 250 * 1024 * 1024 // 250 MiB raw byte limit
 	MaxDecompressedReadBytes = 200 * 1024 * 1024 // 200 MiB total decompressed limit
@@ -36,7 +36,7 @@ const (
 	MaxDescriptionLength     = 10000
 )
 
-// ExtractedMetadata is the shared DTO for extracted book metadata (backend-file-extractors.md FR-4).
+// ExtractedMetadata is the shared DTO for extracted book metadata.
 type ExtractedMetadata struct {
 	Title       string   `json:"title"`
 	Authors     []string `json:"authors"`
@@ -50,7 +50,7 @@ type ExtractedMetadata struct {
 
 // NewExtractedMetadata constructs and sanitizes an ExtractedMetadata DTO.
 // Fields failing validation (control characters, oversized, invalid ISBN/language)
-// are dropped/sanitized gracefully per FR-4, while empty/whitespace-only title returns ErrNoTitle (FR-8).
+// are dropped/sanitized gracefully, while empty/whitespace-only title returns ErrNoTitle.
 func NewExtractedMetadata(
 	rawTitle string,
 	rawAuthors []string,

@@ -14,14 +14,9 @@ import (
 // Every repository method reads its executor through executorFrom rather
 // than accepting a pool or a transaction directly, so the same method
 // serves both transactional and standalone callers with no signature
-// change (ADR 0021).
+// change.
 //
-// by T24's own repository implementations (R4 onward,
-// tasks/plan-t24-repositories.md) starting the very next task —
-// golangci-lint runs with no build tags in CI, so the integration-tagged
-// test's usage doesn't count toward this check yet.
-//
-//nolint:unused // consumed by transactor_integration_test.go today and
+//nolint:unused // consumed by transactor_integration_test.go and repository methods
 type querier interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
@@ -31,14 +26,11 @@ type querier interface {
 type txContextKey struct{}
 
 // executorFrom returns the transaction InTx placed in ctx, if any, or
-// pool otherwise — the one shared helper ADR 0021 names as its mitigation
-// for the mechanism's residual implicitness risk (a repository method
-// that forgot to call this and used pool directly would silently write
-// outside an in-flight transaction). Every repository method in this
-// package MUST read its executor through this function, never through
-// pool directly.
+// pool otherwise — the shared helper that ensures operations participate in
+// an in-flight transaction when present. Every repository method in this
+// package reads its executor through this function.
 //
-//nolint:unused // see querier's own nolint comment above — same reason.
+//nolint:unused
 func executorFrom(ctx context.Context, pool *pgxpool.Pool) querier {
 	if tx, ok := ctx.Value(txContextKey{}).(pgx.Tx); ok {
 		return tx
@@ -46,10 +38,10 @@ func executorFrom(ctx context.Context, pool *pgxpool.Pool) querier {
 	return pool
 }
 
-// Transactor is internal/persistence/postgres's implementation of
-// domain.Transactor (ADR 0021) — the mechanism a domain service holding
-// more than one repository interface uses to compose a cross-aggregate
-// operation into one atomic unit (e.g. SourceRemovalService's cascade).
+// Transactor is the PostgreSQL implementation of domain.Transactor — the
+// mechanism a domain service holding more than one repository interface
+// uses to compose a cross-aggregate operation into one atomic unit (such
+// as SourceRemovalService's cascade).
 type Transactor struct {
 	pool *pgxpool.Pool
 }

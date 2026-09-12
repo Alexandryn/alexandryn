@@ -31,7 +31,7 @@ type activityClearCompletedResponse struct {
 	ClearedCount int64 `json:"cleared_count"`
 }
 
-// ActivityEventsHandler handles GET /api/v1/activity/events (FR-11).
+// ActivityEventsHandler handles GET /api/v1/activity/events.
 func ActivityEventsHandler(eventStore *observability.EventStore) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -72,9 +72,9 @@ func ActivityEventsHandler(eventStore *observability.EventStore) http.Handler {
 	})
 }
 
-// ActivityPauseAllHandler handles POST /api/v1/activity/pause-all (FR-12).
-// Job control is host-level: it is guarded by the global RoleAdmin (audit
-// 0016 #178) — a deliberate design choice for this single-operator server.
+// ActivityPauseAllHandler handles POST /api/v1/activity/pause-all.
+// Job control is host-level: it is guarded by the global RoleAdmin — a deliberate
+// design choice for this single-operator server.
 // Pausing the job system suspends ingestion for the entire host; this is
 // appropriate for operator-level maintenance, not a per-library action.
 // The route is protected by RequireRole(domain.RoleAdmin) in main.go.
@@ -90,7 +90,7 @@ func ActivityPauseAllHandler(sys *jobs.System) http.Handler {
 	})
 }
 
-// ActivityJobCancelHandler handles POST /api/v1/activity/jobs/{id}/cancel (FR-12).
+// ActivityJobCancelHandler handles POST /api/v1/activity/jobs/{id}/cancel.
 func ActivityJobCancelHandler(queue *jobs.Queue) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -122,7 +122,7 @@ func ActivityJobCancelHandler(queue *jobs.Queue) http.Handler {
 	})
 }
 
-// ActivityJobRetryHandler handles POST /api/v1/activity/jobs/{id}/retry (FR-12).
+// ActivityJobRetryHandler handles POST /api/v1/activity/jobs/{id}/retry.
 func ActivityJobRetryHandler(queue *jobs.Queue) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -154,7 +154,7 @@ func ActivityJobRetryHandler(queue *jobs.Queue) http.Handler {
 	})
 }
 
-// ActivityClearCompletedHandler handles POST /api/v1/activity/jobs/clear-completed (FR-12).
+// ActivityClearCompletedHandler handles POST /api/v1/activity/jobs/clear-completed.
 func ActivityClearCompletedHandler(queue *jobs.Queue, clock func() time.Time) http.Handler {
 	if clock == nil {
 		clock = time.Now

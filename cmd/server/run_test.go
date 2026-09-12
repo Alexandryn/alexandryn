@@ -87,10 +87,9 @@ func (s *fakeServer) Close() error {
 	return s.closeErr
 }
 
-// fakePool satisfies the pgPool interface (Ping + Close) run.go's step 6
-// needs, without a real *pgxpool.Pool. When order is non-nil, Close
-// appends "poolClose" to it, so tests can assert FR-6's ordering relative
-// to shutdown.
+// fakePool satisfies the pgPool interface (Ping + Close) without a real
+// *pgxpool.Pool. When order is non-nil, Close appends "poolClose" to it,
+// so tests can assert shutdown ordering.
 type fakePool struct {
 	pingErr error
 	order   *[]string
@@ -104,13 +103,10 @@ func (p *fakePool) Close() {
 }
 
 // recordingDeps builds a runDeps whose constructors each append their step
-// name to order before returning, proving FR-1's step sequencing and that
-// no later step's fake runs before an earlier one has returned. logger
-// writes to a testutil.SpyHandler so tests can assert on logged content
-// (redaction, step names) without parsing raw JSON. The default server and
-// pool fakes also append "shutdown"/"poolClose" to order, so a full
-// successful run's order ends [..., "pool", "shutdown", "poolClose"] once
-// ctx is cancelled.
+// name to order before returning, verifying step sequencing and ensuring
+// no later step runs before an earlier one completes. logger writes to a
+// testutil.SpyHandler so tests can assert on logged content without parsing
+// raw JSON.
 func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler) {
 	t.Helper()
 	fl := newFakeListener()
@@ -138,7 +134,7 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 				t.Fatal("newRouter called with a nil poolRef")
 			}
 			if _, ok := poolRef.Get(); ok {
-				t.Fatal("poolRef must start unset (FR-7) — the router was handed one already populated")
+				t.Fatal("poolRef must start unset — the router was handed one already populated")
 			}
 			return http.NewServeMux()
 		},
@@ -171,7 +167,7 @@ func recordingDeps(t *testing.T, order *[]string) (runDeps, *testutil.SpyHandler
 	return deps, spy
 }
 
-func TestRun_ExecutesFR1StepsInOrder(t *testing.T) {
+func TestRun_ExecutesStartupStepsInOrder(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
 
@@ -234,7 +230,7 @@ func TestRun_ListenFailureStopsBeforeServing(t *testing.T) {
 	}
 }
 
-// FR-7: the router is constructed with the pool reference before the
+// The router is constructed with the pool reference before the
 // listener is bound — by the time /healthz or /readyz could receive a
 // request, the reference already exists and is unset.
 func TestRun_PoolReferenceWiredBeforeListenerBinds(t *testing.T) {
@@ -260,7 +256,7 @@ func TestRun_PoolReferenceWiredBeforeListenerBinds(t *testing.T) {
 	}
 }
 
-// FR-3 bounded retry: obtainPostgres fails twice, then succeeds — within
+// Bounded retry: obtainPostgres fails twice, then succeeds — within
 // budget, run proceeds to migrate/pool exactly once each.
 func TestRun_PostgresRetrySucceedsWithinBudget(t *testing.T) {
 	var order []string
@@ -296,7 +292,7 @@ func TestRun_PostgresRetrySucceedsWithinBudget(t *testing.T) {
 	}
 }
 
-// FR-3: a Postgres-connect fake that always fails exhausts the fixed
+// A Postgres-connect fake that always fails exhausts the fixed
 // retry budget, makes exactly that many attempts (never more, never
 // fewer), and produces an ordinary non-zero-exit startup failure —
 // migrate and pool must never run.
@@ -334,10 +330,9 @@ func TestRun_PostgresRetryExhaustsBudgetThenFails(t *testing.T) {
 	}
 }
 
-// FR-3 security amendment (review 0028): when DATABASE_URL is configured,
-// the final startup-failure log line for the Postgres step must use a
-// fixed generic message, never the underlying driver error's own text —
-// pgx connection/parse errors can embed the DSN itself.
+// When DATABASE_URL is configured, the final startup-failure log line for
+// the Postgres step must use a fixed generic message, never the underlying
+// driver error's text, to prevent leaking DSN connection details.
 const fakeStartupDSNMarker = "postgres://startup-marker:s3cr3t@host/db"
 
 func TestRun_PostgresFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
@@ -394,8 +389,8 @@ func TestRun_PostgresFailureWithoutDatabaseURLLogsTheRealError(t *testing.T) {
 	}
 }
 
-// Migration failure is an ordinary, single-attempt FR-3 failure, distinct
-// from "unreachable" — pool must never be constructed.
+// Migration failure is a startup failure distinct from connectivity errors;
+// pool must never be constructed.
 func TestRun_MigrationFailureStopsBeforePool(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
@@ -418,9 +413,7 @@ func TestRun_MigrationFailureStopsBeforePool(t *testing.T) {
 	}
 }
 
-// FR-7: once step 6 succeeds, the pool reference actually holds the
-// constructed pool — the reference itself is the source of truth, not a
-// separately tracked flag.
+// Once pool construction succeeds, the pool reference holds the constructed pool.
 func TestRun_PoolReferencePopulatedAfterStep6(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -507,11 +500,9 @@ func TestRun_PoolConstructionFailureStopsBeforeReady(t *testing.T) {
 	}
 }
 
-// FR-3's DSN-redaction requirement isn't step-5-specific — it applies "at
-// every log call it introduces" (spec's own Security considerations).
-// pgxpool.ParseConfig's own error embeds the connection string (pgx
-// redacts only the password, not host/user/dbname) when DATABASE_URL is
-// malformed, so step 6's failure log needs the same guard step 5 has.
+// DSN redaction applies to connection pool construction failures as well as
+// reachability checks: pgxpool.ParseConfig's error can embed the connection string
+// when DATABASE_URL is malformed.
 func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
@@ -526,26 +517,25 @@ func TestRun_PoolConstructionFailureWithDatabaseURLNeverLeaksTheDSN(t *testing.T
 		}, nil
 	}
 	deps.newPool = func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error) {
-		return nil, nil, errors.New("cannot parse `" + fakeStartupDSNMarker + "`: invalid port")
+		order = append(order, "pool")
+		return nil, nil, errors.New("parse error: invalid DSN " + fakeStartupDSNMarker)
 	}
 
 	code := run(context.Background(), deps)
 
 	if code == 0 {
-		t.Fatal("exit code = 0, want non-zero")
+		t.Fatal("exit code = 0, want non-zero on pool construction failure")
 	}
 	if spy.Contains(fakeStartupDSNMarker) {
-		t.Fatal("pool-construction failure log leaked the DSN")
+		t.Fatalf("startup failure log leaked the DSN marker %q", fakeStartupDSNMarker)
 	}
 	if !spy.Contains("could not construct the connection pool for the configured database") {
 		t.Fatal("pool-construction failure log doesn't use a fixed generic message")
 	}
 }
 
-// FR-4/FR-5, Unit layer: sending the shutdown signal invokes
-// http.Server.Shutdown with a context whose deadline is exactly
-// clock.Now() + the configured grace period — a fake clock, no real
-// waiting for the deadline itself.
+// Sending the shutdown signal invokes http.Server.Shutdown with a context
+// whose deadline is clock.Now() + configured grace period.
 func TestRun_Shutdown_UsesConfiguredGracePeriodDeadline(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -587,8 +577,7 @@ func TestRun_Shutdown_UsesConfiguredGracePeriodDeadline(t *testing.T) {
 	}
 }
 
-// FR-6: the pool closes only after Shutdown returns — never before, never
-// concurrently.
+// The pool closes only after Shutdown returns, never before or concurrently.
 func TestRun_Shutdown_PoolClosesStrictlyAfterShutdownReturns(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -617,11 +606,9 @@ func TestRun_Shutdown_PoolClosesStrictlyAfterShutdownReturns(t *testing.T) {
 	}
 }
 
-// FR-4's timeout case: Shutdown returning context.DeadlineExceeded (the
-// grace period expired with requests still in flight) is not treated as a
-// startup/runtime error — the process still proceeds to close the pool and
-// exits 0, per the Failure modes table ("the grace period is a ceiling,
-// not a guarantee every request finishes").
+// When Shutdown returns context.DeadlineExceeded (the grace period expired
+// with requests still in flight), the process still proceeds to close the pool
+// and exits cleanly.
 func TestRun_Shutdown_GracePeriodExpiryStillClosesPoolAndExitsZero(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -651,19 +638,16 @@ func TestRun_Shutdown_GracePeriodExpiryStillClosesPoolAndExitsZero(t *testing.T)
 	if shutdownIdx == -1 || closeIdx == -1 || closeIdx <= shutdownIdx {
 		t.Fatalf("call order = %v, want shutdown then poolClose even when Shutdown times out", order)
 	}
-	// FR-4: Shutdown alone never touches active connections, only waits
-	// for them — a grace-period timeout must force-close what's left via
-	// Close, or those connections are cleanly cancelled only by process
-	// exit killing them out from under Shutdown, which is exactly what
-	// FR-4 forbids.
+	// Shutdown alone only waits for active connections; a grace-period timeout
+	// must force-close what's left via Close.
 	if srv.closeCalls != 1 {
 		t.Fatalf("Close was called %d times, want exactly 1 after a grace-period timeout", srv.closeCalls)
 	}
 }
 
-// FR-6 applies regardless of why the process is exiting: if the server
-// stops on its own (never via a shutdown signal), no Shutdown is called,
-// but the pool must still close before the process exits.
+// The pool must close regardless of why the process is exiting: if the
+// server stops on its own (never via a shutdown signal), no Shutdown is
+// called, but the pool must still close before the process exits.
 func TestRun_UnexpectedServerCrash_ClosesPoolWithoutCallingShutdown(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)
@@ -697,12 +681,9 @@ func TestRun_UnexpectedServerCrash_ClosesPoolWithoutCallingShutdown(t *testing.T
 	}
 }
 
-// FR-4: a shutdown signal arriving while waitForPostgres's retry loop is
-// still running must be treated as a shutdown, not absorbed into the
-// retry loop and eventually reported as an ordinary FR-3 startup failure.
-// Checkpoint F's review found this empirically: cancelling ctx mid-retry
-// used to make run() burn the rest of the retry budget and exit via
-// return 1 without ever calling Shutdown.
+// A shutdown signal arriving while waitForPostgres's retry loop is
+// still running must be treated as a shutdown, halting retries promptly
+// and executing the shutdown sequence.
 func TestRun_ShutdownSignalDuringPostgresRetry_CallsShutdownNotOrdinaryFailure(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -745,7 +726,7 @@ func TestRun_ShutdownSignalDuringPostgresRetry_CallsShutdownNotOrdinaryFailure(t
 		}
 	}
 	if !shutdownCalled {
-		t.Fatalf("Shutdown was never called, call order = %v — a mid-startup shutdown signal must still attempt Shutdown (FR-4)", order)
+		t.Fatalf("Shutdown was never called, call order = %v — a mid-startup shutdown signal must still attempt Shutdown", order)
 	}
 }
 
@@ -909,9 +890,8 @@ func TestRun_ParentWatch_FailureHaltsStartup(t *testing.T) {
 	}
 }
 
-// fakeJobRunner records Start/Shutdown against the shared order slice so
-// tests can assert the job worker pool's position in FR-1 step 6 and in
-// the FR-6 shutdown ordering (amended for phase 09).
+// fakeJobRunner records Start and Shutdown calls against the shared order
+// slice so tests can assert startup and shutdown sequencing.
 type fakeJobRunner struct {
 	order        *[]string
 	shutdownErr  error
@@ -937,9 +917,8 @@ func indexOf(order []string, step string) int {
 	return -1
 }
 
-// backend-service-lifecycle.md FR-6 (amended for phase 09): the job
-// worker pool starts after the pool is constructed and stops between the
-// HTTP server's Shutdown and the pool's Close.
+// The job worker pool starts after the pool is constructed and stops between
+// the HTTP server's Shutdown and the pool's Close.
 func TestRun_JobWorkerPoolStartsAfterPoolAndStopsBeforePoolClose(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -967,8 +946,8 @@ func TestRun_JobWorkerPoolStartsAfterPoolAndStopsBeforePoolClose(t *testing.T) {
 	}
 }
 
-// The job worker pool's shutdown context uses the configured grace
-// period as its bound (FR-10), computed off the injected clock.
+// The job worker pool's shutdown context uses the configured grace period
+// as its deadline bound, computed off the injected clock.
 func TestRun_JobWorkerPoolShutdownUsesGracePeriodDeadline(t *testing.T) {
 	var order []string
 	deps, _ := recordingDeps(t, &order)
@@ -1000,8 +979,8 @@ func TestRun_JobWorkerPoolShutdownUsesGracePeriodDeadline(t *testing.T) {
 	}
 }
 
-// FR-3: a job-subsystem construction failure fails startup like any
-// other step — logged, non-zero exit, pool closed.
+// A job-subsystem construction failure fails startup cleanly:
+// logged, non-zero exit, and pool closed.
 func TestRun_JobSystemConstructionFailureExitsNonZero(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)

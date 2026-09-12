@@ -9,7 +9,7 @@ import (
 
 // writeRateLimited writes a 429 with the shared error-body shape. Like
 // writeForbidden, the domain taxonomy has no RateLimited category — 429 is
-// a transport-owned outcome (backend-network-transport.md FR-8).
+// a transport-owned outcome.
 func writeRateLimited(w http.ResponseWriter, corrID string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
@@ -21,10 +21,9 @@ func writeRateLimited(w http.ResponseWriter, corrID string) {
 }
 
 // PublicRateLimit applies a per-client-IP token bucket to every request
-// `applies` returns true for (backend-network-transport.md FR-8) — the
-// unauthenticated public surface once the bind opens beyond loopback.
-// Tier 4 adds separate, stricter PublicRateLimit layers for the pairing
-// routes.
+// `applies` returns true for — the unauthenticated public surface once the
+// bind opens beyond loopback. Separate, stricter PublicRateLimit layers exist
+// for the pairing routes.
 //
 // The SPA's embedded static assets are deliberately NOT rate-limited
 // here: they are served from an in-memory embed.FS (no DB, no compute),
@@ -40,8 +39,7 @@ func writeRateLimited(w http.ResponseWriter, corrID string) {
 // trusts no proxy and ignores the header entirely (#195).
 //
 // A request that does not match `applies` passes straight through, so this
-// composes with phase 12's auth-endpoint limiter rather than
-// double-counting it.
+// composes with the auth-endpoint limiter rather than double-counting it.
 func PublicRateLimit(limiter *auth.IPRateLimiter, applies func(path string) bool) Middleware {
 	return func(next http.Handler) http.Handler {
 		if limiter == nil || applies == nil {
@@ -58,7 +56,7 @@ func PublicRateLimit(limiter *auth.IPRateLimiter, applies func(path string) bool
 }
 
 // HealthProbePath reports whether path is one of the two unauthenticated
-// health probes — FR-8's first rate-limit bucket.
+// health probes.
 func HealthProbePath(path string) bool {
 	return path == "/healthz" || path == "/readyz"
 }

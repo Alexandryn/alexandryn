@@ -134,7 +134,7 @@ func TestReadingProgressRepository_Save_UpdatesInPlace(t *testing.T) {
 	}
 }
 
-// domain-reading.md FR-1: at most one ReadingProgress per Work. Save is
+// At most one ReadingProgress per Work. Save is
 // upsert-by-id, so this proves the real UNIQUE constraint on work_id
 // itself catches a *different* id colliding on the same WorkID — not
 // just the id-conflict path ON CONFLICT (id) already handles.

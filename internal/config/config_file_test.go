@@ -15,11 +15,8 @@ import (
 // no-config-file-anywhere fixture most tests in this package want.
 func noFile(string) ([]byte, error) { return nil, fs.ErrNotExist }
 
-// fakeUserConfigDir stands in for os.UserConfigDir in tests — its return
-// value only matters when paired with a readFile fake that recognizes the
-// path it produces (backend-configuration.md FR-5's own "the well-known
-// fallback location is tested against an injectable base-directory
-// function, not the real OS per-user config directory").
+// fakeUserConfigDir stands in for os.UserConfigDir in tests, returning a mock
+// path recognized by mapReadFile.
 func fakeUserConfigDir() (string, error) { return "/fake/home/.config", nil }
 
 func mapReadFile(files map[string][]byte) func(string) ([]byte, error) {
@@ -32,7 +29,7 @@ func mapReadFile(files map[string][]byte) func(string) ([]byte, error) {
 	}
 }
 
-// --- FR-5: config-file resolution ---
+// Tests verifying configuration file resolution:
 
 func TestLoad_ExplicitConfigPathLoadsWhenFileExists(t *testing.T) {
 	validEnv(t)
@@ -84,7 +81,7 @@ func TestLoad_NoConfigFlagLoadsFromTheFallbackLocation(t *testing.T) {
 	}
 }
 
-// --- FR-2: the file source, completing T3's default/environment cases ---
+// Tests verifying configuration precedence and file-sourced keys:
 
 func TestLoad_FileSourceOnlySetsTheKey(t *testing.T) {
 	validEnv(t)
@@ -116,7 +113,7 @@ func TestLoad_EnvironmentOverridesFile(t *testing.T) {
 	}
 }
 
-// --- FR-6: error content for file-related failures ---
+// Tests verifying error handling for configuration file failures:
 
 func TestLoad_InvalidTOMLSyntaxErrorsNamingTheFileNotTheContent(t *testing.T) {
 	files := map[string][]byte{
@@ -130,7 +127,7 @@ func TestLoad_InvalidTOMLSyntaxErrorsNamingTheFileNotTheContent(t *testing.T) {
 		t.Fatalf("error %q doesn't name the file", err.Error())
 	}
 	if strings.Contains(err.Error(), "database_url_leaked_secret_marker") {
-		t.Fatalf("error %q echoes the offending line's raw content — this is exactly what FR-6's redaction rule forbids", err.Error())
+		t.Fatalf("error %q echoes the offending line's raw content — raw secrets must not leak in error strings", err.Error())
 	}
 }
 
@@ -151,7 +148,7 @@ func TestLoad_ConfigFilePresentButEmptyIsNotAnError(t *testing.T) {
 func TestLoad_UnrecognizedKeyInFileIsIgnored(t *testing.T) {
 	validEnv(t)
 	files := map[string][]byte{
-		"/cfg.toml": []byte(`some_key_not_in_fr4 = "whatever"` + "\n" + `log_level = "warn"`),
+		"/cfg.toml": []byte(`custom_key = "value"` + "\n" + `log_level = "warn"`),
 	}
 	cfg, err := config.Load("/cfg.toml", mapReadFile(files), fakeUserConfigDir)
 	if err != nil {
@@ -168,7 +165,7 @@ func TestLoad_DuplicateKeyInFileErrors(t *testing.T) {
 	}
 	_, err := config.Load("/cfg.toml", mapReadFile(files), fakeUserConfigDir)
 	if err == nil {
-		t.Fatal("Load() error = nil, want an error — TOML forbids a duplicate key, and it must surface as an FR-6 error, not a silently-picked value")
+		t.Fatal("Load() error = nil, want an error — TOML forbids duplicate keys")
 	}
 }
 

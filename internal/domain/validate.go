@@ -8,17 +8,13 @@ import (
 )
 
 // ValidateBoundedText rejects a string that is empty, whitespace-only,
-// exceeds maxLen runes, or contains a control character. Every free-form
-// field across all five phase 02 specs (title, subtitle, publisher,
-// author name, subject, collection name, source label, bookmark label,
-// highlight note) routes through this one implementation rather than
-// repeating the same checks per type (E2, tasks/plan-phase02-domain.md).
+// exceeds maxLen runes, or contains a control character. Free-form
+// fields across domain models (title, subtitle, publisher, author name,
+// subject, collection name, source label, bookmark label, highlight note)
+// route through this shared validation logic.
 //
 // An empty or whitespace-only value fails identically to one exceeding
-// maxLen — a maximum-length bound alone admits an all-whitespace string
-// that satisfies it while carrying no content, which is a real recurring
-// shape of upstream metadata (review 0049 finding 5,
-// domain-bibliographic.md FR-6).
+// maxLen, preventing whitespace-padded empty strings from passing.
 func ValidateBoundedText(field, s string, maxLen int) error {
 	if strings.TrimSpace(s) == "" {
 		return &Error{Category: InvalidInput, Message: fmt.Sprintf("%s must not be empty or whitespace-only", field)}
@@ -34,16 +30,11 @@ func ValidateBoundedText(field, s string, maxLen int) error {
 	return nil
 }
 
-// bcp47Pattern is a structural check, not full IANA subtag-registry
-// validation: a primary subtag of 2-8 letters, followed by any number of
-// 1-8 character alphanumeric subtags separated by hyphens. This is
-// deliberately narrower than validating against the actual registry (no
-// dependency needed for it) — domain-bibliographic.md FR-5 requires "a
-// BCP-47 tag, not arbitrary text," not registry membership.
+// bcp47Pattern performs a structural check: a primary subtag of 2-8 letters,
+// followed by any number of 1-8 character alphanumeric subtags separated by hyphens.
 var bcp47Pattern = regexp.MustCompile(`^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$`)
 
-// ValidateLanguageTag rejects a string that doesn't have BCP-47's basic
-// shape (domain-bibliographic.md FR-5).
+// ValidateLanguageTag validates that a string adheres to standard BCP-47 tag structure.
 func ValidateLanguageTag(s string) error {
 	if !bcp47Pattern.MatchString(s) {
 		return &Error{Category: InvalidInput, Message: "language must be a valid BCP-47 tag"}
@@ -52,12 +43,7 @@ func ValidateLanguageTag(s string) error {
 }
 
 // ValidateISBN rejects a string that is not a checksum-valid ISBN-10 or
-// ISBN-13, hyphens ignored (domain-bibliographic.md FR-2). Checksum
-// validation, not just length/format — resolves that spec's own Open
-// questions item ("ISBN-10 vs. ISBN-13 checksum validation, or just
-// format/length... a phase 03/07 implementation detail") in favor of the
-// stronger check: the algorithm is well-defined, cheap, and needs no
-// external dependency.
+// ISBN-13, ignoring hyphens.
 func ValidateISBN(s string) error {
 	cleaned := strings.ReplaceAll(s, "-", "")
 	valid := false

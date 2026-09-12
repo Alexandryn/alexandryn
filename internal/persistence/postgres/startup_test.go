@@ -9,7 +9,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// FR-5: exactly one of spawn/connect runs, chosen by DATABASE_URL's
+// Exactly one of spawn/connect runs, chosen by DATABASE_URL's
 // presence — proven with call-recording fakes, no real process spawn or
 // real Postgres.
 func TestSelectStartupPath_EmptyDatabaseURLSpawns(t *testing.T) {
@@ -54,8 +54,7 @@ func TestSelectStartupPath_PropagatesTheChosenPathsError(t *testing.T) {
 	}
 }
 
-// --- FR-8, portable subset (D4): the postgres argument list, a pure
-// function, no macOS or real process needed ---
+// --- Postgres argument list, a pure function, no real process needed ---
 
 func TestPostgresArgs_IncludesTheDataDirectory(t *testing.T) {
 	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 5432)
@@ -71,9 +70,8 @@ func TestPostgresArgs_IncludesTheDataDirectory(t *testing.T) {
 	}
 }
 
-// audit 0016 #264, constitution §6: the bundled instance must bind only
-// to loopback, never to whatever the binary's compiled listen_addresses
-// default is.
+// The bundled instance must bind only to loopback, never to whatever the binary's
+// compiled listen_addresses default is.
 func TestPostgresArgs_BindsLoopbackOnly(t *testing.T) {
 	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 5432)
 
@@ -88,9 +86,7 @@ func TestPostgresArgs_BindsLoopbackOnly(t *testing.T) {
 	}
 }
 
-// architecture-persistence.md FR-2: the bundled instance binds to a
-// specific port (T25-D2's own OS-assigned port, passed in here), not
-// Postgres's own compiled-in default.
+// The bundled instance binds to a specific port, not Postgres's own compiled-in default.
 func TestPostgresArgs_IncludesThePort(t *testing.T) {
 	args := postgres.PostgresArgs("/home/user/.config/alexandryn/data", 54329)
 

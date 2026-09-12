@@ -7,9 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 )
 
-// backend-reader-content.md Test strategy — the adversarial fixtures that
-// must be neutralised. Each asserts a hostile construct does not survive
-// SanitizeHTML / SanitizeCSS.
+// Adversarial fixtures that must be neutralised. Each asserts a hostile construct
+// does not survive SanitizeHTML / SanitizeCSS.
 func TestAdversarialHTML_NeutralisedPayloads(t *testing.T) {
 	cases := []struct {
 		name string

@@ -13,7 +13,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// ImportCandidateStatus constants matching the 6-state lifecycle in backend-import-pipeline.md FR-3.
+// ImportCandidateStatus constants matching the 6-state import candidate lifecycle.
 const (
 	ImportCandidateStatusQueued       = "queued"
 	ImportCandidateStatusPending      = "pending"
@@ -35,7 +35,7 @@ func ValidImportCandidateStatus(s string) bool {
 	}
 }
 
-// ImportCandidateRecord is the persisted row for an import candidate (backend-import-pipeline.md FR-3).
+// ImportCandidateRecord is the persisted row for an import candidate.
 // It is a persistence/staging type, not a domain aggregate.
 type ImportCandidateRecord struct {
 	ID                string
@@ -315,7 +315,7 @@ func scanImportCandidate(row pgx.Row) (ImportCandidateRecord, error) {
 	return rec, nil
 }
 
-// ExistingEditionHit represents an owned edition in this library matching an ISBN (backend-import-pipeline.md FR-4(a)).
+// ExistingEditionHit represents an owned edition in this library matching an ISBN.
 type ExistingEditionHit struct {
 	EditionID string
 	WorkID    string
@@ -325,7 +325,7 @@ type ExistingEditionHit struct {
 	ISBN      string
 }
 
-// FindOwnedByISBN queries the database for owned editions matching isbn joined through library_entries (FR-4(a)).
+// FindOwnedByISBN queries the database for owned editions matching isbn joined through library_entries.
 func (r *ImportCandidateRepository) FindOwnedByISBN(ctx context.Context, isbn string) ([]ExistingEditionHit, error) {
 	exec := executorFrom(ctx, r.pool)
 

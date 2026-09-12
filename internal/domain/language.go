@@ -1,8 +1,7 @@
 package domain
 
-// Language is a BCP-47 language tag (domain-bibliographic.md FR-5) — a
-// value type with no identity of its own, compared by value, safe to
-// construct freely once validated.
+// Language is a validated BCP-47 language tag — a value type with no
+// identity of its own, compared by value.
 type Language struct {
 	tag string
 }

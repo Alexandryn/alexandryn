@@ -6,9 +6,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-source.md FR-1: a Source MUST have an internal identifier and a
-// user-assigned label, and declares capabilities from a fixed, small set
-// rather than the domain inferring what a source can do from its type.
+// A Source has an internal identifier and a user-assigned label, and
+// declares capabilities from an explicit set.
 func TestNewSource(t *testing.T) {
 	caps := domain.SourceCapabilities{CanList: true, CanSearch: false, CanDownload: true}
 

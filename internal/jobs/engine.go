@@ -21,9 +21,8 @@ import (
 const terminalWriteTimeout = 5 * time.Second
 
 // Engine is the worker pool: Concurrency poller goroutines claiming and
-// running jobs, plus one reaper goroutine reclaiming stale ones
-// (backend-job-queue.md FR-4/FR-5). It is started once and shut down
-// once.
+// running jobs, plus one reaper goroutine reclaiming stale ones.
+// It is started once and shut down once.
 type Engine struct {
 	store    *Store
 	registry *Registry
@@ -50,12 +49,12 @@ func (e *Engine) Pause() {
 	e.paused.Store(true)
 }
 
-// Resume resumes claiming of new jobs by pollers.
+// Resume allows claiming of new jobs by pollers.
 func (e *Engine) Resume() {
 	e.paused.Store(false)
 }
 
-// IsPaused reports whether worker pollers are paused.
+// IsPaused reports whether claiming is halted.
 func (e *Engine) IsPaused() bool {
 	return e.paused.Load()
 }
@@ -78,9 +77,8 @@ func NewEngine(store *Store, registry *Registry, clock Clock, ids domain.IDGener
 	}
 }
 
-// Start launches the pollers and the reaper. It returns immediately;
-// the goroutines run until Shutdown or ctx's cancellation. Calling Start
-// more than once is a no-op after the first.
+// Start launches the pollers and reaper under a child context. It may be
+// called at most once; repeated calls are no-ops.
 func (e *Engine) Start(ctx context.Context) {
 	e.startOnce.Do(func() {
 		runCtx, cancel := context.WithCancel(ctx)
@@ -106,7 +104,7 @@ func (e *Engine) Start(ctx context.Context) {
 // running handler's context, then waits for the goroutines to return.
 // A handler still running when ctx expires is abandoned with its row
 // left `running` — the reaper recovers it on the next process's sweep,
-// exactly as a crash is recovered (FR-10). It never force-kills or
+// exactly as a crash is recovered. It never force-kills or
 // corrupts a job row.
 func (e *Engine) Shutdown(ctx context.Context) error {
 	e.mu.Lock()
@@ -196,7 +194,7 @@ func (e *Engine) pollOnce(ctx context.Context, workerID string, kinds []Kind) bo
 // heartbeat goroutine holding the lease, panic recovery, and exactly one
 // fenced terminal write — unless the lease was reclaimed mid-flight or
 // the process is shutting down, in which case no result is written and
-// the reaper takes over (FR-5/FR-6/FR-10).
+// the reaper takes over.
 func (e *Engine) execute(parentCtx context.Context, job *Job) {
 	reg, ok := e.registry.lookup(job.Kind)
 	if !ok {
@@ -210,7 +208,7 @@ func (e *Engine) execute(parentCtx context.Context, job *Job) {
 	defer cancelJob()
 
 	// Register this handler's cancel so an admin cancel aborts it at
-	// once rather than at the next heartbeat tick (audit 0016 #299).
+	// once rather than waiting for the next heartbeat tick.
 	e.live.add(job.ID, cancelJob)
 	defer e.live.remove(job.ID)
 
@@ -243,13 +241,13 @@ func (e *Engine) execute(parentCtx context.Context, job *Job) {
 	}
 	if parentCtx.Err() != nil {
 		// Shutdown cancelled the handler. Leave the row `running` for
-		// the reaper — do not record a synthetic failure (FR-10).
+		// the reaper — do not record a synthetic failure.
 		return
 	}
 	if jobCtx.Err() != nil {
 		// The per-job context was cancelled while the process kept
-		// running: an admin cancel already wrote dead_letter (audit 0016
-		// #299), or the lease was reclaimed. The terminal row state is
+		// running: an admin cancel already wrote dead_letter,
+		// or the lease was reclaimed. The terminal row state is
 		// owned elsewhere — don't write a synthetic failure over it.
 		return
 	}

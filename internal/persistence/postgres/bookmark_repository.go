@@ -13,7 +13,7 @@ import (
 )
 
 // BookmarkRepository is internal/persistence/postgres's
-// domain.BookmarkRepository implementation (T24, R8). A single physical
+// domain.BookmarkRepository implementation. A single physical
 // table, one row per aggregate. Save is upsert-by-id, the same shape as
 // Work/Edition/Source's own Save — Bookmark has no uniqueness invariant
 // beyond its own id.
@@ -46,8 +46,8 @@ func (r *BookmarkRepository) FindByID(ctx context.Context, id domain.BookmarkID)
 }
 
 // FindByIDAndUser returns the bookmark only when it belongs to userID.
-// A missing row and a foreign row are both NotFound — no cross-user
-// existence oracle (AUDIT-0012-C1).
+// A missing row and a foreign row are both NotFound — preventing cross-user
+// existence leakage.
 func (r *BookmarkRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) (*domain.Bookmark, error) {
 	exec := executorFrom(ctx, r.pool)
 
@@ -149,7 +149,7 @@ func (r *BookmarkRepository) Delete(ctx context.Context, id domain.BookmarkID) e
 }
 
 // DeleteAndUser deletes only a row owned by userID. A foreign or missing
-// id affects no rows and returns NotFound (AUDIT-0012-C1).
+// id affects no rows and returns NotFound.
 func (r *BookmarkRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.BookmarkID) error {
 	exec := executorFrom(ctx, r.pool)
 

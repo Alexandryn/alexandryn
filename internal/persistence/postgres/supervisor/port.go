@@ -12,7 +12,7 @@ import (
 // mode the way net.Listen's own :0 gives a Go net.Listener one. Real, not
 // faked: an OS interaction with no faithful pure-logic substitute.
 // Accepts a small window between this call returning and Postgres
-// actually binding where another process could take the port (T25-D2, a
+// actually binding where another process could take the port (a
 // recorded, accepted tradeoff — the same one embedded-postgres-style
 // tools already accept).
 func SelectPort() (int, error) {

@@ -12,7 +12,7 @@ const prSetPdeathsig = 1 // PR_SET_PDEATHSIG from linux/prctl.h
 
 func watch(parentPID int) error {
 	// PR_SET_PDEATHSIG instructs the Linux kernel to send SIGKILL to this process
-	// whenever its parent dies (ADR 0005).
+	// whenever its parent dies.
 	_, _, errno := syscall.Syscall(syscall.SYS_PRCTL, uintptr(prSetPdeathsig), uintptr(syscall.SIGKILL), 0)
 	if errno != 0 {
 		return fmt.Errorf("setting PR_SET_PDEATHSIG: %w", errno)

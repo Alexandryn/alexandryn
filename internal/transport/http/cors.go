@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// CORS is deny-by-default (backend-network-transport.md FR-6, ADR 0028
-// §4). It is a no-op for the default deployment: the Go server serves the
+// CORS is deny-by-default. It is a no-op for the default deployment: the Go server serves the
 // SPA, so browser clients are same-origin and never exercise CORS.
 //
 //   - allowedOrigins empty  -> never emit any Access-Control-Allow-*

@@ -6,9 +6,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// FR-6 canary (backend-test-harness.md): a FakeIDGenerator constructed
-// with a fixed sequence produces exactly that sequence across repeated
-// calls, deterministic across repeated test runs.
+// FakeIDGenerator produces a deterministic sequence across repeated calls
+// when constructed with a fixed sequence.
 func TestFakeIDGenerator_ProducesFixedSequence(t *testing.T) {
 	want := []string{"id-1", "id-2", "id-3"}
 	gen := testutil.NewFakeIDGenerator(want...)

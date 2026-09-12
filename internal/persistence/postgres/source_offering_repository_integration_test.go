@@ -49,7 +49,7 @@ func TestSourceOfferingRepository_SaveAndFindByID_RoundTrip(t *testing.T) {
 	}
 }
 
-// domain-source.md FR-2/FR-3: re-observing the same (Source, Edition,
+// Re-observing the same (Source, Edition,
 // Format) tuple updates that row rather than inserting a second one —
 // proven against the real UNIQUE constraint on
 // (source_id, edition_id, file_reference_format), not just Go-level

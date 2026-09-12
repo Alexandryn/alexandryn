@@ -4,9 +4,7 @@ import "testing"
 
 import "github.com/Alexandryn/alexandryn/internal/domain"
 
-// domain-bibliographic.md FR-5: Language is a constrained value type,
-// not a bare string, validated at construction (BCP-47 shape,
-// validate.go's ValidateLanguageTag).
+// Language is a constrained value type, validated at construction (BCP-47 shape).
 func TestNewLanguage(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -41,8 +39,7 @@ func TestLanguage_StringRoundTrips(t *testing.T) {
 	}
 }
 
-// Value type: compared by value, no identity of its own
-// (domain-bibliographic.md Domain model).
+// TestLanguage_ComparedByValue verifies value comparison for Language.
 func TestLanguage_ComparedByValue(t *testing.T) {
 	a, _ := domain.NewLanguage("en")
 	b, _ := domain.NewLanguage("en")

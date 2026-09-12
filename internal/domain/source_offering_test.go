@@ -16,15 +16,9 @@ func mustNewFileReference(t *testing.T, referenceID, format string) domain.FileR
 	return ref
 }
 
-// domain-source.md FR-2: a SourceOffering is uniquely identified by
-// Source + Edition + Format — the same source offering the same edition
-// in two formats is two rows, not one; re-observing the same format
-// updates that row's timestamp rather than creating a new one. This is a
-// repository-level upsert concern (a composite unique key), not a graph
-// invariant needing a domain service (ADR 0020's single-value carve-out
-// applies: the key itself is decidable from the two offerings' own
-// values, no other record needs reading) — proven here as the type's own
-// UniquenessKey, which a repository implementation keys its upsert on.
+// A SourceOffering is uniquely identified by Source + Edition + Format —
+// the same source offering the same edition in two formats produces two rows;
+// re-observing the same format updates that row's timestamp.
 func TestSourceOffering_UniquenessKey(t *testing.T) {
 	now := time.Now()
 	epubRef := mustNewFileReference(t, "ref-epub", "epub")

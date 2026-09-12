@@ -8,8 +8,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// PairingVerifier executes the atomic verify-and-consume transaction
-// (backend-network-api.md FR-2, ADR 0021).
+// PairingVerifier executes the atomic verify-and-consume transaction.
 type PairingVerifier struct {
 	transactor  domain.Transactor
 	sessionRepo *PairingSessionRepository
@@ -30,7 +29,7 @@ func NewPairingVerifier(
 
 // VerifyAndConsume locks the pending pairing session row (SELECT ... FOR UPDATE),
 // validates and consumes the session, saves the session state, and inserts
-// the provisional paired device row inside a single atomic transaction (ADR 0021).
+// the provisional paired device row inside a single atomic transaction.
 func (v *PairingVerifier) VerifyAndConsume(
 	ctx context.Context,
 	code domain.PairingCode,

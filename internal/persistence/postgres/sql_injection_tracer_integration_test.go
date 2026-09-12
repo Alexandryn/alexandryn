@@ -23,15 +23,10 @@ type tracedQuery struct {
 }
 
 // queryTracer is a pgx.QueryTracer that records every query pgx sends
-// over a traced pool's connections — backend-persistence.md FR-3's own
-// required proof mechanism: a hand-rolled-escaping implementation that
-// happens to round-trip a hostile value correctly would still pass a
-// black-box round-trip assertion; only inspecting the literal SQL text
-// pgx actually transmits (a placeholder at the hostile field's position,
-// the hostile value only in Args, never interpolated into SQL) tells
-// parameterized queries apart from disciplined-but-wrong string escaping.
-// Built once here (R4, tasks/plan-t24-repositories.md) and reused by
-// every later repository's own injection proof.
+// over a traced pool's connections to verify parameterized queries: only
+// inspecting the literal SQL text pgx actually transmits (a placeholder
+// at the hostile field's position, the hostile value only in Args, never
+// interpolated into SQL) ensures queries are genuinely parameterized.
 type queryTracer struct {
 	mu      sync.Mutex
 	queries []tracedQuery

@@ -14,7 +14,7 @@ import (
 
 const oneMiB = 1 << 20
 
-// FR-2: a body under the limit is read normally; a body at or over it is
+// A body under the limit is read normally; a body at or over it is
 // rejected with InvalidInput before the handler ever runs — proven by a
 // handler that records whether it ran, not just by the response status.
 func TestLimits_BodyUnderLimitPassesThrough(t *testing.T) {
@@ -101,7 +101,7 @@ func TestLimits_JustUnderTheLimitPasses(t *testing.T) {
 	}
 }
 
-// --- FR-6/FR-7: the category-to-status mapping, total and fixed ---
+// --- Category-to-status mapping, total and fixed ---
 
 func TestStatusForCategory_EveryCategoryMapsToExactlyOneStatus(t *testing.T) {
 	cases := []struct {
@@ -127,8 +127,7 @@ func TestStatusForCategory_EveryCategoryMapsToExactlyOneStatus(t *testing.T) {
 
 // An unrecognized category — which domain.Category's closed set should
 // never actually produce — still maps to a real status rather than the
-// zero value, matching FR-4's "unmapped defaults to Internal" on the
-// output side too.
+// zero value, ensuring an unmapped status code defaults to Internal.
 func TestStatusForCategory_UnrecognizedCategoryDefaultsToInternal(t *testing.T) {
 	got := transporthttp.StatusForCategory(domain.Category("SomethingNotInTheClosedSet"))
 	if got != http.StatusInternalServerError {
@@ -136,7 +135,7 @@ func TestStatusForCategory_UnrecognizedCategoryDefaultsToInternal(t *testing.T) 
 	}
 }
 
-// FR-7: an unmatched /api/v1/... path returns the shared NotFound JSON
+// An unmatched /api/v1/... path returns the shared NotFound JSON
 // shape, never ServeMux's own default plain-text 404 — proven alongside
 // a real registered path to confirm the catch-all doesn't shadow it.
 func TestNotFoundHandler_UnmatchedAPIRouteReturnsSharedJSONShape(t *testing.T) {

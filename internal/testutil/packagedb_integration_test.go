@@ -11,26 +11,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// Variant B's own proof (backend-test-harness.md FR-3, T26): the
-// composability hazard is two packages' integration-tagged TestMains
-// resetting/migrating the same TEST_DATABASE_URL database concurrently.
+// Per-package database isolation verification: prevents the composability
+// hazard of two packages' integration-tagged TestMains resetting or migrating
+// the same TEST_DATABASE_URL database concurrently.
 // These tests prove EnsurePackageDatabase itself — two different pkgName
-// values produce two independent databases, and a repeat call is
-// idempotent — which is what makes that composability safe regardless of
-// which database TEST_DATABASE_URL happens to name. They don't reproduce
-// the original collision directly: this file shares
-// isolation_integration_test.go's TestMain (same package, same build
-// tag — Go allows exactly one TestMain per test binary), which has
+// values produce two independent databases, and repeated calls are idempotent.
+// This file shares isolation_integration_test.go's TestMain, which has
 // already rewritten TEST_DATABASE_URL to this package's own isolated
-// database (via testutil.WithPackageDatabase) by the time these tests
-// run, so `base` below is already one level derived, not the original
-// CI-shared URL — immaterial to what's being proven, since
-// EnsurePackageDatabase's contract doesn't depend on what its base names.
-// T26-4/5/6 wire this same mechanism into internal/testutil,
-// internal/persistence/postgres, and cmd/server's own TestMains, in place
-// of the -p 1 workaround; the resulting default-parallelism run across
-// all three (T26-8) is where the original collision scenario is actually
-// exercised end to end.
+// database (via testutil.WithPackageDatabase) by the time these tests run.
 
 func adminDBFor(t *testing.T, url string) *sql.DB {
 	t.Helper()

@@ -1,5 +1,5 @@
 // Package http implements Alexandryn's HTTP transport: router, middleware,
-// handlers, and wire-shape helpers (architecture-backend.md FR-1).
+// handlers, and wire-shape helpers.
 package http
 
 import (
@@ -16,15 +16,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/observability"
 )
 
-// Middleware wraps a handler with another layer of behavior — direct
-// function composition (ADR 0011), the mechanism architecture-backend.md
-// FR-6's fixed order is built from.
+// Middleware wraps a handler with another layer of behavior via direct
+// function composition.
 type Middleware func(http.Handler) http.Handler
 
 // Chain composes mw around handler, outermost first: Chain(h, a, b, c)
-// serves a request through a, then b, then c, then handler —
-// architecture-backend.md FR-6's fixed order (recovery, limits, logging,
-// [auth, reserved], routing) is expressed by the order mw is passed in.
+// serves a request through a, then b, then c, then handler.
+// The execution order (recovery, limits, logging, auth, routing) is
+// expressed by the order mw is passed in.
 func Chain(handler http.Handler, mw ...Middleware) http.Handler {
 	for i := len(mw) - 1; i >= 0; i-- {
 		handler = mw[i](handler)
@@ -76,10 +75,9 @@ type errorBody struct {
 	CorrelationID string `json:"correlationId"`
 }
 
-// WriteError is the one shared helper every error response goes through
-// (backend-errors-and-logging.md FR-5): it maps category to its HTTP
-// status (StatusForCategory) and writes architecture-contracts.md FR-5's
-// wire shape as JSON. No handler or middleware builds an error body by
+// WriteError is the one shared helper every error response goes through:
+// it maps category to its HTTP status (StatusForCategory) and writes the
+// standard wire shape as JSON. No handler or middleware builds an error body by
 // hand.
 func WriteError(w http.ResponseWriter, category domain.Category, message, correlationID string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -91,11 +89,11 @@ func WriteError(w http.ResponseWriter, category domain.Category, message, correl
 	})
 }
 
-// Recovery is the outermost middleware (FR-1): it catches a panic from
+// Recovery is the outermost middleware: it catches a panic from
 // any inner layer, including routing and handlers, logs it server-side
 // with a stack trace, and responds with a generic Internal error via the
-// shared response helper — never the panic's own message or a stack
-// trace to the client (backend-errors-and-logging.md FR-10). If the
+// shared response helper — never leaking the panic's internal message or a stack
+// trace to the client. If the
 // request context doesn't yet carry a correlation ID (a panic in a layer
 // that runs before logging), Recovery generates a fallback itself so the
 // response's correlationId is never empty regardless of which layer
@@ -139,10 +137,9 @@ func (w *statusWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
-// Logging generates the correlation ID (backend-errors-and-logging.md
-// FR-7), attaches it to the request's context, and logs a debug-level
-// line at request start and an info-level line at completion (method,
-// path, status code, duration) — both carrying the same ID (FR-4).
+// Logging generates the correlation ID, attaches it to the request's context,
+// and logs a debug-level line at request start and an info-level line at completion
+// (method, path, status code, duration) — both carrying the same correlation ID.
 func Logging(logger *slog.Logger, newID func() string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -172,15 +169,15 @@ func Logging(logger *slog.Logger, newID func() string) Middleware {
 }
 
 // Metrics records request latency per route template in the given
-// registry (FR-2). Static assets under /assets/* are ignored.
+// registry. Static assets under /assets/* are ignored.
 //
 // The route label is the registered ServeMux pattern, resolved via
 // mux.Handler independently of dispatch: r.Pattern is only set on the
 // request the matched handler receives, and the middleware between this
 // layer and the mux replaces the request via WithContext, so r.Pattern
 // here is almost always empty. Falling back to r.URL.Path made every
-// distinct id a new histogram — an unbounded metric-cardinality leak
-// (audit 0016 #293). mux.Handler also resolves the pattern for a request
+// distinct id a new histogram — an unbounded metric-cardinality leak.
+// mux.Handler also resolves the pattern for a request
 // rejected by auth before it ever reaches dispatch. When mux is nil (a
 // direct-handler test), r.Pattern is used as-is.
 func Metrics(reg *observability.Registry, mux *http.ServeMux) Middleware {

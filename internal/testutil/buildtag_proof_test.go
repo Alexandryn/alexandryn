@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// FR-1 structural proof (backend-test-harness.md): a file suffixed
+// Structural proof for integration build tags: a file suffixed
 // _integration_test.go, tagged //go:build integration, containing an
 // intentionally-broken reference, must not fail `go build ./...` or
 // `go vet ./...` when the integration tag isn't passed (negative

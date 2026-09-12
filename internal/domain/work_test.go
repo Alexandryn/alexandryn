@@ -7,10 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-bibliographic.md FR-1/FR-3: a Work with zero Editions and zero
-// external references MUST be a legal, constructible state — not a
-// theoretical allowance, a passing test (spec's own acceptance criterion,
-// quoted almost verbatim).
+// A Work with zero Editions and zero external references is a valid,
+// constructible state.
 func TestNewWork_ZeroEditionsAndZeroExternalReferencesIsLegal(t *testing.T) {
 	w, err := domain.NewWork(domain.WorkID("work-1"), "The Left Hand of Darkness", "", nil, nil, nil, nil)
 	if err != nil {
@@ -99,9 +97,8 @@ func TestNewWork_OriginalLanguageOptional(t *testing.T) {
 	}
 }
 
-// FR-4/FR-8/FR-9: MergedInto and Contains are empty/nil at construction —
-// both are domain-service operations (Tier 2), never constructor
-// arguments.
+// MergedInto and Contains are empty/nil at construction — both are
+// domain-service operations, never constructor arguments.
 func TestNewWork_MergeAndContainmentStateEmptyAtConstruction(t *testing.T) {
 	w, err := domain.NewWork(domain.WorkID("work-1"), "Title", "", nil, nil, nil, nil)
 	if err != nil {

@@ -263,7 +263,7 @@ func TestSources_Create_SuccessAndUnhealthy(t *testing.T) {
 		}
 	})
 
-	t.Run("creates unhealthy source when path not found (FR-1)", func(t *testing.T) {
+	t.Run("creates unhealthy source when path not found", func(t *testing.T) {
 		missingPath := filepath.Join(tempDir, "nonexistent")
 		body := fmt.Sprintf(`{"label":"Missing Books","kind":"local-folder","config":{"basePath":%q}}`, missingPath)
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/sources", strings.NewReader(body))
@@ -509,7 +509,7 @@ func TestSources_Search_CanSearchConflict(t *testing.T) {
 
 	searchHandler := transporthttp.SearchSourceHandler(repo, poolRef, sem, logger)
 
-	t.Run("returns 409 Conflict when CanSearch is false (FR-8)", func(t *testing.T) {
+	t.Run("returns 409 Conflict when CanSearch is false", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/sources/src-no-search/search?q=earthsea", nil)
 		rec := httptest.NewRecorder()
 
@@ -682,7 +682,7 @@ func TestSources_Browse_DecryptFailureReturns503(t *testing.T) {
 
 	browseHandler.ServeHTTP(rec, req)
 
-	// FR-13: Decrypt failure MUST return 503 Unavailable immediately
+	// Decrypt failure MUST return 503 Unavailable immediately
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503 Unavailable: %s", rec.Code, rec.Body.String())
 	}

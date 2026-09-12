@@ -57,7 +57,7 @@ func TestExtractPDF_ValidPDF(t *testing.T) {
 		t.Errorf("Format = %v, want pdf", meta.Format)
 	}
 	if meta.CoverBytes != nil {
-		t.Error("expected no cover bytes for PDF in phase 10")
+		t.Error("expected no cover bytes for PDF")
 	}
 }
 

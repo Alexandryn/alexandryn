@@ -19,8 +19,8 @@ import (
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
-// TestCrossTenant_HandlerToSQL is audit 0016 #135: for every tenant-scoped
-// surface (#87 collections, #88 catalog, #104 import candidates), a user
+// TestCrossTenant_HandlerToSQL verifies that for every tenant-scoped
+// surface (collections, catalog, import candidates), a user
 // whose active library is A must not be able to read or mutate a resource
 // that lives in library B — traced through the real handler, the real
 // repository, and real SQL, not asserted at the repository layer alone.

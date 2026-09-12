@@ -43,12 +43,9 @@ func TestIsInLibrary(t *testing.T) {
 		}
 	})
 
-	// review 0048 finding 3, domain-library.md FR-2's 2026-08-20
-	// amendment: "in library" MUST be computed over the merge-resolved
-	// Edition set. A Work merged into another still answers true for
-	// "in library" through the resolved view — the exact bug the
-	// amendment fixed. Computed over raw parentage instead, this would
-	// answer false for a book the user demonstrably owns.
+	// "In library" is computed over the merge-resolved Edition set.
+	// A Work merged into another still answers true for "in library"
+	// through the resolved view.
 	t.Run("a Work merged away still resolves to true via its canonical Work's owned Edition", func(t *testing.T) {
 		mergedAway := mustNewWork(t, "work-a", "Title A")
 		canonical := mustNewWork(t, "work-b", "Title B")

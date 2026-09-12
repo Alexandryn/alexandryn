@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-// AuthorMergeService is WorkMergeService's identical pattern, applied to
-// Author (domain-bibliographic.md FR-7 requires the same reversibility
-// guarantee FR-4 gives Work).
+// AuthorMergeService manages author merges, providing the same reversibility
+// and cycle-detection guarantees as WorkMergeService.
 type AuthorMergeService struct {
 	authors AuthorRepository
 }

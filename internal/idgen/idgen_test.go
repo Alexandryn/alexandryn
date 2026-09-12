@@ -32,7 +32,5 @@ func TestGenerator_NewID_IsUnique(t *testing.T) {
 	}
 }
 
-// Generator must satisfy domain.IDGenerator without any change on the
-// domain side, matching the shape testutil.FakeIDGenerator already
-// established (id_test.go, phase 02's own P0).
+// Generator must satisfy domain.IDGenerator.
 var _ domain.IDGenerator = (*idgen.Generator)(nil)

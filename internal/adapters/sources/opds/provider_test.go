@@ -126,10 +126,9 @@ func TestProvider_Probe_Unreachable(t *testing.T) {
 	}
 }
 
-// TestProvider_SSRF_BlocksPrivateByDefault is the audit 0016 #86
-// regression: without AllowPrivateAddresses the outbound client refuses
-// to connect to a loopback / private target, so a source pointed at an
-// internal service cannot reflect its body into the browse view.
+// TestProvider_SSRF_BlocksPrivateByDefault ensures that without AllowPrivateAddresses,
+// the outbound client refuses to connect to a loopback / private target, preventing
+// an internal service from reflecting its body into the browse view.
 func TestProvider_SSRF_BlocksPrivateByDefault(t *testing.T) {
 	srv := newOPDSServer(t) // httptest — binds 127.0.0.1
 	srv.serveFixture("/opds", "opds12_acquisition.xml", "application/atom+xml")

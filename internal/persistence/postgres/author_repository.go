@@ -11,7 +11,7 @@ import (
 )
 
 // AuthorRepository is internal/persistence/postgres's
-// domain.AuthorRepository implementation (T24, R4), the same
+// domain.AuthorRepository implementation, the same
 // two-table-with-replace-on-Save shape as WorkRepository: authors plus
 // author_external_references.
 type AuthorRepository struct {

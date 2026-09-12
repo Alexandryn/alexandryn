@@ -156,8 +156,8 @@ func TestWorkRepository_FindMergedInto(t *testing.T) {
 	}
 }
 
-// backend-persistence.md FR-3's adversarial proof, built once (this test)
-// and reused by every later repository (T24's own R5-R8): a hostile value
+// Adversarial proof verifying single-query library queries
+// and reused by other repositories: a hostile value
 // in a free-form text field round-trips byte-for-byte, the works table
 // still exists afterward, no syntax error occurs, and — the real proof, not
 // just a black-box coincidence — the literal SQL text pgx sent carries a
@@ -311,7 +311,7 @@ func TestWorkRepository_QueryLibrary_FiltersAndPagination(t *testing.T) {
 	}
 }
 
-// TestWorkRepository_LibraryScoping is the audit 0016 #88 regression: a
+// TestWorkRepository_LibraryScoping verifies that a
 // member of library A must never see library B's holdings via
 // GET /api/v1/library or GET /api/v1/works/{id}.
 func TestWorkRepository_LibraryScoping(t *testing.T) {
@@ -588,6 +588,6 @@ func TestWorkRepository_QueryLibrary_SingleQueryClaim(t *testing.T) {
 	tracer.mu.Unlock()
 
 	if queryCount != 1 {
-		t.Fatalf("backend-library-api.md FR-9 single query claim failed: executed %d queries, want exactly 1. Queries: %+v", queryCount, tracedQueries)
+		t.Fatalf("single query execution failed: executed %d queries, want exactly 1. Queries: %+v", queryCount, tracedQueries)
 	}
 }

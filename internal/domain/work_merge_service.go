@@ -5,10 +5,9 @@ import (
 	"time"
 )
 
-// WorkMergeService owns recording and undoing a Work merge
-// (domain-bibliographic.md FR-4/FR-8), holding the repository interface
-// internal/domain itself declares — the graph invariant (no cycle by
-// reachability) is enforced here, not at construction, per ADR 0020.
+// WorkMergeService owns recording and undoing a Work merge, holding the
+// repository interface internal/domain declares — the graph invariant
+// (no cycle by reachability) is enforced here.
 type WorkMergeService struct {
 	works WorkRepository
 }
@@ -17,14 +16,10 @@ func NewWorkMergeService(works WorkRepository) *WorkMergeService {
 	return &WorkMergeService{works: works}
 }
 
-// RecordMerge sets source's MergedInto to target — "what a merge moves:
-// nothing" (FR-4): no Edition, author, subject, external reference, or
-// containment reference is copied, moved, or rewritten, only this one
-// field. Rejected if source is already reachable from target by
-// following merge references, of which source == target is only the
-// shortest case (FR-8) — walking from target forward catches both the
-// direct case and any longer indirect chain (review 0048 finding 9's
-// exact fix: A merged into B, then B into A, must be rejected).
+// RecordMerge sets source's MergedInto to target — no Edition, author,
+// subject, external reference, or containment reference is copied, moved,
+// or rewritten, only this one field. Rejected if source is already reachable
+// from target by following merge references, preventing cycles.
 func (s *WorkMergeService) RecordMerge(ctx context.Context, source, target WorkID, occurredAt time.Time) (WorkMerged, error) {
 	reachable, err := s.sourceReachableFromTarget(ctx, source, target)
 	if err != nil {
@@ -53,8 +48,7 @@ func (s *WorkMergeService) RecordMerge(ctx context.Context, source, target WorkI
 	return NewWorkMerged(string(source), occurredAt), nil
 }
 
-// UndoMerge clears source's MergedInto — exactly the identity, since
-// nothing else was ever moved (FR-4).
+// UndoMerge clears source's MergedInto — exactly reversing the merge.
 func (s *WorkMergeService) UndoMerge(ctx context.Context, source WorkID, occurredAt time.Time) (WorkMergeUndone, error) {
 	sourceWork, err := s.works.FindByID(ctx, source)
 	if err != nil {
@@ -67,15 +61,11 @@ func (s *WorkMergeService) UndoMerge(ctx context.Context, source WorkID, occurre
 	return NewWorkMergeUndone(string(source), occurredAt), nil
 }
 
-// wouldCreateSelfContainment checks the case domain-bibliographic.md's
-// own Open questions section resolved: A contains B (recorded legally,
-// no cycle exists at that time), then B is merged into A. Checking raw
-// references would miss it entirely — resolving turns it into a real
-// cycle. Once source resolves to target (after this merge), any existing
-// containment reference to source anywhere in target's own resolved
-// closure will re-resolve to target itself. So the check is simply: does
-// target's current containment closure already reach source's current
-// canonical form?
+// wouldCreateSelfContainment checks whether merging source into target would
+// create a self-containment cycle (e.g. if target already contains source,
+// merging source into target causes target to contain itself).
+// It verifies whether target's resolved containment closure reaches
+// source's canonical form.
 func (s *WorkMergeService) wouldCreateSelfContainment(ctx context.Context, source, target WorkID) (bool, error) {
 	targetCanonical, err := resolveCanonicalWork(ctx, s.works, target)
 	if err != nil {

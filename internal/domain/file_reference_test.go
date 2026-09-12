@@ -4,9 +4,8 @@ import "testing"
 
 import "github.com/Alexandryn/alexandryn/internal/domain"
 
-// domain-source.md FR-4: a FileReference MUST be a constrained type, not
-// a bare string — an opaque, Source-scoped identifier plus a declared
-// format and an optional size.
+// A FileReference is a constrained type with an opaque, Source-scoped
+// identifier plus a declared format and an optional size.
 func TestNewFileReference(t *testing.T) {
 	t.Run("valid reference", func(t *testing.T) {
 		size := int64(1024)

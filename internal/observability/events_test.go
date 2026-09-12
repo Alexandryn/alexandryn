@@ -34,9 +34,8 @@ func TestNewSystemEvent_SanitizesPayload(t *testing.T) {
 	}
 }
 
-// audit 0016 #296: nested maps/slices and the "note" key must be
-// sanitized too — reading position lives under a nested "detail" object
-// and highlight text lives under "note".
+// TestNewSystemEvent_SanitizesNestedPayload tests that nested maps, slices, and
+// note fields are sanitized recursively.
 func TestNewSystemEvent_SanitizesNestedPayload(t *testing.T) {
 	ev := observability.NewSystemEvent{
 		EventKind: "reading.progress",
@@ -81,11 +80,9 @@ func TestNewSystemEvent_SanitizesNestedPayload(t *testing.T) {
 	}
 }
 
-// audit 0016 #297: key matching is word-based, not substring. A key that
-// merely contains a prohibited word as a substring — "disposition",
-// "allocation", "exposition" — must survive; a compound key that
-// genuinely carries a prohibited word — "accessToken", "reading_position"
-// — must still be stripped.
+// TestNewSystemEvent_KeyMatchingIsWordBased verifies word-based key matching,
+// ensuring innocent keys (e.g. "disposition", "allocation") are kept while
+// compound keys with sensitive words ("accessToken", "reading_position") are stripped.
 func TestNewSystemEvent_KeyMatchingIsWordBased(t *testing.T) {
 	ev := observability.NewSystemEvent{
 		EventKind: "test.event",

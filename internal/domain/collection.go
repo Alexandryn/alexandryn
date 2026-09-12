@@ -2,31 +2,25 @@ package domain
 
 import "time"
 
-// maxCollectionNameLength is a reasoned placeholder (no spec gives a
-// number), matching Subject's own bound — a short label, not a
-// description.
+// maxCollectionNameLength defines the maximum allowed length for a collection name.
 const maxCollectionNameLength = 100
 
 // CollectionMember is one Work's membership in a Collection, carrying its
-// own added-at timestamp independent of any LibraryEntry's (FR-9) — you
-// can want a book before or after you own it.
+// own added-at timestamp independent of any LibraryEntry's.
 type CollectionMember struct {
 	WorkID  WorkID
 	AddedAt time.Time
 }
 
-// Collection (domain-library.md FR-4/FR-8) contains Works, not Editions
-// or files. Legally empty at construction (FR-8) — an empty Collection is
-// an ordinary state, not an error.
+// Collection contains Works, not Editions or files. An empty Collection is
+// an ordinary initial state.
 type Collection struct {
 	id      CollectionID
 	name    string
 	members []CollectionMember
 }
 
-// NewCollection validates name against validate.go's bounded-text check
-// — a collection name is exactly the same class of hostile-input-adjacent
-// string a title is.
+// NewCollection validates name against bounded-text constraints.
 func NewCollection(id CollectionID, name string) (*Collection, error) {
 	if err := ValidateBoundedText("name", name, maxCollectionNameLength); err != nil {
 		return nil, err
@@ -40,13 +34,8 @@ func (c *Collection) Name() string { return c.name }
 
 func (c *Collection) Members() []CollectionMember { return c.members }
 
-// AddMember is a plain aggregate operation, not a domain service: unlike
-// LibraryEntry creation (which must verify the Edition exists,
-// ADR 0020), domain-library.md names no equivalent existence check for a
-// Collection's Work members — FR-4/FR-9 describe membership shape only.
-// A no-op if workID is already a member (matching LibraryEntry's own
-// at-most-once reasoning, FR-7, applied here for the same "add it again,
-// nothing visible changes" UX).
+// AddMember adds a Work to the collection. It is a no-op if workID is already
+// a member, ensuring idempotent addition.
 func (c *Collection) AddMember(workID WorkID, addedAt time.Time) {
 	for _, m := range c.members {
 		if m.WorkID == workID {
@@ -56,8 +45,7 @@ func (c *Collection) AddMember(workID WorkID, addedAt time.Time) {
 	c.members = append(c.members, CollectionMember{WorkID: workID, AddedAt: addedAt})
 }
 
-// RemoveMember removes exactly the given Work's membership — no cascade,
-// same non-cascading reasoning FR-6 applies to removing a LibraryEntry.
+// RemoveMember removes exactly the given Work's membership without cascading.
 func (c *Collection) RemoveMember(workID WorkID) {
 	filtered := c.members[:0]
 	for _, m := range c.members {

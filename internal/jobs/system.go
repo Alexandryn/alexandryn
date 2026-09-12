@@ -10,10 +10,9 @@ import (
 )
 
 // System is the job subsystem as one wired unit: the enqueue/query
-// Queue that future job handlers use, and the worker pool that runs
-// them. cmd/server constructs one against the shared pool at
-// backend-service-lifecycle.md FR-1 step 6 and drives its lifecycle
-// (FR-6, amended for phase 09).
+// Queue that job handlers use, and the worker pool that runs
+// them. cmd/server constructs one against the shared pool at startup
+// and drives its lifecycle during application runtime.
 type System struct {
 	queue  *Queue
 	engine *Engine
@@ -21,7 +20,7 @@ type System struct {
 
 // NewSystem builds the subsystem over the process's shared connection
 // pool. ids is the production UUID generator; clock is the real wall
-// clock; cfg's zero fields fall back to the spec's placeholder tuning.
+// clock; cfg's zero fields fall back to default tuning.
 func NewSystem(pool *pgxpool.Pool, ids domain.IDGenerator, clock Clock, logger *slog.Logger, cfg Config) *System {
 	cfg = cfg.withDefaults()
 	registry := NewRegistry()
@@ -33,15 +32,15 @@ func NewSystem(pool *pgxpool.Pool, ids domain.IDGenerator, clock Clock, logger *
 	}
 }
 
-// Queue is the handle future phases inject to enqueue and query jobs.
+// Queue is the handle callers inject to enqueue and query jobs.
 func (s *System) Queue() *Queue { return s.queue }
 
-// Start launches the worker pool (FR-1 step 6 / step 7).
+// Start launches the worker pool.
 func (s *System) Start(ctx context.Context) { s.engine.Start(ctx) }
 
 // Shutdown stops the worker pool within ctx's deadline, leaving any
-// still-running job for the reaper (FR-10). It is called between the
-// HTTP server's shutdown and the connection pool's close (FR-6).
+// still-running job for the reaper. It is called between the
+// HTTP server's shutdown and the connection pool's close.
 func (s *System) Shutdown(ctx context.Context) error { return s.engine.Shutdown(ctx) }
 
 // Pause halts worker claiming of new jobs.

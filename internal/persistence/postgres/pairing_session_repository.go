@@ -19,7 +19,7 @@ import (
 
 // PairingSessionRepository implements domain.PairingSessionRepository
 // using PostgreSQL with AES-256-GCM code encryption at rest and blind
-// HMAC indexing (backend-network-api.md FR-7 / ADR 0028 §6).
+// HMAC indexing.
 type PairingSessionRepository struct {
 	pool     *pgxpool.Pool
 	aead     cipher.AEAD

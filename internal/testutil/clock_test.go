@@ -7,9 +7,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// FR-5 canary (backend-test-harness.md): a FakeClock constructed at a known
-// time, read twice with Advance() called between the reads, observes
-// exactly the advanced duration — proven without any real time.Sleep.
+// FakeClock constructed at a known time, read twice with Advance() called
+// between the reads, observes exactly the advanced duration without any
+// real time.Sleep.
 func TestFakeClock_AdvanceIsObservedExactly(t *testing.T) {
 	start := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	clock := testutil.NewFakeClock(start)

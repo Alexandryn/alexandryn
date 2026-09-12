@@ -16,7 +16,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// ImportCandidateWireDTO is the JSON response shape for import candidates (backend-import-pipeline.md FR-3, FR-7).
+// ImportCandidateWireDTO is the JSON response shape for import candidates.
 type ImportCandidateWireDTO struct {
 	ID                string          `json:"id"`
 	SourceID          string          `json:"sourceId"`
@@ -79,7 +79,7 @@ func toCandidateWireDTO(rec postgres.ImportCandidateRecord) ImportCandidateWireD
 	}
 }
 
-// ImportDiscoverHandler handles POST /api/v1/import/discover (FR-1, FR-7).
+// ImportDiscoverHandler handles POST /api/v1/import/discover.
 func ImportDiscoverHandler(runner DiscoveryRunner) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -110,8 +110,8 @@ func ImportDiscoverHandler(runner DiscoveryRunner) http.Handler {
 				WriteError(w, domain.InvalidInput, err.Error(), id)
 				return
 			}
-			// Not a domain error at this point — never echo its text
-			// (audit 0016 #119); the correlation ID ties it to the log.
+			// Not a domain error at this point — never echo its text;
+			// the correlation ID ties it to the log.
 			WriteError(w, domain.Internal, "could not start discovery for that source", id)
 			return
 		}
@@ -122,7 +122,7 @@ func ImportDiscoverHandler(runner DiscoveryRunner) http.Handler {
 	})
 }
 
-// ImportCandidatesListHandler handles GET /api/v1/import/candidates (FR-7).
+// ImportCandidatesListHandler handles GET /api/v1/import/candidates.
 func ImportCandidatesListHandler(repo ImportCandidateLister) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -189,7 +189,7 @@ type ImporterService interface {
 	Reject(ctx context.Context, candidateID string, now time.Time) error
 }
 
-// ImportCandidateConfirmHandler handles POST /api/v1/import/candidates/{id}/confirm (FR-7).
+// ImportCandidateConfirmHandler handles POST /api/v1/import/candidates/{id}/confirm.
 func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateLister, olClient openlibrary.Client) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -314,7 +314,7 @@ func ImportCandidateConfirmHandler(svc ImporterService, repo ImportCandidateList
 	})
 }
 
-// ImportCandidateRejectHandler handles POST /api/v1/import/candidates/{id}/reject (FR-7).
+// ImportCandidateRejectHandler handles POST /api/v1/import/candidates/{id}/reject.
 func ImportCandidateRejectHandler(svc ImporterService, repo ImportCandidateLister) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -350,7 +350,7 @@ func ImportCandidateRejectHandler(svc ImporterService, repo ImportCandidateListe
 	})
 }
 
-// ImportCandidateCoverHandler handles GET /api/v1/import/candidates/{id}/cover (FR-9, audit 0016 #171).
+// ImportCandidateCoverHandler handles GET /api/v1/import/candidates/{id}/cover.
 func ImportCandidateCoverHandler(repo ImportCandidateLister) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())

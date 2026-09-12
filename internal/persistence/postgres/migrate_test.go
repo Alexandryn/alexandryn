@@ -12,7 +12,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// FR-6: the short-lived *sql.DB opened for migrations is closed
+// The short-lived *sql.DB opened for migrations is closed
 // immediately after goose.Up returns, regardless of success or failure —
 // never passed to or reused by any repository.
 func TestRunMigrations_ClosesTheDBAfterward(t *testing.T) {
@@ -68,7 +68,7 @@ func TestConnectionFailure_UnwrapsToTheUnderlyingError(t *testing.T) {
 	}
 }
 
-// FR-6 DSN-redaction regression guard.
+// DSN-redaction regression guard.
 const fakeDSNMarker = "postgres://fixture-marker:s3cr3t@host/db"
 
 func TestRunMigrations_ConnectionFailureRedactsTheDSN(t *testing.T) {

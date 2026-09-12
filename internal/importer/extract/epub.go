@@ -47,7 +47,7 @@ type opfPackageXML struct {
 	} `xml:"manifest"`
 }
 
-// ExtractEPUB extracts metadata and cover from an EPUB container (backend-file-extractors.md FR-9).
+// ExtractEPUB extracts metadata and cover from an EPUB container.
 func ExtractEPUB(ctx context.Context, f *os.File) (meta ExtractedMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {

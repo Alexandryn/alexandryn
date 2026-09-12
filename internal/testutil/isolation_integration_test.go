@@ -15,18 +15,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// T22 (tasks/plan.md Tier 4): backend-test-harness.md FR-3's own
-// mechanisms, proven by using them — this spec's own Test strategy
-// frames it exactly this way ("testing the test harness means proving
-// its mechanisms work as advertised, using them"). Variant B (the
-// cross-package composability hazard, proven in
-// packagedb_integration_test.go and wired in below) is T26's.
+// Integration test harness isolation verification: validates that the
+// test harness mechanisms (schema migration and table truncation) function
+// properly across tests.
 
 // TestMain gives this package its own isolated database
-// (testutil.WithPackageDatabase, FR-3 Variant B, T26-4) before reaching
-// migration head once, here, before any test function in this file
-// runs — the concrete mechanism behind the schema-at-head proof below:
-// no test in this file calls Migrate itself.
+// (testutil.WithPackageDatabase) before reaching migration head once, here,
+// before any test function in this file runs — ensuring tests run against a
+// fully migrated schema without requiring individual tests to invoke Migrate.
 func TestMain(m *testing.M) {
 	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, testutil.WithPackageDatabase("testutil", os.Getenv, os.Setenv, os.Stderr, func() int {
 		if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL")); err != nil {
@@ -57,7 +53,7 @@ func ensureIsolationFixtureTable(t *testing.T, db *sql.DB) {
 	}
 }
 
-// FR-3 schema-at-head: this test never calls Migrate itself — TestMain
+// Schema-at-head verification: this test never calls Migrate itself — TestMain
 // already reached migration head as part of harness setup, above — and
 // still finds goose's own tracking table populated. Proves the harness's
 // setup step, not the test author, is responsible for reaching head.
@@ -76,7 +72,7 @@ func TestSchemaAtHead_HarnessSetupReachesItWithoutTheTestCallingMigrate(t *testi
 	}
 }
 
-// FR-3 isolation, Variant A: two tests against the same table,
+// Table isolation verification: two tests against the same table,
 // deliberately run in the same `go test` invocation with real
 // truncate-based teardown between them via t.Cleanup(testutil.TruncateTables)
 // — the harness's own prescribed mechanism, not ad hoc per-test SQL.

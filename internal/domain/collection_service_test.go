@@ -29,7 +29,7 @@ func TestCollectionService_Create(t *testing.T) {
 		t.Fatalf("event.AggregateID() = %v, want collection-1", event.AggregateID())
 	}
 	if len(c.Members()) != 0 {
-		t.Fatalf("Members() = %v, want empty (FR-8, legal at creation)", c.Members())
+		t.Fatalf("Members() = %v, want empty at creation", c.Members())
 	}
 }
 
@@ -93,10 +93,8 @@ func TestCollectionService_RemoveMember(t *testing.T) {
 	}
 }
 
-// FR-10: deleting a Collection removes its membership records only — it
-// MUST NOT cascade to Work, Edition, or any LibraryEntry. Trivially true
-// here (Delete only ever touches the CollectionRepository), asserted
-// directly rather than left implicit.
+// Deleting a Collection removes its membership records only — it
+// does not cascade to Work, Edition, or any LibraryEntry.
 func TestCollectionService_Delete(t *testing.T) {
 	ctx := context.Background()
 	c, err := domain.NewCollection("collection-1", "Want to Read")

@@ -2,9 +2,8 @@ package domain
 
 import "time"
 
-// ReconcileOutcome tags what ReconcileProgress did with a report
-// (domain-reading.md FR-6/FR-7). It is a per-call label; it does not
-// affect the fold's final canonical value.
+// ReconcileOutcome tags what ReconcileProgress did with a report.
+// It is a per-call label; it does not affect the fold's final canonical value.
 type ReconcileOutcome string
 
 const (
@@ -31,8 +30,7 @@ type ReconcileResult struct {
 }
 
 // ReconcileProgress folds one incoming ProgressReport into the canonical
-// singleton ReadingProgress for a Work (domain-reading.md FR-6). The
-// rule is lexical max over the total order (epoch, percentage):
+// singleton ReadingProgress for a Work. The rule is lexical max over the total order (epoch, percentage):
 //
 //   - report.ObservedEpoch below the stored Epoch -> Rejected (the
 //     device was offline across an override; it must re-sync).
@@ -51,8 +49,7 @@ type ReconcileResult struct {
 //
 // Over the set of well-formed same-epoch reports the result is max over
 // a fixed multiset under a total order, so folding in any order yields
-// the same canonical value — the property multi-device sync (phase 14)
-// depends on.
+// the same canonical value — the property multi-device sync depends on.
 func ReconcileProgress(canonical *ReadingProgress, report ProgressReport) ReconcileResult {
 	if report.ObservedEpoch < canonical.epoch {
 		return ReconcileResult{Progress: canonical, Outcome: ReconcileRejected}
@@ -79,10 +76,8 @@ func ReconcileProgress(canonical *ReadingProgress, report ProgressReport) Reconc
 
 // FirstProgress builds the canonical ReadingProgress from the very first
 // ProgressReport for a Work — Epoch 0, the report's values taken
-// directly (domain-reading.md State transitions: "first ProgressReport
-// becomes the canonical ReadingProgress directly", the report's
-// ObservedEpoch ignored because there was nothing to observe). The
-// caller mints the id.
+// directly (the report's ObservedEpoch ignored because there was nothing to observe).
+// The caller mints the id.
 func FirstProgress(id ReadingProgressID, report ProgressReport) *ReadingProgress {
 	return &ReadingProgress{
 		id:              id,
@@ -95,12 +90,11 @@ func FirstProgress(id ReadingProgressID, report ProgressReport) *ReadingProgress
 	}
 }
 
-// OverrideProgress expresses a deliberate backward move (a real re-read,
-// domain-reading.md FR-7). It produces a new canonical value at
-// canonical.Epoch + 1 with the target percentage, unconditionally — the
-// bumped epoch makes the result strictly greater than the old value
-// under ReconcileProgress's order, so the override always wins and every
-// device still on the old epoch is Rejected until it re-syncs.
+// OverrideProgress expresses a deliberate backward move (a real re-read).
+// It produces a new canonical value at canonical.Epoch + 1 with the target
+// percentage, unconditionally — the bumped epoch makes the result strictly
+// greater than the old value under ReconcileProgress's order, so the override
+// always wins and every device still on the old epoch is Rejected until it re-syncs.
 //
 // This is a deliberate, server-serialised act — it is explicitly outside
 // ReconcileProgress's commutativity guarantee, which covers automatic

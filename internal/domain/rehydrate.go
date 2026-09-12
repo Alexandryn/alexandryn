@@ -3,13 +3,13 @@ package domain
 import "time"
 
 // RehydrateWork and RehydrateAuthor reconstruct a Work/Author from
-// previously-persisted data — a repository implementation's own "read
-// from storage" path (T24, tasks/plan-t24-repositories.md), distinct
-// from NewWork/NewAuthor's "construct and validate new input" path.
+// previously-persisted data — a repository implementation's "read
+// from storage" path, distinct from NewWork/NewAuthor's "construct and
+// validate new input" path.
 // Unlike the validating constructors, these accept MergedInto/Contains
 // directly: those fields are normally set only by
-// WorkMergeService/AuthorMergeService/WorkContainmentService (ADR 0020's
-// own invariant, enforced by keeping the corresponding struct fields
+// WorkMergeService/AuthorMergeService/WorkContainmentService (enforced
+// by keeping the corresponding struct fields
 // unexported), but a repository reading a row back is reconstructing
 // state those services already decided and already persisted, not
 // deciding it fresh — there is no cycle check to re-run on a read.

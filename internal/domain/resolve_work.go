@@ -2,16 +2,14 @@ package domain
 
 import "context"
 
-// ResolvedWork is the read-time transitive union FR-4 requires: a
+// ResolvedWork is the read-time transitive union: a
 // canonical Work's authors, subjects, external references, and
 // containment references, combined across that Work and every Work
-// merged into it, transitively (domain-bibliographic.md FR-4). Edition
-// resolution is not this type's concern — Editions reference a Work by
-// ID rather than being embedded fields on Work, so resolving "every
-// Edition across a merge group" is a repository-level query
-// domain-library.md's own IsInLibrary (this plan's Tier 3) performs
-// directly, using CanonicalID from here as its input, not duplicated in
-// this type.
+// merged into it, transitively. Edition resolution is not this type's
+// concern — Editions reference a Work by ID rather than being embedded
+// fields on Work, so resolving "every Edition across a merge group" is a
+// repository-level query IsInLibrary performs directly, using CanonicalID
+// from here as its input.
 type ResolvedWork struct {
 	CanonicalID        WorkID
 	Title              string
@@ -26,9 +24,9 @@ type ResolvedWork struct {
 // ResolveWork resolves id to its canonical Work and returns the union of
 // authors/subjects/external references/containment references across
 // that Work and everything merged into it, transitively. Title, Subtitle,
-// and OriginalLanguage come from the canonical Work itself only — "what a
-// merge moves: nothing" (FR-4) means the canonical row's own scalar
-// fields are authoritative, only the collection fields union.
+// and OriginalLanguage come from the canonical Work itself only — the
+// canonical row's own scalar fields are authoritative, only collection
+// fields union.
 func ResolveWork(ctx context.Context, works WorkRepository, id WorkID) (*ResolvedWork, error) {
 	canonical, err := resolveCanonicalWork(ctx, works, id)
 	if err != nil {
@@ -112,8 +110,7 @@ func resolveCanonicalWork(ctx context.Context, works WorkRepository, id WorkID) 
 }
 
 // collectMergeGroup returns canonical's own Work plus every Work merged
-// into it, transitively (repeated FindMergedInto hops) — the set FR-4's
-// union-read walks.
+// into it, transitively (repeated FindMergedInto hops).
 func collectMergeGroup(ctx context.Context, works WorkRepository, canonical WorkID) ([]*Work, error) {
 	canonicalWork, err := works.FindByID(ctx, canonical)
 	if err != nil {

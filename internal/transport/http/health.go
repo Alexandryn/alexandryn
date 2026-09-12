@@ -16,23 +16,21 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// PoolRef is an atomically-held reference to the pool
-// (backend-service-lifecycle.md FR-1's readiness mechanism,
-// backend-persistence.md FR-1). It starts empty at process start and is
-// populated once Postgres is connected and migrated.
+// PoolRef is an atomically-held reference to the pool.
+// It starts empty at process start and is populated once Postgres is connected and migrated.
 type PoolRef struct {
 	p             atomic.Pointer[Pinger]
 	works         atomic.Pointer[domain.WorkRepository]
 	collections   atomic.Pointer[domain.CollectionRepository]
 	metadataCache atomic.Pointer[postgres.MetadataCacheRepository]
 	coverCache    atomic.Pointer[postgres.CoverCacheRepository]
-	sources       sourceRefs        // phase 08 — see sources_ref.go
-	imports       importRefs        // phase 10 — see import_ref.go
-	reader        readerRefs        // phase 11 — see reader_ref.go
-	auth          authRefs          // phase 12 — see auth_ref.go
-	network       networkRefs       // phase 13 — see network_ref.go
-	sync          syncRefs          // phase 14 — see sync_ref.go
-	observability observabilityRefs // phase 15 — see activity_ref.go
+	sources       sourceRefs        // see sources_ref.go
+	imports       importRefs        // see import_ref.go
+	reader        readerRefs        // see reader_ref.go
+	auth          authRefs          // see auth_ref.go
+	network       networkRefs       // see network_ref.go
+	sync          syncRefs          // see sync_ref.go
+	observability observabilityRefs // see activity_ref.go
 }
 
 // Set stores p as the current reference.
@@ -109,8 +107,7 @@ func (r *PoolRef) GetCoverCacheRepository() (postgres.CoverCacheRepository, bool
 // can accept HTTP connections, independent of PostgreSQL state. It takes
 // the same pool reference /readyz reads, for constructor symmetry with
 // how cmd/server wires both, but never reads it — a health check that
-// blocked on the database would defeat the alive/ready distinction
-// (backend-http-transport.md FR-5, architecture-system.md FR-7).
+// blocked on the database would defeat the alive/ready distinction.
 func Healthz(_ *PoolRef) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -123,7 +120,7 @@ func Healthz(_ *PoolRef) http.Handler {
 // "not yet started" while ref is unset, 200 once set and a liveness
 // check succeeds, 503 naming "lost the connection" if it fails — three
 // states, distinguished by body text, never PostgreSQL's own connection
-// error, which can embed DATABASE_URL (backend-http-transport.md FR-5).
+// error, which can embed DATABASE_URL.
 func Readyz(ref *PoolRef) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())

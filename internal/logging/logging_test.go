@@ -9,8 +9,6 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/logging"
 )
 
-// --- FR-6: JSON, constructed once, injected — no global logger anywhere ---
-
 func TestNew_ProducesJSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	logger := logging.New("info", &buf)
@@ -25,8 +23,6 @@ func TestNew_ProducesJSONOutput(t *testing.T) {
 		t.Fatalf("output missing the message: %s", out)
 	}
 }
-
-// --- FR-9: level policy — the default (info) never emits debug lines ---
 
 func TestNew_DefaultLevelInfoSuppressesDebug(t *testing.T) {
 	var buf bytes.Buffer
@@ -106,8 +102,7 @@ func TestNew_UnrecognizedLevelStringDefaultsToInfo(t *testing.T) {
 	}
 }
 
-// --- FR-8, proven through the real constructed logger (not a raw
-// slog.JSONHandler as T5 already proved for the type in isolation) ---
+// Tests verifying that RedactedString fields are redacted when logged through the structured logger:
 
 const secretDSN = "postgres://user:s3cr3t@host/db"
 

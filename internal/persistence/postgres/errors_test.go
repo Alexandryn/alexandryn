@@ -11,13 +11,11 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// backend-errors-and-logging.md FR-3: a Postgres-specific error MUST be
-// translated to a domain category inside internal/persistence/postgres,
-// before it crosses into internal/domain-typed territory — the raw
-// driver error MUST NOT be returned from a repository method
-// un-translated. These are synthetic *pgconn.PgError values (ADR 0012's
-// driver type); the Integration-layer test confirms pgx actually
-// produces this shape for real.
+// A Postgres-specific error MUST be translated to a domain category inside
+// internal/persistence/postgres, before it crosses into internal/domain-typed
+// territory — the raw driver error MUST NOT be returned from a repository method
+// un-translated. These are synthetic *pgconn.PgError values; the integration
+// test confirms pgx actually produces this shape for real.
 
 func TestTranslateError_UniqueViolationBecomesConflict(t *testing.T) {
 	pgErr := &pgconn.PgError{Code: "23505", Message: "duplicate key value violates unique constraint"}
@@ -29,11 +27,9 @@ func TestTranslateError_UniqueViolationBecomesConflict(t *testing.T) {
 	}
 }
 
-// FR-3's translation surviving standard-library wrapping: a repository
-// method might wrap the driver error with additional context
-// (fmt.Errorf("...: %w", err)) before the category is ever extracted —
-// proving TranslateError only needs to run once, at the point the error
-// first crosses this package's boundary, not be re-run after every wrap.
+// Translation surviving standard-library wrapping: a repository method might
+// wrap the driver error with additional context before the category is
+// extracted — proving TranslateError works even when wrapped.
 func TestTranslateError_SurvivesWrapping(t *testing.T) {
 	pgErr := &pgconn.PgError{Code: "23505", Message: "duplicate key value violates unique constraint"}
 	wrapped := fmt.Errorf("insert into works: %w", pgErr)
@@ -45,9 +41,7 @@ func TestTranslateError_SurvivesWrapping(t *testing.T) {
 	}
 }
 
-// An unrecognized SQLSTATE falls back to Internal, never a guessed
-// category — the same closed, defaulting mapping FR-4 requires one layer
-// up, restated here for this package's own translation boundary.
+// An unrecognized SQLSTATE falls back to Internal, never a guessed category.
 func TestTranslateError_UnrecognizedCodeDefaultsToInternal(t *testing.T) {
 	pgErr := &pgconn.PgError{Code: "99999", Message: "some code this package doesn't map"}
 
@@ -70,10 +64,8 @@ func TestTranslateError_NonPgErrorDefaultsToInternal(t *testing.T) {
 }
 
 // The translated error's client-facing Message must never be the raw
-// driver error's own text — that can carry table/column/constraint names
-// (backend-errors-and-logging.md FR-5: "no ... internal identifier not
-// meaningful to the caller"). The raw error is still reachable
-// server-side via Unwrap, for logging.
+// driver error's own text — that can carry table/column/constraint names.
+// The raw error is still reachable server-side via Unwrap, for logging.
 func TestTranslateError_MessageNeverEchoesTheRawDriverError(t *testing.T) {
 	pgErr := &pgconn.PgError{
 		Code:           "23505",

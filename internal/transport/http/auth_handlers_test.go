@@ -454,7 +454,7 @@ func TestLogin_UnknownUser_StillVerifiesPassword(t *testing.T) {
 	}
 }
 
-// audit 0016 #107: TOTPSetupHandler must require the account password —
+// TOTPSetupHandler must require the account password —
 // an access token alone must not be able to overwrite a user's MFA
 // enrolment with an attacker-chosen secret.
 func TestTOTPSetupHandler_RequiresPassword(t *testing.T) {

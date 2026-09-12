@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// DetectFormat determines format from file content, never trusting extensions (backend-file-extractors.md FR-2).
+// DetectFormat determines format from file content, never trusting extensions.
 func DetectFormat(f *os.File) (Format, error) {
 	fi, err := f.Stat()
 	if err != nil {

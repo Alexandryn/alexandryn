@@ -12,10 +12,10 @@ import (
 )
 
 // ReadingPreferencesRepository is internal/persistence/postgres's
-// domain.ReadingPreferencesRepository implementation (T24, R8). Settings
-// is FR-5's opaque, phase-11-defined bag — stored as JSONB rather than a
-// fixed column set, marshalled/unmarshalled at this boundary so no JSON
-// shape leaks into the domain type itself. Save upserts by device_id,
+// domain.ReadingPreferencesRepository implementation. Settings
+// is an opaque bag stored as JSONB rather than a fixed column set,
+// marshalled/unmarshalled at this boundary so no JSON shape leaks
+// into the domain type itself. Save upserts by device_id,
 // ReadingPreferences' own natural primary key (it has no separate id
 // field).
 type ReadingPreferencesRepository struct {

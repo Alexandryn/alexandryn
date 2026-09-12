@@ -17,15 +17,12 @@ const (
 	maxCredentialPasswordLen = 1024
 )
 
-// Credential is an HTTP Basic Auth username/password for an OPDS source
-// (backend-source-adapter.md FR-1). It implements slog.LogValuer,
-// json.Marshaler, and fmt.Stringer, each returning a fixed placeholder —
-// backend-errors-and-logging.md FR-8's dual-interface mechanism, which
-// explicitly anticipated "a future credential" as a covered case.
-// Implementing only one interface leaves the other path open: slog's
-// JSON handler falls back to encoding/json when a containing struct is
-// logged as one attribute, and encoding/json knows nothing of
-// slog.LogValuer.
+// Credential is an HTTP Basic Auth username/password for an OPDS source.
+// It implements slog.LogValuer, json.Marshaler, and fmt.Stringer, each
+// returning a fixed placeholder. Implementing both slog and json interfaces ensures
+// credentials are not leaked regardless of serialization format: slog's JSON
+// handler falls back to encoding/json when a containing struct is logged as one
+// attribute, and encoding/json does not inspect slog.LogValuer.
 //
 // The zero Credential is "no credential". Reveal is the one method that
 // returns the real values, named so every call site is a conscious

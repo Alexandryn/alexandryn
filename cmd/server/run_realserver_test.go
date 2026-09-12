@@ -16,16 +16,9 @@ import (
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
-// T20's Integration/Concurrency layers, per backend-service-lifecycle.md's
-// own test plan: a real net.Listener bound by the actual *http.Server
-// (never httptest.Server, which doesn't exercise Shutdown's real
-// accept-loop-closure path), driven through the real run() function.
-// These specific cases don't need a real PostgreSQL — obtainPostgres/
-// runMigrations/newPool are faked for speed and determinism — so they run
-// as plain tests (backend-test-harness.md FR-1: unit tests must not
-// require Postgres, Docker, or any external service). The two cases that
-// do need real PostgreSQL live in run_integration_test.go under the
-// integration build tag.
+// Integration and concurrency tests using a real net.Listener bound by
+// *http.Server driven through run(). Dependencies are mocked for speed
+// and determinism without requiring an external PostgreSQL instance.
 
 // realListenDeps returns a deps.listen that wraps a real net.Listen and
 // publishes the bound listener's address on addrCh the moment it's
@@ -108,10 +101,9 @@ func baseRealServerConfig() *config.Config {
 	}
 }
 
-// FR-7's central claim, proven for real: /healthz answers 200 the instant
-// the listener is bound, while /readyz still answers 503, for as long as
-// step 5 (obtaining PostgreSQL) hasn't completed — over a real bound
-// listener and real HTTP, not httptest.
+// Tests the window between listener binding and database readiness:
+// /healthz answers 200 the instant the listener is bound, while /readyz
+// returns 503 until PostgreSQL initialization completes.
 func TestIntegration_AliveBeforeReadyWindow(t *testing.T) {
 	cfg := baseRealServerConfig()
 
@@ -171,9 +163,8 @@ func TestIntegration_AliveBeforeReadyWindow(t *testing.T) {
 	}
 }
 
-// FR-3, run through the real config.Load: a genuinely invalid config
-// (OPEN_LIBRARY_USER_AGENT unset) makes run() exit non-zero before any
-// other step runs — PostgreSQL is never touched.
+// Tests that invalid configuration causes run() to exit non-zero before
+// attempting to obtain or connect to PostgreSQL.
 func TestIntegration_InvalidConfigNeverTouchesPostgres(t *testing.T) {
 	t.Setenv("OPEN_LIBRARY_USER_AGENT", "")
 

@@ -36,8 +36,7 @@ func statDir(dataDir string, dirMode os.FileMode) supervisor.StatFunc {
 	}
 }
 
-// architecture-persistence.md FR-1: initialize the data directory if
-// absent. "Absent" here means no PG_VERSION marker file.
+// Initialize the data directory if absent. "Absent" here means no PG_VERSION marker file.
 func TestEnsureDataDir_RunsInitDBWhenNotInitialized(t *testing.T) {
 	var ranWith []string
 	run := func(_ context.Context, name string, args ...string) error {
@@ -103,9 +102,8 @@ func TestEnsureDataDir_PropagatesInitDBFailure(t *testing.T) {
 	}
 }
 
-// audit 0016 #264: a data directory left group- or world-accessible is
-// rejected, fail-closed, rather than handed to a Postgres that would
-// serve reading data from it.
+// Verifies that a data directory left group- or world-accessible is
+// rejected, fail-closed, rather than handed to a Postgres instance.
 func TestEnsureDataDir_RejectsLoosePermissions(t *testing.T) {
 	run := func(context.Context, string, ...string) error { return nil }
 
@@ -115,8 +113,7 @@ func TestEnsureDataDir_RejectsLoosePermissions(t *testing.T) {
 	}
 }
 
-// audit 0016 #264: a relative data directory (one that could trace to a
-// hostile $XDG_CONFIG_HOME) is refused before any command runs.
+// Verifies that a relative data directory is refused before any command runs.
 func TestEnsureDataDir_RejectsRelativePath(t *testing.T) {
 	ran := false
 	run := func(context.Context, string, ...string) error { ran = true; return nil }

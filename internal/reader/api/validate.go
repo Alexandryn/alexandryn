@@ -1,7 +1,6 @@
-// Package api holds the reading API's pure validation and the progress
-// reconcile-and-persist orchestration (backend-reading-api.md). HTTP
-// handlers in internal/transport/http compose these; nothing here
-// imports net/http.
+// Package api holds the reading API's validation and the progress
+// reconcile-and-persist orchestration. HTTP handlers in internal/transport/http
+// compose these; nothing here imports net/http.
 package api
 
 import (
@@ -12,19 +11,16 @@ import (
 )
 
 // maxCFILength bounds a stored CFI string — a real EPUB CFI is short
-// (tens of characters); anything far longer is hostile or malformed
-// (backend-reading-api.md FR-4).
+// (tens of characters); anything far longer is hostile or malformed.
 const maxCFILength = 1024
 
 // cfiBody is the character set the CFI grammar's step/offset/assertion
 // syntax can produce: digits, '/', ':', '.', '!', '~', '@', ',', '[',
 // ']', '(', ')', '^', ';', '=', '-', '+', '*', and letters/spaces for
-// assertion text. This is a plausibility check, not a grammar — the
-// roadmap chose to lean on foliate-js's epubcfi.js for real
-// generation/resolution (FR-4).
+// assertion text. This is a plausibility check, not a full grammar.
 var cfiBody = regexp.MustCompile(`^[A-Za-z0-9/:.!~@,\[\]()^;=+*_\- ]*$`)
 
-// ValidateCFI is FR-4's shallow structural check: begins with the
+// ValidateCFI is a shallow structural check: begins with the
 // literal "epubcfi(", ends with ")", brackets and parentheses balanced,
 // and contains only characters the CFI grammar permits. It deliberately
 // does NOT verify the string is a semantically valid CFI a resolver
@@ -73,9 +69,8 @@ func balanced(s string) bool {
 // specification's own defined ordering. Both must already be
 // structurally valid (ValidateCFI). The comparison is a
 // segment-by-segment numeric compare of the step/offset integers — the
-// same lexical-numeric order foliate-js's epubcfi.compare uses for the
-// common case, sufficient for FR-7's "endCfi must not sort before
-// startCfi" boundary check.
+// same lexical-numeric order used for the common case, sufficient for
+// ensuring endCfi does not sort before startCfi.
 func CFISortsBefore(a, b string) bool {
 	return compareCFI(a, b) < 0
 }
@@ -114,9 +109,7 @@ func atoiPad(s string) int64 {
 
 var uuidV4 = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`)
 
-// ValidateDeviceID checks the X-Device-Id header is a UUID v4 in shape —
-// never for authenticity, which is phase 12's concern
-// (backend-reading-api.md FR-1).
+// ValidateDeviceID checks the X-Device-Id header is a UUID v4 in shape.
 func ValidateDeviceID(v string) error {
 	if !uuidV4.MatchString(strings.TrimSpace(v)) {
 		return &domain.Error{Category: domain.InvalidInput, Message: "X-Device-Id must be a version 4 UUID"}
@@ -124,13 +117,13 @@ func ValidateDeviceID(v string) error {
 	return nil
 }
 
-// maxObservedEpoch bounds the reported epoch (FR-3) — the real epoch
+// maxObservedEpoch bounds the reported epoch — the real epoch
 // only ever increments on a deliberate override, so a very large value
 // is malformed input, not a legitimate state.
 const maxObservedEpoch = 1 << 40
 
 // ValidateObservedEpoch checks the reported epoch is a non-negative
-// integer within a sane bound (FR-3). A value above the stored epoch is
+// integer within a sane bound. A value above the stored epoch is
 // not an error here — it is clamped at reconcile time.
 func ValidateObservedEpoch(epoch int64) error {
 	if epoch < 0 || epoch > maxObservedEpoch {
@@ -140,7 +133,7 @@ func ValidateObservedEpoch(epoch int64) error {
 }
 
 // ValidatePercentage restates domain.NewPercentage's [0.0, 1.0] invariant
-// at the transport boundary (FR-3).
+// at the transport boundary.
 func ValidatePercentage(p float64) error {
 	if p < 0.0 || p > 1.0 {
 		return &domain.Error{Category: domain.InvalidInput, Message: "percentage must be within [0.0, 1.0]"}

@@ -11,29 +11,27 @@ import (
 )
 
 // OwnershipRepo confirms an Edition is actually owned before any byte is
-// fetched (backend-reader-content.md FR-1) — FindByEdition returns a
-// *domain.Error with category NotFound when it is not.
+// fetched — FindByEdition returns a *domain.Error with category NotFound when it is not.
 type OwnershipRepo interface {
 	FindByEdition(ctx context.Context, editionID domain.EditionID) (*domain.LibraryEntry, error)
 }
 
-// OfferingRepo lists the SourceOfferings for an Edition, most recently
-// observed first (FR-2's fallback order).
+// OfferingRepo lists the SourceOfferings for an Edition, ordered by
+// most recently observed first for fallback resolution.
 type OfferingRepo interface {
 	FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.SourceOffering, error)
 }
 
 // SourceResolver opens the bytes behind a FileReference against a
-// registered source — the same capability phase 10's import path uses
-// (backend-source-adapter.md Provider.Resolve, wrapped).
+// registered source.
 type SourceResolver interface {
 	Resolve(ctx context.Context, sourceID string, ref domain.FileReference) (io.ReadCloser, error)
 }
 
 // Resolver is the Cache's Loader: it checks ownership, resolves the
 // Edition's bytes through each SourceOffering in turn, materialises the
-// stream through phase 10's spool (reusing its 250 MiB cap), and opens a
-// zip.Reader — applying phase 10's entry-count cap once here (FR-4).
+// stream through the extractor spool (reusing its 250 MiB cap), and opens a
+// zip.Reader — applying the archive entry-count cap.
 type Resolver struct {
 	ownership OwnershipRepo
 	offerings OfferingRepo

@@ -129,7 +129,7 @@ func TestProvider_SymlinkEscapingRootIsOmitted(t *testing.T) {
 	writeFile(t, filepath.Join(outside, "secret.epub"), 4)
 
 	// A symlink whose *name* lives inside base but whose *target* is
-	// outside — the exact attack FR-12 exists to close.
+	// outside — ensuring directory traversal via symlinks is prevented.
 	if err := os.Symlink(filepath.Join(outside, "secret.epub"), filepath.Join(base, "escape.epub")); err != nil {
 		t.Fatalf("symlink: %v", err)
 	}

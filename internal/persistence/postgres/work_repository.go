@@ -13,7 +13,7 @@ import (
 )
 
 // WorkRepository is internal/persistence/postgres's domain.WorkRepository
-// implementation (T24, R4). A Work spans five physical tables (works,
+// implementation. A Work spans five physical tables (works,
 // work_authors, work_subjects, work_external_references, and the rows of
 // work_contains this Work is the container of, per
 // migrations/00002_phase02_schema.sql); Save replaces every child row for
@@ -267,8 +267,7 @@ type jsonOwnedEdition struct {
 }
 
 // QueryLibrary performs a single-query paginated fetch of works matching
-// the given filter, search, sort, and cursor parameters (backend-library-api.md
-// FR-1 through FR-4, FR-9).
+// the given filter, search, sort, and cursor parameters.
 func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery) (*domain.LibraryPage, error) {
 	exec := executorFrom(ctx, r.pool)
 
@@ -389,8 +388,8 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 		`
 
 	// The four variants share workPoolCTE (every library_entries and
-	// collection reference scoped to $3, the active library -- audit 0016
-	// #88) and differ only in the ORDER BY / cursor predicate / LIMIT tail.
+	// collection reference scoped to $3, the active library) and differ
+	// only in the ORDER BY / cursor predicate / LIMIT tail.
 	// Cursor params, when present: $4 primary sort key, $5 id, $6 limit.
 	const (
 		queryAddedAtNoCursor = workPoolCTE + `
@@ -540,7 +539,7 @@ func (r *WorkRepository) QueryLibrary(ctx context.Context, q domain.LibraryQuery
 }
 
 // FindWorkDetail loads one Work's detail including owned editions and
-// collection memberships (backend-library-api.md FR-5).
+// collection memberships.
 func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID, libraryID domain.LibraryID) (*domain.WorkDetail, error) {
 	exec := executorFrom(ctx, r.pool)
 
@@ -551,7 +550,7 @@ func (r *WorkRepository) FindWorkDetail(ctx context.Context, id domain.WorkID, l
 
 	// $2 is the active library. Owned editions and collection memberships
 	// are scoped to it, and a work with neither in this library is a 404 —
-	// no cross-library holdings disclosure (audit 0016 #88).
+	// preventing cross-library holdings disclosure.
 	query := `SELECT
 		w.id,
 		w.title,

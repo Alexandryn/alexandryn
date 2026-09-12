@@ -8,14 +8,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// T24-D2 (tasks/plan-t24-repositories.md): four interfaces gained a
-// method no phase 02 service needed but real persistence does
-// (EditionRepository/SourceRepository/SourceOfferingRepository's Save,
-// SourceOfferingRepository's FindByID), and four aggregates gained a
-// repository interface for the first time
-// (ReadingProgress/Bookmark/Highlight/ReadingPreferences). Compiling
-// against the fakes proves interface satisfaction; these prove the new
-// methods actually round-trip, not just type-check.
+// Verification tests proving that repository interface methods properly
+// round-trip against in-memory fakes.
 
 func TestEditionRepository_Save(t *testing.T) {
 	ctx := context.Background()
@@ -69,8 +63,8 @@ func TestSourceOfferingRepository_SaveAndFindByID(t *testing.T) {
 	}
 }
 
-// ReadingProgressRepository.FindByWork's NotFound-then-Save-then-found
-// round trip is the shape FR-1's singleton lookup actually needs.
+// ReadingProgressRepository.FindByWork verifies the NotFound-then-Save-then-found
+// lifecycle round trip.
 func TestReadingProgressRepository_FindByWorkAndSave(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeReadingProgressRepository()

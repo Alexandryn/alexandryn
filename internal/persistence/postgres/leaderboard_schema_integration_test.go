@@ -13,7 +13,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// Phase 16 (#116): FinishedWorksHandler and LibraryLeaderboardHandler both
+// FinishedWorksHandler and LibraryLeaderboardHandler both
 // filter reading_progress by (library_id, percentage >= 100). Migration
 // 00013 adds a partial index so that hot path does not sequential-scan.
 func TestSchema_LeaderboardFinishedIndexExists(t *testing.T) {
@@ -36,7 +36,7 @@ func TestSchema_LeaderboardFinishedIndexExists(t *testing.T) {
 	}
 }
 
-// backend-persistence.md acceptance criterion: the down migration is
+// Verifies that the down migration is
 // reversible and re-appliable.
 func TestSchema_LeaderboardIndexMigrationIsReversible(t *testing.T) {
 	db := testDB(t)

@@ -134,18 +134,16 @@ func TestJWTSignerAndVerifier(t *testing.T) {
 	})
 
 	t.Run("VerifyAccessToken rejects a signature-valid MFA ticket", func(t *testing.T) {
-		// AUDIT-0012-C2 + audit 0016 #106: an MFA ticket carries a real
-		// Subject and typ:mfa_ticket. The access path must not accept it —
-		// both because the type is asserted AND because the ticket is
-		// signed with a distinct HKDF subkey, so it does not even verify
-		// against the access secret.
+		// An MFA ticket carries a real Subject and typ:mfa_ticket. The access
+		// path must not accept it: the type is asserted and the ticket is signed
+		// with a distinct HKDF subkey.
 		ticket, err := signer.SignMFATicket("u-12345", now.Add(5*time.Minute))
 		if err != nil {
 			t.Fatalf("sign error: %v", err)
 		}
 		// Signed with the MFA-ticket subkey, so a raw access-key verify fails.
 		if _, err := signer.Verify(ticket, now); err == nil {
-			t.Error("expected an MFA ticket NOT to verify against the access secret (audit 0016 #106)")
+			t.Error("expected an MFA ticket NOT to verify against the access secret")
 		}
 		// And the access path rejects it.
 		if _, err := signer.VerifyAccessToken(ticket, now); err == nil {

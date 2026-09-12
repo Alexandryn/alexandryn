@@ -12,23 +12,22 @@ import (
 )
 
 // readerContentPerRequestTimeout bounds every content request regardless
-// of how long FR-3's cache holds a book open (backend-reader-content.md
-// FR-4).
+// of how long the cache holds a book open.
 const readerContentPerRequestTimeout = 30 * time.Second
 
 // readerContentCSP is the response policy a sandboxed client leans on as
-// a second, independent layer over its own iframe sandbox
-// (backend-reader-content.md FR-9). frame-ancestors 'self': the reader UI
-// frames this content in a same-origin sandboxed <iframe src=…>
-// (frontend-reader.md FR-1), which the app-document security-headers
+// a second, independent layer over its own iframe sandbox.
+// frame-ancestors 'self': the reader UI
+// frames this content in a same-origin sandboxed <iframe src=…>,
+// which the app-document security-headers
 // middleware's X-Frame-Options: DENY would otherwise block — this
-// endpoint owns its own framing policy (ADR 0024) and allows exactly
-// same-origin.
+// endpoint owns its own framing policy and allows exactly
+// same-origin framing.
 const readerContentCSP = "default-src 'self'; script-src 'none'; object-src 'none'; frame-ancestors 'self'"
 
 // ReaderContentHandler serves one sanitised entry from inside an owned
-// Edition's EPUB: GET /api/v1/library/editions/{editionId}/reader/content/{path...}
-// (backend-reader-content.md FR-1). The content cache is constructed once
+// Edition's EPUB: GET /api/v1/library/editions/{editionId}/reader/content/{path...}.
+// The content cache is constructed once
 // when persistence is ready and held on poolRef; a request before it is
 // ready gets a 503.
 func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
@@ -54,8 +53,7 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		}
 
 		// The edition's bytes are served only to an authenticated member
-		// of a library that owns this edition (AUDIT-0012-C1,
-		// backend-reader-content.md FR-1 amendment). The auth middleware
+		// of a library that owns this edition. The auth middleware
 		// has already validated X-Library-Id against the token; here we
 		// confirm the edition is in that library. This gate fails closed:
 		// if the ownership checker is not wired, the content is not served.

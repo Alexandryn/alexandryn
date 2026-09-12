@@ -2,13 +2,13 @@ package openlibrary
 
 import "context"
 
-// NormalisedAuthor represents a normalised author reference (backend-metadata-adapter.md FR-2).
+// NormalisedAuthor represents a normalised author reference.
 type NormalisedAuthor struct {
 	OpenLibraryAuthorKey *string `json:"openLibraryAuthorKey"`
 	Name                 string  `json:"name"`
 }
 
-// NormalisedSearchResult represents a single search result item in /api/v1/discover (FR-2).
+// NormalisedSearchResult represents a single search result item in /api/v1/discover.
 type NormalisedSearchResult struct {
 	OpenLibraryWorkKey string             `json:"openLibraryWorkKey"`
 	Title              string             `json:"title"`
@@ -18,7 +18,7 @@ type NormalisedSearchResult struct {
 	EditionCount       int                `json:"editionCount"`
 }
 
-// NormalisedSearchResponse represents the paginated search response (FR-1).
+// NormalisedSearchResponse represents the paginated search response.
 type NormalisedSearchResponse struct {
 	Items  []NormalisedSearchResult `json:"items"`
 	Total  int                      `json:"total"`
@@ -26,7 +26,7 @@ type NormalisedSearchResponse struct {
 	Offset int                      `json:"offset"`
 }
 
-// NormalisedWork represents normalised work details (FR-3).
+// NormalisedWork represents normalised work details.
 type NormalisedWork struct {
 	Title       string             `json:"title"`
 	Subtitle    string             `json:"subtitle"`
@@ -36,7 +36,7 @@ type NormalisedWork struct {
 	CoverURL    *string            `json:"coverUrl"`
 }
 
-// NormalisedEdition represents one edition of an Open Library work (FR-3).
+// NormalisedEdition represents one edition of an Open Library work.
 type NormalisedEdition struct {
 	Title                 string  `json:"title"`
 	Publisher             string  `json:"publisher"`
@@ -46,7 +46,7 @@ type NormalisedEdition struct {
 	CoverURL              *string `json:"coverUrl"`
 }
 
-// DiscoverWorkDetail represents the full response for a work detail lookup (FR-3).
+// DiscoverWorkDetail represents the full response for a work detail lookup.
 type DiscoverWorkDetail struct {
 	Work     NormalisedWork      `json:"work"`
 	Editions []NormalisedEdition `json:"editions"`

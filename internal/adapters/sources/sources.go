@@ -1,14 +1,10 @@
-// Package sources is phase 08's source-adapter layer
-// (backend-source-adapter.md). It turns a raw OPDS feed or a local
-// directory listing into candidates this project's domain and UI can
-// trust, treating every response and filename as hostile input
-// (constitution §4).
+// Package sources provides the source-adapter layer. It turns a raw OPDS feed
+// or a local directory listing into candidates the application domain and UI can
+// trust, treating every response and filename as untrusted input.
 //
-// Domain boundary (constitution §3): no OPDS or filesystem type leaves
-// this package. SourceCandidate is an adapter-owned DTO, never a
-// domain-source.md SourceOffering (FR-10) — nothing here constructs one.
-// The single domain type this package builds is domain.FileReference,
-// which FR-4 designed to need no Edition.
+// Domain boundary: no OPDS or filesystem type leaves this package. SourceCandidate
+// is an adapter-owned DTO, never a domain SourceOffering — nothing here constructs one.
+// The single domain type this package builds is domain.FileReference, which needs no Edition.
 package sources
 
 import (
@@ -18,8 +14,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Kind is the closed provider vocabulary (backend-source-adapter.md
-// FR-1). domain-source.md FR-1 leaves the value set to phase 08.
+// Kind is the closed provider vocabulary.
 type Kind string
 
 const (
@@ -41,9 +36,8 @@ const (
 	HealthUnreachable HealthStatus = "unreachable"
 )
 
-// Health-check detail categories (backend-source-adapter.md FR-6). A
-// closed vocabulary — never a raw error string or response body, which
-// could leak an echoed Authorization header or a verbose error page.
+// Health-check detail categories. A closed vocabulary — never a raw error string
+// or response body, which could leak an echoed Authorization header or a verbose error page.
 const (
 	DetailTimeout            = "timeout"
 	DetailConnectionRefused  = "connection-refused"
@@ -56,10 +50,9 @@ const (
 	DetailAuthRejected       = "auth-rejected"
 )
 
-// SourceCandidate is the shared normalised shape for browse (FR-7) and
-// search (FR-8). It carries only what FR-9 permits — no raw Atom element
-// or OPDS 2.0 field name reaches this struct or anything past this
-// package.
+// SourceCandidate is the shared normalised shape for browse and search.
+// It carries only verified candidate metadata — no raw Atom element or OPDS 2.0
+// field name reaches this struct or anything past this package.
 type SourceCandidate struct {
 	Title         string
 	Author        *string
@@ -69,13 +62,13 @@ type SourceCandidate struct {
 
 // CandidatePage is one page of candidates plus an opaque continuation
 // token (nil on the last page). The token is server-signed and
-// re-validated on the way back in (FR-7, FR-11).
+// re-validated on subsequent requests.
 type CandidatePage struct {
 	Items      []SourceCandidate
 	NextCursor *string
 }
 
-// ProbeResult is a health check's outcome (FR-5, FR-6): reachability
+// ProbeResult is a health check's outcome: reachability
 // plus the capabilities and search link re-detected on every probe.
 type ProbeResult struct {
 	Status HealthStatus
@@ -84,16 +77,15 @@ type ProbeResult struct {
 	Detail       string
 	Capabilities domain.SourceCapabilities
 	// SearchLinkURL is the origin-validated search endpoint discovered
-	// on the root feed (FR-11), empty when the source advertises none or
+	// on the root feed, empty when the source advertises none or
 	// advertises an off-origin one.
 	SearchLinkURL string
 }
 
-// Provider is the per-source capability surface (FR-15). Both the HTTP
-// handlers and any in-process caller (backend-import-pipeline.md, phase
-// 10) share one implementation — List and Resolve are callable directly,
-// with FR-7's validation and FR-11's SSRF/redirect protections applying
-// either way.
+// Provider is the per-source capability surface. Both HTTP
+// handlers and in-process callers share one implementation —
+// List and Resolve are callable directly, with input validation and
+// SSRF/redirect protections applying either way.
 type Provider interface {
 	// Probe runs a lightweight reachability check and re-detects
 	// capabilities. It never returns an error — an unreachable source is
@@ -106,16 +98,14 @@ type Provider interface {
 
 	// Search returns one page of results for q. It returns a
 	// *domain.Error with category Conflict when the source's detected
-	// CanSearch is false (FR-8).
+	// CanSearch is false.
 	Search(ctx context.Context, q, cursor string, limit int) (CandidatePage, error)
 
-	// Resolve opens the bytes behind a FileReference (FR-15, for phase
-	// 10). No HTTP endpoint exposes this in phase 08.
+	// Resolve opens the bytes behind a FileReference.
 	Resolve(ctx context.Context, ref domain.FileReference) (io.ReadCloser, error)
 }
 
-// Page-size bounds shared by browse and search (FR-7), matching
-// backend-metadata-adapter.md FR-1's own numbers.
+// Page-size bounds shared by browse and search.
 const (
 	DefaultLimit = 20
 	MaxLimit     = 50

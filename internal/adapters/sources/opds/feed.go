@@ -11,15 +11,14 @@ import (
 
 // maxEntriesPerPage bounds how many entries this adapter will normalise
 // from one upstream response, on top of the 5 MiB body cap — a defence
-// against a source returning a single enormous feed page (FR-6, the
-// roadmap risk table's "memory exhaustion via unbounded feed pages").
+// against a source returning an excessively large single feed page.
 const maxEntriesPerPage = 2000
 
 const maxCandidateTitleLen = 512
 
 // parsedFeed is the version-agnostic shape both the OPDS 1.2 (Atom) and
 // OPDS 2.0 (JSON) parsers produce. No raw XML element or JSON field name
-// exists past this struct (FR-9, constitution §3).
+// exists past this struct.
 type parsedFeed struct {
 	entries    []rawEntry
 	nextHref   string // rel="next", unresolved
@@ -62,10 +61,9 @@ var extFormat = map[string]string{
 	".cbz": "CBZ", ".cbr": "CBR", ".fb2": "FB2", ".djvu": "DJVU",
 }
 
-// normalise turns a parsedFeed into the wire candidates, resolving and
-// origin-checking every source-supplied URL against baseURL (FR-9,
-// FR-11). Duplicate entries within the page (same id) are dropped,
-// later occurrences first (FR-9, mirroring the metadata adapter).
+// normalise turns a parsedFeed into wire candidates, resolving and
+// origin-checking every source-supplied URL against baseURL. Duplicate
+// entries within the page (same id) are dropped, retaining the first occurrence.
 func normalise(pf parsedFeed, baseURL string, codec *sources.CursorCodec, sourceID string) sources.CandidatePage {
 	seen := make(map[string]bool, len(pf.entries))
 	items := make([]sources.SourceCandidate, 0, len(pf.entries))
@@ -112,8 +110,7 @@ func candidateFromEntry(e rawEntry, baseURL string) (sources.SourceCandidate, bo
 	}
 
 	// The acquisition href is stored opaquely as the FileReference id.
-	// It is never fetched here; Resolve (phase 10) re-validates it
-	// same-origin before use.
+	// It is never fetched here; Resolve re-validates it same-origin before use.
 	ref, err := domain.NewFileReference(e.acqHref, format, nil)
 	if err != nil {
 		return sources.SourceCandidate{}, false
@@ -127,9 +124,9 @@ func candidateFromEntry(e rawEntry, baseURL string) (sources.SourceCandidate, bo
 		}
 	}
 	// A cover URL is emitted only when it resolves same-origin with the
-	// configured catalog (FR-11's spirit): a self-hosted catalog serves
-	// its own covers; an off-origin cover URL would make a LAN client's
-	// browser beacon an attacker-chosen host on render.
+	// configured catalog: a self-hosted catalog serves its own covers;
+	// an off-origin cover URL would cause the client to beacon an
+	// arbitrary host on render.
 	if cover := resolveSameOrigin(baseURL, e.coverHref); cover != "" {
 		cand.CoverURL = &cover
 	}
@@ -153,7 +150,7 @@ func formatFor(mediaType, href string) string {
 }
 
 // resolveSameOrigin resolves href against baseURL and returns the
-// absolute URL only when it is same-origin (FR-11). A relative href
+// absolute URL only when it is same-origin. A relative href
 // always resolves within the base's origin; an absolute off-origin href
 // is rejected (returns "").
 func resolveSameOrigin(baseURL, href string) string {

@@ -5,13 +5,7 @@ import (
 	"time"
 )
 
-// CollectionService owns Collection creation and deletion
-// (domain-library.md FR-4/FR-8/FR-9/FR-10). Member add/remove stay plain
-// Collection methods (no repository read needed to enforce them — see
-// Collection.AddMember's own doc comment) — this service exists for
-// Create (needs an IDGenerator and a place to persist) and Delete, and
-// wraps member mutation only to load/save the aggregate and produce the
-// matching event.
+// CollectionService owns Collection creation, deletion, and member mutation lifecycle.
 type CollectionService struct {
 	collections CollectionRepository
 	ids         IDGenerator
@@ -33,17 +27,14 @@ func (s *CollectionService) Create(ctx context.Context, libraryID LibraryID, nam
 	return c, NewCollectionCreated(string(id), occurredAt), nil
 }
 
-// Delete removes the Collection itself — its membership records go with
-// it, and nothing else does (FR-10): no Work, Edition, or LibraryEntry is
-// ever touched, because this method never reaches those repositories at
-// all.
+// Delete removes the Collection itself and its membership records.
+// No Work, Edition, or LibraryEntry is modified.
 func (s *CollectionService) Delete(ctx context.Context, libraryID LibraryID, id CollectionID) error {
 	return s.collections.Delete(ctx, libraryID, id)
 }
 
-// AddMember loads the Collection, delegates to its own AddMember method
-// (no ownership check — domain-library.md names none for Collection
-// membership), and persists the result.
+// AddMember loads the Collection, delegates to its own AddMember method,
+// and persists the result.
 func (s *CollectionService) AddMember(ctx context.Context, libraryID LibraryID, collectionID CollectionID, workID WorkID, occurredAt time.Time) (CollectionMemberAdded, error) {
 	c, err := s.collections.FindByID(ctx, libraryID, collectionID)
 	if err != nil {

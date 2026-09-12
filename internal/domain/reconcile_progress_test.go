@@ -19,15 +19,14 @@ func mustPct(t *testing.T, v float64) domain.Percentage {
 
 // canonicalAt builds a stored ReadingProgress at a given epoch/percentage
 // for reconcile tests — RehydrateReadingProgress is the "already stored"
-// path and now carries epoch (domain-reading.md FR-2 as amended).
+// path and carries epoch.
 func canonicalAt(t *testing.T, epoch int64, pct float64, dev domain.DeviceID) *domain.ReadingProgress {
 	t.Helper()
 	return domain.RehydrateReadingProgress("progress-1", "work-1", mustPct(t, pct), epoch, nil, dev, time.Unix(0, 0))
 }
 
-// domain-reading.md FR-6: a further same-epoch percentage advances the
-// canonical value; the new value takes the report's percentage,
-// position, device, and reported-at.
+// A further same-epoch percentage advances the canonical value; the new value
+// takes the report's percentage, position, device, and reported-at.
 func TestReconcileProgress_FurtherSameEpochAdvances(t *testing.T) {
 	canonical := canonicalAt(t, 2, 0.40, "device-A")
 	report := domain.ProgressReport{
@@ -61,7 +60,7 @@ func TestReconcileProgress_FurtherSameEpochAdvances(t *testing.T) {
 	}
 }
 
-// FR-6: an equal (epoch, percentage) key is Unchanged — a no-op, provenance
+// An equal (epoch, percentage) key is Unchanged — a no-op, provenance
 // not rewritten (this is what makes the fold deterministic without a tiebreak).
 func TestReconcileProgress_EqualKeyIsUnchanged(t *testing.T) {
 	canonical := canonicalAt(t, 1, 0.50, "device-A")
@@ -80,7 +79,7 @@ func TestReconcileProgress_EqualKeyIsUnchanged(t *testing.T) {
 	}
 }
 
-// FR-6: a lower same-epoch percentage is Rejected — the canonical value
+// A lower same-epoch percentage is Rejected — the canonical value
 // is returned unchanged.
 func TestReconcileProgress_BehindIsRejected(t *testing.T) {
 	canonical := canonicalAt(t, 1, 0.60, "device-A")
@@ -99,7 +98,7 @@ func TestReconcileProgress_BehindIsRejected(t *testing.T) {
 	}
 }
 
-// FR-6: a report whose ObservedEpoch is below the stored Epoch (a device
+// A report whose ObservedEpoch is below the stored Epoch (a device
 // offline across an override) is Rejected regardless of its percentage.
 func TestReconcileProgress_StaleEpochIsRejectedEvenIfFurther(t *testing.T) {
 	canonical := canonicalAt(t, 3, 0.20, "device-A")
@@ -118,7 +117,7 @@ func TestReconcileProgress_StaleEpochIsRejectedEvenIfFurther(t *testing.T) {
 	}
 }
 
-// FR-6: a client cannot advance the epoch by over-reporting ObservedEpoch —
+// A client cannot advance the epoch by over-reporting ObservedEpoch —
 // it is clamped to the stored value, so the report only competes on percentage.
 func TestReconcileProgress_OverReportedEpochIsClamped(t *testing.T) {
 	canonical := canonicalAt(t, 1, 0.40, "device-A")
@@ -137,7 +136,7 @@ func TestReconcileProgress_OverReportedEpochIsClamped(t *testing.T) {
 	}
 }
 
-// FR-7: OverrideProgress sets the canonical value to the target percentage
+// OverrideProgress sets the canonical value to the target percentage
 // at Epoch+1 unconditionally — even a backward move.
 func TestOverrideProgress_BumpsEpochAndSetsPercentageUnconditionally(t *testing.T) {
 	canonical := canonicalAt(t, 2, 0.80, "device-A")
@@ -156,8 +155,8 @@ func TestOverrideProgress_BumpsEpochAndSetsPercentageUnconditionally(t *testing.
 	}
 }
 
-// FR-7: after an override, every device still reporting the old epoch is
-// Rejected by FR-6 until it re-syncs — the re-read sticks.
+// After an override, every device still reporting the old epoch is
+// Rejected until it re-syncs — the re-read sticks.
 func TestOverrideThenStaleReports_KeepsTheOverride(t *testing.T) {
 	canonical := canonicalAt(t, 1, 0.90, "device-A")
 	overridden := domain.OverrideProgress(canonical, mustPct(t, 0.15), nil, "device-B", time.Unix(200, 0))
@@ -179,9 +178,9 @@ func TestOverrideThenStaleReports_KeepsTheOverride(t *testing.T) {
 	}
 }
 
-// FR-6 property (a): folding any number of well-formed same-epoch reports
+// Folding any number of well-formed same-epoch reports
 // in any order produces the same canonical value — max over percentage at
-// the fixed epoch. Generator emits NO overrides (0048 finding 2).
+// the fixed epoch. Generator emits no overrides.
 func TestReconcileProgress_SameEpochFoldIsOrderIndependent(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 
