@@ -1,8 +1,7 @@
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { launchHost } from './launch'
 
-// architecture-desktop-host.md Test strategy / tasks/plan-phase05.md E27:
-// Full _electron lifecycle walkthrough:
+// Full lifecycle walkthrough:
 // 1. Cold start failure shows loading → error state on boot asset with accessible Retry button.
 // 2. Ready server transitions window to real UI.
 // 3. Complete keyboard-only "open a book" slice inside real Electron window.
@@ -15,7 +14,7 @@ test.afterEach(async () => {
   }
 })
 
-test('lifecycle: cold start failure displays error state on boot asset with retry button (FR-3)', async () => {
+test('lifecycle: cold start failure displays error state on boot asset with retry button', async () => {
   // Launch with non-existent binary to force immediate startup failure
   app = await launchHost({
     env: { ALEXANDRYN_SERVER_BINARY_PATH: '/no/such/binary' },
@@ -29,7 +28,7 @@ test('lifecycle: cold start failure displays error state on boot asset with retr
   await expect(window.locator('#retry-btn')).toBeVisible()
 })
 
-test('lifecycle: manual retry on error screen reloads boot asset and re-attempts startup (FR-3)', async () => {
+test('lifecycle: manual retry on error screen reloads boot asset and re-attempts startup', async () => {
   app = await launchHost({
     env: { ALEXANDRYN_SERVER_BINARY_PATH: '/no/such/binary' },
   })
@@ -67,7 +66,7 @@ test('lifecycle: ready server transitions to real UI and serves application', as
 })
 
 
-test('lifecycle: keyboard-only "open a book" slice completes inside Electron (architecture-system.md)', async () => {
+test('lifecycle: keyboard-only "open a book" slice completes inside Electron', async () => {
   app = await launchHost()
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')

@@ -1,15 +1,15 @@
 # Alexandryn — desktop host
 
 The Electron main process, preload script, and the disk-loaded
-loading/error boot asset (`architecture-desktop-host.md`, phase 05).
-Package name `@alexandryn/desktop`; the directory is `electron/` per
-ADR 0008. It does **not** bundle the web UI — the Electron window loads
+loading/error boot asset.
+Package name `@alexandryn/desktop`; the directory is `electron/`.
+It does **not** bundle the web UI — the Electron window loads
 the real UI from the Go server's own loopback URL at runtime, the same
 as a LAN browser would.
 
 ## Build-order dependency
 
-`desktop-host-process-model.md` FR-1 resolves the Go server binary from
+The desktop host resolves the Go server binary from
 `<repo-root>/bin/alexandryn-server` in development. Build it first:
 
 ```

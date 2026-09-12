@@ -1,11 +1,10 @@
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-// desktop-host-process-model.md FR-1 — one function resolves the Go
-// server binary path: dev reads <repo-root>/bin/alexandryn-server (ADR
-// 0008's root layout), a packaged build reads
+// One function resolves the Go server binary path:
+// dev reads <repo-root>/bin/alexandryn-server, a packaged build reads
 // process.resourcesPath/server/<platformBinaryName()>. `.exe` on Windows,
-// nothing elsewhere. One call site (the spawn call, E9), never re-derived.
+// nothing elsewhere. One call site (the spawn call), never re-derived.
 
 const hoisted = vi.hoisted(() => ({
   isPackaged: false,

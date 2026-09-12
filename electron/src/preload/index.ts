@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { OPERATIONS, type AlexandrynDesktopBridge } from '../shared/operations'
 
-// desktop-host-ipc-surface.md FR-1, FR-2.
 // Iterate OPERATIONS array directly to construct the namespaced bridge object.
 // One channel per operation, never a wildcard channel.
 

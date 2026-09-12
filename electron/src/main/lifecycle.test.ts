@@ -4,11 +4,9 @@ import { spawnServer } from './serverProcess'
 import { pollUntilReady } from './healthPoller'
 import { SERVER_SHUTDOWN_GRACE_MS } from './serverConfig'
 
-// Integration tests for E9 (spawnServer), E10 (pollUntilReady), E11 (shutdown).
+// Integration tests for spawnServer, pollUntilReady, and shutdown.
 // All run against the Go test binary built at electron/test-helpers/test-server/.
 // Timing is real wall-clock — the test binary is fast (<200ms startup).
-//
-// desktop-host-process-model.md FR-2, FR-3, FR-5, Test strategy.
 
 const TEST_SERVER = join(import.meta.dirname, '../../test-helpers/test-server/test-server')
 
@@ -30,7 +28,7 @@ function spawn(args: string[] = []) {
   return s
 }
 
-describe('spawnServer integration (E9 / FR-2)', () => {
+describe('spawnServer integration', () => {
   it('announces PORT=<n> on stdout and resolves portPromise', async () => {
     const { portPromise } = spawn()
     const port = await portPromise
@@ -44,7 +42,7 @@ describe('spawnServer integration (E9 / FR-2)', () => {
   })
 })
 
-describe('pollUntilReady integration (E10 / FR-3)', () => {
+describe('pollUntilReady integration', () => {
   it('resolves when the server is ready', async () => {
     const { portPromise } = spawn()
     const port = await portPromise
@@ -59,7 +57,7 @@ describe('pollUntilReady integration (E10 / FR-3)', () => {
   })
 })
 
-describe('shutdown integration (E11 / FR-5)', () => {
+describe('shutdown integration', () => {
   it('SIGTERM causes the server to exit cleanly', async () => {
     const { child, portPromise } = spawn()
     await portPromise // wait until ready
@@ -70,7 +68,7 @@ describe('shutdown integration (E11 / FR-5)', () => {
     expect(code).toBe(0)
   })
 
-  it('SERVER_SHUTDOWN_GRACE_MS is 10 000 (matches the Go compiled default FR-5)', () => {
+  it('SERVER_SHUTDOWN_GRACE_MS is 10 000 (matches the Go compiled default)', () => {
     expect(SERVER_SHUTDOWN_GRACE_MS).toBe(10_000)
   })
 
@@ -81,7 +79,7 @@ describe('shutdown integration (E11 / FR-5)', () => {
 
     const startMs = Date.now()
 
-    // Mimic E11 shutdown: SIGTERM, wait graceMs, then SIGKILL.
+    // Mimic shutdown: SIGTERM, wait graceMs, then SIGKILL.
     const graceMs = 1000 // shortened from the real 10s for test speed
     child.kill('SIGTERM')
 

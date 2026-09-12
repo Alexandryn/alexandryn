@@ -20,19 +20,17 @@ export default tseslint.config(
       globals: { ...globals.node, ...globals.browser },
     },
     rules: {
-      // architecture-desktop-host.md FR-1 / desktop-host-ipc-surface.md
-      // FR-2: the preload exposes exactly one namespaced object built by
+      // The preload exposes exactly one namespaced object built by
       // iterating electron/src/shared/operations.ts. A wildcard
       // passthrough — one channel taking an operation-name argument — is
-      // the exact anti-pattern constitution §5 forbids. The structural
-      // proof is a test (E23); this is the write-time nudge.
+      // an anti-pattern that breaks IPC isolation.
       'no-restricted-syntax': [
         'error',
         {
           selector:
             "CallExpression[callee.object.name='ipcRenderer'][callee.property.name=/^(on|once|send|sendSync|postMessage)$/]",
           message:
-            'Use invoke/handle (request/response) per operation, never event-style ipcRenderer channels. See desktop-host-ipc-surface.md FR-2.',
+            'Use invoke/handle (request/response) per operation, never event-style ipcRenderer channels.',
         },
       ],
     },

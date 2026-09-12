@@ -2,7 +2,7 @@
   "name": "@alexandryn/desktop",
   "private": true,
   "version": "0.0.0",
-  "description": "Alexandryn desktop host \u2014 Electron main process, preload, and the disk-loaded boot asset (architecture-desktop-host.md, phase 05).",
+  "description": "Alexandryn desktop host \u2014 Electron main process, preload, and the disk-loaded boot asset.",
   "license": "AGPL-3.0-or-later",
   "main": "out/main/index.js",
   "scripts": {

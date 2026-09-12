@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// desktop-host-process-model.md FR-2 security requirement — structural tests.
+// ServerProcess structural security tests.
 // The spawn call must use child_process.spawn with an argument array, never
 // exec or shell:true. This is a static/source check (same category as
 // backend specs' no-globals structural rules): it proves the pattern by
@@ -17,7 +17,7 @@ const LINES = readFileSync(join(import.meta.dirname, 'serverProcess.ts'), 'utf8'
   .filter((l) => !l.trimStart().startsWith('//'))
   .join('\n')
 
-describe('serverProcess structural security (FR-2)', () => {
+describe('serverProcess structural security', () => {
   it('imports spawn from node:child_process, not exec', () => {
     expect(LINES).toMatch(/\bspawn\b/)
     // Must not import `exec` from child_process — only method calls like
@@ -40,5 +40,5 @@ describe('serverProcess structural security (FR-2)', () => {
 })
 
 // Integration tests (real spawn + port capture + prefixed stdio) live in
-// lifecycle.test.ts alongside E10/E11, which share the same Go test binary.
+// lifecycle.test.ts, which shares the same Go test binary.
 

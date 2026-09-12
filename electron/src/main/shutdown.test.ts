@@ -4,11 +4,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { spawnServer } from './serverProcess'
 import { shutdownServer } from './shutdown'
 
-// desktop-host-process-model.md FR-5 — shutdown unit + integration tests.
+// Server shutdown unit + integration tests.
 // The full SIGTERM→SIGKILL sequence is already integration-tested in
 // lifecycle.test.ts. This file adds direct unit coverage of shutdownServer()
 // as exported from the main entry point, and verifies the macOS-override
-// behaviour (window-all-closed → app.quit()) is wired (unit-only per D7).
+// behaviour (window-all-closed → app.quit()) is wired.
 
 const TEST_SERVER = join(import.meta.dirname, '../../test-helpers/test-server/test-server')
 
@@ -23,7 +23,7 @@ afterEach(async () => {
   }
 })
 
-describe('shutdownServer (FR-5)', () => {
+describe('shutdownServer', () => {
   it('resolves immediately if the child is already exited', async () => {
     const { child, portPromise } = spawnServer(TEST_SERVER, '/dev/null', ['--exit-after-ready'])
     children.push({ child, portPromise })

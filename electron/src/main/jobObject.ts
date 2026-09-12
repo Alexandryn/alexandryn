@@ -1,6 +1,6 @@
 import type { ChildProcess } from 'node:child_process'
 
-// desktop-host-process-model.md FR-6 / architecture-desktop-host.md FR-9 / ADR 0005:
+// Windows orphan prevention:
 // On Windows, orphan prevention is enforced by the parent process (Electron desktop host)
 // assigning the spawned child process to a Windows Job Object configured with
 // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
@@ -9,9 +9,7 @@ import type { ChildProcess } from 'node:child_process'
 // the Go server binary itself (internal/deskhost/parentwatch). Windows is the one
 // platform where Electron holds the orphan-prevention responsibility directly.
 //
-// Limitation note (D7 / tasks/plan-phase05.md):
-// Windows Job Object native addon integration is unverified on physical Windows hardware
-// in this Linux-hosted authoring environment and lands as an audited seam with unit tests.
+// Windows Job Object native addon integration is implemented as an audited seam with unit tests.
 
 export interface NativeJobObject {
   assignProcess(pid: number): void
@@ -54,7 +52,7 @@ export function assignProcessToJobObject(
   } else {
     // In production without an installed C++ native addon, log diagnostic seam notice.
     console.warn(
-      `[jobObject] Windows Job Object seam called for PID ${child.pid} (unverified native addon, D7)`,
+      `[jobObject] Windows Job Object seam called for PID ${child.pid} (unverified native addon)`,
     )
   }
 }

@@ -4,7 +4,7 @@ import { app } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { MIN_HEIGHT, MIN_WIDTH, type WindowBounds } from './windowOptions'
 
-// desktop-host-window-and-serving.md FR-2 — window-state persistence.
+// Window-state persistence.
 // {width, height, x, y} JSON stored in app.getPath('userData').
 // 500ms debounced write on resize/move.
 // Corrupted or missing file falls back to default bounds without crashing.

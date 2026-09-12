@@ -1,11 +1,8 @@
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { launchHost } from './launch'
 
-// Tier 0 / E4 — the smoke test the whole harness exists to run, and the
-// automated proof of architecture-desktop-host.md FR-2's privilege
-// boundary (contextIsolation / sandbox / nodeIntegration), not a config
-// comment. E14 adds the unit-level "the constructor was called with
-// exactly these options" check; this is the behavioural end.
+// Smoke test verifying the privilege boundary
+// (contextIsolation / sandbox / nodeIntegration).
 
 let app: ElectronApplication
 
@@ -24,7 +21,7 @@ test('opens a single window on the boot asset', async () => {
   expect(app.windows()).toHaveLength(1)
 })
 
-test('the window is constructed with the FR-2 security flags', async () => {
+test('the window is constructed with security flags', async () => {
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
 

@@ -9,14 +9,13 @@ import {
   SYSTEM_RETRY_STARTUP,
 } from '../shared/operations'
 
-// desktop-host-ipc-surface.md FR-2, FR-3, FR-4, FR-5, FR-6.
 // Main process IPC registration: iterates OPERATIONS array directly.
 // Line 1 of each handler runs Zod schema validation; rejects before business logic.
 
 let cachedPackageVersion: string | undefined
 
 /**
- * Reads the application version string from package.json once at main process startup (FR-5).
+ * Reads the application version string from package.json once at main process startup.
  */
 export function getPackageVersion(): string {
   if (cachedPackageVersion !== undefined) {
@@ -84,7 +83,7 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies = {}): void {
     ipcMain.removeHandler(op.name)
 
     ipcMain.handle(op.name, async (_event, rawArgs) => {
-      // desktop-host-ipc-surface.md FR-3: Schema validation is handler's line 1
+      // Schema validation is handler's line 1
       const parsed = schema.safeParse(rawArgs)
       if (!parsed.success) {
         // Observability: Log failure reason internally, throw generic error to caller

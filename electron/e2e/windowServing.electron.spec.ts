@@ -1,7 +1,7 @@
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { launchHost } from './launch'
 
-// Checkpoint P5-D — E2E validation for Tier 3 (window and serving).
+// E2E validation for window and serving.
 // Validates:
 // 1. Boot asset loads with semantic status and tokens styling
 // 2. Window minWidth / minHeight floor is applied
@@ -18,7 +18,7 @@ test.afterEach(async () => {
   await app.close()
 })
 
-test('window respects minimum size constraints (FR-1)', async () => {
+test('window respects minimum size constraints', async () => {
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
 
@@ -30,7 +30,7 @@ test('window respects minimum size constraints (FR-1)', async () => {
   expect(minSize).toEqual([768, 500])
 })
 
-test('boot asset renders semantic status container (FR-3)', async () => {
+test('boot asset renders semantic status container', async () => {
   const window = await app.firstWindow()
   const bootCard = window.locator('.boot-card')
   await expect(bootCard).toHaveAttribute('role', 'status')

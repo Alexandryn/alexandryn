@@ -1,8 +1,7 @@
 @import './tokens.css';
 
-/* desktop-host-window-and-serving.md FR-3 — boot asset styling
-   Conforms to .design-reference/Alexandryn-Electron-Admin.dc.html (atStates)
-   using extracted tokens from tokens.css. */
+/* Boot asset styling.
+   Conforms to design system using extracted tokens from tokens.css. */
 
 * {
   box-sizing: border-box;
@@ -118,7 +117,7 @@ body {
   opacity: 0.9;
 }
 
-/* Accessible visible focus ring (Constitution §7, FR-3) */
+/* Accessible visible focus ring */
 .btn:focus-visible {
   outline: 2px solid var(--accent, #41608f);
   outline-offset: 2px;

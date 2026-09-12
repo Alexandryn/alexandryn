@@ -10,7 +10,7 @@ import {
   trackWindowState,
 } from './windowState'
 
-// desktop-host-window-and-serving.md FR-2 — window-state persistence.
+// Window-state persistence.
 // {width, height, x, y} JSON stored in userData.
 // Debounced 500ms on resize/move.
 // Corrupted/missing state file falls back to default size, never crashes.
@@ -27,7 +27,7 @@ afterEach(async () => {
   await Promise.all(tempFiles.splice(0).map((f) => rm(f, { force: true })))
 })
 
-describe('parseWindowState (FR-2 pure parser)', () => {
+describe('parseWindowState (pure parser)', () => {
   it('parses valid JSON with width, height, x, y', () => {
     const json = JSON.stringify({ width: 1200, height: 800, x: 100, y: 150 })
     const state = parseWindowState(json)
@@ -61,7 +61,7 @@ describe('parseWindowState (FR-2 pure parser)', () => {
 
 })
 
-describe('loadWindowState / saveWindowState (FR-2 I/O)', () => {
+describe('loadWindowState / saveWindowState (I/O)', () => {
   it('loads saved state correctly after writing', async () => {
     const file = tempStateFile()
     await saveWindowState(file, { width: 1280, height: 900, x: 50, y: 75 })
@@ -83,7 +83,7 @@ describe('loadWindowState / saveWindowState (FR-2 I/O)', () => {
   })
 })
 
-describe('trackWindowState (FR-2 debounced persistence)', () => {
+describe('trackWindowState (debounced persistence)', () => {
   it('debounces writes by DEFAULT_STATE_DEBOUNCE_MS (500ms)', async () => {
     vi.useFakeTimers()
     const file = tempStateFile()

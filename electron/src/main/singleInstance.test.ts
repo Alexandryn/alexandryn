@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-// desktop-host-process-model.md FR-7 — single-instance lock.
+// Single-instance lock unit tests.
 // These are unit tests with a mocked Electron API. The integration test
-// (real second process) is out-of-scope for Vitest — it requires a real
-// Electron binary, which lives in the _electron playwright suite (E27/E28).
+// (real second process) runs in the Playwright Electron suite.
 
 const hoisted = vi.hoisted(() => ({
   isPrimary: true as boolean,

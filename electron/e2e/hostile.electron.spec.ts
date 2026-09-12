@@ -1,11 +1,10 @@
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { launchHost } from './launch'
 
-// desktop-host-window-and-serving.md FR-4 / desktop-host-ipc-surface.md FR-2 / tasks/plan-phase05.md E28:
 // Hostile walkthrough:
-// 1. window.open('https://evil.example') is intercepted and denied (FR-4).
-// 2. Navigation attempts to external origins, file://, and javascript: schemes are blocked (FR-4).
-// 3. Renderer cannot access undeclared IPC channels or raw ipcRenderer (Constitution §5).
+// 1. window.open('https://evil.example') is intercepted and denied.
+// 2. Navigation attempts to external origins, file://, and javascript: schemes are blocked.
+// 3. Renderer cannot access undeclared IPC channels or raw ipcRenderer.
 
 let app: ElectronApplication
 
@@ -20,7 +19,7 @@ test.afterEach(async () => {
   }
 })
 
-test('hostile: window.open to external origin is intercepted and denied (FR-4)', async () => {
+test('hostile: window.open to external origin is intercepted and denied', async () => {
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 
@@ -34,7 +33,7 @@ test('hostile: window.open to external origin is intercepted and denied (FR-4)',
   expect(app.windows()).toHaveLength(1)
 })
 
-test('hostile: will-navigate intercepts and blocks attempts to navigate away from allowed origin (FR-4)', async () => {
+test('hostile: will-navigate intercepts and blocks attempts to navigate away from allowed origin', async () => {
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 
@@ -64,7 +63,7 @@ test('hostile: will-navigate intercepts and blocks attempts to navigate away fro
   expect(page.url()).toBe(initialUrl)
 })
 
-test('hostile: raw ipcRenderer, process, and node globals are unexposed (FR-2 / Constitution §5)', async () => {
+test('hostile: raw ipcRenderer, process, and node globals are unexposed', async () => {
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 
@@ -86,7 +85,7 @@ test('hostile: raw ipcRenderer, process, and node globals are unexposed (FR-2 / 
   expect(isolation.hasGlobal).toBe(false)
 })
 
-test('hostile: preload methods with unexpected/malformed args are rejected by Zod schema (FR-2 / Constitution §4)', async () => {
+test('hostile: preload methods with unexpected/malformed args are rejected by Zod schema', async () => {
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 

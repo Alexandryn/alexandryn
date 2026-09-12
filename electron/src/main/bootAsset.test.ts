@@ -3,10 +3,10 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { syncTokensPlugin } from '../../electron.vite.config'
 
-// desktop-host-window-and-serving.md FR-3, Decision D4 — Boot asset & token sync.
+// Boot asset & token sync.
 // Asserts tokens.css existence, valid CSS contents, and build-time plugin assertion.
 
-describe('boot asset token sync (FR-3 / D4)', () => {
+describe('boot asset token sync', () => {
   const webTokensPath = resolve(import.meta.dirname, '../../../web/src/tokens.css')
   const bootTokensPath = resolve(import.meta.dirname, '../renderer/boot/tokens.css')
   const bootHtmlPath = resolve(import.meta.dirname, '../renderer/boot/index.html')

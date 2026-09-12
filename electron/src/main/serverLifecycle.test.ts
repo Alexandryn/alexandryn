@@ -9,16 +9,16 @@ import {
   type ServerState,
 } from './serverLifecycle'
 
-// desktop-host-process-model.md FR-4 — crash recovery.
+// Server crash recovery.
 // Unit: backoff schedule as a pure function (no I/O, no real timers).
 // Integration: crashing test binary proves exactly 3 attempts then Failed;
 //              different-port binary proves port re-capture on recovery.
 
 const TEST_SERVER = join(import.meta.dirname, '../../test-helpers/test-server/test-server')
 
-// ── Unit: backoff schedule (FR-4) ──────────────────────────────────────────
+// ── Unit: backoff schedule ──────────────────────────────────────────────────
 
-describe('backoffDelayMs (FR-4 — pure function)', () => {
+describe('backoffDelayMs (pure function)', () => {
   it('attempt 1 → 1 000ms', () => expect(backoffDelayMs(1)).toBe(1_000))
   it('attempt 2 → 4 000ms', () => expect(backoffDelayMs(2)).toBe(4_000))
   it('attempt 3 → 9 000ms', () => expect(backoffDelayMs(3)).toBe(9_000))
@@ -30,7 +30,7 @@ describe('backoffDelayMs (FR-4 — pure function)', () => {
 })
 
 describe('MAX_RESPAWN_ATTEMPTS', () => {
-  it('is 3 (FR-4)', () => expect(MAX_RESPAWN_ATTEMPTS).toBe(3))
+  it('is 3', () => expect(MAX_RESPAWN_ATTEMPTS).toBe(3))
 })
 
 // ── Integration helpers ─────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ const FAST_BACKOFF = [50, 50, 50] as const // milliseconds — real wall-clock b
 // ── Integration: crashing binary — exactly 3 respawns then Failed ──────────
 
 
-describe('runServerLifecycle — crash recovery (E12/E13 / FR-4)', () => {
+describe('runServerLifecycle — crash recovery', () => {
   it('Starting → Ready → Recovering×3 → Failed when binary always crashes after ready', async () => {
     // --exit-after-ready: binary starts, announces port, serves one /healthz, then exits.
     // After readiness, the health poll has already received its 200, so the child
@@ -102,7 +102,7 @@ describe('runServerLifecycle — crash recovery (E12/E13 / FR-4)', () => {
     }
   }, 30_000)
 
-  it('first-start crash emits Failed and throws without entering Recovering (E12)', async () => {
+  it('first-start crash emits Failed and throws without entering Recovering', async () => {
     const events: ServerEvent[] = []
 
     await expect(
@@ -156,7 +156,7 @@ describe('runServerLifecycle — stable server', () => {
   }, 10_000)
 })
 
-describe('runServerLifecycle — config authoring (E24)', () => {
+describe('runServerLifecycle — config authoring', () => {
   it('passes DESKTOP_PARENT_PID set to process.pid in authored config', async () => {
     const controller = new AbortController()
     let resolveEarly!: () => void
