@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
-# Interim compose-file lint (deployment-container-packaging.md FR-6):
-# fails if any tracked compose file publishes a port for the `backend`
-# service (a `ports:` entry) or sets `network_mode: host` on it — FR-5's
-# default-profile guarantee (nothing reachable from outside the Compose
-# network) depends on this holding against a future edit, not just
-# present intent.
-#
-# Mode A's exception (FR-6: legal when the same file also declares
-# TLS_CERT_FILE/TLS_KEY_FILE mounted into backend AND an
-# authentication-enabled setting in backend's own environment) is not
-# implemented here: no config key for "authentication enabled" exists
-# anywhere in this codebase yet — that's phase 12's to name. This check
-# is unconditional until then, matching backend-test-harness.md's own
-# "no override file exists today" reality; a follow-up gets the real
-# Mode A carve-out once that key exists.
-#
-# Grep/awk-based, same interim spirit as check-import-boundaries.sh —
-# revisited once a real YAML tool replaces it.
+# Compose published port check:
+# Fails if any tracked compose file publishes a port for the `backend` service
+# or sets `network_mode: host` on it on the default profile without TLS and
+# authentication configured.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -65,12 +51,12 @@ while IFS= read -r f; do
 	# violation; inline-style `ports: [...]` is one unless the array is
 	# genuinely empty (`ports: []` publishes nothing).
 	if grep -Eq '^[[:space:]]*ports:[[:space:]]*$' <<<"$block"; then
-		add_violation "$f: backend service publishes a port (ports:) — not legal on the default profile without both TLS_CERT_FILE/TLS_KEY_FILE and an authentication-enabled setting (deployment-container-packaging.md FR-5/FR-6)"
+		add_violation "$f: backend service publishes a port (ports:) — not legal on the default profile without TLS and authentication"
 	elif grep -Eq '^[[:space:]]*ports:[[:space:]]*\[' <<<"$block" && ! grep -Eq '^[[:space:]]*ports:[[:space:]]*\[[[:space:]]*\][[:space:]]*$' <<<"$block"; then
-		add_violation "$f: backend service publishes a port (ports:) — not legal on the default profile without both TLS_CERT_FILE/TLS_KEY_FILE and an authentication-enabled setting (deployment-container-packaging.md FR-5/FR-6)"
+		add_violation "$f: backend service publishes a port (ports:) — not legal on the default profile without TLS and authentication"
 	fi
 	if grep -Eq '^[[:space:]]*network_mode:[[:space:]]*["'"'"']?host["'"'"']?[[:space:]]*$' <<<"$block"; then
-		add_violation "$f: backend service sets network_mode: host — same FR-5/FR-6 violation as a published port"
+		add_violation "$f: backend service sets network_mode: host — not legal on the default profile without TLS and authentication"
 	fi
 done < <(find "$ROOT" -maxdepth 1 \( -name 'docker-compose*.yml' -o -name 'docker-compose*.yaml' -o -name 'compose*.yml' -o -name 'compose*.yaml' \) -type f 2>/dev/null)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Fixture proof for check-parameterized-queries.sh (backend-persistence.md
-# FR-3): a parameterized query passes; fmt.Sprintf and string
-# concatenation around a SQL-shaped string both fail, naming the file.
+# Fixture test for check-parameterized-queries.sh: a parameterized query passes;
+# fmt.Sprintf and string concatenation around a SQL-shaped string both fail,
+# naming the file.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -100,7 +100,7 @@ q := fmt.Sprintf("SELECT id FROM works WHERE title = '%s'", title)
 EOF
 assert_pass "raw-string fixture data is not this file's own code" "$d"
 
-# audit 0016 #267: adversarial multi-line fmt.Sprintf call
+# Multi-line fmt.Sprintf call
 d="$(new_fixture)"
 cat >"$d/internal/persistence/postgres/work_repository.go" <<'EOF'
 package postgres
@@ -119,7 +119,7 @@ func (r *WorkRepository) byTitle(ctx context.Context, title string) error {
 	return err
 }
 EOF
-assert_fail "multi-line fmt.Sprintf building a SQL-shaped string (audit 0016 #267)" "$d" "work_repository.go"
+assert_fail "multi-line fmt.Sprintf building a SQL-shaped string" "$d" "work_repository.go"
 
 if [ "$fail" -ne 0 ]; then
 	echo "check-parameterized-queries_test.sh: FAILED"

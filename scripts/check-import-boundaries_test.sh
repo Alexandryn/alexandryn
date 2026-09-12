@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Fixture proof for check-import-boundaries.sh: a clean tree passes, an
+# Fixture test for check-import-boundaries.sh: a clean tree passes, an
 # introduced violation of each of the three rules fails with a message
-# naming the offending file. D0 (tasks/plan.md) — interim grep-based check,
-# revisited once golangci-lint/go-analysis can carry it (ADR 0018).
+# naming the offending file.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -107,7 +106,7 @@ func testDSN() string {
 	return os.Getenv("TEST_DATABASE_URL")
 }
 EOF
-assert_pass "rule (b): TEST_DATABASE_URL read directly in an _integration_test.go file (backend-test-harness.md FR-2)" "$d"
+assert_pass "rule (b): TEST_DATABASE_URL read directly in an _integration_test.go file" "$d"
 
 d="$(new_fixture)"
 cat >"$d/internal/persistence/postgres/pool_test.go" <<'EOF'
@@ -155,7 +154,7 @@ var fixturePath = "config.toml"
 EOF
 assert_pass "rule (b): \"toml\" inside a non-import string literal is not a violation" "$d"
 
-# audit 0016 #267: adversarial aliased single-line import of TOML
+# Aliased single-line import of TOML
 d="$(new_fixture)"
 cat >"$d/internal/persistence/postgres/pool.go" <<'EOF'
 package postgres
@@ -166,7 +165,7 @@ func decode(data []byte, v any) error {
 	return tomlpkg.Unmarshal(data, v)
 }
 EOF
-assert_fail "rule (b): aliased single-line TOML import outside internal/config (audit 0016 #267)" "$d" "internal/persistence/postgres/pool.go"
+assert_fail "rule (b): aliased single-line TOML import outside internal/config" "$d" "internal/persistence/postgres/pool.go"
 
 # --- Rule (c): no package-level var holding a logger/pool/config ---
 

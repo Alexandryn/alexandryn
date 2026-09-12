@@ -1,18 +1,10 @@
 #!/usr/bin/env bash
-# Interim SQL-injection-discipline check (backend-persistence.md FR-3):
-# internal/persistence/postgres's SQL MUST use pgx's own parameterized-
-# query mechanism exclusively, never string-built SQL incorporating a
-# value that traces back to hostile input. ADR 0012's "hand-written SQL,
-# no query builder" choice makes this a discipline this script checks for
-# rather than something a query builder makes structurally hard to
-# violate.
+# SQL-injection check: internal/persistence/postgres SQL queries must use
+# pgx parameterized arguments exclusively, never string formatting or concatenation
+# incorporating potentially hostile input.
 #
-# Grep-based and heuristic, same interim spirit as D0's import-boundary
-# check (tasks/plan.md) — flags two shapes: (a) fmt.Sprintf building a
-# string that looks like SQL, (b) string concatenation (+) around a
-# string literal that looks like SQL. A query built entirely from string
-# literals passed straight to pgx's own query methods, with values passed
-# as separate arguments, triggers neither shape.
+# Flags: (a) fmt.Sprintf building a SQL string, (b) string concatenation (+)
+# around SQL literals.
 set -euo pipefail
 
 ROOT="${1:-.}"
@@ -27,9 +19,8 @@ add_violation() {
 
 sql_keyword_pattern='\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|VALUES|SET)\b'
 
-# Same raw-string stripping as check-import-boundaries.sh: a backtick-
-# delimited literal can't contain a backtick, so this split is exact, and
-# it keeps fixture source embedded as test data from tripping this check.
+# Raw-string stripping: a backtick-delimited literal can't contain a backtick,
+# so this keeps fixture source embedded as test data from tripping this check.
 strip_raw_strings() {
 	awk '
 		{
@@ -50,12 +41,12 @@ if [ -d "$DIR" ]; then
 	while IFS= read -r f; do
 		stripped="$(strip_raw_strings "$f")"
 
-		# (a) fmt.Sprintf building something SQL-shaped (handles single-line and multi-line calls, audit 0016 #267).
+		# (a) fmt.Sprintf building something SQL-shaped (handles single-line and multi-line calls).
 		if grep -Eiq "fmt\.Sprintf\(" <<<"$stripped" && grep -Eiq "$sql_keyword_pattern" <<<"$stripped"; then
 			matched=0
 			while IFS= read -r line; do
 				if grep -Eiq "fmt\.Sprintf\(" <<<"$line" && grep -Eiq "$sql_keyword_pattern" <<<"$line"; then
-					add_violation "$f: fmt.Sprintf building a SQL-shaped string — use pgx's own parameterized-query arguments instead (backend-persistence.md FR-3): ${line# }"
+					add_violation "$f: fmt.Sprintf building a SQL-shaped string — use pgx parameterized query arguments instead: ${line# }"
 					matched=1
 				fi
 			done <<<"$stripped"
@@ -67,7 +58,7 @@ if re.search(r'fmt\.Sprintf\s*\([^)]*\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|V
     sys.exit(0)
 sys.exit(1)
 " <<<"$stripped" 2>/dev/null; then
-					add_violation "$f: fmt.Sprintf building a SQL-shaped string across multiple lines — use pgx's own parameterized-query arguments instead (backend-persistence.md FR-3)"
+					add_violation "$f: fmt.Sprintf building a SQL-shaped string across multiple lines — use pgx parameterized query arguments instead"
 				fi
 			fi
 		fi
@@ -76,7 +67,7 @@ sys.exit(1)
 		while IFS= read -r line; do
 			if grep -Eiq "\"[^\"]*${sql_keyword_pattern}[^\"]*\"[[:space:]]*\+" <<<"$line" \
 				|| grep -Eiq "\+[[:space:]]*\"[^\"]*${sql_keyword_pattern}[^\"]*\"" <<<"$line"; then
-				add_violation "$f: string concatenation around a SQL-shaped literal — use pgx's own parameterized-query arguments instead (backend-persistence.md FR-3): ${line# }"
+				add_violation "$f: string concatenation around a SQL-shaped literal — use pgx parameterized query arguments instead: ${line# }"
 			fi
 		done <<<"$stripped"
 	done < <(find "$DIR" -name '*.go' -type f 2>/dev/null)

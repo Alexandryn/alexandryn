@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Fixture proof for check-user-scoped-reading.sh (backend-reading-api.md
-# FR-9): a handler calling the user-scoped repository method passes; a
-# handler calling a bare method fails, naming the file.
+# Fixture test for check-user-scoped-reading.sh: a handler calling the
+# user-scoped repository method passes; a handler calling a bare method fails,
+# naming the file.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

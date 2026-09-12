@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Fixture proof for check-compose-published-port.sh: a clean compose file
+# Fixture test for check-compose-published-port.sh: a clean compose file
 # passes, a backend ports: entry or network_mode: host fails naming the
 # file, and a published port on a different service (postgres) does not
-# false-positive — the check is scoped to backend specifically
-# (deployment-container-packaging.md FR-5/FR-6).
+# false-positive — the check is scoped to backend specifically.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

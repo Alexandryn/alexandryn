@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Fixture proof for check-integration-test-parallelism.sh
-# (backend-test-harness.md FR-3): an _integration_test.go file without
-# t.Parallel() passes; one that calls it fails, naming the file. A
-# non-integration test file calling t.Parallel() is out of this check's
-# scope entirely (nothing to flag). Raw-string fixture data embedding the
-# literal text isn't this file's own code.
+# Fixture test for check-integration-test-parallelism.sh: an _integration_test.go
+# file without t.Parallel() passes; one that calls it fails, naming the file.
+# A non-integration test file calling t.Parallel() is out of this check's
+# scope entirely. Raw-string fixture data embedding the literal text isn't
+# this file's own code.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

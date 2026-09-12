@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fixture proof for check-license.sh (audit 0016 #130, ADR 0002).
+# Fixture test for check-license.sh.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECKER="$SCRIPT_DIR/check-license.sh"
