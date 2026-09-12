@@ -1,11 +1,11 @@
 # Phase 99 — Release
 
-*Outline — expanded to a full phase document when phase 17 closes.*
+*Outline — expanded to a full phase document when phase 18 closes.*
 
 | | |
 |---|---|
 | **Status** | Not started |
-| **Depends on** | Phase 17 |
+| **Depends on** | Phase 18 |
 | **Blocks** | — |
 
 ## Objective
