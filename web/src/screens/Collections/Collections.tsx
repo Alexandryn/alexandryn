@@ -12,7 +12,7 @@ import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
 /**
- * Collections index screen at /collections (frontend-collections-screens.md FR-1).
+ * Collections index screen at /collections.
  * Displays all collections as tiles with book counts and provides a modal to create new ones.
  */
 export function Collections() {
@@ -139,7 +139,7 @@ export function Collections() {
         )}
       </div>
 
-      {/* Create Collection Modal (FR-1) */}
+      {/* Create Collection Modal */}
       <Modal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}

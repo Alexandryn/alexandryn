@@ -11,7 +11,7 @@ export interface NavListItem {
 /**
  * A vertical list of navigation links with an optional one-line
  * description each — the shape the /settings index and the mobile /more
- * screen both need (audit 0016 #93).
+ * screen both need.
  */
 export function NavList({ items, ariaLabel }: { items: NavListItem[]; ariaLabel: string }) {
   return (

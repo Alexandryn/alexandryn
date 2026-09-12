@@ -12,7 +12,7 @@ export interface DiscoverCoverProps {
 }
 
 /**
- * Renders an Open Library cover with reserved aspect-ratio dimensions and lazy loading (FR-7).
+ * Renders an Open Library cover with reserved aspect-ratio dimensions and lazy loading.
  * Falls back to GeneratedCover procedural rendering if coverUrl is absent or on network image load error.
  */
 export function DiscoverCover({

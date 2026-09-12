@@ -21,7 +21,7 @@ function formatCoverAuthor(authors?: { name: string }[]): string | undefined {
 }
 
 /**
- * Renders Open Library search results in a responsive grid layout (FR-1).
+ * Renders Open Library search results in a responsive grid layout.
  * Grid only, no view toggle, no virtualization needed (bounded to <= 50 results).
  */
 export function DiscoverResultGrid({ results, className, ...rest }: DiscoverResultGridProps) {

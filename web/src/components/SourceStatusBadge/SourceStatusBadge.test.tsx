@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SourceStatusBadge } from './SourceStatusBadge'
 import type { SourceHealthDetail } from '../../data/sources'
 
-describe('SourceStatusBadge (FR-3)', () => {
+describe('SourceStatusBadge', () => {
   it('renders Reachable state with success tone', () => {
     render(
       <SourceStatusBadge

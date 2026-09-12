@@ -33,7 +33,7 @@ function createTestWrapper() {
   }
 }
 
-describe('collections data layer (FR-1 to FR-7)', () => {
+describe('collections data layer', () => {
   it('fetchCollections fetches list of collection summaries', async () => {
     server.use(
       http.get('*/api/v1/collections', () =>

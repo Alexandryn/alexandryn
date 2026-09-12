@@ -20,8 +20,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/settings', label: 'Settings' },
 ]
 
-// The mobile tab bar's four destinations (spec FR-3, and the Mobile
-// canvas's tabbar()): library / discover / collections / more.
+// The mobile tab bar's four destinations:
+// library / discover / collections / more.
 export const TAB_ITEMS: Pick<NavItem, 'to' | 'label'>[] = [
   { to: '/library', label: 'Library' },
   { to: '/discover', label: 'Discover' },

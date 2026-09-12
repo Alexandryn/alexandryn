@@ -8,8 +8,7 @@ function isClientError(error: unknown): boolean {
 }
 
 // One in-flight refresh shared by every 401 that arrives while it runs,
-// so a burst of failed queries triggers a single POST /auth/refresh
-// (audit 0016 #91).
+// so a burst of failed queries triggers a single POST /auth/refresh.
 let refreshInFlight: Promise<boolean> | null = null
 
 // Consecutive refresh-then-refetch cycles with no successful response in
@@ -17,8 +16,7 @@ let refreshInFlight: Promise<boolean> | null = null
 // token the server still rejects (clock skew, signing-key rotation),
 // would otherwise re-enter handleAuthFailure forever — hammering
 // /auth/refresh and refetching every query. After this many, stop and
-// send the user to login. Reset to 0 by the first successful response
-// (review follow-up to audit 0016 #91).
+// send the user to login. Reset to 0 by the first successful response.
 const MAX_REFRESH_CYCLES = 2
 let refreshCycles = 0
 
@@ -39,7 +37,7 @@ function refreshOnce(): Promise<boolean> {
 let clientRef: QueryClient | null = null
 
 /**
- * Handles a 401 from any query or mutation (audit 0016 #91). Before this,
+ * Handles a 401 from any query or mutation. Before this,
  * an expired access token left every screen showing ErrorState with a
  * dead "Try again" and no path back to login. Now: try one refresh; on
  * success, refetch; on failure, clear the session and send the user to
@@ -64,10 +62,10 @@ async function handleAuthFailure(error: unknown): Promise<void> {
 
 /**
  * Builds a QueryClient with this app's defaults made explicit rather than
- * inherited silently (frontend-shell-and-routing.md FR-2): a transient
- * failure retries with capped backoff instead of blanking cached data, a
- * 4xx never retries, a short staleTime keeps stale-while-revalidate the
- * visible default, and a 401 anywhere is handled globally.
+ * inherited silently: a transient failure retries with capped backoff
+ * instead of blanking cached data, a 4xx never retries, a short staleTime
+ * keeps stale-while-revalidate the visible default, and a 401 anywhere is
+ * handled globally.
  */
 export function makeQueryClient(): QueryClient {
   const client = new QueryClient({

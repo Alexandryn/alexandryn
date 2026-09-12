@@ -26,7 +26,7 @@ function renderWithProviders(initialEntries = ['/discover/works/OL82563W']) {
   )
 }
 
-describe('DiscoverWorkDetail Screen (FR-4, FR-5, FR-7)', () => {
+describe('DiscoverWorkDetail Screen', () => {
   it('renders work details, description, subjects, and editions', async () => {
     server.use(
       http.get('*/api/v1/discover/works/OL82563W', () => {
@@ -70,7 +70,7 @@ describe('DiscoverWorkDetail Screen (FR-4, FR-5, FR-7)', () => {
     expect(screen.getByText('OL7353617M')).toBeInTheDocument()
   })
 
-  it('omits optional sections when description, subjects, or editions are missing (FR-4)', async () => {
+  it('omits optional sections when description, subjects, or editions are missing', async () => {
     server.use(
       http.get('*/api/v1/discover/works/OLMinimalW', () => {
         return HttpResponse.json({
@@ -94,7 +94,7 @@ describe('DiscoverWorkDetail Screen (FR-4, FR-5, FR-7)', () => {
     expect(screen.queryByText(/Editions/)).not.toBeInTheDocument()
   })
 
-  it('renders distinct 404 not-found state when work does not exist (FR-5)', async () => {
+  it('renders distinct 404 not-found state when work does not exist', async () => {
     server.use(
       http.get('*/api/v1/discover/works/OLNotFoundW', () => {
         return HttpResponse.json(
@@ -118,7 +118,7 @@ describe('DiscoverWorkDetail Screen (FR-4, FR-5, FR-7)', () => {
     expect(screen.getByRole('button', { name: 'Back to Discover' })).toBeInTheDocument()
   })
 
-  it('renders distinct 503 degraded state when Open Library is unavailable (FR-5)', async () => {
+  it('renders distinct 503 degraded state when Open Library is unavailable', async () => {
     server.use(
       http.get('*/api/v1/discover/works/OLUnavailableW', () => {
         return HttpResponse.json(

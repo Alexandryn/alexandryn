@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { coverImageSrc, isAllowedImageDataUri } from './imageDataUri'
 
-describe('isAllowedImageDataUri (audit 0016 #171)', () => {
+describe('isAllowedImageDataUri', () => {
   it('accepts the approved raster image types', () => {
     expect(isAllowedImageDataUri('data:image/jpeg;base64,/9j/xxx')).toBe(true)
     expect(isAllowedImageDataUri('data:image/png;base64,iVBOR')).toBe(true)

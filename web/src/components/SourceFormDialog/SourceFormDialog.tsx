@@ -394,7 +394,7 @@ function SourceFormContent({ source, onClose, onSuccess }: SourceFormContentProp
 }
 
 /**
- * SourceFormDialog (frontend-source-management.md FR-2, FR-4, FR-5):
+ * SourceFormDialog:
  * Unified create/edit dialog with platform-aware local folder picker,
  * HTTPS plain-text basic auth warning, and write-only credential replacement.
  */

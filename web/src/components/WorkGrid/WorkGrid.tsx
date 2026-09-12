@@ -27,13 +27,12 @@ function formatCoverAuthor(authors?: string[]): string | undefined {
 
 /**
  * Shared component for rendering a list of works as a responsive grid of
- * covers or a detailed list (frontend-library-screens.md FR-1, FR-4,
- * frontend-collections-screens.md FR-2).
+ * covers or a detailed list.
  *
  * Above 100 items only the covers inside a sliding window of WINDOW_SIZE
  * are mounted; the rest render an aspect-ratio placeholder so the scroll
  * height is unchanged. The window slides both ways off two sentinels, so
- * a cover scrolled well out of view is unmounted again (audit 0016 #168)
+ * a cover scrolled well out of view is unmounted again
  * — the number of live cover components stays bounded no matter how far
  * the user scrolls.
  */

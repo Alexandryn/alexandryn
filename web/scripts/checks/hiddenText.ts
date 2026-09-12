@@ -2,13 +2,12 @@ import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { walkSourceFiles } from './walkSrc.ts'
 
-// frontend-accessibility.md FR-3: screen-reader-only text uses the shared
+// Screen-reader-only text uses the shared
 // <VisuallyHidden> primitive (or Tailwind's own `sr-only`), never
 // `display: none` (which removes it from the accessibility tree too) or a
 // per-component hand-rolled clip-rect. axe can't reliably catch this —
 // the text is correctly hidden from a sighted user either way; the defect
-// is that it's *also* gone from the a11y tree — so a grep is the check
-// (Failure modes table).
+// is that it's *also* gone from the a11y tree — so a grep is the check.
 //
 // Scans .ts/.tsx source only: Tailwind classes / CSS-in-JS live there.
 // This project has no per-component .css files — only the generated token

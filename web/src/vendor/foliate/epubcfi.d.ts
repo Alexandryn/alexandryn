@@ -1,5 +1,5 @@
 // Minimal ambient types for the vendored foliate-js `epubcfi.js` — the
-// standalone CFI module (ADR 0023). Only the functions the reader uses.
+// standalone CFI module. Only the functions the reader uses.
 
 export const isCFI: RegExp
 

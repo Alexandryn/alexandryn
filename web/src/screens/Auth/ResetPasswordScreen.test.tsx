@@ -28,7 +28,7 @@ function renderScreen(entry: string) {
   )
 }
 
-describe('ResetPasswordScreen (audit 0016 #161)', () => {
+describe('ResetPasswordScreen', () => {
   it('refuses to show the form without a token', () => {
     renderScreen('/reset-password')
     expect(screen.getByRole('alert')).toHaveTextContent('This page needs a reset link')

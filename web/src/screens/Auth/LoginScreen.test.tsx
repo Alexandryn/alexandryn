@@ -37,7 +37,7 @@ async function signIn() {
   await user.click(screen.getByRole('button', { name: 'Sign in' }))
 }
 
-describe('LoginScreen (audit 0016 #161)', () => {
+describe('LoginScreen', () => {
   afterEach(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -93,7 +93,7 @@ describe('LoginScreen (audit 0016 #161)', () => {
     expect(screen.getByTestId('loc')).toHaveTextContent('/login')
   })
 
-  // audit 0016 #157: after a reload on /login the pairing enrolment grant
+  // After a reload on /login the pairing enrolment grant
   // is gone from router state, but the sessionStorage mirror recovers it,
   // and it is cleared once the login completes.
   it('recovers the enrolment grant from sessionStorage after a reload', async () => {

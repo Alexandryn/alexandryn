@@ -39,7 +39,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
-  it('renders a real search input that navigates to discover on submit (audit 0016 #236)', async () => {
+  it('renders a real search input that navigates to discover on submit', async () => {
     const router = routerAt('/library')
     render(<RouterProvider router={router} />)
 
@@ -97,7 +97,7 @@ describe('AppShell', () => {
     expectNoAxeViolations(await runAxe(container))
   })
 
-  describe('responsive reflow (FR-3)', () => {
+  describe('responsive reflow', () => {
     it('renders the sidebar, not the tab bar, at/above the breakpoint', () => {
       media = mockMatchMedia(true)
       render(<RouterProvider router={routerAt('/library')} />)

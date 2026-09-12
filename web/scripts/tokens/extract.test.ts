@@ -53,7 +53,7 @@ describe('extractTokens', () => {
     )
   })
 
-  it('extracts the FR-3 reflow breakpoint from the atTablet band prose', () => {
+  it('extracts the reflow breakpoint from the atTablet band prose', () => {
     const tokens = extractTokens({ electron: canvas('--bg:#F6F5F2') })
     expect(tokens.breakpoint).toEqual({ name: 'reflow', px: 768 })
   })

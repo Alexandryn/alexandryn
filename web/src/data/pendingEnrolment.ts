@@ -1,6 +1,6 @@
 // A device-pairing enrolment grant is handed from ConnectScreen to
 // LoginScreen via router state, which a page reload discards — leaving
-// the user unable to finish enrolling the device (audit 0016 #157).
+// the user unable to finish enrolling the device.
 // Mirror it into sessionStorage (per-tab, cleared when the tab closes)
 // so a reload on /login recovers it. It is a short-lived bearer secret,
 // so it must NOT go in the URL or localStorage.

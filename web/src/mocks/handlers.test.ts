@@ -10,7 +10,7 @@ describe('MSW mock backend', () => {
     expect(await res.json()).toEqual({})
   })
 
-  it('answers unknown /api/v1 paths with FR-5 error shape (tier b)', async () => {
+  it('answers unknown /api/v1 paths with standard error shape (tier b)', async () => {
     const res = await fetch('http://localhost/api/v1/does-not-exist')
     expect(res.status).toBe(404)
     expect(await res.json()).toMatchObject({

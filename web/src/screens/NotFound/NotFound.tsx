@@ -2,8 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button/Button'
 
 /**
- * The catch-all for an unregistered URL (frontend-shell-and-routing.md
- * FR-5) — a real "this page doesn't exist" state composed from
+ * The catch-all for an unregistered URL — a real "this page doesn't exist" state composed from
  * primitives, never a blank page or the router's undecorated default.
  */
 export function NotFound() {

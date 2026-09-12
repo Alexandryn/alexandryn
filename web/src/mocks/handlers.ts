@@ -10,15 +10,14 @@ import {
   CHAPTER1_XHTML,
 } from '../screens/Reader/reader.fixtures'
 
-// The mock backend (frontend-shell-and-routing.md FR-6). Health handlers
+// The mock backend. Health handlers
 // serve the contract-generated fixtures (tier a); /api/bootstrap and the
 // /api/v1 catch-all are hand-written (tier b).
-// Library, works, and collections endpoints (phase 06) pass through to the real backend.
 export const handlers = [
   http.get('*/healthz', () => HttpResponse.json(generatedFixtures.getHealthz['200'])),
   http.get('*/readyz', () => HttpResponse.json(generatedFixtures.getReadyz['200'])),
 
-  // Never resolves synchronously (FR-4): the capability value is always
+  // Never resolves synchronously: the capability value is always
   // awaited so the loading code path is real and tested, even against a mock.
   http.get('*/api/bootstrap', async () => {
     await delay(50)
@@ -158,14 +157,10 @@ export const handlers = [
     HttpResponse.json(generatedFixtures.rejectImportCandidate['200']),
   ),
 
-  // Reader content endpoint (audit 0017: this had no shared handler —
-  // the outdated claim that it "passes through to the real backend
-  // during dev" doesn't hold, since the /api/v1/* catch-all below 404s
-  // anything unmatched under MSW-active dev regardless). Served by path
-  // suffix, independent of editionId, so any e2e/dev navigation to
-  // /read/:workId/:editionId using the same reader.fixtures.ts content
-  // (Reader.test.tsx's own contentHandlers() mirrors this) just works
-  // without a per-test override.
+  // Reader content endpoint: served by path suffix, independent of editionId,
+  // so any e2e/dev navigation to /read/:workId/:editionId using the same
+  // reader.fixtures.ts content (Reader.test.tsx's own contentHandlers() mirrors this)
+  // just works without a per-test override.
   http.get('*/reader/content/*', ({ request }) => {
     const path = decodeURIComponent(new URL(request.url).pathname.split('/reader/content/')[1] ?? '')
     const map: Record<string, string> = {
@@ -223,7 +218,7 @@ export const handlers = [
     }),
   ),
 
-  // Network & Pairing (Phase 13)
+  // Network & Pairing
   http.post('*/api/v1/network/pair/initiate', () => {
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem('alexandryn_mock_revoked')

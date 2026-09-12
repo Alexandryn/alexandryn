@@ -36,7 +36,7 @@ export function AcceptInviteScreen() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-md">
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg text-center">
         <h1 className="text-2xl font-serif font-bold text-text mb-xs">Library invitation</h1>
         <p className="text-sm text-text-3 mb-lg">You have been invited to join an Alexandryn library namespace.</p>
@@ -51,7 +51,7 @@ export function AcceptInviteScreen() {
           <div className="flex flex-col gap-md">
             <p className="text-sm text-text-2">Please sign in to your Alexandryn account to accept this invitation.</p>
             {/* Preserve the invite URL so login returns here and the token
-                is not lost (audit 0016 #95). */}
+                is not lost. */}
             <Button onClick={() => navigate('/login', { state: { from: location } })}>Sign in</Button>
           </div>
         ) : (

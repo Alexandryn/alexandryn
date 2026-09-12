@@ -13,7 +13,7 @@ import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
 /**
- * Collection detail screen at /collections/:id and /collection/:id (FR-2, FR-3).
+ * Collection detail screen at /collections/:id and /collection/:id.
  * Renders collection name with inline rename, delete confirmation modal,
  * and member works via shared <WorkGrid>.
  */
@@ -226,7 +226,7 @@ export function CollectionDetail() {
         )}
       </div>
 
-      {/* Rename Modal (FR-2) */}
+      {/* Rename Modal */}
       <Modal
         open={isRenameOpen}
         onOpenChange={setIsRenameOpen}
@@ -267,7 +267,7 @@ export function CollectionDetail() {
         </form>
       </Modal>
 
-      {/* Delete Confirmation Modal (FR-3, Constitution §11) */}
+      {/* Delete Confirmation Modal */}
       <Modal
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildKindLine, formatRelativeTime, isActiveDot } from './deviceUtils'
 
-describe('deviceUtils unit tests (Phase 14)', () => {
+describe('deviceUtils unit tests', () => {
   const pinnedNow = new Date('2026-09-06T12:00:00Z')
 
   describe('formatRelativeTime', () => {

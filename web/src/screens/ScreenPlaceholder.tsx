@@ -7,8 +7,7 @@ export interface ScreenPlaceholderProps {
 }
 
 /**
- * A registered route with no real content yet — phase 06 onward replaces
- * these with real screens inside the same shell (this spec's Non-goals).
+ * A registered route with no real content yet.
  * Still a complete screen: a single <h1>. Focus management on navigation
  * is the shell's job (AppShell's useContentFocusOnRouteChange), not each
  * screen's.

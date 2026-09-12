@@ -24,7 +24,7 @@ function renderWithProviders(ui: ReactNode) {
   )
 }
 
-describe('Phase 13 Network screens accessibility (T5.7)', () => {
+describe('Network screens accessibility', () => {
   it('NetworkSettings has zero axe violations', async () => {
     const { container } = renderWithProviders(<NetworkSettings />)
     await waitFor(() => expect(screen.getByTestId('reachability-val')).toBeInTheDocument())

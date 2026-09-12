@@ -21,7 +21,7 @@ function renderWithProviders(ui: ReactNode) {
   }
 }
 
-describe('NetworkSettings screen (Phase 13 T5.3)', () => {
+describe('NetworkSettings screen', () => {
   it('renders status card with honest copy for reachability, server address, and TLS', async () => {
     server.use(
       http.get('*/api/v1/network/status', () =>
@@ -48,7 +48,7 @@ describe('NetworkSettings screen (Phase 13 T5.3)', () => {
     // Address
     expect(screen.getByTestId('server-address-val')).toHaveTextContent('http://192.168.1.50:4000')
 
-    // Honest TLS unencrypted copy (FR-1)
+    // Honest TLS unencrypted copy
     const tlsDesc = screen.getByTestId('tls-mode-desc')
     expect(tlsDesc).toHaveTextContent(
       'Traffic on your local network is unencrypted. Anyone with access to your Wi-Fi or router can see the books you read and the pages you view, unless you are using a reverse proxy that provides TLS.',
@@ -115,7 +115,7 @@ describe('NetworkSettings screen (Phase 13 T5.3)', () => {
     expect(screen.getByText(/Subject to Let's Encrypt Terms of Service/i)).toBeInTheDocument()
   })
 
-  // audit 0016 #143: the form pre-fills from GET /api/v1/network/settings,
+  // The form pre-fills from GET /api/v1/network/settings,
   // not from hardcoded defaults.
   it('pre-fills the form from the saved network settings', async () => {
     server.use(

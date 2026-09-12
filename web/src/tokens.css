@@ -1,7 +1,7 @@
 /* GENERATED FILE — do not hand-edit.
  * Run `npm run tokens:generate` (web/scripts/generate-tokens.ts) to
- * regenerate from .design-reference/*.dc.html — frontend-design-tokens.md
- * FR-2: theme.css, tokens.css and breakpoints.ts are all written from the
+ * regenerate from .design-reference/*.dc.html.
+ * theme.css, tokens.css and breakpoints.ts are all written from the
  * same single extraction pass, so they can never drift from each other. */
 
 :root {
@@ -70,7 +70,7 @@
   --tracking-10: 0.14em;
   --tracking-11: 0.2em;
   --breakpoint-reflow: 768px;
-  /* Design fonts (audit 0016 #223): currently render via system fallback.
+  /* Design fonts: currently render via system fallback.
      When custom web fonts are added: self-host .woff2 under public/fonts/,
      use @font-face { font-display: swap } (optional for mono), subset with
      unicode-range, preload max 1-2 first-paint faces, and never load from

@@ -40,7 +40,7 @@ export function ResetPasswordScreen() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-md">
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Set a new password</h1>
@@ -70,7 +70,7 @@ export function ResetPasswordScreen() {
               </div>
             )}
 
-            {/* Shared Input, not hand-rolled (audit 0017 A-17-11) */}
+            {/* Shared Input */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-md">
               <Input
                 label="New password"

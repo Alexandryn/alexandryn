@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SourceCandidateList } from './SourceCandidateList'
 import type { SourceCandidate } from '../../data/sources'
 
-describe('SourceCandidateList (FR-6)', () => {
+describe('SourceCandidateList', () => {
   const mockCandidates: SourceCandidate[] = [
     {
       title: 'The Left Hand of Darkness',

@@ -38,7 +38,7 @@ describe('epubBook', () => {
     })
   })
 
-  describe('sectionIndexForHref (audit 0016 #237)', () => {
+  describe('sectionIndexForHref', () => {
     const mockSections: EpubSection[] = [
       {
         id: 'OEBPS/cover.xhtml',
@@ -72,7 +72,7 @@ describe('epubBook', () => {
       expect(sectionIndexForHref(mockSections, 'text/chapter2.xhtml#heading')).toBe(2)
     })
 
-    it('does not loosely match partial filename substrings (audit 0016 #237)', () => {
+    it('does not loosely match partial filename substrings', () => {
       // chapter2.xhtml must NOT match appendix_chapter2.xhtml
       expect(sectionIndexForHref(mockSections, 'chapter2.xhtml')).toBe(2)
       expect(sectionIndexForHref(mockSections, 'appendix_chapter2.xhtml')).toBe(3)

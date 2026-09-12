@@ -259,7 +259,7 @@ export function AddToCollectionModal({
           )}
         </div>
 
-        {/* Create New Collection and Add (FR-4) */}
+        {/* Create New Collection and Add */}
         <form
           onSubmit={handleCreateAndAddSubmit}
           className="border-t border-border/60 pt-md flex flex-col gap-sm"

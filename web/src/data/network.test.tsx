@@ -35,7 +35,7 @@ function createTestWrapper() {
   }
 }
 
-describe('network data layer (Phase 13 T5.2)', () => {
+describe('network data layer', () => {
   it('fetchNetworkStatus fetches status and isAdminNetworkStatus discriminates correctly', async () => {
     const status = await fetchNetworkStatus()
     expect(status).toBeDefined()

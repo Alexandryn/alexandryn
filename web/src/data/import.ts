@@ -68,8 +68,8 @@ export interface UseImportCandidatesOptions {
   /**
    * `true` turns on adaptive polling: fast (2s) while there is at least
    * one candidate in this status, a slow floor (20s) when the list is
-   * empty, and stopped entirely while the tab is hidden (audit 0016
-   * #169). A number/false is still honoured for a fixed cadence.
+   * empty, and stopped entirely while the tab is hidden. A number/false
+   * is still honoured for a fixed cadence.
    */
   refetchInterval?: number | false | true
 }

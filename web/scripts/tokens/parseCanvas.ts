@@ -27,7 +27,7 @@ export function parseRootCustomProperties(html: string): Record<string, string> 
  * Counts how many times each distinct px value appears for a given CSS
  * property (e.g. `border-radius`, `gap`, `font-size`) across a whole
  * canvas file — the raw frequency data a spacing/radius/typography
- * scale gets derived from (frontend-design-tokens.md FR-1: extracted
+ * scale gets derived from: extracted
  * from real layout rules, never invented).
  *
  * Matches decimal values too (`(\d+(?:\.\d+)?)`), not just integers — a

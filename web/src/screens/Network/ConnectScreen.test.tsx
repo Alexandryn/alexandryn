@@ -38,7 +38,7 @@ function renderConnectScreen(initialEntries = ['/connect']) {
   )
 }
 
-describe('ConnectScreen (Phase 13 T5.5)', () => {
+describe('ConnectScreen', () => {
   afterEach(() => sessionStorage.clear())
 
   it('reads ?c=<code>, formats it, and strips ?c= immediately from window history', async () => {
@@ -97,7 +97,7 @@ describe('ConnectScreen (Phase 13 T5.5)', () => {
     expect(stateText).toContain('grant-secret-token-12345')
     expect(stateText).toContain('alexandryn.local')
 
-    // audit 0016 #157: also mirrored to sessionStorage (per-tab, not the
+    // Also mirrored to sessionStorage (per-tab, not the
     // URL) so a reload on /login can recover it.
     const stored = JSON.parse(sessionStorage.getItem('alexandryn_pending_enrolment') ?? 'null')
     expect(stored).toEqual({

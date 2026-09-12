@@ -7,7 +7,7 @@ export interface SliderProps extends ComponentPropsWithoutRef<typeof RadixSlider
   label: string
 }
 
-/** Radix Slider (FR-1) — pointer/keyboard value state machine, not reimplemented by hand. */
+/** Radix Slider — pointer/keyboard value state machine, not reimplemented by hand. */
 export const Slider = forwardRef<ElementRef<typeof RadixSlider.Root>, SliderProps>(function Slider(
   { label, className, ...props },
   ref,

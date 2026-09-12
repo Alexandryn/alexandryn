@@ -24,7 +24,7 @@ interface AlexandrynWindow {
   }
 }
 
-describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
+describe('SourceFormDialog', () => {
   it('renders Add source form fields', () => {
     renderWithQueryClient(<SourceFormDialog open={true} onOpenChange={vi.fn()} />)
 
@@ -35,7 +35,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     expect(screen.getByLabelText('Folder path')).toBeInTheDocument()
   })
 
-  it('renders Browse... button only when window.alexandryn is available (FR-4)', () => {
+  it('renders Browse... button only when window.alexandryn is available', () => {
     const { unmount } = renderWithQueryClient(
       <SourceFormDialog open={true} onOpenChange={vi.fn()} />,
     )
@@ -52,7 +52,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     delete (window as unknown as AlexandrynWindow).alexandryn
   })
 
-  it('shows HTTP warning when non-HTTPS URL has credential form open (FR-5)', async () => {
+  it('shows HTTP warning when non-HTTPS URL has credential form open', async () => {
     const user = userEvent.setup()
     renderWithQueryClient(<SourceFormDialog open={true} onOpenChange={vi.fn()} />)
 
@@ -71,7 +71,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders Password set static text in edit mode with Replace action (FR-5)', async () => {
+  it('renders Password set static text in edit mode with Replace action', async () => {
     const user = userEvent.setup()
     const opdsSourceWithCred: Source = {
       id: 'src-1',
@@ -99,7 +99,7 @@ describe('SourceFormDialog (FR-2, FR-4, FR-5)', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
   })
 
-  it('ties validation error to specific input with aria-invalid and moves focus (audit 0016 #245)', async () => {
+  it('ties validation error to specific input with aria-invalid and moves focus', async () => {
     const user = userEvent.setup()
     renderWithQueryClient(<SourceFormDialog open={true} onOpenChange={vi.fn()} />)
 

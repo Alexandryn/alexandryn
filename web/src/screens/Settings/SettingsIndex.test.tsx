@@ -7,8 +7,7 @@ import { MoreScreen } from '../shell/MoreScreen'
 const hrefs = () =>
   screen.getAllByRole('link').map((a) => a.getAttribute('href'))
 
-// audit 0016 #93: /settings and /more were bare <h1> placeholders that
-// dead-ended primary and mobile navigation.
+// Settings and More navigation index screens.
 describe('Settings and More index screens', () => {
   it('/settings links to its real sub-pages', () => {
     render(

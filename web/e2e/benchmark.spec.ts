@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-// frontend-generated-covers.md FR-4: a grid of 500 generated covers renders
+// Performance verification: a grid of 500 generated covers renders
 // its initial viewport within 100ms of layout data being available, and
-// scrolling stays at 60fps. Both numbers are the spec's own reasoned
-// placeholders (Open questions) — measured honestly here, not weakened.
+// scrolling stays at 60fps.
 
 test('renders the initial viewport of 500 generated covers within budget', async ({ page }) => {
   await page.goto('/')

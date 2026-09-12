@@ -48,8 +48,8 @@ export function pickCenteredLabels(labels: string[], centerLabel: string, count:
  * Turns a { pxValue: occurrenceCount } frequency map (from
  * parseCanvas.countPxValues, aggregated across canvases) into an
  * ordered token scale — every value that recurs at least `threshold`
- * times, ascending, named by size. This is extraction, not invention
- * (frontend-design-tokens.md FR-1/FR-4): every token value is a real,
+ * times, ascending, named by size. This is extraction, not invention:
+ * every token value is a real,
  * repeated value from the design reference; the threshold only filters
  * out one-off noise, it never substitutes a rounder-looking number.
  */

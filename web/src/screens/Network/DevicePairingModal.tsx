@@ -107,7 +107,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
 
   // QR code SVG matrix path. The `qrcode` library (~52 KB) is loaded on
   // demand — only when the pairing modal actually has a payload to render
-  // — so it stays out of the NetworkSettings chunk (audit 0016 #163).
+  // — so it stays out of the NetworkSettings chunk.
   const [qrSvgPath, setQrSvgPath] = useState<{ path: string; size: number } | null>(null)
 
   useEffect(() => {
@@ -160,8 +160,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
       onOpenChange(false)
     } catch {
       // Do not close: a failed cancel leaves the pairing session live on
-      // the server, so the user must know and be able to retry (audit
-      // 0016 #142).
+      // the server, so the user must know and be able to retry.
       setRevokeError(
         'Could not cancel the pairing session — it may still be active. Retry, or close and check your devices.',
       )
@@ -198,7 +197,7 @@ export function DevicePairingModal({ open, onOpenChange }: DevicePairingModalPro
           }}
           className={cx(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-            // max-w-[32rem] not max-w-lg: --spacing-lg collides with Tailwind's max-w-lg key (audit 0017 A-17-08)
+            // max-w-[32rem] not max-w-lg: --spacing-lg collides with Tailwind's max-w-lg key
             'rounded-lg bg-surface p-xl shadow-lg max-w-[32rem] w-full flex flex-col gap-lg',
             'transition-opacity data-[state=closed]:opacity-0 data-[state=open]:opacity-100 motion-reduce:transition-none',
           )}

@@ -16,9 +16,8 @@ const LIBRARY_INDEPENDENT_ROOTS = new Set([
 /**
  * Switch the active library and evict every cached query that was scoped
  * to the previous one, so no screen keeps showing another library's data
- * after the switch (audit 0016 #138). The earlier call site invalidated
- * only three hardcoded keys and missed work detail, sources, the activity
- * feed, the reader and library members.
+ * after the switch. Invalidates all queries except the explicitly
+ * library-independent roots.
  */
 export function switchActiveLibrary(queryClient: QueryClient, id: string): void {
   setActiveLibraryId(id)

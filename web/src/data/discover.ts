@@ -70,7 +70,7 @@ export function fetchDiscoverSearch(
 }
 
 /**
- * Standard paginated query for Open Library discover search (frontend-discover-screen.md FR-3).
+ * Standard paginated query for Open Library discover search.
  * Query key follows ['discover', 'search', { q, limit, offset }] cache convention.
  */
 export function useDiscoverSearch(params: {
@@ -89,8 +89,7 @@ export function useDiscoverSearch(params: {
         return Promise.reject(new Error('q is required'))
       }
       // A superseded search (the user kept typing) or an unmount aborts
-      // the in-flight request rather than letting it complete unseen
-      // (audit 0016 #166).
+      // the in-flight request rather than letting it complete unseen.
       return fetchDiscoverSearch({ q, limit, offset }, signal)
     },
     enabled: Boolean(q && q !== ''),
@@ -109,7 +108,7 @@ export function fetchDiscoverWork(
 }
 
 /**
- * Single Open Library work detail hook (frontend-discover-screen.md FR-4).
+ * Single Open Library work detail hook.
  * Query key follows ['discover', 'work', openLibraryId] cache convention.
  */
 export function useDiscoverWork(openLibraryId: string | undefined) {

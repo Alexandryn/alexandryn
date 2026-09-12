@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import * as auth from '../../data/auth'
 import { SetupScreen } from './SetupScreen'
 
-describe('SetupScreen (audit 0016 #245)', () => {
+describe('SetupScreen', () => {
   it('focuses and marks confirmPassword on password mismatch', async () => {
     const user = userEvent.setup()
     render(

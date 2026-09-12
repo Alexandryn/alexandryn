@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-// frontend-shell-and-routing.md Test strategy (E2E) and Checkpoint P4-E:
+// End-to-end routing and shell composition walkthrough:
 // one full path through the shell with mock data, and the keyboard-only
-// "open a book" reference walkthrough (architecture-system.md's named
-// slice), no pointer events.
+// "open a book" reference walkthrough, no pointer events.
 
 test('routing and shell composition work end to end against mock data', async ({ page }) => {
   await page.goto('/library')

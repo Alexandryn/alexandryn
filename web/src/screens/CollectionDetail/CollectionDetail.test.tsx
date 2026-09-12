@@ -31,7 +31,7 @@ const mockDetail = {
   ],
 }
 
-describe('CollectionDetail Screen (FR-2, FR-3)', () => {
+describe('CollectionDetail Screen', () => {
   it('renders collection title and member works', async () => {
     server.use(
       http.get('*/api/v1/collections/:id', () => HttpResponse.json(mockDetail)),
@@ -102,7 +102,7 @@ describe('CollectionDetail Screen (FR-2, FR-3)', () => {
     })
   })
 
-  it('opens delete confirmation modal with specific copy and deletes on confirmation (FR-3)', async () => {
+  it('opens delete confirmation modal with specific copy and deletes on confirmation', async () => {
     let deletedId: string | null = null
 
     server.use(

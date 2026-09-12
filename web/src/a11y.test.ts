@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// frontend-accessibility.md FR-5: `prefers-contrast: more` swaps a
+// High contrast accessibility: `prefers-contrast: more` swaps a
 // subtle-contrast element to a higher-contrast variant. Playwright can't
-// emulate prefers-contrast (maintainer decision G2), so this asserts the
+// emulate prefers-contrast, so this asserts the
 // mechanism is well-formed. That the resolved value actually passes WCAG
 // AA on every surface is checked by `npm run tokens:check-contrast` (a CI
 // step, using the shared contrast helpers) — not re-derived here.
@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 
 const a11yCss = readFileSync(join(process.cwd(), 'src', 'a11y.css'), 'utf8')
 
-describe('prefers-contrast: more adaptation (FR-5)', () => {
+describe('prefers-contrast: more adaptation', () => {
   it('redefines --color-text-3 to the text-2 token inside a prefers-contrast: more block', () => {
     const block =
       /@media\s*\(prefers-contrast:\s*more\)\s*\{[\s\S]*?--color-text-3:\s*([^;]+);/i.exec(a11yCss)

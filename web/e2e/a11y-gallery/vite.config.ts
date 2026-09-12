@@ -3,10 +3,10 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// Minimal Vite config for the accessibility gallery harness only
-// (frontend-accessibility.md FR-4) — every primitive on one page, scanned
-// by @axe-core/playwright in a real browser. Kept out of the app's own
-// entry point, same as the Tier 3 benchmark harness.
+// Minimal Vite config for the accessibility gallery harness only —
+// every primitive on one page, scanned by @axe-core/playwright in a
+// real browser. Kept out of the app's own entry point, same as the
+// benchmark harness.
 //
 // Its own cacheDir — see the note in e2e/vite.config.ts: three Playwright
 // dev servers boot together and must not share the dep-optimization

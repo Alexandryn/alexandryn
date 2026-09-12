@@ -7,7 +7,7 @@ function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }
 
-test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
+test.describe('Network Access & Device Pairing E2E', () => {
   test('happy path: host opens modal, second context pairs and logs in', async ({ browser, baseURL }) => {
     const contextA = await browser.newContext({ baseURL })
     const contextB = await browser.newContext({ baseURL })
@@ -20,9 +20,7 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       await pageA.goto('/settings/network')
       await expect(pageA.getByRole('heading', { name: 'Network Access', level: 1 })).toBeVisible()
 
-      // Axe audit on /settings/network before the modal opens (Phase 17
-      // coverage sweep — this route otherwise has only this pairing-flow
-      // spec exercising it, with no axe assertion).
+      // Axe audit on /settings/network before the modal opens
       const networkPageAxe = await axe(pageA).analyze()
       expect(networkPageAxe.violations).toEqual([])
 
@@ -37,9 +35,7 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
       expect(code).toBeTruthy()
       expect(code).toBe('ABCD-EFGH')
 
-      // Axe audit with the DevicePairingModal open (Phase 17 coverage
-      // sweep — the modal opens in this spec but was never audited while
-      // open).
+      // Axe audit with the DevicePairingModal open
       const modalAxe = await axe(pageA).analyze()
       expect(modalAxe.violations).toEqual([])
 
@@ -100,8 +96,8 @@ test.describe('Phase 13: Network Access & Device Pairing E2E (T5.8)', () => {
   })
 
   test('unhappy path: host revoke invalidates code for second context', async ({ browser, baseURL }) => {
-    // One page per context, never two pages sharing one (audit 0017
-    // #325). Firefox, driven by Playwright, never claims a second page
+    // One page per context, never two pages sharing one. Firefox,
+    // driven by Playwright, never claims a second page
     // opened in a context whose service worker is already active: the
     // registration reports `activated`, but that page's
     // navigator.serviceWorker.controller stays null permanently, so MSW

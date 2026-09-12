@@ -1,8 +1,7 @@
 import { NavList } from '../../components/NavList'
 
 /**
- * The /settings index (audit 0016 #93) — before this it was a lone <h1>
- * and the real settings pages were reachable only by typing their URLs.
+ * Navigation index for /settings.
  */
 export function SettingsIndex() {
   return (

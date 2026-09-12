@@ -5,7 +5,7 @@ import type { EpubSection } from '../../vendor/foliate/epub'
  * Builds a CFI for the current reading position: the section's own
  * spine-step CFI (foliate-generated) joined with a local CFI derived
  * from a Range at the first block element visible in the viewport
- * (foliate's `fromRange`, never hand-derived — FR-5). Falls back to the
+ * (foliate's `fromRange`, never hand-derived). Falls back to the
  * bare spine-step CFI if a local Range can't be formed.
  */
 export function positionCfi(section: EpubSection, doc: Document | null): string {
@@ -33,7 +33,7 @@ function wrap(step: string): string {
  * CFI joined with a local CFI for that endpoint of the user's `Range`
  * (foliate's `fromRange` on a collapsed range — never hand-derived).
  * Earlier code reused the first-visible-block position for both ends, so
- * every highlight was stored zero-length (audit 0016 #147). Falls back to
+ * every highlight was stored zero-length. Falls back to
  * a single position when the range can't be read.
  */
 export function selectionCfis(
@@ -95,7 +95,7 @@ export function progressRatio(index: number, count: number, scrollFraction: numb
  * Inverts {@link progressRatio}: given a saved book-wide percentage and the
  * section it resolves to, the scroll offset within that section (0..1).
  * Restores the reader to where the reader actually stopped, not just the
- * top of the chapter (FR-5 / audit 0016 #145). Clamped, because a CFI may
+ * top of the chapter. Clamped, because a CFI may
  * pin a different section than a stale percentage implies.
  */
 export function sectionScrollFraction(percentage: number, index: number, count: number): number {

@@ -67,7 +67,7 @@ export function removeWorkFromCollection(
 }
 
 /**
- * Collections list hook using TanStack Query useQuery (FR-1).
+ * Collections list hook using TanStack Query useQuery.
  * Cache key: ['collections'].
  */
 export function useCollections() {
@@ -78,7 +78,7 @@ export function useCollections() {
 }
 
 /**
- * Single collection detail hook using TanStack Query useQuery (FR-2).
+ * Single collection detail hook using TanStack Query useQuery.
  * Cache key: ['collection', id].
  */
 export function useCollection(id: string | undefined) {
@@ -90,7 +90,7 @@ export function useCollection(id: string | undefined) {
 }
 
 /**
- * Mutation for creating a new collection (FR-1, FR-4).
+ * Mutation for creating a new collection.
  * Invalidates ['collections'] on success.
  */
 export function useCreateCollection() {
@@ -104,7 +104,7 @@ export function useCreateCollection() {
 }
 
 /**
- * Mutation for renaming a collection (FR-2).
+ * Mutation for renaming a collection.
  * Invalidates ['collections'] and ['collection', id] on success.
  */
 export function useRenameCollection() {
@@ -120,7 +120,7 @@ export function useRenameCollection() {
 }
 
 /**
- * Mutation for deleting a collection (FR-3).
+ * Mutation for deleting a collection.
  * Invalidates ['collections'] and removes ['collection', id] on success.
  */
 export function useDeleteCollection() {
@@ -136,7 +136,7 @@ export function useDeleteCollection() {
 }
 
 /**
- * Mutation for adding a work to a collection (FR-4).
+ * Mutation for adding a work to a collection.
  * Invalidates ['collections'], ['collection', collectionId], ['work', workId], and ['library'].
  */
 export function useAddWorkToCollection() {
@@ -154,7 +154,7 @@ export function useAddWorkToCollection() {
 }
 
 /**
- * Mutation for removing a work from a collection (FR-2, FR-4).
+ * Mutation for removing a work from a collection.
  * Invalidates ['collections'], ['collection', collectionId], ['work', workId], and ['library'].
  */
 export function useRemoveWorkFromCollection() {

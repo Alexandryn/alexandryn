@@ -16,7 +16,7 @@ export interface SegmentedControlProps extends Omit<
   'aria-label': string
 }
 
-/** Radix RadioGroup, styled as segments (FR-1) — roving-tabindex arrow-key navigation for free. */
+/** Radix RadioGroup, styled as segments — roving-tabindex arrow-key navigation for free. */
 export const SegmentedControl = forwardRef<
   ElementRef<typeof RadixRadioGroup.Root>,
   SegmentedControlProps
@@ -32,7 +32,7 @@ export const SegmentedControl = forwardRef<
           key={option.value}
           value={option.value}
           className={cx(
-            // min-h-11 min-w-11: 44x44 touch-target minimum (audit 0017 A-17-10) — py-4xs alone measured 19px tall
+            // min-h-11 min-w-11: 44x44 touch-target minimum — py-4xs alone measured 19px tall
             'rounded-sm px-md py-4xs min-h-11 min-w-11 flex items-center justify-center text-xs font-ui text-text-2',
             'data-[state=checked]:bg-surface data-[state=checked]:text-text data-[state=checked]:shadow-sm',
             FOCUS_RING,

@@ -11,7 +11,7 @@ function Probe() {
   return <p>{data ?? 'pending'}</p>
 }
 
-describe('AppProviders (audit 0016 #232)', () => {
+describe('AppProviders', () => {
   it('creates an isolated QueryClient per instance and renders children', async () => {
     render(
       <AppProviders>

@@ -1,6 +1,6 @@
-// The reader's data layer (frontend-reader.md). Every server value goes
-// through a TanStack Query hook; the reader's own `X-Device-Id` header is
-// generated once and kept in localStorage (FR-8).
+// The reader's data layer. Every server value goes through a TanStack Query
+// hook; the reader's own `X-Device-Id` header is generated once and kept in
+// localStorage.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -10,8 +10,8 @@ const DEVICE_ID_KEY = 'alexandryn.reader.deviceId'
 
 /**
  * A stable per-device UUID v4, created on first use and persisted in
- * localStorage (FR-8). Never displayed, never treated as identity — it
- * only satisfies `backend-reading-api.md` FR-1's required header.
+ * localStorage. Never displayed, never treated as identity — it
+ * only satisfies the reading progress API required header.
  */
 export function readerDeviceId(): string {
   try {
@@ -241,10 +241,8 @@ export function useSavePreferences() {
 
 /**
  * Fetches the reading-data export document — through the authenticated
- * HTTP layer, so the bearer token and X-Library-Id are sent (audit 0016
- * #99) — and hands it to the browser as a file download
- * (reading-data-export.md). Web/LAN client only; the Electron-native save
- * dialog is a later phase.
+ * HTTP layer, so the bearer token and X-Library-Id are sent — and hands it
+ * to the browser as a file download. Web/LAN client only.
  */
 export async function downloadReadingExport(): Promise<void> {
   const { blob, filename } = await getBlob('/api/v1/reading/export')
@@ -258,7 +256,7 @@ export async function downloadReadingExport(): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
-/** Mutation wrapper so the Reader can show pending/error state (audit 0016 #99). */
+/** Mutation wrapper so the Reader can show pending/error state. */
 export function useReadingExport() {
   return useMutation({ mutationFn: downloadReadingExport })
 }

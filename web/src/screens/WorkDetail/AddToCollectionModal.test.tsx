@@ -45,7 +45,7 @@ function renderModal(props?: { onOpenChange?: (open: boolean) => void }) {
   return { ...result, onOpenChange }
 }
 
-describe('AddToCollectionModal (FR-4 & Reliability)', () => {
+describe('AddToCollectionModal', () => {
   it('renders existing collections and checks active memberships', async () => {
     server.use(
       http.get('*/api/v1/collections', () =>

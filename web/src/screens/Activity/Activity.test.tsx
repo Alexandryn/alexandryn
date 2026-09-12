@@ -65,7 +65,7 @@ const mockEvents: SystemEvent[] = [
   },
 ]
 
-describe('ActivityScreen (Phase 15, frontend-activity-screen.md)', () => {
+describe('ActivityScreen', () => {
   it('renders empty state when there are no events', async () => {
     server.use(http.get('*/api/v1/activity/events', () => HttpResponse.json({ events: [] })))
 
@@ -164,7 +164,7 @@ describe('ActivityScreen (Phase 15, frontend-activity-screen.md)', () => {
     expect(clearCalled).toBe(true)
   })
 
-  // audit 0016 #300: the active-download control cancels (it does not
+  // The active-download control cancels (it does not
   // pause), and cancelling an in-progress download needs confirmation.
   it('confirms before cancelling an in-progress download', async () => {
     let cancelledId = ''
@@ -204,7 +204,7 @@ describe('ActivityScreen (Phase 15, frontend-activity-screen.md)', () => {
 
     renderWithProviders(<Sidebar />, { routerEntries: ['/library'] })
 
-    // Indicator badge dot exists with accessible name (FR-2, FR-3)
+    // Indicator badge dot exists with accessible name
     expect(await screen.findByLabelText('Activity — action required')).toBeInTheDocument()
   })
 

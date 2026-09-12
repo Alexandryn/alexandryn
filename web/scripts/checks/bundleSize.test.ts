@@ -5,9 +5,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { BUNDLE_SIZE_BUDGET_BYTES, measureJsGzipBytes } from './bundleSize.ts'
 
-// frontend-tooling.md FR-4: 250 KiB gzipped budget for the initial JS
-// payload. Only .js assets count — CSS/HTML/images aren't part of this
-// budget.
+// 250 KiB gzipped budget for the initial JS payload.
+// Only .js assets count — CSS/HTML/images aren't part of this budget.
 
 let dir: string | undefined
 

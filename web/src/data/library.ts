@@ -81,7 +81,7 @@ export function fetchLibraryPage(
 }
 
 /**
- * Cursor-paginated library hook using TanStack Query's useInfiniteQuery (FR-1, FR-3).
+ * Cursor-paginated library hook using TanStack Query's useInfiniteQuery.
  * Query key follows ['library', { q, filter, sort }] cache convention.
  */
 export function useLibrary(params: {
@@ -98,8 +98,7 @@ export function useLibrary(params: {
   return useInfiniteQuery({
     queryKey: ['library', { q, filter, sort, limit }],
     // A superseded search (the user kept typing) or an unmount aborts the
-    // in-flight request rather than downloading a response nobody will see
-    // (audit 0016 #166).
+    // in-flight request rather than downloading a response nobody will see.
     queryFn: ({ pageParam, signal }) =>
       fetchLibraryPage(
         {
@@ -121,7 +120,7 @@ export function fetchWorkDetail(id: string, signal?: AbortSignal): Promise<WorkD
 }
 
 /**
- * Work detail hook using TanStack Query's useQuery (FR-5).
+ * Work detail hook using TanStack Query's useQuery.
  * Query key follows ['work', id] cache convention.
  */
 export function useWork(id: string | undefined) {

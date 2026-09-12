@@ -22,7 +22,7 @@ function renderScreen() {
   )
 }
 
-describe('ForgotPasswordScreen (audit 0016 #161)', () => {
+describe('ForgotPasswordScreen', () => {
   it('shows a neutral confirmation regardless of whether the email is registered', async () => {
     let requestedEmail = ''
     server.use(

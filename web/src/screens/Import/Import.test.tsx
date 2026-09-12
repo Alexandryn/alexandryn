@@ -41,12 +41,12 @@ const mockFailedCandidate = {
   updatedAt: '2026-09-01T12:00:00Z',
 }
 
-describe('Import Screen (frontend-import-confirmation.md)', () => {
+describe('Import Screen', () => {
   beforeEach(() => {
     localStorage.clear()
   })
 
-  it('renders pending candidates with extracted info, match confidence badge, and actions (FR-2, FR-3)', async () => {
+  it('renders pending candidates with extracted info, match confidence badge, and actions', async () => {
     server.use(
       http.get('*/api/v1/import/candidates', ({ request }) => {
         const url = new URL(request.url)
@@ -81,7 +81,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expectNoAxeViolations(await runAxe(container))
   })
 
-  it('shows in-flight processing banner when candidates are queued (FR-6)', async () => {
+  it('shows in-flight processing banner when candidates are queued', async () => {
     server.use(
       http.get('*/api/v1/import/candidates', ({ request }) => {
         const url = new URL(request.url)
@@ -103,7 +103,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0)
   })
 
-  it('confirms match and removes card on success (FR-3, FR-4)', async () => {
+  it('confirms match and removes card on success', async () => {
     let confirmCalled = false
     let capturedBody: unknown = null
 
@@ -143,7 +143,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     })
   })
 
-  it('rejects candidate and removes card on success (FR-3, FR-4)', async () => {
+  it('rejects candidate and removes card on success', async () => {
     let rejectCalled = false
 
     server.use(
@@ -171,7 +171,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     const rejectBtn = await screen.findByRole('button', { name: 'Reject' })
     await user.click(rejectBtn)
 
-    // Confirm dialog (audit 0016 #241)
+    // Confirm dialog
     const confirmBtn = await screen.findByRole('button', { name: 'Reject candidate' })
     await user.click(confirmBtn)
 
@@ -181,7 +181,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     })
   })
 
-  it('canceling rejection modal keeps candidate intact (audit 0016 #241)', async () => {
+  it('canceling rejection modal keeps candidate intact', async () => {
     let rejectCalled = false
 
     server.use(
@@ -216,7 +216,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(screen.getAllByText('Dune').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders failed candidates section and dismisses to localStorage (FR-5)', async () => {
+  it('renders failed candidates section and dismisses to localStorage', async () => {
     server.use(
       http.get('*/api/v1/import/candidates', ({ request }) => {
         const url = new URL(request.url)
@@ -250,7 +250,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(stored).toContain('cand-failed-1')
   })
 
-  it('bounds dismissed import failure IDs in localStorage to at most 100 entries (audit 0016 #229)', async () => {
+  it('bounds dismissed import failure IDs in localStorage to at most 100 entries', async () => {
     const existing = Array.from({ length: 100 }, (_, i) => `old-failed-${i}`)
     localStorage.setItem('alexandryn_dismissed_import_failures', JSON.stringify(existing))
 
@@ -281,7 +281,7 @@ describe('Import Screen (frontend-import-confirmation.md)', () => {
     expect(stored).not.toContain('old-failed-0')
   })
 
-  // audit 0016 #171: a candidate cover is extracted from an untrusted
+  // A candidate cover is extracted from an untrusted
   // book file; a disallowed data: URI (svg, html, …) must not reach an
   // <img src>, an allowed raster one may.
   it('only renders a candidate cover for an allowed image data URI', async () => {

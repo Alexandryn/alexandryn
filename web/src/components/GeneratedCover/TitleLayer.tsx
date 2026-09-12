@@ -5,7 +5,7 @@ export interface TitleLayerProps extends Omit<HTMLAttributes<HTMLParagraphElemen
   title: string
 }
 
-/** Pure — wraps and clamps rather than overflowing (FR-1). Newsreader token per frontend-design-tokens.md. */
+/** Pure — wraps and clamps rather than overflowing. Newsreader token typography. */
 export function TitleLayer({ title, className, ...rest }: TitleLayerProps) {
   return (
     <p

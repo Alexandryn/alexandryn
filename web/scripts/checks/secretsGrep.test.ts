@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findSecrets } from './secretsGrep.ts'
 
-// frontend-tooling.md Security considerations: "grep for common
-// secret-shaped patterns in web/dist output," a build-time CI step.
+// Security verification: grep for common secret-shaped patterns in web/dist
+// output, a build-time CI step.
 
 let dir: string | undefined
 

@@ -5,7 +5,7 @@ export type VisuallyHiddenProps = ComponentPropsWithoutRef<typeof RadixVisuallyH
 
 /**
  * Screen-reader-only text: present in the accessibility tree, never
- * rendered visually. Wraps Radix's own implementation (FR-1) — its inline
+ * rendered visually. Wraps Radix's own implementation — its inline
  * style is Radix's internal clip-rect technique, not a token-styling
  * exception, and callers never author styles on this component themselves.
  */

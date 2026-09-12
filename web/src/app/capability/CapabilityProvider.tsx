@@ -7,10 +7,9 @@ export function CapabilityProvider({ children }: { children: ReactNode }) {
   const { data, isError, refetch } = useQuery({ queryKey: ['bootstrap'], queryFn: fetchBootstrap })
 
   // Fail-closed: neither `error` nor `loading` ever grants a capability,
-  // so host-only content still never renders optimistically. The only
-  // change from a stuck spinner is that a failed fetch is now a
-  // recoverable `error` with `retry` (audit 0016 #92).
-  // Memoize value and can closure to avoid re-rendering consumers (audit 0016 #216).
+  // so host-only content still never renders optimistically. A failed fetch
+  // surfaces a recoverable `error` with `retry`.
+  // Memoize value and can closure to avoid re-rendering consumers.
   const value = useMemo<CapabilityState>(() => {
     if (data !== undefined) {
       return { status: 'granted', can: (capability) => data.capabilities[capability] === true }

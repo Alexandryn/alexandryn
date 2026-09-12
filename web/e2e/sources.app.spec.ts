@@ -5,7 +5,7 @@ function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }
 
-test.describe('Phase 08: Sources E2E Walkthrough (FR-1 to FR-7)', () => {
+test.describe('Sources E2E Walkthrough', () => {
   test('sources index screen, cards, and axe a11y audit', async ({ page }) => {
     await page.goto('/sources')
 

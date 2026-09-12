@@ -54,7 +54,7 @@ export function MfaSetupModal({ isOpen, onClose, onSuccess }: MfaSetupModalProps
       }}
       title="Set up two-factor authentication"
       description="Protect your account with an authenticator app (Google Authenticator, Authy, 1Password, and similar)."
-      contentClassName="max-w-[32rem]" // --spacing-lg collision, audit 0017 A-17-08
+      contentClassName="max-w-[32rem]" // --spacing-lg collision
     >
       {bannerMessage && (
         <div className="mb-md mt-md rounded border border-error bg-surface p-sm text-sm text-error" role="alert">

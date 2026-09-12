@@ -13,9 +13,8 @@ export interface RequireCapabilityProps {
 
 /**
  * Wraps a host-only route's content. While the capability value is
- * loading it renders the loading state, never the children — the
- * illegal-transition rule from architecture-frontend.md (host-only
- * content must not render optimistically then disappear).
+ * loading it renders the loading state, never the children — host-only
+ * content must not render optimistically then disappear.
  */
 export function RequireCapability({ capability, children, loading }: RequireCapabilityProps) {
   const state = useCapability()
@@ -34,8 +33,7 @@ export function RequireCapability({ capability, children, loading }: RequireCapa
     )
   }
 
-  // Unreachable this phase (the mock grants everything); the branch keeps
-  // the shape ready for phase 12/13's real denied state.
+  // Denied capability branch.
   if (!state.can(capability)) {
     return (
       <div className="p-3xl">

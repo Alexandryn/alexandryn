@@ -41,7 +41,7 @@ const mockDetail = {
   ],
 }
 
-describe('WorkDetail Screen (FR-5)', () => {
+describe('WorkDetail Screen', () => {
   it('renders work metadata, owned editions, and collections', async () => {
     server.use(
       http.get('*/api/v1/works/:id', () => HttpResponse.json(mockDetail)),

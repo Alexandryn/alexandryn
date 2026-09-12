@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { server } from '../mocks/node'
 import { deleteRequest, getJson, patchJson, postJson, putJson } from './http'
 
-describe('http client AbortSignal forwarding (audit 0016 #166)', () => {
+describe('http client AbortSignal forwarding', () => {
   afterEach(() => localStorage.clear())
 
   it('aborts an in-flight GET when the signal fires', async () => {
@@ -42,7 +42,7 @@ describe('http client AbortSignal forwarding (audit 0016 #166)', () => {
     await expect(getJson<{ value: number }>('/api/v1/fine')).resolves.toEqual({ value: 42 })
   })
 
-  it('handles 200 response with empty body without throwing JSON parse error (audit 0016 #230)', async () => {
+  it('handles 200 response with empty body without throwing JSON parse error', async () => {
     server.use(http.delete('*/api/v1/empty-200', () => new Response('', { status: 200 })))
     await expect(deleteRequest('/api/v1/empty-200')).resolves.toBeUndefined()
   })

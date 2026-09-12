@@ -1,6 +1,6 @@
 /**
  * Maps each design-reference custom-property name to a semantic Tailwind
- * token name (frontend-design-tokens.md FR-1: "semantic names — never
+ * token name ("semantic names — never
  * raw color names"). Fixed by inspection of what each variable is
  * actually used for across all four canvases, not guessed from the
  * variable name alone.

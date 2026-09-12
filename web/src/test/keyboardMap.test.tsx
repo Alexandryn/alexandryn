@@ -10,9 +10,8 @@ import { Slider } from '../components/Slider/Slider'
 import { Toast, ToastViewport } from '../components/Toast/Toast'
 import { Toggle } from '../components/Toggle/Toggle'
 
-// Holds web/docs/keyboard-map.md to the code (frontend-accessibility.md
-// FR-1 / Acceptance criterion 2): one representative primitive per key
-// category, keyboard only — never a pointer event.
+// Holds web/docs/keyboard-map.md to the code:
+// one representative primitive per key category, keyboard only — never a pointer event.
 
 describe('keyboard map — Tab / Shift+Tab move focus in DOM order', () => {
   it('walks forward and backward through interactive elements', async () => {

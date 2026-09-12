@@ -1,13 +1,12 @@
 /* Hand-authored global utility classes.
  *
  * Like a11y.css, these are NOT design tokens
- * (frontend-design-tokens.md's categories), so they live here rather
+ * so they live here rather
  * than in the generated theme.css / tokens.css that `npm run
  * tokens:generate` overwrites. Loaded from main.tsx after theme.css.
  */
 
-/* Off-screen layout/paint skip for long virtual/scroll regions (audit
- * 0016 #222). `contain-intrinsic-size` is an estimate the browser
+/* Off-screen layout/paint skip for long virtual/scroll regions. `contain-intrinsic-size` is an estimate the browser
  * replaces with the real measured size once a region has been rendered
  * once; `auto` keeps that remembered size while the region is off-screen
  * so the scrollbar does not drift. */
@@ -17,7 +16,7 @@
 }
 
 /* Same technique as .cv-auto, sized for WorkGrid's list-view row instead
- * of its grid-view card (audit 0017 A-17-04). Deliberately a separate
+ * of its grid-view card. Deliberately a separate
  * class, not a shared one with a variable size: the 280px estimate above
  * is tuned for the grid card's cover+title+author block, and reusing it
  * here would make the browser reserve 280px for every off-screen list

@@ -3,10 +3,9 @@ import { ErrorState } from '../components/ErrorState'
 import { ApiError } from '../data/http'
 
 /**
- * The errorElement for the shell's routed content (frontend-shell-and-
- * routing.md FR-5): a render error or a thrown API error surfaces here,
- * inside the shell, instead of a blank page or React's error overlay. An
- * ApiError still shows its correlation ID (FR-7).
+ * The errorElement for the shell's routed content: a render error or a
+ * thrown API error surfaces here, inside the shell, instead of a blank page
+ * or React's error overlay. An ApiError still shows its correlation ID.
  */
 export function RouteError() {
   const error = useRouteError()

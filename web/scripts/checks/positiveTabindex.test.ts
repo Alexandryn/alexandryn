@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findPositiveTabindex } from './positiveTabindex.ts'
 
-// frontend-accessibility.md FR-2 / Acceptance criterion 3: no positive
-// tabindex anywhere, proven by a grep-based check.
+// Focus order verification: no positive tabindex anywhere, proven by a
+// grep-based check.
 
 let dir: string | undefined
 afterEach(() => {

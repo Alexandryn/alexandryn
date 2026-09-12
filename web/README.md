@@ -1,12 +1,6 @@
 # Alexandryn — frontend
 
-React + TypeScript + Tailwind, built with Vite. See
-[`.claude/specs/`](../.claude/specs/) — `frontend-tooling.md`,
-`frontend-design-tokens.md`, `frontend-component-primitives.md`,
-`frontend-generated-covers.md`, `frontend-shell-and-routing.md`,
-`frontend-accessibility.md` — and the governing
-[`architecture-frontend.md`](../.claude/specs/architecture-frontend.md)
-for what this app actually is and why each tool below was chosen.
+React + TypeScript + Tailwind, built with Vite. Alexandryn web client.
 
 ## Commands
 

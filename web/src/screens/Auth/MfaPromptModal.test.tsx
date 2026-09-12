@@ -10,9 +10,8 @@ function wrap(ui: ReactNode) {
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
 
-// audit 0016 #97: the MFA prompt was a hand-rolled <div> overlay — no
-// dialog role, no focus trap, no Escape, no focus return, no OTP autofill
-// hints. It is now built on the shared Radix Modal.
+// The MFA prompt modal is built on the shared Radix Modal (dialog role,
+// focus trap, Escape key handling, focus return, and OTP autofill hints).
 describe('MfaPromptModal accessibility', () => {
   it('is an accessible dialog with an accessible name', () => {
     wrap(<MfaPromptModal mfaTicket="t" onSuccess={vi.fn()} onCancel={vi.fn()} />)

@@ -5,8 +5,8 @@ import { mergeCanvasProperties, type MergedProperty } from './mergeCanvasPropert
 import { countEmValues, countPxValues, parseRootCustomProperties } from './parseCanvas.ts'
 
 // Thresholds are a documented, fixed rule, not tuned per category to hit
-// a "nicer-looking" token count — frontend-design-tokens.md FR-4 forbids
-// invented values, and an ad hoc threshold-per-category would be the
+// a "nicer-looking" token count — invention of values is forbidden, and
+// an ad hoc threshold-per-category would be the
 // same failure mode one step removed. 15 for px-based properties
 // (radius, spacing) — high enough to exclude clear one-off noise (the
 // design reference is a hand-tuned prototype, not a systematic grid;

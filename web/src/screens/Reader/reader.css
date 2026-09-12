@@ -1,5 +1,5 @@
 /*
- * Reader chrome + content theming (frontend-reader.md). The three
+ * Reader chrome + content theming. The three
  * reading themes match the design reference's own RTHEMES palette
  * (Alexandryn-Web.dc.html); they live here rather than in a .tsx file
  * because they are literal colour values, not design tokens.

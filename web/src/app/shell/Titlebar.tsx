@@ -6,9 +6,8 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { LibrarySwitcher } from '../../screens/Libraries/LibrarySwitcher'
 
 /**
- * The persistent top bar (frontend-shell-and-routing.md FR-3): the
- * wordmark, library switcher, and the global search affordance. A real <header> landmark
- * (constitution §7).
+ * The persistent top bar: the wordmark, library switcher, and the global
+ * search affordance. A real <header> landmark.
  */
 export function Titlebar() {
   const navigate = useNavigate()

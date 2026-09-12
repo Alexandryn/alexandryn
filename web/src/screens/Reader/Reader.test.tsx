@@ -82,13 +82,13 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-describe('Reader (frontend-reader.md)', () => {
+describe('Reader', () => {
   it('renders the chrome and a sandboxed iframe that never allows scripts', async () => {
     renderReader()
 
     expect(await screen.findByRole('link', { name: '← Library' })).toBeInTheDocument()
     const frame = await screen.findByTitle(/reading area/i)
-    // FR-1: sandbox is exactly allow-same-origin — never allow-scripts.
+    // Sandbox is exactly allow-same-origin — never allow-scripts.
     expect(frame.getAttribute('sandbox')).toBe('allow-same-origin')
     expect(frame.getAttribute('sandbox')).not.toContain('allow-scripts')
   })

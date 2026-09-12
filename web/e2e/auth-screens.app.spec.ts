@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 
 // Tier 1 axe coverage for the public, unauthenticated auth screens
 // (routes.tsx renders these outside RequireAuth, so no MSW auth-state
-// setup is needed — see the audit note in Phase 17's coverage sweep).
+// setup is needed).
 function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }

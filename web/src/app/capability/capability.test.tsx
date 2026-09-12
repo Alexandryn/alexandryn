@@ -34,10 +34,8 @@ describe('useCapability', () => {
   })
 
   // Fail-closed: a failed bootstrap fetch must never degrade to an
-  // optimistic `granted` (audit 0004, F26 / T5 — the load-bearing
-  // security property of architecture-frontend.md FR-3). It now surfaces
-  // a recoverable error instead of an eternal spinner (audit 0016 #92),
-  // but host-only content still never renders.
+  // optimistic `granted`. It surfaces a recoverable error instead of
+  // an eternal spinner, but host-only content still never renders.
   it('shows a recoverable error when the bootstrap fetch fails — never optimistic granted', async () => {
     server.use(http.get('*/api/bootstrap', () => HttpResponse.error()))
 

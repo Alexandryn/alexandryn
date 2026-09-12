@@ -1,15 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { walkFilesByExtension } from './walkFiles.ts'
 
-// frontend-accessibility.md FR-2: focus order follows DOM order — a
-// positive tabindex reorders it and is never allowed. `tabIndex={-1}`
-// (remove from the sequence) and `{0}` (keep in natural order) are fine.
+// Focus order follows DOM order — a positive tabindex reorders it and is
+// never allowed. `tabIndex={-1}` (remove from the sequence) and `{0}` (keep in
+// natural order) are fine.
 //
 // `eslint-plugin-jsx-a11y/tabindex-no-positive` is enabled and catches a
 // literal `tabIndex={2}`, but not a conditional like `tabIndex={x ? 2 : 0}`
-// and not `.html` attributes. This grep covers both — the spec's
-// Acceptance criterion 3 asks for a grep-based check specifically — and
-// runs over all of src plus e2e.
+// and not `.html` attributes. This grep covers both and runs over all of src
+// plus e2e.
 const SCANNABLE = new Set(['.ts', '.tsx', '.html'])
 
 const PATTERNS: RegExp[] = [
