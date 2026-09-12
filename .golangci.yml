@@ -1,8 +1,6 @@
 version: "2"
 
-# Rule tuning is explicitly deferred (architecture-backend.md FR-7, ADR
-# 0018) — this file only turns the stage on with golangci-lint's own
-# default linter set. The import-boundary rule (FR-2/FR-3) is not here;
-# it runs separately via scripts/check-import-boundaries.sh (D0).
+# Uses default linter set. Package import boundaries are verified
+# separately via scripts/check-import-boundaries.sh.
 run:
   timeout: 5m

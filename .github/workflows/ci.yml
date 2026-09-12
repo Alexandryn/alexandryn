@@ -5,40 +5,23 @@ on:
   push:
     branches: [main]
 
-# Least privilege for GITHUB_TOKEN (audit 0016 #123): this workflow only
-# reads the repo and passes artifacts between its own jobs — it never
-# writes contents, comments, checks, or packages. Declared here so a
-# future step that needs more must ask for it explicitly, and every job
-# below restates `contents: read` so an added job does not silently
-# inherit a wider default.
+# Least privilege for GITHUB_TOKEN: this workflow only reads the repository
+# and passes artifacts between its own jobs. Declared here so any step needing
+# more must declare it explicitly, and every job restates `contents: read`.
 permissions:
   contents: read
 
-# Cancel stale runs on the same PR or branch to free runner capacity
-# (audit 0016 #200). `cancel-in-progress` only applies to PR runs —
-# a push to `main` is always run to completion.
+# Cancel stale runs on the same PR to free runner capacity. Push to main
+# is always run to completion.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# backend-test-harness.md FR-8 fixes nine ordered stages for this
-# workflow. All nine are real as of this workflow (phase 04): stage 1
-# (web/ build, ADR 0008) runs in its own frontend job below; stage 6 is
-# a named no-op (architecture-contracts.md FR-3's tool isn't chosen or
-# built yet — a visible placeholder, not a silent gap); stage 9 is the
-# real container-target test.
-#
-# frontend/backend/desktop are separate jobs (D2, tasks/plan-phase04.md;
-# D5, tasks/plan-phase05.md), not one job with every toolchain's steps:
-# each uses its own native GitHub Actions setup/cache action without
-# cross-contaminating the others' install/cache surface, and each job's
-# own red/green signal stays legible to a PR touching only one side.
-# `backend` declares `needs: frontend` and downloads its `web/dist`
-# artifact so the web-before-go-build ordering FR-8/ADR 0008 require is a
-# real dependency between two CI jobs. `desktop` (phase 05) declares
-# `needs: [frontend, backend]` — the workspace `npm ci` and a real
-# server binary for the _electron lifecycle tests — and runs its
-# Electron E2E behind xvfb (architecture-testing.md FR-2).
+# Frontend, backend, and desktop are split into separate jobs to allow each
+# toolchain to use native caching actions and maintain legible test signals.
+# - backend depends on frontend to embed web/dist in the server binary.
+# - desktop depends on frontend and backend to test against the real server binary.
+
 
 jobs:
   frontend:
@@ -49,7 +32,7 @@ jobs:
       contents: read
     defaults:
       run:
-        # web/ is an npm workspace member (ADR 0008, package.json at repo
+        # web/ is an npm workspace member (package.json at repo
         # root). Every `npm run` script below still resolves web/package.json
         # from here; only `npm ci` (below) must run at the workspace root.
         working-directory: web
@@ -66,11 +49,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: npm ci
 
-      # frontend-design-tokens.md FR-2: regenerate src/theme.css,
-      # src/tokens.css and src/breakpoints.ts from .design-reference/*.dc.html,
-      # then fail if that produces a diff — the committed files must always
-      # match what the design reference actually says, never hand-edited or
-      # left stale after a canvas update.
+      # Verify generated design tokens match the committed files.
       - name: Design tokens up to date
         run: |
           npm run tokens:generate
@@ -79,54 +58,41 @@ jobs:
       - name: Design token contrast (WCAG AA)
         run: npm run tokens:check-contrast
 
-      # frontend-shell-and-routing.md FR-6 tier (a): mock fixtures for
-      # contract-covered endpoints are generated from api/openapi.yaml,
-      # never hand-written — fail if the checked-in output is stale.
+      # Verify generated mock fixtures match the OpenAPI contract.
       - name: Mock fixtures up to date
         run: |
           npm run mocks:gen-fixtures
           git diff --exit-code -- src/mocks/fixtures/generated
 
-      # Stage 1 — web/ build (ADR 0008, frontend-tooling.md FR-1/FR-6),
-      # producing web/dist, the exact path/contract go:embed depends on.
+      # Build web distribution assets embedded in the backend server binary.
       - name: Build
         run: npm run build
 
       - name: Lint
         run: npm run lint
 
-      # No separate Typecheck step: npm run build (tsc -b && vite build,
-      # above) already runs the identical tsc -b and blocks on it —
-      # a second invocation here was pure redundancy, code review found.
       - name: Unit/component tests
         run: npm test
 
       - name: Storybook build
         run: npm run build-storybook
 
-      # frontend-component-primitives.md FR-4/Acceptance criteria: no
-      # primitive's source contains a raw hex/px value outside the token
-      # set — interim grep-based check until a lint rule exists.
+      # Ensure UI primitives use token-based CSS variables rather than raw values.
       - name: Token-only styling check
         run: npm run check:token-styling
 
-      # frontend-accessibility.md FR-2 — no positive tabindex reorders
-      # focus out of DOM order.
+      # Accessibility: ensure no positive tabindex disrupts natural focus order.
       - name: Accessibility — no positive tabindex
         run: npm run check:a11y-tabindex
 
-      # frontend-accessibility.md FR-3 — screen-reader-only text uses
-      # <VisuallyHidden> / sr-only, never display:none or a hand-rolled
-      # clip-rect.
+      # Accessibility: ensure hidden text uses VisuallyHidden or sr-only styling.
       - name: Accessibility — no hand-rolled hidden text
         run: npm run check:a11y-hidden-text
 
       - name: Bundle-size check
         run: npm run check:bundle-size
 
-      # audit 0016 #164: no @radix-ui/* package split across versions —
-      # they share internal helpers, so a split doubles that code in the
-      # bundle.
+      # Ensure all @radix-ui/* packages resolve to single versions to prevent code duplication.
       - name: Radix version-dedup check
         run: npm run check:radix-dedup
 
@@ -137,46 +103,17 @@ jobs:
         run: npm run check:dist-msw
 
       - name: Dependency audit
-        # audit 0016 #207: catch moderate advisories, not just high.
         run: npm audit --audit-level=moderate
 
-      # @playwright/test suites — a real CI dependency (D3,
-      # tasks/plan-p04-tier3/-tier4), not the Playwright MCP (which is
-      # interactive-only, not CI-capable). Two projects: `benchmark`
-      # (frontend-generated-covers.md FR-4's cover timing) and `app`
-      # (frontend-shell-and-routing.md's E2E walkthrough + reflow, plus
-      # frontend-accessibility.md FR-4's real-browser @axe-core/playwright).
-      # Placed after the checks above, not before: GitHub Actions stops a
-      # job on first step failure, and the benchmark asserts tight
-      # timing/frame-rate budgets on a shared runner — letting it run
-      # first risked an intermittent, unrelated-looking slowdown here
-      # silently skipping the secrets/MSW/audit checks for that run.
-      # Phase 17 (accessibility-and-qa/README.md, Gate 0 G0-4) added the
-      # app-firefox/app-webkit/app-mobile-safari projects, which need the
-      # Firefox and WebKit engines too — chromium alone is no longer enough.
+      # Install Playwright browser binaries and dependencies.
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium firefox webkit
 
-      # One invocation, one worker (playwright.config.ts): none of the
-      # benchmark/app/app-firefox/app-webkit/app-mobile-chrome/
-      # app-mobile-safari/gallery projects run concurrently, so the
-      # benchmark's tight initial-paint budget isn't starved by another
-      # browser. CI retries cover a transient slow cold-start frame
-      # without weakening the budget.
-      #
-      # The `gallery` project is frontend-accessibility.md FR-4's
-      # real-browser @axe-core/playwright scan of every primitive —
-      # distinct from the lint step above (eslint-plugin-jsx-a11y,
-      # write-time/structural) and from the per-primitive jsdom axe tests
-      # in `npm test` (no layout engine). The app-* projects repeat the same
-      # `.app.spec.ts` / `pairing.spec.ts` suite across engines and mobile
-      # viewports (Phase 17 G0-4) — all are required.
+      # End-to-end tests, axe-core accessibility checks, and cover rendering benchmarks.
       - name: Playwright — E2E, accessibility and cover benchmark
         run: npx playwright test
 
-      # Trace/screenshot on failure only (playwright.config.ts, audit 0017
-      # #325) — uploaded so a Firefox/WebKit-only failure that can't be
-      # reproduced in a local dev sandbox is still debuggable from here.
+      # Upload trace and screenshot artifacts on failure for debugging.
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -202,7 +139,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          # audit 0016 #259: use a non-trivial password. This credential
+          # Use a non-trivial password. This credential
           # is only reachable within the job's ephemeral network — it is
           # not a deployed secret — but a non-trivial password is
           # defence-in-depth against accidental exposure and consistent
@@ -230,23 +167,14 @@ jobs:
           go-version-file: go.mod
 
       # Stage 2 — go build ./cmd/server and ./cmd/pg-supervisor
-      # (architecture-testing.md FR-8).
       - name: Build
         run: go build ./...
 
-      # The `desktop` job (phase 05) needs a real server binary at a
-      # fixed path to spawn under @playwright/test's _electron harness
-      # (desktop-host-process-model.md FR-1's dev path resolves
-      # <root>/bin/alexandryn-server). Built here so the Electron E2E
-      # runs against a genuine binary, not a stub.
+      # Build real server binary for desktop lifecycle tests.
       - name: Build server binary for the desktop job
         run: |
           CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
-          # audit 0016 #205: the desktop job downloads and executes this
-          # binary. Record a checksum here so that job verifies it got
-          # exactly what this job built, not a substituted artifact. The
-          # path is recorded bare (cd into bin/) so `sha256sum --check`
-          # resolves it from the desktop job's own `working-directory: bin`.
+          # Record checksum to verify the desktop job executes the exact artifact built here.
           ( cd bin && sha256sum alexandryn-server > alexandryn-server.sha256 )
 
       - name: Upload server binary
@@ -257,14 +185,10 @@ jobs:
             bin/alexandryn-server
             bin/alexandryn-server.sha256
 
-      # Stage 3 — go vet and lint, including the import-boundary check
-      # (architecture-backend.md FR-3, FR-7; ADR 0018).
       - name: Vet
         run: go vet ./...
 
-      # audit 0016 #304: gofmt drift was not caught by golangci-lint v2
-      # (formatters are off by default). A dedicated guard script fills
-      # the gap and self-tests before it runs on the tree.
+      # Dedicated guard script ensures gofmt formatting.
       - name: Formatter self-test
         run: CHECK_GOFMT_SELF_TEST=1 bash scripts/check-gofmt.sh
 
@@ -307,51 +231,22 @@ jobs:
       - name: golangci-lint
         run: golangci-lint run ./...
 
-      # Stage 4 — unit tests, race detector (FR-1, FR-9). No build tag:
-      # must never require PostgreSQL, Docker, or any external service.
-      # Produces the coverage profile stage 7 reports below, rather than
-      # running the suite twice.
+      # Run unit tests with race detector and generate coverage profile.
       - name: Unit tests
         run: go test -race -coverprofile=coverage.out ./...
 
-      # Stage 5 — integration tests, against the Postgres service
-      # container above (architecture-testing.md FR-3: never the
-      # application's own bundled-spawn mechanism for this fast, per-PR
-      # suite). TEST_DATABASE_URL points at the service by its Docker
-      # network alias, port 5432 in-network regardless of the mapped
-      # host port above.
-      #
-      # Note (audit 0016 #210, Constitution §12): The real bundled-Postgres
-      # spawn (cmd/server/spawn_e2e_test.go) and ACME issuance
-      # (internal/transport/http/acme_integration_test.go) require local
-      # postgresql/initdb server binaries and a Pebble test CA container.
-      # They are deliberately skipped in this fast per-PR CI workflow in
-      # favour of the Postgres service container and mocked TLS suites.
-      #
-      # Default package-level parallelism is safe here: each
-      # integration-tagged package's own TestMain (internal/testutil,
-      # internal/persistence/postgres, cmd/server) now creates and
-      # migrates its own physical database, derived from
-      # TEST_DATABASE_URL via testutil.EnsurePackageDatabase
-      # (backend-test-harness.md FR-3 Variant B, T26) — no two packages'
-      # DDL touches the same database any more, closing the collision
-      # that previously forced -p 1 (two concurrent CREATE TABLE
-      # statements colliding on Postgres's own pg_type catalog,
-      # confirmed for real during T24's R3).
+      # Integration tests against PostgreSQL service container.
+      # Each integration test creates and migrates its own isolated physical database.
       - name: Integration tests
         env:
           TEST_DATABASE_URL: postgres://postgres:ci-test-pg-alexandryn-s3cret@localhost:5432/alexandryn_test?sslmode=disable
         run: go test -race -tags=integration ./...
 
-      # Stage 6 — contract test (audit 0016 #265, architecture-contracts.md FR-3):
-      # validates actual handler JSON response structures against api/openapi.yaml
-      # using getkin/kin-openapi schema validators.
+      # Contract tests: validate HTTP handlers against api/openapi.yaml schema.
       - name: Contract tests
         run: go test -race -v ./internal/testutil/contracttest/...
 
-      # Stage 7 — coverage reporting plus a non-regression floor
-      # (ADR 0033, audit 0016 #131): fail if unit coverage drops more
-      # than 1 point below scripts/coverage-baseline.txt.
+      # Coverage reporting with non-regression floor against scripts/coverage-baseline.txt.
       - name: Coverage summary
         run: go tool cover -func=coverage.out
 
@@ -367,39 +262,17 @@ jobs:
           name: coverage
           path: coverage.out
 
-      # Stage 8 — dependency vulnerability scan (architecture-testing.md
-      # FR-5).
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
-      # Static security analysis (audit 0016 #125). Scoped to
-      # high-severity, high-confidence findings — low-noise, and the tree
-      # is clean at this bar today, so a new finding here is a real
-      # regression, not a style nit.
+      # High-severity, high-confidence static security analysis.
       - name: gosec
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -quiet -severity high -confidence high ./...
 
-      # Stage 9 — container-target test (deployment-container-packaging.md
-      # FR-10, ADR 0015). Runs in this same job rather than a separate
-      # one, per FR-10's own text ("no platform-specific spawn/orphan-
-      # prevention mechanism to exercise... fast and platform-
-      # independent"). docker-compose.yml's bundled-db profile builds
-      # the Dockerfile image and brings up backend + postgres; --wait
-      # blocks on Compose's own health status (backend's HEALTHCHECK,
-      # FR-3) rather than any test runner reaching over the network.
-      # OPEN_LIBRARY_USER_AGENT has no default by design
-      # (backend-configuration.md FR-3) — this is CI's own honest,
-      # explicit value for this run, not a placeholder pretending to be
-      # a real deployment (deployment-container-packaging.md's own
-      # 2026-08-25 amendment).
+      # Container build and healthcheck target validation.
       - name: Container-target test
         env:
           OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
-        # --wait-timeout and timeout-minutes both bound this: without
-        # them, a genuine healthcheck regression (backend or postgres
-        # never turning healthy) hangs here until GitHub's default
-        # 6-hour job timeout instead of failing fast like every other
-        # step in this job.
         timeout-minutes: 5
         run: docker compose --profile bundled-db up --build --wait --wait-timeout 120
 
@@ -407,11 +280,7 @@ jobs:
         if: always()
         run: docker compose --profile bundled-db down -v
 
-  # Phase 05 — the Electron desktop host. architecture-testing.md FR-2:
-  # @playwright/test's own `_electron` support, on a Linux runner behind a
-  # virtual display server (xvfb, D5). Needs `frontend` for the workspace
-  # `npm ci` and `backend` for a real server binary the lifecycle tests
-  # spawn (Tier 1+).
+  # Electron desktop host tests under virtual display server (xvfb).
   desktop:
     name: Desktop
     runs-on: ubuntu-latest
@@ -437,8 +306,7 @@ jobs:
           name: server-binary
           path: bin
 
-      # audit 0016 #205: verify the binary matches the checksum the
-      # backend job recorded before this job executes it.
+      # Verify server binary checksum before execution.
       - name: Verify server binary checksum
         working-directory: bin
         run: sha256sum --check alexandryn-server.sha256
@@ -449,11 +317,7 @@ jobs:
       - name: Build
         run: npm run -w @alexandryn/desktop build
 
-      # audit 0017 A-17-01: electron-vite's syncTokensPlugin (buildStart
-      # hook) copies web/src/tokens.css into this file on every build —
-      # the Build step above just did that. Fail if the committed copy
-      # was stale, the same drift-check shape the frontend job's "Design
-      # tokens up to date" step uses for the three web/ generated files.
+      # Verify boot tokens match frontend tokens without drift.
       - name: Boot tokens.css up to date
         run: git diff --exit-code -- electron/src/renderer/boot/tokens.css
 
@@ -466,8 +330,7 @@ jobs:
       - name: Unit tests
         run: npm run -w @alexandryn/desktop test
 
-      # Electron is a GUI app and needs a display to launch at all on
-      # Linux, window shown or not (architecture-testing.md FR-2).
+      # Install xvfb display server for headless Electron execution on Linux.
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
 

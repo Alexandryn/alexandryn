@@ -4,11 +4,6 @@ Thanks for looking. Before anything else, read
 [the constitution](.claude/constitution.md). It's short, and it explains why
 this project asks for things other projects don't.
 
-> **Right now:** Alexandryn is pre-alpha and the architecture is still being
-> specified. Code contributions are premature — there's nothing to build on
-> yet. Feedback on the roadmap and the specs is genuinely useful, and that's
-> where the leverage is until the foundation lands.
-
 ## Local development
 
 Storage is PostgreSQL, run locally via the Supabase CLI ([ADR
@@ -25,44 +20,26 @@ account needed, no data leaves the machine.
 
 ## Commands
 
-**No build exists yet.** There is no `go.mod`, no `package.json`, and no
-CI workflow file in this repository — every command below is what the
-approved specs require to exist, not something you can run today. Each is
-traced to the functional requirement that mandates it, so this list stays
-checkable against the spec set rather than becoming its own, separately
-maintainable claim.
-
-| Purpose | Command | Required by |
-|---|---|---|
-| Build backend | `go build ./cmd/server` (and `./cmd/pg-supervisor` on macOS) | `backend-test-harness.md` FR-8, `architecture-testing.md` FR-8 |
-| Build frontend | `npm run build` (inside `web/`, produces `web/dist`) | `frontend-tooling.md` FR-1/FR-6, must run **before** the backend build (ADR 0008's `go:embed` ordering) |
-| Build container image | `docker build .` | `deployment-container-packaging.md` FR-1 |
-| Run unit tests | `go test ./...` (no tag; MUST NOT require PostgreSQL, Docker, or any external service) | `backend-test-harness.md` FR-1 |
-| Run integration tests | `go test -tags=integration ./...`, with `TEST_DATABASE_URL` set (a base connection to an existing database — each integration-tagged package creates and uses its own physical database derived from it, `backend-test-harness.md` FR-3 Variant B) | `backend-test-harness.md` FR-2 |
-| Run the bundled-spawn suite | `go test -tags=spawn ./...` (`spawn` is the spec's own named example — *"`//go:build spawn`, or an equivalent distinct tag"* — not fixed as the literal, final tag name) | `backend-test-harness.md` FR-7 |
-| Run with the race detector | `go test -race ./...` (unit and integration) | `backend-test-harness.md` FR-9 |
-| Bring up the container target | `docker compose --profile bundled-db up --wait` | `deployment-container-packaging.md` FR-4, `backend-test-harness.md` FR-10 |
-| Run frontend unit/component tests | Vitest (exact `npm` script alias not fixed by any FR — the tool is `frontend-tooling.md` FR-7's, the invocation is an implementation choice) | `frontend-tooling.md` FR-7 |
-| Run frontend lint | ESLint, with `typescript-eslint` and `eslint-plugin-jsx-a11y` (same caveat — tool fixed, script alias not) | `frontend-tooling.md` FR-3 |
-| Dependency vulnerability scan (Go) | `govulncheck ./...` | `architecture-testing.md` FR-5, `backend-test-harness.md` FR-8 stage 8 |
-| Run backend dev server | `go run ./cmd/server [--config <path>]` | `backend-configuration.md` FR-5 |
-| Run frontend dev server | `npm run dev` (inside `web/`, Vite) | `frontend-tooling.md` FR-1; referenced by `desktop-host-process-model.md` |
-
-**Where a tool is genuinely unchosen, this list says so instead of
-guessing:**
-
-- **Backend general lint** — `golangci-lint` is referenced by name across
-  several specs (`backend-test-harness.md` Non-goals, `backend-configuration.md`
-  review `0024`) as the presumed tool, but no ADR or spec FR formally
-  selects it, and its rule configuration is explicitly deferred
-  (`architecture-testing.md` Non-goals: *"Specific lint rule
-  configuration... phase 03/04's to tune"*). No command given.
-- **Backend import-boundary lint** — the mechanism that enforces
-  `architecture-backend.md` FR-2/FR-3 (domain must not import
-  persistence/transport) is unchosen among three named candidates: *"a
-  `go/analysis` pass, a `golangci-lint` custom rule, or an interim
-  grep-based CI script"* (`architecture-backend.md` Open questions,
-  `backend-configuration.md` review `0024`). No command given.
+| Purpose | Command |
+|---|---|
+| Build backend | `go build ./cmd/server` (and `./cmd/pg-supervisor` on macOS) |
+| Build frontend | `npm run -w web build` (produces `web/dist`, must run before backend build for embedded assets) |
+| Build desktop host | `npm run -w @alexandryn/desktop build` |
+| Build container image | `docker build .` |
+| Run backend unit tests | `go test ./...` |
+| Run backend integration tests | `go test -tags=integration ./...` (requires `TEST_DATABASE_URL`) |
+| Run with race detector | `go test -race ./...` |
+| Run contract tests | `go test -race -v ./internal/testutil/contracttest/...` |
+| Bring up container target | `docker compose --profile bundled-db up --wait` |
+| Run frontend tests | `npm run -w web test` |
+| Run frontend lint | `npm run -w web lint` |
+| Run desktop tests | `npm run -w @alexandryn/desktop test` |
+| Run end-to-end tests | `npx playwright test` |
+| Dependency vulnerability scan | `govulncheck ./...` |
+| Security scanner | `gosec -quiet -severity high -confidence high ./...` |
+| Run import boundary check | `bash scripts/check-import-boundaries.sh .` |
+| Run parameterized query check | `bash scripts/check-parameterized-queries.sh .` |
+| Run user-scoped reading check | `bash scripts/check-user-scoped-reading.sh .` |
 
 ## The short version
 
