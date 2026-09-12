@@ -19,7 +19,7 @@ function createTestWrapper() {
   }
 }
 
-describe('discover data hooks & fetchers (FR-1, FR-3, FR-4)', () => {
+describe('discover data hooks & fetchers', () => {
   it('fetchDiscoverSearch serializes q, limit, and offset parameters correctly', async () => {
     let capturedUrl: URL | null = null
 

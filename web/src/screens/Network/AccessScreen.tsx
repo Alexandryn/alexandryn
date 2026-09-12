@@ -30,7 +30,7 @@ export function AccessScreen() {
   // GET /api/v1/libraries is already scoped to the caller by the server
   // (a reader gets their memberships, an admin gets all). The client must
   // not re-derive access from the access token — that is the server's
-  // decision, not something to parse out of a JWT here (audit 0016 #154).
+  // decision, not something to parse out of a JWT here.
   const accessibleLibraries = useMemo(() => librariesData?.libraries ?? [], [librariesData])
   const libraries = accessibleLibraries
   const activeLibId = getActiveLibraryId() || (libraries[0]?.id ?? null)
@@ -58,7 +58,7 @@ export function AccessScreen() {
   }
 
   return (
-    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key (audit 0017 A-17-08)
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key
     <div className="p-xl max-w-[48rem] mx-auto flex flex-col gap-2xl">
       <div className="flex items-center justify-between">
         <div>

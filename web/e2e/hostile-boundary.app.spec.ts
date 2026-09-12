@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
+test.describe('Hostile Boundary & Malformed Inputs', () => {
   test('malformed cursor query parameter in library screen', async ({ page }) => {
     await page.goto('/library?cursor=bad_cursor_payload_12345%21%40%23')
 
@@ -46,7 +46,7 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 07: discover malformed queries and long payloads do not crash renderer', async ({
+  test('discover malformed queries and long payloads do not crash renderer', async ({
     page,
   }) => {
     const hostilePayload = '!@#$%^&*()_+-=[]{}|;:",.<>?/`~ ' + 'B'.repeat(400)
@@ -56,7 +56,7 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 07: discover work detail with special character IDs renders safely', async ({
+  test('discover work detail with special character IDs renders safely', async ({
     page,
   }) => {
     await page.goto(`/discover/works/${encodeURIComponent('!@#$%^&*()_+-=[]')}`)
@@ -64,14 +64,14 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 08: non-existent source ID renders 404 error state safely', async ({ page }) => {
+  test('non-existent source ID renders 404 error state safely', async ({ page }) => {
     await page.goto('/sources/non-existent-source-id-999999')
 
     await expect(page.getByRole('alert')).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 08: malformed cursor or search params on source browse do not crash renderer', async ({
+  test('malformed cursor or search params on source browse do not crash renderer', async ({
     page,
   }) => {
     await page.goto(
@@ -82,7 +82,7 @@ test.describe('Phase 06: Hostile Boundary & Malformed Inputs (L22)', () => {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 
-  test('Phase 08: source creation dialog handles client validation for malformed URLs', async ({
+  test('source creation dialog handles client validation for malformed URLs', async ({
     page,
   }) => {
     await page.goto('/sources')

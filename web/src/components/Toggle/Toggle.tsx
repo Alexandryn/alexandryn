@@ -7,7 +7,7 @@ export interface ToggleProps extends ComponentPropsWithoutRef<typeof RadixSwitch
   label: string
 }
 
-/** Radix Switch (FR-1) — real ARIA-state-machine complexity (checked/unchecked, keyboard toggle). */
+/** Radix Switch — real ARIA-state-machine complexity (checked/unchecked, keyboard toggle). */
 export const Toggle = forwardRef<ElementRef<typeof RadixSwitch.Root>, ToggleProps>(function Toggle(
   { label, id, className, ...props },
   ref,

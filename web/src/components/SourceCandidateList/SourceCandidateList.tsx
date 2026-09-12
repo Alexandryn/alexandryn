@@ -21,7 +21,7 @@ export interface SourceCandidateListProps {
 }
 
 /**
- * SourceCandidateList (frontend-source-management.md FR-6):
+ * SourceCandidateList:
  * Renders candidate items from a source's browse or search response,
  * displaying cover art, metadata, file format badge and file size.
  */

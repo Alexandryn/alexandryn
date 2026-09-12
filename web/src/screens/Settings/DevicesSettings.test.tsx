@@ -55,8 +55,8 @@ const mockDevices = [
   },
 ]
 
-describe('DevicesSettings component tests (Phase 14)', () => {
-  it('renders active devices and filters out revoked devices (FR-1)', async () => {
+describe('DevicesSettings component tests', () => {
+  it('renders active devices and filters out revoked devices', async () => {
     const mixedDevices = [
       ...mockDevices,
       {
@@ -85,7 +85,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(screen.queryByText('Old Phone')).not.toBeInTheDocument()
   })
 
-  it('shows label, kind, last-seen, and last-synced (FR-2)', async () => {
+  it('shows label, kind, last-seen, and last-synced', async () => {
     server.use(
       http.get('*/api/v1/devices', () => HttpResponse.json({ devices: mockDevices })),
     )
@@ -103,7 +103,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(screen.getByText('Never synced')).toBeInTheDocument()
   })
 
-  it('does NOT render IP address or session-descriptor text (FR-3)', async () => {
+  it('does NOT render IP address or session-descriptor text', async () => {
     server.use(
       http.get('*/api/v1/devices', () => HttpResponse.json({ devices: mockDevices })),
     )
@@ -119,7 +119,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(screen.queryByText(/Expires in/)).not.toBeInTheDocument()
   })
 
-  it('treats zero-row response as unexpected/error state rather than normal empty state (FR-9)', async () => {
+  it('treats zero-row response as unexpected/error state rather than normal empty state', async () => {
     server.use(
       http.get('*/api/v1/devices', () => HttpResponse.json({ devices: [] })),
     )
@@ -136,7 +136,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(screen.queryByText(/you have no devices/i)).not.toBeInTheDocument()
   })
 
-  it('re-fetches on tab activation / mount (FR-1)', async () => {
+  it('re-fetches on tab activation / mount', async () => {
     let fetchCount = 0
     server.use(
       http.get('*/api/v1/devices', () => {
@@ -156,7 +156,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(fetchCount).toBe(2)
   })
 
-  it('opens confirmation dialog naming the specific device on Revoke click (FR-4, FR-6)', async () => {
+  it('opens confirmation dialog naming the specific device on Revoke click', async () => {
     const user = userEvent.setup()
     server.use(
       http.get('*/api/v1/devices', () => HttpResponse.json({ devices: mockDevices })),
@@ -178,7 +178,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     ).toBeInTheDocument()
   })
 
-  it('cancel in confirmation dialog closes dialog and sends no request (FR-6)', async () => {
+  it('cancel in confirmation dialog closes dialog and sends no request', async () => {
     const user = userEvent.setup()
     let deleteCalled = false
     server.use(
@@ -202,7 +202,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(deleteCalled).toBe(false)
   })
 
-  it('closing confirmation dialog with Escape closes it without sending request (FR-6, FR-8)', async () => {
+  it('closing confirmation dialog with Escape closes it without sending request', async () => {
     const user = userEvent.setup()
     let deleteCalled = false
     server.use(
@@ -225,7 +225,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     expect(deleteCalled).toBe(false)
   })
 
-  it('confirming revoke calls DELETE, removes row on 204, and announces success (FR-5, FR-7)', async () => {
+  it('confirming revoke calls DELETE, removes row on 204, and announces success', async () => {
     const user = userEvent.setup()
     let deletedId = ''
     server.use(
@@ -252,7 +252,7 @@ describe('DevicesSettings component tests (Phase 14)', () => {
     await waitFor(() => expect(statusRegion).toHaveTextContent('Revoked Pixel 8'))
   })
 
-  it('handles 404 / 409 error with inline message and triggers re-fetch (FR-5)', async () => {
+  it('handles 404 / 409 error with inline message and triggers re-fetch', async () => {
     const user = userEvent.setup()
     let getCount = 0
     server.use(

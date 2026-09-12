@@ -17,7 +17,7 @@ export function DevicesSettings() {
   const [announcement, setAnnouncement] = useState('')
   const liveRegionRef = useAnnouncedText<HTMLDivElement>(announcement)
 
-  // Filter out revoked devices per FR-1
+  // Filter out revoked devices
   const activeDevices = (data?.devices ?? []).filter((d) => !d.revokedAt)
 
   const handleConfirmRevoke = async () => {
@@ -36,15 +36,15 @@ export function DevicesSettings() {
           : `Failed to revoke ${deviceToRevoke.label}`
       setErrorMessage(msg)
       setAnnouncement(`Failed to revoke ${deviceToRevoke.label}`)
-      // Re-fetch on 404/409 or network error per FR-5
+      // Re-fetch on 404/409 or network error
       void refetch()
     }
   }
 
   return (
-    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key (audit 0017 A-17-08)
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collides with Tailwind's max-w-3xl key
     <div className="p-xl max-w-[48rem] mx-auto flex flex-col gap-lg">
-      {/* Polite live region for screen-reader announcements (FR-7) */}
+      {/* Polite live region for screen-reader announcements */}
       <div
         role="status"
         aria-live="polite"
@@ -54,12 +54,12 @@ export function DevicesSettings() {
 
       <div>
         <h1 className="text-lg font-semibold text-text mb-xs">Devices</h1>
-        <p className="text-xs text-text-2 max-w-[42rem]"> {/* --spacing-2xl collision, audit 0017 A-17-08 */}
+        <p className="text-xs text-text-2 max-w-[42rem]"> {/* --spacing-2xl collision */}
           Devices paired with this library. Revoking a device prevents it from syncing reading progress and annotations.
         </p>
       </div>
 
-      {/* Inline error message if revocation failed (FR-5) */}
+      {/* Inline error message if revocation failed */}
       {errorMessage && (
         <div
           role="alert"
@@ -93,7 +93,7 @@ export function DevicesSettings() {
         </div>
       )}
 
-      {/* FR-9: Zero rows treated as error/loading indicator, not empty state */}
+      {/* Zero rows treated as error/loading indicator, not empty state */}
       {!isLoading && !error && activeDevices.length === 0 && (
         <div
           role="alert"
@@ -167,7 +167,7 @@ export function DevicesSettings() {
         </div>
       )}
 
-      {/* Confirmation Dialog (FR-4, FR-6) */}
+      {/* Confirmation Dialog */}
       <RadixDialog.Root
         open={targetDevice !== null}
         onOpenChange={(open) => {
@@ -181,7 +181,7 @@ export function DevicesSettings() {
           <RadixDialog.Content
             className={cx(
               'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
-              // max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08)
+              // max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key
               'w-full max-w-[28rem] bg-surface border border-border rounded-xl p-xl shadow-xl flex flex-col gap-md',
               FOCUS_RING,
             )}

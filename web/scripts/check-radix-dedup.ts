@@ -14,7 +14,7 @@ const splits = findRadixVersionSplits(lockfilePath)
 
 if (splits.length > 0) {
   console.error(
-    'check-radix-dedup: @radix-ui packages resolve to more than one version (audit 0016 #164):',
+    'check-radix-dedup: @radix-ui packages resolve to more than one version:',
   )
   for (const s of splits) {
     console.error(`  ${s.name}: ${s.versions.join(', ')}`)

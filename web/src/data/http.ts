@@ -1,6 +1,6 @@
-// The one place the app calls fetch (frontend-shell-and-routing.md FR-2):
-// every server-derived value goes through a TanStack Query hook whose
-// queryFn calls one of these helpers, never fetch inline in a component.
+// The one place the app calls fetch: every server-derived value goes through
+// a TanStack Query hook whose queryFn calls one of these helpers, never fetch
+// inline in a component.
 
 export interface ApiErrorBody {
   code: string
@@ -8,7 +8,7 @@ export interface ApiErrorBody {
   correlationId: string
 }
 
-/** A non-2xx API response, carrying architecture-contracts.md FR-5's error shape. */
+/** A non-2xx API response, carrying standard error shape (code, message, correlationId). */
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
@@ -47,7 +47,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
     // type (a bare `w.WriteHeader(200)` with no body). An empty body
     // from a JSON resource endpoint is a malformed response and must
     // surface as an error, not a silent `undefined` that a caller then
-    // reads a field off (review follow-up to audit 0016 #230).
+    // reads a field off.
     const contentType = res.headers.get('Content-Type') ?? ''
     if (res.headers.get('Content-Length') === '0' || !contentType.includes('json')) {
       return undefined as unknown as T
@@ -62,8 +62,7 @@ export type ExtraHeaders = Record<string, string>
 /**
  * Per-call options beyond headers. `signal` lets a caller (most often a
  * TanStack Query `queryFn`, which is handed an AbortSignal that fires on
- * unmount or when the query is superseded) cancel the in-flight request
- * (audit 0016 #166).
+ * unmount or when the query is superseded) cancel the in-flight request.
  */
 export interface RequestOptions {
   signal?: AbortSignal
@@ -98,8 +97,7 @@ export async function getJson<T>(
 
 /**
  * Fetches a resource as a Blob through the same auth/library headers as
- * every other call (audit 0016 #99 — the reading export used a bare
- * fetch with no bearer token). Returns the blob and the server's
+ * every other call. Returns the blob and the server's
  * suggested filename, if any.
  */
 export async function getBlob(

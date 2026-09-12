@@ -13,7 +13,7 @@ import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
 /**
- * Sources index screen at /sources (frontend-source-management.md FR-1, FR-7).
+ * Sources index screen at /sources.
  * Lists configured sources with live health status, capabilities badges,
  * create/edit form modal, and confirmation-gated deletion.
  */
@@ -151,7 +151,7 @@ export function Sources() {
                   {/* Actions footer */}
                   <div className="mt-lg flex items-center justify-between border-t border-border/50 pt-sm">
                     <div className="flex items-center gap-2xs">
-                      {/* size="sm" not h-auto (audit 0017 A-17-10): h-auto opted out of the 44px touch-target minimum Button's own sm size provides */}
+                      {/* size="sm" not h-auto: preserves the 44px touch-target minimum */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -201,7 +201,7 @@ export function Sources() {
         />
       )}
 
-      {/* Delete Confirmation Modal (FR-7) */}
+      {/* Delete Confirmation Modal */}
       <Modal
         open={Boolean(sourceToDelete)}
         onOpenChange={(open) => {

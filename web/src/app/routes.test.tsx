@@ -52,7 +52,7 @@ const HOST_ONLY: [string, string][] = [
   ['/settings/network', 'Network access'],
 ]
 
-describe('route table (FR-1)', () => {
+describe('route table', () => {
   it.each(SHARED)('%s resolves to the "%s" screen', async (path, heading) => {
     renderRoute(path)
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
@@ -182,7 +182,7 @@ describe('route table (FR-1)', () => {
   })
 })
 
-describe('RouteError (errorElement, FR-5/FR-7)', () => {
+describe('RouteError (errorElement)', () => {
   function Boom(): never {
     throw new ApiError(503, {
       code: 'unavailable',
@@ -225,7 +225,7 @@ describe('RouteError (errorElement, FR-5/FR-7)', () => {
     )
   })
 
-  // audit 0016 #150: a public route that throws is caught by the root
+  // A public route that throws is caught by the root
   // errorElement, not React Router's raw overlay. The real route tree
   // mirrors this shape: public routes as siblings of the shell under a
   // root route that carries errorElement.

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
 /**
- * The routed region (frontend-shell-and-routing.md FR-3). A real <main>
- * landmark; `id="main"` and `tabIndex={-1}` make it the target for the
- * skip link and for post-navigation focus moves. The shell frame around
- * it never remounts — only this element's children change.
+ * The routed region. A real <main> landmark; `id="main"` and
+ * `tabIndex={-1}` make it the target for the skip link and for
+ * post-navigation focus moves. The shell frame around it never remounts —
+ * only this element's children change.
  */
 export function ContentPane({ children }: { children: ReactNode }) {
   return (

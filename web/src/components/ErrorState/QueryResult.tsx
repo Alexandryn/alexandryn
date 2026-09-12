@@ -21,15 +21,15 @@ function correlationIdOf(error: unknown): string | undefined {
  * Renders the states of a TanStack Query result:
  *  - no data yet, loading          → a spinner
  *  - no data yet, failed           → a full ErrorState with the response's
- *                                    correlation ID and a retry (FR-5/FR-7)
+ *                                    correlation ID and a retry
  *  - data present, background error → the data stays visible with a small
  *                                    non-blocking notice — stale-but-useful
  *                                    data is never blanked on a transient
  *                                    failure (this spec's Failure modes
- *                                    table / FR-2's stale-while-revalidate)
+ *                                    table / stale-while-revalidate)
  *  - data present                  → the data
  *
- * The empty-result case (FR-8) is the screen's own to distinguish, since
+ * The empty-result case is the screen's own to distinguish, since
  * "empty" is a successful response.
  */
 export function QueryResult<T>({

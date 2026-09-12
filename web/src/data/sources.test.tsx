@@ -38,7 +38,7 @@ function createTestWrapper() {
   }
 }
 
-describe('sources data layer (FR-1 to FR-7)', () => {
+describe('sources data layer', () => {
   it('fetchSources fetches list of sources', async () => {
     server.use(
       http.get('*/api/v1/sources', () =>

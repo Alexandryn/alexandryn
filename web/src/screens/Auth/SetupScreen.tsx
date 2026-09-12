@@ -44,7 +44,7 @@ export function SetupScreen() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-md">
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Welcome to Alexandryn</h1>
@@ -63,7 +63,7 @@ export function SetupScreen() {
           </div>
         )}
 
-        {/* Shared Input, not hand-rolled <input>s (audit 0017 A-17-11): same verified focus-visible outline every other field in the app uses. Error state stays the single shared #setup-error banner above, not Input's own per-field error prop, so aria-invalid/aria-describedby are passed through directly. */}
+        {/* Shared Input: same verified focus-visible outline every other field in the app uses. Error state stays the single shared #setup-error banner above, not Input's own per-field error prop, so aria-invalid/aria-describedby are passed through directly. */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
           <Input
             label="Admin Username"

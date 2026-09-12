@@ -38,7 +38,7 @@ function addDismissedId(id: string) {
     const current = getDismissedIds()
     if (!current.includes(id)) {
       current.push(id)
-      // Bound the dismissed list to MAX_DISMISSED_FAILURES to prevent unbounded growth (audit 0016 #229)
+      // Bound the dismissed list to MAX_DISMISSED_FAILURES to prevent unbounded growth
       const bounded =
         current.length > MAX_DISMISSED_FAILURES ? current.slice(-MAX_DISMISSED_FAILURES) : current
       localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(bounded))
@@ -99,9 +99,9 @@ function CandidateCover({
 }) {
   const [imgFailed, setImgFailed] = useState(false)
   // Extracted from a book file the source provided — reject a data: URI
-  // that is not an allowed raster image type (audit 0016 #171).
+  // that is not an allowed raster image type.
   const inlineSrc = coverImageSrc(candidate.extractedMetadata?.coverBytes)
-  // Serve extracted covers at a dedicated URL (audit 0016 #171), falling back to inline cover or generated cover
+  // Serve extracted covers at a dedicated URL, falling back to inline cover or generated cover
   const coverUrl = `/api/v1/import/candidates/${encodeURIComponent(candidate.id)}/cover`
   const src =
     inlineSrc || (candidate.extractedMetadata?.coverBytes ? null : candidate.id ? coverUrl : null)
@@ -210,7 +210,7 @@ function CandidateCard({
         <div className="flex items-center gap-xs">
           <FormatBadge format={candidate.fileReference.format} />
           <span
-            // max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key (audit 0017 A-17-08)
+            // max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key
             className="text-xs font-mono text-text-3 truncate max-w-[20rem]"
             title={candidate.fileReference.id}
           >
@@ -328,7 +328,7 @@ function CandidateCard({
         onOpenChange={(open) => setShowRejectConfirm(open)}
         title="Reject this book?"
         description={`"${title || candidate.fileReference.id}" will be removed from your import candidates. You will need to re-scan the source if you want to import it later.`}
-        contentClassName="max-w-[28rem]" // --spacing-md collision, audit 0017 A-17-08
+        contentClassName="max-w-[28rem]" // --spacing-md collision
       >
         <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
           <Button variant="ghost" size="sm" onClick={() => setShowRejectConfirm(false)}>
@@ -353,7 +353,7 @@ function CandidateCard({
 }
 
 /**
- * Import confirmation screen at /import (frontend-import-confirmation.md FR-2).
+ * Import confirmation screen at /import.
  */
 export function Import() {
   const [searchParams] = useSearchParams()
@@ -361,9 +361,8 @@ export function Import() {
 
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getDismissedIds())
 
-  // In-flight progress query (FR-6): adaptive polling — 2s while items
-  // are queued, 20s when the queue is empty, off while the tab is hidden
-  // (audit 0016 #169).
+  // In-flight progress query: adaptive polling — 2s while items
+  // are queued, 20s when the queue is empty, off while the tab is hidden.
   const { data: queuedData } = useImportCandidates({
     sourceId: sourceIdParam,
     status: 'queued',
@@ -371,7 +370,7 @@ export function Import() {
   })
   const queuedCount = queuedData?.candidates.length ?? 0
 
-  // Pending candidates query (FR-2)
+  // Pending candidates query
   const {
     data: pendingData,
     error: pendingError,
@@ -382,7 +381,7 @@ export function Import() {
     status: 'pending',
   })
 
-  // Failed candidates query (FR-5)
+  // Failed candidates query
   const { data: failedData, refetch: refetchFailed } = useImportCandidates({
     sourceId: sourceIdParam,
     status: 'failed',
@@ -423,7 +422,7 @@ export function Import() {
         </div>
       </div>
 
-      {/* In-flight processing banner (FR-6) */}
+      {/* In-flight processing banner */}
       {queuedCount > 0 && (
         <div
           className="flex items-center gap-sm rounded-md border border-accent/30 bg-accent/10 p-md text-accent text-sm font-medium"
@@ -437,7 +436,7 @@ export function Import() {
         </div>
       )}
 
-      {/* Pending section (FR-2) */}
+      {/* Pending section */}
       {isPendingLoading ? (
         <Spinner label="Loading pending import candidates" className="my-3xl" />
       ) : pendingError ? (
@@ -478,7 +477,7 @@ export function Import() {
         </div>
       )}
 
-      {/* Failed section (FR-5) */}
+      {/* Failed section */}
       {failedCandidates.length > 0 && (
         <div className="flex flex-col gap-md border-t border-border-1 pt-xl mt-md">
           <div>

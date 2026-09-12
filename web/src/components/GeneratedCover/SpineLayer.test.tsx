@@ -26,7 +26,7 @@ describe('SpineLayer', () => {
     )
   })
 
-  it('never lets a caller-supplied style override the seed-derived background (FR-2 determinism)', () => {
+  it('never lets a caller-supplied style override the seed-derived background (determinism)', () => {
     const seed = { hue: 10, pattern: 'flat' } as const
     const baseline = render(<SpineLayer seed={seed} />)
     const overridden = render(<SpineLayer seed={seed} style={{ backgroundColor: 'red' }} />)

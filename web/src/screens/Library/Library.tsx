@@ -38,7 +38,7 @@ export function Library() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [, startTransition] = useTransition()
 
-  // 1. URL search params (FR-2)
+  // 1. URL search params
   const qParam = searchParams.get('q') ?? ''
   const filterParam = (searchParams.get('filter') as LibraryFilter) || 'all'
   const sortParam = (searchParams.get('sort') as LibrarySort) || 'added_at'
@@ -47,7 +47,7 @@ export function Library() {
     filterParam === 'owned' || filterParam === 'wanted' ? filterParam : 'all'
   const activeSort: LibrarySort = sortParam === 'title' ? 'title' : 'added_at'
 
-  // 2. Debounced search input state (FR-1)
+  // 2. Debounced search input state
   const [searchInputValue, setSearchInputValue] = useState(qParam)
   const [prevQ, setPrevQ] = useState(qParam)
   if (qParam !== prevQ) {
@@ -97,7 +97,7 @@ export function Library() {
     }
   }, [])
 
-  // 3. Filter & Sort handlers (FR-1, FR-2)
+  // 3. Filter & Sort handlers
   const handleFilterChange = (val: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -122,7 +122,7 @@ export function Library() {
     })
   }
 
-  // 4. View toggle preference (localStorage, FR-1, FR-2)
+  // 4. View toggle preference
   const [view, setView] = useState<'grid' | 'list'>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_VIEW_KEY)
@@ -142,7 +142,7 @@ export function Library() {
     }
   }
 
-  // 5. Cursor-paginated Infinite Query (FR-3)
+  // 5. Cursor-paginated Infinite Query
   const libraryQuery = useLibrary({
     q: qParam,
     filter: activeFilter,
@@ -152,7 +152,7 @@ export function Library() {
   const { data, error, isPending, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     libraryQuery
 
-  // Memoize allWorks to preserve array identity across keystrokes/transitions (audit 0016 #217).
+  // Memoize allWorks to preserve array identity across keystrokes/transitions.
   const allWorks: WorkSummary[] = useMemo(
     () => data?.pages.flatMap((page) => page.works) ?? [],
     [data],
@@ -190,7 +190,7 @@ export function Library() {
         {/* Controls Bar: Search, Filters, Sort, View Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-md">
           <div className="flex flex-wrap items-center gap-md flex-1 min-w-64">
-            {/* max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key (audit 0017 A-17-08) */}
+            {/* max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key */}
             <div className="w-full max-w-[20rem]">
               <Input
                 label="Search library"
@@ -224,7 +224,7 @@ export function Library() {
         </div>
       </div>
 
-      {/* Screen reader live announcement for newly loaded items (FR-1 / a11y) */}
+      {/* Screen reader live announcement for newly loaded items */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {!isPending && `${allWorks.length} works loaded`}
       </div>

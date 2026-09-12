@@ -23,7 +23,7 @@ const VARIANT: Record<ButtonVariant, string> = {
 }
 
 const SIZE: Record<ButtonSize, string> = {
-  // min-h-11: 44px touch-target minimum (audit 0017 A-17-10) — px-sm py-4xs
+  // min-h-11: 44px touch-target minimum — px-sm py-4xs
   // alone measured well under 44px tall at mobile width.
   sm: 'px-sm py-4xs min-h-11 text-xs',
   md: 'px-lg py-2xs text-sm',

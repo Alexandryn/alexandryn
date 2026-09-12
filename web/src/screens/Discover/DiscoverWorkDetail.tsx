@@ -10,7 +10,7 @@ import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 
 /**
- * Open Library work detail screen at /discover/works/:openLibraryId (FR-4).
+ * Open Library work detail screen at /discover/works/:openLibraryId.
  * Displays normalised work metadata, subjects tag list, real cover image with procedural fallback,
  * and list of editions.
  */
@@ -115,7 +115,7 @@ export function DiscoverWorkDetail() {
             By {authorNames}
           </p>
 
-          {/* Subjects (FR-4: omitted when absent) */}
+          {/* Subjects: omitted when absent */}
           {work.subjects && work.subjects.length > 0 ? (
             <div className="flex flex-wrap gap-xs mt-xs" aria-label="Subjects">
               {work.subjects.map((subject) => (
@@ -124,7 +124,7 @@ export function DiscoverWorkDetail() {
             </div>
           ) : null}
 
-          {/* Description (FR-4: omitted entirely from layout when absent) */}
+          {/* Description: omitted entirely from layout when absent */}
           {work.description ? (
             <div className="mt-md border-t border-border pt-md">
               <h2 className="text-xs font-mono uppercase tracking-1 text-text-3 mb-xs">
@@ -138,7 +138,7 @@ export function DiscoverWorkDetail() {
         </div>
       </div>
 
-      {/* Editions Section (FR-4) */}
+      {/* Editions Section */}
       {editions && editions.length > 0 ? (
         <div className="flex flex-col gap-md border-t border-border pt-xl">
           <h2 className="text-xl font-medium text-text">

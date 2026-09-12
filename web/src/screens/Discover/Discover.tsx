@@ -16,12 +16,12 @@ export function Discover() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [, startTransition] = useTransition()
 
-  // 1. URL search params (FR-2)
+  // 1. URL search params
   const qParam = searchParams.get('q') ?? ''
   const offsetParam = parseInt(searchParams.get('offset') ?? '0', 10)
   const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam
 
-  // 2. Debounced search input state (FR-1)
+  // 2. Debounced search input state
   const [searchInputValue, setSearchInputValue] = useState(qParam)
   const [prevQ, setPrevQ] = useState(qParam)
   if (qParam !== prevQ) {
@@ -73,7 +73,7 @@ export function Discover() {
     }
   }, [])
 
-  // 3. Query execution (FR-1, FR-3)
+  // 3. Query execution
   const { data, error, isPending, refetch } = useDiscoverSearch({
     q: qParam,
     limit: PAGE_SIZE,
@@ -83,11 +83,11 @@ export function Discover() {
   const items = data?.items ?? []
   const total = data?.total ?? 0
 
-  // 4. Pagination handlers (FR-3)
+  // 4. Pagination handlers
   // Paging swaps the entire result list, so the Previous/Next button that
   // was clicked unmounts and focus falls to the document body. After the
   // new page settles, move focus to the results region so keyboard and
-  // screen-reader users keep their place (audit 0016 #152).
+  // screen-reader users keep their place.
   const resultsRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const focusResultsOnPage = useRef(false)
@@ -140,8 +140,8 @@ export function Discover() {
           Discover
         </h1>
 
-        {/* Search Input (FR-1) */}
-        {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+        {/* Search Input */}
+        {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
         <div className="w-full max-w-[28rem]">
           <Input
             label="Search Open Library"
@@ -152,7 +152,7 @@ export function Discover() {
         </div>
       </div>
 
-      {/* Screen reader live announcement (FR-1 / a11y) */}
+      {/* Screen reader live announcement */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {!isPending && qParam && `${total} results found for "${qParam}"`}
       </div>
@@ -197,7 +197,7 @@ export function Discover() {
           >
             <DiscoverResultGrid results={items} />
 
-            {/* Pagination Controls (FR-3) */}
+            {/* Pagination Controls */}
             <div className="flex flex-wrap items-center justify-between gap-md border-t border-border pt-md">
               <span className="text-xs text-text-2">
                 Showing {offset + 1} to {Math.min(offset + PAGE_SIZE, total)} of {total} results

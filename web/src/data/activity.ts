@@ -16,7 +16,7 @@ export interface SystemEventPayload {
   file_format?: string
   progress_percent?: number
   // Note: progress percentage fields (percentage, pct) are stripped server-side in
-  // SanitizedPayload (Constitution §8, ADR 0031) to protect reading privacy and prevent
+  // SanitizedPayload to protect reading privacy and prevent
   // leaking granular positions. Kept here defensively for event payload typing.
   percentage?: number
   pct?: number
@@ -147,7 +147,7 @@ function eventToItem(ev: SystemEvent, id: string): ActivityItem {
 
 export const ACTIVITY_QUERY_KEY = ['activity', 'events'] as const
 
-// Polling cadence (audit 0016 #102): the badge lives in the always-mounted
+// Polling cadence: the badge lives in the always-mounted
 // sidebar, so a fixed 10s interval meant every desktop client hit
 // /activity/events every 10s for the whole session, idle or backgrounded.
 // Now: no polling while the tab is hidden, 5s while a job is active, and a
@@ -158,7 +158,7 @@ const ACTIVE_POLL_MS = 5000
 const IDLE_POLL_MS = 60000
 
 /**
- * The adaptive polling cadence (audit 0016 #102): stop while the tab is
+ * The adaptive polling cadence: stop while the tab is
  * hidden, poll fast while a job is running or the Activity screen is
  * open, and fall back to a slow floor otherwise.
  */
@@ -191,7 +191,7 @@ export function useActivityEvents(opts: { active?: boolean } = {}) {
 
 export function useActivityBadge() {
   const { data: events = [] } = useActivityEvents()
-  // Memoize grouped events to prevent downstream memo breakage across poll ticks (audit 0016 #214).
+  // Memoize grouped events to prevent downstream memo breakage across poll ticks.
   const hasActiveOrFailed = useMemo(() => {
     const grouped = parseActivityEvents(events)
     return grouped.active.length > 0 || grouped.failed.length > 0

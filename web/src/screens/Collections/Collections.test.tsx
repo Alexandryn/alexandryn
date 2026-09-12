@@ -11,7 +11,7 @@ const mockCollections = [
   { id: 'c-2', name: 'Science Fiction', workCount: 5 },
 ]
 
-describe('Collections Index Screen (FR-1)', () => {
+describe('Collections Index Screen', () => {
   it('renders empty state when there are no collections', async () => {
     server.use(
       http.get('*/api/v1/collections', () =>

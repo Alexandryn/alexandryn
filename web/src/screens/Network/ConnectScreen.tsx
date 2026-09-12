@@ -78,7 +78,7 @@ export function ConnectScreen() {
 
       // Carry enrolmentGrant + hostName to /login in router state, and
       // also mirror them into sessionStorage so a reload on /login does
-      // not lose the in-progress enrolment (audit 0016 #157). Never the
+      // not lose the in-progress enrolment. Never the
       // URL — the grant is a bearer secret.
       setPendingEnrolment({ enrolmentGrant: res.enrolmentGrant, hostName: res.hostName })
       navigate('/login', {
@@ -104,7 +104,7 @@ export function ConnectScreen() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-xl">
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface border border-border rounded-lg shadow-sm p-2xl flex flex-col gap-xl">
         <div>
           <h1 className="text-2xl font-ui font-medium text-text">Connect</h1>

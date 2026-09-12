@@ -2,11 +2,11 @@ import { render, cleanup } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { GeneratedCover } from './GeneratedCover'
 
-// FR-2 end to end through the whole composed render pipeline — task 1
+// Determinism end to end through the whole composed render pipeline
 // already proves the hash function itself is deterministic in isolation;
 // this proves the pipeline built on top of it (layers + ladder) is too.
 
-describe('GeneratedCover — determinism (FR-2)', () => {
+describe('GeneratedCover — determinism', () => {
   it('renders pixel-identical output for the same identifier across two independent mounts', () => {
     const props = { identifier: 'work-42', title: 'Dune', author: 'Frank Herbert' }
     const a = render(<GeneratedCover {...props} />)

@@ -12,9 +12,8 @@ interface Lockfile {
  * Returns the @radix-ui/* packages that resolve to more than one version
  * in the lockfile. Every Radix primitive shares a small set of internal
  * helpers (react-primitive, react-context, compose-refs …); a version
- * split means the browser bundle ships two copies of that shared code
- * (audit 0016 #164). One version per package is the healthy state; this
- * check keeps it that way.
+ * split means the browser bundle ships two copies of that shared code.
+ * One version per package is the healthy state; this check keeps it that way.
  */
 export function findRadixVersionSplits(
   lockfilePath: string,

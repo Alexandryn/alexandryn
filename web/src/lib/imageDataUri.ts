@@ -2,8 +2,7 @@
 // user's source provided — untrusted. When they arrive as a data: URI it
 // is dropped straight into an <img src>, so only a fixed set of raster
 // image types is allowed; anything else (image/svg+xml, text/html, …) is
-// rejected and the caller falls back to a generated cover (audit 0016
-// #171).
+// rejected and the caller falls back to a generated cover.
 
 const ALLOWED_IMAGE_DATA_URI =
   /^data:image\/(jpeg|jpg|png|webp)(?:;[a-z0-9-]+=[^,;]*)*(?:;base64)?,/i

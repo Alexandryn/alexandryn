@@ -5,7 +5,7 @@ import { DiscoverResultGrid } from './DiscoverResultGrid'
 import { DiscoverCover } from './DiscoverCover'
 import type { NormalisedSearchResult } from '../../data/discover'
 
-describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
+describe('DiscoverResultGrid & DiscoverCover', () => {
   const sampleResults: NormalisedSearchResult[] = [
     {
       openLibraryWorkKey: 'OL82563W',
@@ -56,7 +56,7 @@ describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
     expect(img).toHaveAttribute('loading', 'lazy')
   })
 
-  it('DiscoverCover falls back to GeneratedCover on image load error (FR-7)', () => {
+  it('DiscoverCover falls back to GeneratedCover on image load error', () => {
     const { container } = render(
       <DiscoverCover
         coverUrl="/api/v1/discover/covers/broken"
@@ -76,7 +76,7 @@ describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
     expect(screen.getByText('Test Title')).toBeInTheDocument()
   })
 
-  it('renders priority hint with eager loading and high fetchPriority on first row (audit 0016 #219)', () => {
+  it('renders priority hint with eager loading and high fetchPriority on first row', () => {
     const { container } = render(
       <DiscoverCover
         coverUrl="/api/v1/discover/covers/123"
@@ -93,7 +93,7 @@ describe('DiscoverResultGrid & DiscoverCover (FR-1, FR-4, FR-7)', () => {
     expect(img).toHaveAttribute('decoding', 'async')
   })
 
-  it('passes priority=true for first 6 results in DiscoverResultGrid (audit 0016 #219)', () => {
+  it('passes priority=true for first 6 results in DiscoverResultGrid', () => {
     const manyResults: NormalisedSearchResult[] = Array.from({ length: 8 }, (_, i) => ({
       openLibraryWorkKey: `OL${i}W`,
       title: `Book ${i}`,

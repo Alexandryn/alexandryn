@@ -31,9 +31,8 @@ const PX_STYLE_PROPS = [
   'columnGap',
 ]
 
-// Interim, grep-based (frontend-component-primitives.md FR-4/Acceptance
-// criteria) until a lint rule exists. Catches the shapes a raw value takes
-// in this codebase: a literal hex color (3/4/6/8 digits, covering CSS4
+// Interim, grep-based check until a lint rule exists. Catches the shapes a raw
+// value takes in this codebase: a literal hex color (3/4/6/8 digits, covering CSS4
 // alpha-hex like #1a1917ff), a literal pixel value inside a Tailwind
 // arbitrary-value bracket or a quoted inline-style string, and a bare
 // number assigned to a known px-shaped style property (React appends "px"
@@ -72,7 +71,7 @@ export function findRawStyleValues(componentsDir: string): TokenStylingFinding[]
   const findings: TokenStylingFinding[] = []
   for (const file of walkSourceFiles(componentsDir)) {
     // Test files carry issue references like `#150` in describe/it titles
-    // and define no shipped styling — they are not held to FR-4.
+    // and define no shipped styling — they are ignored.
     if (/\.test\.tsx?$/.test(file)) continue
     const contents = stripComments(readFileSync(file, 'utf8'))
     for (const pattern of RAW_VALUE_PATTERNS) {

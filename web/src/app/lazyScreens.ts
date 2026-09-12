@@ -1,6 +1,6 @@
 import { lazy } from 'react'
 
-// Route-level code splitting (audit 0016 issue 100): the Reader (and its epub
+// Route-level code splitting: the Reader (and its epub
 // vendor bundle), every host-only admin screen, and the auth/entry
 // screens a signed-in user never revisits are loaded on demand, kept out
 // of the initial chunk. The Library-first-paint screens stay eager and

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { expectNoAxeViolations, runAxe } from '../../test/axe'
 import { GeneratedCover } from './GeneratedCover'
 
-// frontend-generated-covers.md Accessibility: the cover is decorative once
+// Cover accessibility: the cover is decorative once
 // real title/author text exists elsewhere on the book's card — it must
 // never be the sole accessible name, and its own rendered title/author
 // pixels must never double up a surrounding element's accessible name.

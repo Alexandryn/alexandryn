@@ -18,13 +18,12 @@ export function LoginScreen() {
       }
     | null
   // Router state is lost on a reload; fall back to the sessionStorage
-  // mirror ConnectScreen wrote (audit 0016 #157).
+  // mirror ConnectScreen wrote.
   const enrolmentGrant = routerState?.enrolmentGrant ?? getPendingEnrolment()?.enrolmentGrant
 
   // Where to land after a successful sign-in: an explicit router `from`
   // (RequireAuth), a ?next= / ?returnTo= query param (the global 401
-  // redirect and external links), or the library (audit 0016 #91, #95,
-  // #161).
+  // redirect and external links), or the library.
   const fromState = routerState?.from
   const search = new URLSearchParams(location.search)
   const nextParam = search.get('next') ?? search.get('returnTo')
@@ -61,7 +60,7 @@ export function LoginScreen() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-md">
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Sign in</h1>
@@ -81,7 +80,7 @@ export function LoginScreen() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-          {/* Shared Input, not a hand-rolled <input> (audit 0017 A-17-11): its focus-visible outline is the same, verified mechanism every other field in the app uses */}
+          {/* Shared Input: its focus-visible outline is the same, verified mechanism every other field in the app uses */}
           <Input
             label="Email or Username"
             id="emailOrUsername"

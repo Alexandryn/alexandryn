@@ -13,16 +13,16 @@ const CANVASES: Record<string, string> = {
 
 const GENERATED_HEADER = `/* GENERATED FILE — do not hand-edit.
  * Run \`npm run tokens:generate\` (web/scripts/generate-tokens.ts) to
- * regenerate from .design-reference/*.dc.html — frontend-design-tokens.md
- * FR-2: theme.css, tokens.css and breakpoints.ts are all written from the
+ * regenerate from .design-reference/*.dc.html.
+ * theme.css, tokens.css and breakpoints.ts are all written from the
  * same single extraction pass, so they can never drift from each other. */
 `
 
-// The web-font integration contract (audit 0016 #223). The font-family
+// The web-font integration contract. The font-family
 // tokens below currently resolve to their system fallbacks; this note
 // records the rules for adding the real faces so it is visible at the
 // definition site. Emitted by the generator so it survives regeneration.
-const FONT_INTEGRATION_NOTE = `  /* Design fonts (audit 0016 #223): currently render via system fallback.
+const FONT_INTEGRATION_NOTE = `  /* Design fonts: currently render via system fallback.
      When custom web fonts are added: self-host .woff2 under public/fonts/,
      use @font-face { font-display: swap } (optional for mono), subset with
      unicode-range, preload max 1-2 first-paint faces, and never load from
@@ -38,8 +38,8 @@ function buildThemeCss(tokens: ExtractedTokens): string {
   for (const t of tokens.spacing) lines.push(`  --spacing-${t.name}: ${t.px}px;`)
   for (const t of tokens.fontSize) lines.push(`  --text-${t.name}: ${t.px}px;`)
   for (const t of tokens.letterSpacing) lines.push(`  --tracking-${t.name}: ${t.em}em;`)
-  // The single sidebar↔tab-bar reflow breakpoint (frontend-shell-and-
-  // routing.md FR-3), read from the atTablet band prose (extractBreakpoint).
+  // The single sidebar↔tab-bar reflow breakpoint,
+  // read from the atTablet band prose (extractBreakpoint).
   // Tailwind v4 turns --breakpoint-reflow into the `reflow:` variant.
   lines.push(`  --breakpoint-${tokens.breakpoint.name}: ${tokens.breakpoint.px}px;`)
   lines.push(
@@ -52,7 +52,7 @@ function buildThemeCss(tokens: ExtractedTokens): string {
   return lines.join('\n')
 }
 
-// A third generated artifact (same single pass, FR-2): the breakpoint as
+// A third generated artifact (same single pass): the breakpoint as
 // a plain number for the one consumer that can't read CSS — the
 // useShellLayout hook's matchMedia query. Keeps the shell's reflow point
 // tracing to the design reference with no magic number in JS.

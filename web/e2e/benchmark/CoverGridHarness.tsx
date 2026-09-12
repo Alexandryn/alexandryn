@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { GeneratedCover } from '../../src/components/GeneratedCover/GeneratedCover'
 
-// Benchmark-only fixture (frontend-generated-covers.md FR-4) — a bare
-// virtualized container, not the real library-grid layout (phase 06's own
-// concern per this spec's Non-goals). Proves GeneratedCover's own render
-// cost is cheap enough that virtualization suffices at library scale,
-// independent of whatever grid component phase 06 eventually builds.
+// Benchmark-only fixture — a bare virtualized container, not the real
+// library-grid layout. Proves GeneratedCover's own render cost is cheap
+// enough that virtualization suffices at library scale.
 
 const ROW_HEIGHT = 220
 const COLUMNS = 5
@@ -68,7 +66,7 @@ export function CoverGridHarness({ identifiers, onRendered }: CoverGridHarnessPr
         {visibleItems.map(({ index, row, col }) => (
           <div
             key={identifiers[index]}
-            // The generated cover itself is aria-hidden (T6) — this label
+            // The generated cover itself is aria-hidden — this label
             // is what makes each grid cell satisfy "never the sole
             // accessible name for its book," the same contract
             // GeneratedCover.a11y.test.tsx proves in isolation.

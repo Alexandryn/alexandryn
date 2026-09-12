@@ -109,7 +109,7 @@ describe('DataTable — select', () => {
     expect(onRowSelect).toHaveBeenCalledWith('1')
   })
 
-  it('rows are a roving tab stop: Arrow keys move between them, one Tab leaves the table (FR-1)', async () => {
+  it('rows are a roving tab stop: Arrow keys move between them, one Tab leaves the table', async () => {
     const onRowSelect = vi.fn()
     const user = userEvent.setup()
     render(

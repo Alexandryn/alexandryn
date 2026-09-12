@@ -1,9 +1,8 @@
-// Loads an owned EPUB's structure through the sanitised content endpoint
-// (frontend-reader.md FR-1) — foliate-js's own `epub.js` parses
-// container.xml / OPF / nav, so spine order, TOC, and the spine-step
-// CFIs come from the library, never hand-derived. No `blob:` URL is ever
-// built: chapter documents load by pointing the <iframe> at the content
-// endpoint directly (FR-1's blob-avoidance architecture).
+// Loads an owned EPUB's structure through the sanitised content endpoint —
+// foliate-js's own `epub.js` parses container.xml / OPF / nav, so spine order,
+// TOC, and the spine-step CFIs come from the library, never hand-derived.
+// No `blob:` URL is ever built: chapter documents load by pointing the <iframe>
+// at the content endpoint directly.
 
 import { ApiError, getText } from '../../data/http'
 import { EPUB, type EpubSection, type EpubTocItem } from '../../vendor/foliate/epub'

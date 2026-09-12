@@ -23,10 +23,10 @@ export function ActivityScreen() {
 
   // Cancelling an in-progress download cannot be undone, so it goes
   // through an explicit confirmation rather than firing on the first
-  // click (audit 0016 #300).
+  // click.
   const [pendingCancel, setPendingCancel] = useState<ActivityItem | null>(null)
 
-  // Memoize grouped events to prevent downstream memo breakage across poll ticks (audit 0016 #214).
+  // Memoize grouped events to prevent downstream memo breakage across poll ticks.
   const grouped = useMemo(() => parseActivityEvents(events), [events])
   const isEmpty =
     grouped.active.length === 0 &&
@@ -51,7 +51,7 @@ export function ActivityScreen() {
       {isError && (
         <div className="mb-6 p-4 rounded-lg border border-error bg-surface flex items-center justify-between">
           <span className="text-sm text-error">Failed to load activity feed.</span>
-          {/* Shared Button, size="sm" (audit 0017 A-17-10): matches DevicesSettings' equivalent error-banner Retry, and picks up the 44px touch-target minimum from Button's own SIZE.sm */}
+          {/* Shared Button, size="sm": matches DevicesSettings' equivalent error-banner Retry, and picks up the 44px touch-target minimum from Button's own SIZE.sm */}
           <Button variant="secondary" size="sm" onClick={() => refetch()}>
             Retry connection
           </Button>
@@ -191,7 +191,7 @@ export function ActivityScreen() {
             ? `"${pendingCancel.title}" will stop downloading. Progress so far is discarded and you will need to start it again.`
             : undefined
         }
-        contentClassName="max-w-[28rem]" // --spacing-md collision, audit 0017 A-17-08
+        contentClassName="max-w-[28rem]"
       >
         <div className="mt-md flex items-center justify-end gap-sm pt-sm border-t border-border">
           <Button variant="ghost" size="sm" onClick={() => setPendingCancel(null)}>

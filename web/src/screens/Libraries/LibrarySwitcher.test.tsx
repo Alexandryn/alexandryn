@@ -14,7 +14,7 @@ const twoLibraries = {
   ],
 }
 
-describe('LibrarySwitcher (audit 0016 #138)', () => {
+describe('LibrarySwitcher', () => {
   afterEach(() => localStorage.clear())
 
   it('evicts every library-scoped query on switch and keeps the rest', async () => {

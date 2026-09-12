@@ -28,7 +28,7 @@ const mockSources = [
   },
 ]
 
-describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
+describe('Sources Screen', () => {
   it('renders empty state when there are no sources', async () => {
     server.use(http.get('*/api/v1/sources', () => HttpResponse.json({ sources: [] })))
 
@@ -100,7 +100,7 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
     })
   })
 
-  it('opens remove confirmation dialog and deletes source on confirm (FR-7)', async () => {
+  it('opens remove confirmation dialog and deletes source on confirm', async () => {
     let deletedId: string | null = null
 
     server.use(
@@ -134,8 +134,7 @@ describe('Sources Screen (FR-1, FR-3, FR-7)', () => {
     })
   })
 
-  // audit 0016 #142: a failed delete used to be swallowed — the dialog
-  // stayed open with no feedback.
+  // A failed delete should provide user feedback instead of silently swallowing the error.
   it('keeps the dialog open and shows an error when delete fails', async () => {
     server.use(
       http.get('*/api/v1/sources', () => HttpResponse.json({ sources: mockSources })),

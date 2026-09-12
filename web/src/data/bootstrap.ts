@@ -1,9 +1,8 @@
 import { getJson } from './http'
 
 /**
- * Host-only capabilities (architecture-frontend.md FR-3's named set:
- * Settings, System, Sources configuration, Import). The real source of
- * this value is phase 12's concern; phase 04's mock grants all of them.
+ * Host-only capabilities (named set: Settings, System, Sources
+ * configuration, Import, Network).
  */
 export type Capability = 'sources' | 'import' | 'settings' | 'system' | 'network'
 

@@ -10,7 +10,7 @@ export interface GeneratedCoverProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'title' | 'aria-hidden'
 > {
-  /** Work.ID or Edition.ID — the only prop always available (FR-2's seed source). */
+  /** Work.ID or Edition.ID — the only prop always available (seed source). */
   identifier: string
   title?: string
   /** Already-reduced display string (first author + "et al." when multiple) — never a raw Author[]. */
@@ -18,8 +18,8 @@ export interface GeneratedCoverProps extends Omit<
 }
 
 /**
- * Four-layer composition (FR-1) with the three-step degradation ladder
- * (FR-3): title+author present → full composition; title only → texture
+ * Four-layer composition with the three-step degradation ladder:
+ * title+author present → full composition; title only → texture
  * + spine + re-centered title; neither → texture + spine only, never a
  * blank box. Purely decorative — see GeneratedCoverImage's own a11y
  * wiring (T6) for the accessible-name contract.

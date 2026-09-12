@@ -1,15 +1,14 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-// Tier 1 axe coverage for the Reader (audit 0017's largest stated coverage
-// gap). src/mocks/handlers.ts now serves reader.fixtures.ts's minimal
-// EPUB content by path suffix for any editionId, so no test-local mock is
-// needed here.
+// Tier 1 axe coverage for the Reader. src/mocks/handlers.ts now serves
+// reader.fixtures.ts's minimal EPUB content by path suffix for any editionId,
+// so no test-local mock is needed here.
 function axe(page: Page) {
   // color-contrast excluded for the same reason a11y.app.spec.ts excludes
   // it (owned by npm run tokens:check-contrast); iframe excluded because
   // the reading-area iframe is sandbox="allow-same-origin" only, never
-  // allow-scripts (FR-1) — axe cannot inject its scanner into it, same as
+  // allow-scripts — axe cannot inject its scanner into it, same as
   // the jsdom-level axe check in Reader.test.tsx.
   return new AxeBuilder({ page }).disableRules(['color-contrast']).exclude('iframe')
 }

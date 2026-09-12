@@ -2,9 +2,8 @@ import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { walkScannableFiles } from './walkDist.ts'
 
-// frontend-shell-and-routing.md FR-6 requires MSW for development/
-// testing; this is the production-exclusion check that requirement
-// depends on.
+// Production exclusion check: ensures MSW mock worker and code
+// are not bundled into production builds.
 //
 // Only `mockServiceWorker` is checked, deliberately — an earlier version
 // of this file also matched `from "msw/..."`/`require("msw...")` import

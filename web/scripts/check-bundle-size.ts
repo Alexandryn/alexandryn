@@ -21,14 +21,14 @@ let failed = false
 
 if (totalBytes > BUNDLE_SIZE_BUDGET_BYTES) {
   console.error(
-    `check-bundle-size: total JS ${totalActualKiB} KiB gzipped exceeds the ${totalBudgetKiB} KiB budget (frontend-tooling.md FR-4)`,
+    `check-bundle-size: total JS ${totalActualKiB} KiB gzipped exceeds the ${totalBudgetKiB} KiB budget`,
   )
   failed = true
 } else {
   console.log(`check-bundle-size: total JS ${totalActualKiB} KiB gzipped, within the ${totalBudgetKiB} KiB budget`)
 }
 
-// Gate 2: entry-chunk budget (audit 0016 #225). The entry chunk is the
+// Gate 2: entry-chunk budget. The entry chunk is the
 // initial payload — lazy routes must not silently collapse back into it.
 // If the entry chunk cannot be identified (Vite version/naming change),
 // warn rather than hard-fail so the check degrades gracefully.

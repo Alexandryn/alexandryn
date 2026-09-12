@@ -25,7 +25,7 @@ const mockCandidates = [
   },
 ]
 
-describe('SourceDetail Screen (FR-6)', () => {
+describe('SourceDetail Screen', () => {
   it('renders source header, search input when canSearch is true, and candidates', async () => {
     server.use(
       http.get('*/api/v1/sources/src-123', () => HttpResponse.json(mockSource)),
@@ -46,7 +46,7 @@ describe('SourceDetail Screen (FR-6)', () => {
     expect(await screen.findAllByText('The Dispossessed')).toHaveLength(2)
   })
 
-  it('debounces search input and switches to search results (FR-6)', async () => {
+  it('debounces search input and switches to search results', async () => {
     let capturedSearchQuery: string | null = null
 
     server.use(

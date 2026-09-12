@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { importPollInterval } from './import'
 
-describe('importPollInterval (audit 0016 #169)', () => {
+describe('importPollInterval', () => {
   it('stops polling entirely while the tab is hidden', () => {
     expect(importPollInterval(5, true)).toBe(false)
     expect(importPollInterval(0, true)).toBe(false)

@@ -84,7 +84,7 @@ describe('WorkGrid', () => {
     expect(placeholders.length).toBe(120 - 40)
   })
 
-  describe('sliding window (audit 0016 #168)', () => {
+  describe('sliding window', () => {
     afterEach(() => {
       FakeIO.instances = []
       vi.unstubAllGlobals()

@@ -13,7 +13,7 @@ export interface ChipProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'childr
 export function Chip({ children, onRemove, removeLabel, disabled, className, ...rest }: ChipProps) {
   // Falls back to a generic label rather than undefined when children isn't a
   // plain string — an icon-only remove button must never ship with no
-  // accessible name at all (FR-3), even if the caller forgets removeLabel.
+  // accessible name at all, even if the caller forgets removeLabel.
   const fallbackLabel = typeof children === 'string' ? `Remove ${children}` : 'Remove'
   const label = removeLabel ?? fallbackLabel
 

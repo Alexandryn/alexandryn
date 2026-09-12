@@ -9,8 +9,7 @@ export interface MergedProperty {
  * (e.g. `--cov` only exists in the Electron canvas, `--dz` only in
  * Mobile). Throws loudly if two canvases declare the same property
  * name with different values — a real design-reference inconsistency
- * to surface, never silently picked between (frontend-design-tokens.md
- * FR-4).
+ * to surface, never silently picked between.
  */
 export function mergeCanvasProperties(
   canvases: Record<string, Record<string, string>>,

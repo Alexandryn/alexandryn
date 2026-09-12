@@ -37,13 +37,12 @@ const POSITION_DEBOUNCE_MS = 3000
 type Panel = 'toc' | 'marks' | 'settings' | null
 
 /**
- * The in-browser EPUB reader at /read/:workId/:editionId
- * (frontend-reader.md). Chapter documents render inside a strictly
- * sandboxed <iframe> (allow-same-origin, never allow-scripts — FR-1);
- * every resource is fetched from the sanitised content endpoint, never a
- * blob: URL. Position is reported debounced (FR-6) and restored on mount
- * (FR-5); typography, theme, TOC, bookmarks, and highlights follow the
- * design reference's atReader canvas.
+ * The in-browser EPUB reader at /read/:workId/:editionId.
+ * Chapter documents render inside a strictly sandboxed <iframe>
+ * (allow-same-origin, never allow-scripts); every resource is fetched
+ * from the sanitised content endpoint, never a blob: URL. Position is
+ * reported debounced and restored on mount; typography, theme, TOC,
+ * bookmarks, and highlights follow the design reference's atReader canvas.
  */
 export function Reader() {
   const { workId = '', editionId = '' } = useParams()
@@ -76,7 +75,7 @@ export function Reader() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [restored, setRestored] = useState(false)
   // The saved intra-chapter scroll offset is applied once, after the
-  // restored chapter's document has loaded (audit 0016 #145); later
+  // restored chapter's document has loaded; later
   // chapter navigation still opens at the top. loadedSection tracks which
   // spine index the iframe currently holds a loaded document for, so the
   // restore fires whether or not restoreTarget changed sectionIndex.
@@ -219,7 +218,7 @@ export function Reader() {
     }
   }, [])
 
-  // One-shot intra-chapter scroll restore (audit 0016 #145). Runs after
+  // One-shot intra-chapter scroll restore. Runs after
   // the restored section's document is loaded — covers both the case
   // where restoreTarget moved sectionIndex (a fresh load fires) and the
   // case where the target was the section already on screen (no reload,
@@ -261,7 +260,7 @@ export function Reader() {
   })
   useEffect(() => {
     const run = finalReportRef
-    // Best-effort final report on unmount / navigation away (FR-6).
+    // Best-effort final report on unmount / navigation away.
     return () => run.current()
   }, [])
 
@@ -639,7 +638,7 @@ function ToolButton({
   )
 }
 
-/** The spine index to open at, from a saved ReadingProgress (FR-5). */
+/** The spine index to open at, from a saved ReadingProgress. */
 function restoreTarget(
   sections: { cfi: string }[],
   saved: { percentage: number; precisePosition: { cfi: string } | null } | null,

@@ -4,9 +4,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findMswReferences } from './mswExclusion.ts'
 
-// frontend-shell-and-routing.md FR-6 requires MSW for development/
-// testing; this is the production-exclusion check that requirement
-// depends on.
+// Production exclusion check: ensures MSW mock worker and code
+// are not bundled into production builds.
 
 let dir: string | undefined
 

@@ -12,27 +12,23 @@ const CANVASES: Record<string, string> = {
 }
 
 // Every text-shaped token against every surface it could plausibly render
-// on — the meaningful subset of "every color token pair"
-// (frontend-design-tokens.md's own Test strategy), not the full
+// on — the meaningful subset of "every color token pair", not the full
 // combinatorial cross-product of unrelated tokens (e.g. border vs warm,
 // which never appear as a text/background relationship).
 const TEXT_TOKENS = ['text', 'text-2', 'text-3']
 const SURFACE_TOKENS = ['background', 'surface', 'surface-2', 'surface-3']
 const EXTRA_PAIRS: [string, string][] = [['accent-text', 'accent']]
 
-// Known, accepted exception — NOT a silent fix (frontend-design-tokens.md
-// FR-4 forbids inventing a corrected value). text-3 (#9C978F) fails WCAG
+// Known, accepted exception. text-3 (#9C978F) fails WCAG
 // AA against every surface in the current design reference — 2.90:1 at
 // best, below even the large-text 3:1 bar. Recorded here rather than
-// either (a) silently passing the check or (b) blocking Tier 1's
-// otherwise-correct extraction pipeline on an open design question.
+// either (a) silently passing the check or (b) blocking the extraction pipeline:
+// the generator extracts the design reference faithfully; darkening text-3 here
+// would drift code from design tokens.
 //
-// Maintainer decision D2 (2026-08-28, phase 04 Tier 6 / F27,
-// tasks/todo-p04-tier6-closure.md; frontend-design-tokens.md
-// Accessibility NFR): accepted PERMANENTLY. text-3 is a
-// decorative / non-essential tertiary-label colour only — muted
+// text-3 is a decorative / non-essential tertiary-label colour only — muted
 // captions and the correlation-ID line, never body or load-bearing
-// text. The default palette is not darkened (that would break FR-4).
+// text.
 // src/a11y.css still lifts text-3 to the text-2 value under
 // prefers-contrast: more, so a high-contrast user gets AA. This check
 // keeps failing the build if any OTHER pair regresses.
@@ -88,14 +84,14 @@ for (const [fg, bg] of pairs) {
   }
 }
 
-// The prefers-contrast: more fallback (frontend-accessibility.md FR-5):
+// The prefers-contrast: more fallback:
 // src/a11y.css must redefine --color-text-3 to a value that passes AA on
 // every surface, so the KNOWN_EXCEPTIONS above are mitigated for a
 // high-contrast user rather than left flat.
 const a11yCssPath = join(import.meta.dirname, '..', 'src', 'a11y.css')
 if (!existsSync(a11yCssPath)) {
   console.error(
-    'check-token-contrast: src/a11y.css does not exist — it carries the prefers-contrast: more override for --color-text-3 (frontend-accessibility.md FR-5)',
+    'check-token-contrast: src/a11y.css does not exist — it carries the prefers-contrast: more override for --color-text-3',
   )
   process.exit(1)
 }
@@ -108,7 +104,7 @@ const overrideMatch =
   )
 if (!overrideMatch) {
   console.error(
-    'check-token-contrast: src/a11y.css is missing a `--color-text-3: var(--color-*)` override inside a `@media (prefers-contrast: more)` block (frontend-accessibility.md FR-5)',
+    'check-token-contrast: src/a11y.css is missing a `--color-text-3: var(--color-*)` override inside a `@media (prefers-contrast: more)` block',
   )
   process.exit(1)
 }
@@ -126,7 +122,7 @@ for (const surface of SURFACE_TOKENS) {
     console.log(`  PASS  text-3 (prefers-contrast) on ${surface.padEnd(11)} ${ratio.toFixed(2)}:1`)
   } else {
     console.error(
-      `  FAIL  text-3 (prefers-contrast) on ${surface} ${ratio.toFixed(2)}:1 — the FR-5 fallback must pass AA`,
+      `  FAIL  text-3 (prefers-contrast) on ${surface} ${ratio.toFixed(2)}:1 — the fallback must pass AA`,
     )
     failed = true
   }

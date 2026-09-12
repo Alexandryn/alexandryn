@@ -17,7 +17,7 @@ export function Skeleton({ label = 'Loading content', className, ...rest }: Skel
         className={cx(
           'size-full rounded-sm bg-surface-3 animate-pulse motion-reduce:animate-none',
           // Outline the shape under prefers-contrast — the surface-3 fill
-          // alone is near-invisible on the page (frontend-accessibility.md FR-5).
+          // alone is near-invisible on the page under prefers-contrast.
           'contrast-more:border contrast-more:border-text-3',
         )}
       />

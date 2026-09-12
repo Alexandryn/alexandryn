@@ -4,8 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findHandRolledHiddenText } from './hiddenText.ts'
 
-// frontend-accessibility.md FR-3 / Acceptance criterion 4: every
-// visually-hidden label uses <VisuallyHidden> (or Tailwind sr-only),
+// Every visually-hidden label uses <VisuallyHidden> (or Tailwind sr-only),
 // never display:none (drops it from the a11y tree) or a hand-rolled
 // clip-rect — proven by a grep-based check.
 

@@ -5,7 +5,7 @@ import { progressRatio, restoreScroll, sectionScrollFraction, selectionCfis } fr
 
 const section = { cfi: '/6/4' } as EpubSection
 
-describe('sectionScrollFraction (audit 0016 #145)', () => {
+describe('sectionScrollFraction', () => {
   it('returns the offset within the active section, not the whole book', () => {
     // 10 sections, book-wide 35% = section 3, halfway down it.
     expect(sectionScrollFraction(0.35, 3, 10)).toBeCloseTo(0.5)
@@ -30,7 +30,7 @@ describe('sectionScrollFraction (audit 0016 #145)', () => {
   })
 })
 
-describe('selectionCfis (audit 0016 #147)', () => {
+describe('selectionCfis', () => {
   const docWith = (html: string) =>
     new DOMParser().parseFromString(`<html><body>${html}</body></html>`, 'text/html')
 
@@ -67,7 +67,7 @@ describe('selectionCfis (audit 0016 #147)', () => {
   })
 })
 
-describe('restoreScroll (audit 0016 #145)', () => {
+describe('restoreScroll', () => {
   const fakeWin = (scrollHeight: number, clientHeight: number) => {
     const scrollTo = vi.fn()
     return {

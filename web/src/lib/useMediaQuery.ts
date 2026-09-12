@@ -2,9 +2,9 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Subscribes a component to a CSS media query, re-rendering when it flips.
- * Used by useShellLayout for the FR-3 sidebar↔tab-bar reflow. The
- * server-snapshot returns false — this app is CSR-only
- * (architecture-frontend.md FR-7) so it is never actually read, but
+ * Used by useShellLayout for the sidebar↔tab-bar reflow. The
+ * server-snapshot returns false — this app is client-side rendered only,
+ * so it is never actually read, but
  * useSyncExternalStore requires it.
  */
 export function useMediaQuery(query: string): boolean {

@@ -1,6 +1,6 @@
 # Keyboard map
 
-The project-wide keyboard contract (`frontend-accessibility.md` FR-1).
+The project-wide keyboard contract.
 The same key does the same thing everywhere; `src/test/keyboardMap.test.tsx`
 holds this document to the code, exercising one representative primitive
 per category.
@@ -9,16 +9,15 @@ per category.
 
 | Key             | Does                                                                                                                                                               |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Tab**         | Move focus to the next interactive element, in DOM order (`FR-2`).                                                                                                 |
+| **Tab**         | Move focus to the next interactive element, in DOM order.                                                                                                           |
 | **Shift + Tab** | Move focus to the previous interactive element, in DOM order.                                                                                                      |
 | **Enter**       | Activate the focused control (button, link, toggle).                                                                                                               |
 | **Space**       | Activate the focused control. When focus is on a scrollable region that is not itself a control, Space scrolls it — standard browser behaviour, never overridden.  |
 | **Escape**      | Close or cancel the topmost open transient surface — a modal, a dropdown, a toast. Consistent across every primitive that has one; never a per-component override. |
 
-There is **no global single-key shortcut** in phase 04 (no `g` then `l`
+There is **no global single-key shortcut** (no `g` then `l`
 for "go to library", no `/` to focus search beyond the browser's own
-find). Shortcuts are deferred until phase 06+ has a real feature set to
-attach them to, and until assistive-technology collision research can be
+find). Shortcuts are deferred until assistive-technology collision research can be
 done with that context — a single-letter hotkey designed without it is a
 real risk of clashing with a screen reader's own commands.
 
@@ -33,12 +32,12 @@ fight a screen reader's own arrow-key browse mode.
 | `SegmentedControl` | Left/Right (and Up/Down) move the selection between segments; the selected segment is the only tab stop (roving tabindex).                                                                                                                                                                                                                                                                                                                                                             | Radix `RadioGroup`                            |
 | `Slider`           | Left/Down decrease, Right/Up increase by one step; Home/End jump to min/max; PageUp/PageDown move by a larger step.                                                                                                                                                                                                                                                                                                                                                                    | Radix `Slider`                                |
 | `Toggle`           | No arrow behaviour — it is a single control, toggled with Space/Enter.                                                                                                                                                                                                                                                                                                                                                                                                                 | Radix `Switch`                                |
-| `DataTable`        | Up/Down move focus between rows; Home/End jump to the first/last row. Only one row is a tab stop at a time (roving tabindex); a further Tab leaves the table. Enter/Space on the focused row toggles its selection. Sortable column headers are ordinary tab stops before the rows; Enter/Space on one toggles its sort. Row-level, not cell-level — the cells hold no interactive content in phase 04; cell-level roving is added if that changes (`frontend-accessibility.md` FR-1). | Hand-rolled (no Radix table primitive exists) |
+| `DataTable`        | Up/Down move focus between rows; Home/End jump to the first/last row. Only one row is a tab stop at a time (roving tabindex); a further Tab leaves the table. Enter/Space on the focused row toggles its selection. Sortable column headers are ordinary tab stops before the rows; Enter/Space on one toggles its sort. Row-level, not cell-level — the cells hold no interactive content; cell-level roving is added if that changes. | Hand-rolled (no Radix table primitive exists) |
 
 ## Focus order
 
 Focus follows DOM order, which follows visual order
-(`frontend-shell-and-routing.md` FR-3's shell composition: titlebar, then
+(shell composition: titlebar, then
 sidebar, then content pane, top to bottom within each). A `tabindex="-1"`
 to make an element a script-focus target or to remove a decorative
 element from the sequence is fine; a **positive** `tabindex` that

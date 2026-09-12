@@ -19,7 +19,7 @@ function createTestWrapper() {
   }
 }
 
-describe('library data hooks & fetchers (FR-1, FR-3, FR-5)', () => {
+describe('library data hooks & fetchers', () => {
   it('fetchLibraryPage serializes query, filter, sort, and cursor params correctly', async () => {
     let capturedUrl: URL | null = null
 
@@ -156,9 +156,9 @@ describe('library data hooks & fetchers (FR-1, FR-3, FR-5)', () => {
     expect(result.current.data).toBeUndefined()
   })
 
-  // audit 0016 #166: the catalog fetchers forward the query's AbortSignal
-  // to fetch, so a superseded search or an unmount cancels the in-flight
-  // request rather than downloading a response nobody will read.
+  // The catalog fetchers forward the query's AbortSignal to fetch, so a
+  // superseded search or an unmount cancels the in-flight request rather
+  // than downloading a response nobody will read.
   it('fetchLibraryPage and fetchWorkDetail forward an AbortSignal', async () => {
     server.use(
       http.get('*/api/v1/library', () => HttpResponse.json({ works: [], nextCursor: null })),

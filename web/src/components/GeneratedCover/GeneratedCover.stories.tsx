@@ -28,7 +28,7 @@ export const NeitherPresent: Story = {
   args: { identifier: 'work-unknown' },
 }
 
-// frontend-generated-covers.md Test strategy: "looks intentional at every
+// Visual verification: "looks intentional at every
 // step" is a design-review surface, not a unit test — this story is that
 // surface, showing all 3 ladder steps plus pattern-variant diversity
 // side by side.

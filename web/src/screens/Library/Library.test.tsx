@@ -28,7 +28,7 @@ const mockWorks = [
   },
 ]
 
-describe('Library Screen (FR-1, FR-2, FR-3)', () => {
+describe('Library Screen', () => {
   beforeEach(() => {
     localStorage.clear()
   })

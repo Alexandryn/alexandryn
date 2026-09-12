@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findRadixVersionSplits } from './radixDedup.ts'
 
-// audit 0016 #164: every @radix-ui/* package should resolve to one
+// Every @radix-ui/* package should resolve to one
 // version so the bundle ships one copy of the shared internals.
 
 let dir: string | undefined

@@ -5,7 +5,7 @@ function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }
 
-test.describe('Phase 06: Library and Collections E2E Walkthrough (L21)', () => {
+test.describe('Library and Collections E2E Walkthrough', () => {
   test('library screen browsing, searching, filtering, and view mode toggling', async ({
     page,
   }) => {

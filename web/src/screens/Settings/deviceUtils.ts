@@ -1,5 +1,5 @@
 /**
- * Utilities for formatting device information in Settings -> Devices (Phase 14).
+ * Utilities for formatting device information in Settings -> Devices.
  */
 
 export function formatRelativeTime(
@@ -32,7 +32,7 @@ export function formatRelativeTime(
     return `${prefix} ${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
   }
 
-  // Format as date string for 24h or older (FR-2 / test plan)
+  // Format as date string for 24h or older
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

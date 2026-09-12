@@ -5,17 +5,12 @@ import { GeneratedCover } from '../components/GeneratedCover/GeneratedCover'
 import { TitleLayer } from '../components/GeneratedCover/TitleLayer'
 import { AuthorLayer } from '../components/GeneratedCover/AuthorLayer'
 
-// Security guard (audit 0004, F26 / T3). Every component that will
-// eventually render source-, file-, or metadata-provider-derived text —
-// titles, authors, and an API error's code / message / correlationId —
-// must render it as an escaped text node, never as markup. React's
-// default escaping gives us this for free as long as no component
-// reaches for dangerouslySetInnerHTML or an innerHTML sink. These tests
-// fail the moment one does.
-//
-// architecture-frontend.md Security considerations ("XSS via metadata or
-// book content"); frontend-component-primitives.md / frontend-generated-
-// covers.md Security considerations.
+// Security guard: every component that renders source-, file-, or
+// metadata-provider-derived text — titles, authors, and an API error's
+// code / message / correlationId — must render it as an escaped text node,
+// never as markup. React's default escaping gives us this for free as long as
+// no component reaches for dangerouslySetInnerHTML or an innerHTML sink.
+// These tests fail the moment one does.
 
 const HTML_PAYLOAD = '<script>window.__xss = 1</script><img src=x onerror="window.__xss = 1">'
 

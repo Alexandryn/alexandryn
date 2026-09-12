@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { findRawStyleValues } from './tokenStyling.ts'
 
-// frontend-component-primitives.md FR-4/Acceptance criteria: "no primitive's
-// source contains a raw hex/px value outside the token set," proven by a
-// grep-based check as an interim measure until a lint rule exists.
+// Component styling verification: no primitive's source contains a raw hex/px
+// value outside the token set, proven by a grep-based check as an interim
+// measure until a lint rule exists.
 
 let dir: string | undefined
 
@@ -86,7 +86,7 @@ describe('findRawStyleValues', () => {
 
   it('does not read an issue reference in a comment as a shorthand hex', () => {
     const componentsDir = makeComponents({
-      'Grid/Grid.tsx': `// slides the window on the sentinel (audit 0016 #150)\nexport const x = 1`,
+      'Grid/Grid.tsx': `// slides the window on the sentinel (issue #150)\nexport const x = 1`,
     })
 
     expect(findRawStyleValues(componentsDir)).toEqual([])
@@ -102,7 +102,7 @@ describe('findRawStyleValues', () => {
 
   it('skips .test files, which carry issue references in describe/it titles', () => {
     const componentsDir = makeComponents({
-      'Grid/Grid.test.tsx': `it('slides the window (audit 0016 #168)', () => { const c = '#abc123' })`,
+      'Grid/Grid.test.tsx': `it('slides the window (issue #168)', () => { const c = '#abc123' })`,
     })
 
     expect(findRawStyleValues(componentsDir)).toEqual([])

@@ -23,8 +23,8 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-describe('reading data layer (frontend-reader.md)', () => {
-  it('generates and persists a stable device id (FR-8)', () => {
+describe('reading data layer', () => {
+  it('generates and persists a stable device id', () => {
     const first = readerDeviceId()
     expect(first).toMatch(/^[0-9a-f-]{36}$/i)
     expect(readerDeviceId()).toBe(first)
@@ -74,7 +74,7 @@ describe('reading data layer (frontend-reader.md)', () => {
     expect(result.current.data?.preferences.theme).toBe('light')
   })
 
-  it('downloads the export as a JSON file, sending the auth headers (audit 0016 #99)', async () => {
+  it('downloads the export as a JSON file, sending the auth headers', async () => {
     window.localStorage.setItem('alexandryn_access_token', 'tok-123')
     window.localStorage.setItem('alexandryn_active_library', 'lib-9')
     let auth: string | null = null

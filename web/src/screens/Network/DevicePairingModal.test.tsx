@@ -22,7 +22,7 @@ function renderWithProviders(ui: ReactNode) {
   }
 }
 
-describe('DevicePairingModal (Phase 13 T5.4)', () => {
+describe('DevicePairingModal', () => {
   it('initiates pairing on open and displays QR code and code in mono', async () => {
     renderWithProviders(<DevicePairingModal open={true} onOpenChange={vi.fn()} />)
 
@@ -31,8 +31,8 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(codeEl).toHaveTextContent('ABCD-EFGH')
     expect(codeEl).toHaveClass('font-mono')
 
-    // QR code SVG — the qrcode library is loaded on demand (audit 0016
-    // #163), so the image appears asynchronously after the payload.
+    // QR code SVG — the qrcode library is loaded on demand,
+    // so the image appears asynchronously after the payload.
     expect(await screen.findByRole('img', { name: 'Device pairing QR code' })).toBeInTheDocument()
   })
 
@@ -98,8 +98,7 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  // audit 0016 #142: a failed revoke used to close the modal anyway,
-  // leaving a live pairing session with no feedback.
+  // A failed revoke should keep the modal open and provide feedback.
   it('keeps the modal open and shows an error when revoke fails', async () => {
     const onOpenChange = vi.fn()
     server.use(
@@ -119,7 +118,7 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(screen.getByRole('button', { name: 'Retry revoke' })).toBeInTheDocument()
   })
 
-  // audit 0016 #142 (review follow-up): the corner "×" is a plain button,
+  // The corner "×" is a plain button,
   // not RadixDialog.Close — closing it must revoke first and stay open on
   // a failed revoke, exactly like the Revoke button and Escape.
   it('corner close revokes, and keeps the modal open when revoke fails', async () => {
@@ -181,7 +180,7 @@ describe('DevicePairingModal (Phase 13 T5.4)', () => {
     expect(screen.getByText('Generate a new code')).toBeInTheDocument()
   })
 
-  // audit 0016 #140: prefers-reduced-motion must only suppress visual
+  // prefers-reduced-motion must only suppress visual
   // transitions, never the functional expiry countdown and its
   // screen-reader announcements.
   it('runs the countdown and announces expiry under prefers-reduced-motion', async () => {

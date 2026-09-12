@@ -13,7 +13,7 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { cx } from '../../lib/cx'
 
 /**
- * SourceDetail / Browse view at /sources/:id (frontend-source-management.md FR-6).
+ * SourceDetail / Browse view at /sources/:id.
  * Renders browsable and searchable candidate books for a specific source.
  */
 export function SourceDetail() {
@@ -141,7 +141,7 @@ export function SourceDetail() {
       </div>
 
       {/* Search Input (only when canSearch: true) */}
-      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key (audit 0017 A-17-08) */}
+      {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       {canSearch && (
         <div className="max-w-[28rem]">
           <Input

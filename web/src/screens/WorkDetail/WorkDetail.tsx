@@ -13,7 +13,7 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { AddToCollectionModal } from './AddToCollectionModal'
 
 /**
- * Work detail screen at /book/:id (frontend-library-screens.md FR-5).
+ * Work detail screen at /book/:id.
  * Displays work metadata, owned editions with format badges and 'Read' action
  * for EPUB editions, and collection memberships.
  */
@@ -227,7 +227,7 @@ export function WorkDetail() {
                     </div>
                   </div>
 
-                  {/* Read button for EPUB formats (phase 11 amendment) */}
+                  {/* Read button for EPUB formats */}
                   {hasEpub && (
                     <Link
                       to={`/read/${work.id}/${edition.id}`}

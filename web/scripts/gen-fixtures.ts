@@ -3,9 +3,8 @@ import { fileURLToPath } from 'node:url'
 import * as prettier from 'prettier'
 import { parse } from 'yaml'
 
-// frontend-shell-and-routing.md FR-6 tier (a): for any endpoint the
-// contract already defines, the mock fixture is generated from
-// api/openapi.yaml, never hand-written. This script is that mechanism.
+// For any endpoint the contract already defines, the mock fixture is generated
+// from api/openapi.yaml, never hand-written. This script is that mechanism.
 // It reads each operation's inline `application/json` response example
 // and writes them into one generated module the mock handlers and tests
 // import. Run via `npm run mocks:gen-fixtures`; CI fails if the checked-in
@@ -63,10 +62,9 @@ const fixtures = build()
 
 const body = `// GENERATED FILE — do not hand-edit.
 // Run \`npm run mocks:gen-fixtures\` (web/scripts/gen-fixtures.ts) to
-// regenerate from api/openapi.yaml. frontend-shell-and-routing.md FR-6
-// tier (a): fixtures for contract-covered endpoints are generated, never
-// hand-written. Hand-written fixtures for endpoints the contract does not
-// cover yet live in ../handwritten/ and carry a TODO(phase-06) marker.
+// regenerate from api/openapi.yaml. Fixtures for contract-covered endpoints
+// are generated, never hand-written. Hand-written fixtures for endpoints
+// the contract does not cover yet live in ../handwritten/.
 
 export const generatedFixtures = ${JSON.stringify(fixtures, null, 2)} as const
 `

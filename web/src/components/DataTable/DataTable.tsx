@@ -42,7 +42,7 @@ export interface DataTableProps<T> extends Omit<TableHTMLAttributes<HTMLTableEle
 }
 
 /**
- * Hand-built, not Radix-wrapped — Radix ships no table primitive (FR-1).
+ * Hand-built, not Radix-wrapped — Radix ships no table primitive.
  * Real <table>/<th scope> semantics throughout; sort and row selection are
  * implemented directly against them rather than a div-grid.
  */
@@ -58,9 +58,9 @@ export function DataTable<T>({
   className,
   ...rest
 }: DataTableProps<T>) {
-  // Row-level roving tabindex (frontend-accessibility.md FR-1): when the
+  // Row-level roving tabindex: when the
   // table is selectable, exactly one row is a tab stop and Arrow keys
-  // move between rows. Row-level, not cell-level — phase 04's cells hold
+  // move between rows. Row-level, not cell-level — table cells hold
   // no interactive content.
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
   const [activeRow, setActiveRow] = useState(0)
@@ -84,7 +84,7 @@ export function DataTable<T>({
     if (!onRowSelect) return
     // A key pressed on a control inside a cell is that control's to handle;
     // row selection and arrow navigation stay off until focus is on the
-    // row. Phase 04's cells hold no interactive content, so this is inert
+    // row. Table cells hold no interactive content, so this is inert
     // today — revisit the pattern if that changes.
     if (isFromNestedInteractiveElement(event.target, event.currentTarget)) return
     switch (event.key) {

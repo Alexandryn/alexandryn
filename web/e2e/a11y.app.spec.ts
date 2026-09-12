@@ -1,16 +1,14 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
-// frontend-accessibility.md FR-4 / this spec's Test strategy: real-browser
-// axe-core over the shell, at a desktop and a mobile viewport, distinct
-// from Tier 0's lint-time jsx-a11y check.
+// Real-browser axe-core over the shell, at a desktop and a mobile viewport,
+// distinct from Tier 0's lint-time jsx-a11y check.
 //
 // color-contrast is disabled here for the same reason src/test/axe.ts
 // disables it in jsdom: token contrast is owned by
 // `npm run tokens:check-contrast`, which already flags the one failing
 // pair (text-3 against light surfaces, 2.5–2.9:1) as a documented
-// exception pending a maintainer decision. Tier 5's F24 sets the final
-// real-browser contrast policy; this tier does not pre-empt that call.
+// exception pending a maintainer decision.
 function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }
@@ -43,7 +41,7 @@ test('the not-found view has no axe violations', async ({ page }) => {
   expect(results.violations).toEqual([])
 })
 
-// The reduced-motion composed check (FR-5) lives in the a11y gallery
+// The reduced-motion composed check lives in the a11y gallery
 // project (e2e/a11y-gallery.gallery.spec.ts) — that harness renders
 // Spinner / Skeleton / ProgressBar permanently and has no service worker,
 // so emulateMedia and getAnimations() are deterministic there. Holding
@@ -51,8 +49,8 @@ test('the not-found view has no axe violations', async ({ page }) => {
 // page.route can't intercept a service-worker-answered request).
 
 test('the prefers-contrast adaptation is present in the served stylesheet', async ({ page }) => {
-  // Playwright can't emulate prefers-contrast (maintainer decision G2), so
-  // assert the mechanism ships: the served CSS carries the FR-5 override.
+  // Playwright can't emulate prefers-contrast, so assert the mechanism
+  // ships: the served CSS carries the contrast override.
   await page.goto('/library')
   const hasContrastRule = await page.evaluate(() =>
     [...document.styleSheets].some((sheet) => {

@@ -26,7 +26,7 @@ function renderWithProviders(initialEntries = ['/discover']) {
   )
 }
 
-describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
+describe('Discover Screen', () => {
   it('renders initial idle state when no search query is present', () => {
     renderWithProviders()
 
@@ -84,7 +84,7 @@ describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
     expect(screen.getByText(/No books matched "UnknownBookXYZ"/)).toBeInTheDocument()
   })
 
-  it('renders degraded 503 state with retry button when Open Library is unavailable (FR-5)', async () => {
+  it('renders degraded 503 state with retry button when Open Library is unavailable', async () => {
     server.use(
       http.get('*/api/v1/discover', () => {
         return HttpResponse.json(
@@ -108,7 +108,7 @@ describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
-  it('handles pagination next and previous buttons (FR-3)', async () => {
+  it('handles pagination next and previous buttons', async () => {
     server.use(
       http.get('*/api/v1/discover', ({ request }) => {
         const url = new URL(request.url)
@@ -148,7 +148,7 @@ describe('Discover Screen (FR-1, FR-2, FR-3, FR-5)', () => {
     })
   })
 
-  // audit 0016 #152: paging replaces the whole result list, unmounting the
+  // Paging replaces the whole result list, unmounting the
   // button that had focus; focus must land on the results, not document root.
   it('moves keyboard focus to the results region after a page change', async () => {
     server.use(

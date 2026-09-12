@@ -104,7 +104,7 @@ export function deletePairing(id: string): Promise<void> {
   return deleteRequest(`/api/v1/network/pair/${encodeURIComponent(id)}`)
 }
 
-// ── TanStack Query hooks (frontend-shell-and-routing.md FR-2) ───────────────
+// ── TanStack Query hooks ───────────────────────────────────────────────────
 
 export const networkKeys = {
   all: ['network'] as const,
@@ -122,7 +122,7 @@ export function useNetworkStatus() {
 }
 
 /** The saved runtime-safe network settings, so the settings form can
- * pre-fill real values instead of hardcoded defaults (audit 0016 #143).
+ * pre-fill real values instead of hardcoded defaults.
  * 403 for a non-admin — the caller treats that as "no editable form". */
 export function useNetworkSettings(options?: { enabled?: boolean }) {
   return useQuery({

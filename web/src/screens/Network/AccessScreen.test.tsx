@@ -27,7 +27,7 @@ function renderAccessScreen() {
   )
 }
 
-describe('AccessScreen (Phase 13 T5.6)', () => {
+describe('AccessScreen', () => {
   beforeEach(() => {
     localStorage.setItem(
       'alexandryn_user',
@@ -148,7 +148,7 @@ describe('AccessScreen (Phase 13 T5.6)', () => {
     expect(localStorage.getItem('alexandryn_user')).toBeNull()
   })
 
-  // audit 0016 #154: the accessible-libraries list comes from the
+  // The accessible-libraries list comes from the
   // server-scoped GET /api/v1/libraries response, not from parsing the
   // access token. A stored token with an empty (or absent) libraries
   // claim must not hide libraries the server returned.
@@ -189,7 +189,7 @@ describe('AccessScreen (Phase 13 T5.6)', () => {
     expect(screen.getByText('Poetry Shelf')).toBeInTheDocument()
   })
 
-  // audit 0016 #156: a failed status/libraries query shows an inline
+  // A failed status/libraries query shows an inline
   // error with a retry, it does not make the section silently disappear.
   it('shows a retryable error when the status and libraries queries fail', async () => {
     server.use(

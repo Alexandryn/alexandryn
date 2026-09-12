@@ -10,7 +10,7 @@ export interface ErrorStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
   code?: string
   /**
    * The correlation ID from the error response — rendered visibly but
-   * understated (frontend-shell-and-routing.md FR-7), so a person can
+   * understated, so a person can
    * quote it when reporting the problem.
    */
   correlationId?: string
@@ -19,7 +19,7 @@ export interface ErrorStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
 
 /**
  * The error treatment for a failed data fetch or a route render error
- * (FR-2/FR-5/FR-7), composed from primitives — the message leads, the
+ * composed from primitives — the message leads, the
  * technical detail follows in a muted monospace line.
  */
 export function ErrorState({

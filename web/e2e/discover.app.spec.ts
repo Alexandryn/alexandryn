@@ -5,7 +5,7 @@ function axe(page: import('@playwright/test').Page) {
   return new AxeBuilder({ page }).disableRules(['color-contrast'])
 }
 
-test.describe('Phase 07: Discover E2E Walkthrough (FR-1 to FR-7)', () => {
+test.describe('Discover E2E Walkthrough', () => {
   test('discover home idle state, search, and results grid with axe audit', async ({
     page,
   }) => {
@@ -23,7 +23,7 @@ test.describe('Phase 07: Discover E2E Walkthrough (FR-1 to FR-7)', () => {
     const idleAxe = await axe(page).analyze()
     expect(idleAxe.violations).toEqual([])
 
-    // Type query and verify URL sync with debounce (FR-1, FR-2)
+    // Type query and verify URL sync with debounce
     await searchInput.fill('Middlemarch')
     await expect(page).toHaveURL(/q=Middlemarch/)
 
@@ -40,7 +40,7 @@ test.describe('Phase 07: Discover E2E Walkthrough (FR-1 to FR-7)', () => {
     expect(resultsAxe.violations).toEqual([])
   })
 
-  test('navigate from search result to work detail and view metadata (FR-4, FR-7)', async ({
+  test('navigate from search result to work detail and view metadata', async ({
     page,
   }) => {
     await page.goto('/discover?q=Middlemarch')
@@ -80,7 +80,7 @@ test.describe('Phase 07: Discover E2E Walkthrough (FR-1 to FR-7)', () => {
     await expect(page).toHaveURL(/\/discover/)
   })
 
-  test('degraded 503 and 404 error states on Discover (FR-5)', async ({ page }) => {
+  test('degraded 503 and 404 error states on Discover', async ({ page }) => {
     // 1. 503 Unavailable state on search
     await page.goto('/discover?q=unavailable-test')
 

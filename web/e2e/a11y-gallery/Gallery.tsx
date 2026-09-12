@@ -21,9 +21,9 @@ import { Toggle } from '../../src/components/Toggle/Toggle'
 import { VisuallyHidden } from '../../src/components/VisuallyHidden/VisuallyHidden'
 
 // Every primitive in representative states on one page, so
-// @axe-core/playwright (frontend-accessibility.md FR-4) can scan them in
-// a real browser — computed contrast, ARIA validity, focus order as
-// rendered — beyond what the per-primitive jsdom axe tests (Tier 2) see.
+// @axe-core/playwright can scan them in a real browser — computed contrast,
+// ARIA validity, focus order as rendered — beyond what the per-primitive
+// jsdom axe tests (Tier 2) see.
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

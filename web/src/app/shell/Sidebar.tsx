@@ -25,10 +25,9 @@ function ActivityBadge() {
 }
 
 /**
- * The persistent desktop navigation rail
- * (frontend-shell-and-routing.md FR-3). A real <nav> landmark, not a
- * <div> with role — constitution §7. Rendered only at/above the reflow
- * breakpoint; below it the <MobileTabBar> replaces it entirely.
+ * The persistent desktop navigation rail. A real <nav> landmark, not a
+ * <div> with role. Rendered only at/above the reflow breakpoint; below it
+ * the <MobileTabBar> replaces it entirely.
  */
 export function Sidebar() {
   const hasQueryClient = Boolean(useContext(QueryClientContext))

@@ -16,7 +16,7 @@ export function NetworkSettings() {
   const { data: status, isLoading, error } = useNetworkStatus()
   const adminStatus = status ? isAdminNetworkStatus(status) : false
   // Load the saved settings so the form pre-fills real values rather than
-  // hardcoded defaults (audit 0016 #143). Only an admin can read them.
+  // hardcoded defaults. Only an admin can read them.
   const { data: settings } = useNetworkSettings({ enabled: adminStatus })
   const updateSettingsMutation = useUpdateNetworkSettings()
 
@@ -78,7 +78,7 @@ export function NetworkSettings() {
   }
 
   if (error || !status) {
-    // max-w-[48rem] not max-w-3xl: --spacing-3xl collision, audit 0017 A-17-08
+    // max-w-[48rem] not max-w-3xl: --spacing-3xl collision
     return (
       <div className="p-xl max-w-[48rem] mx-auto">
         <div className="rounded-md bg-error/10 border border-error/20 p-md text-sm text-error">
@@ -201,7 +201,7 @@ export function NetworkSettings() {
               onChange={(e) => setHostNameInput(e.target.value)}
               placeholder="alexandryn.local"
               className={cx(
-                // max-w-[28rem] not max-w-md: --spacing-md collision, audit 0017 A-17-08
+                // max-w-[28rem] not max-w-md: --spacing-md collision
                 'rounded-md border border-border bg-surface px-md py-xs text-sm text-text font-mono max-w-[28rem]',
                 FOCUS_RING,
               )}
@@ -223,7 +223,7 @@ export function NetworkSettings() {
               value={currentRememberDays}
               onChange={(e) => setRememberDaysInput(Number(e.target.value))}
               className={cx(
-                // max-w-[20rem] not max-w-xs: --spacing-xs collision, audit 0017 A-17-08
+                // max-w-[20rem] not max-w-xs: --spacing-xs collision
                 'rounded-md border border-border bg-surface px-md py-xs text-sm text-text max-w-[20rem]',
                 FOCUS_RING,
               )}

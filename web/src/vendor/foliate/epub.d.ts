@@ -1,7 +1,7 @@
 // Minimal ambient types for the vendored foliate-js `epub.js` — only the
 // surface the reader (`web/src/screens/Reader`) actually uses. The full
-// module (ADR 0023) is vendored verbatim from foliate-js 1.0.1; these
-// declarations are ours.
+// module is vendored verbatim from foliate-js 1.0.1; these declarations are
+// ours.
 
 export interface EpubLoader {
   loadText: (uri: string) => Promise<string>

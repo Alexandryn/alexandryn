@@ -20,12 +20,12 @@ function backgroundImageFor(seed: CoverSeed): string | undefined {
   }
 }
 
-/** Pure — the same seed always produces the same texture (FR-1/FR-2). Hue is procedural per-book, not a token color (D2). */
+/** Pure — the same seed always produces the same texture. Hue is procedural per-book, not a token color. */
 export function TextureLayer({ seed, className, style, ...rest }: TextureLayerProps) {
   const backgroundImage = backgroundImageFor(seed)
   // Caller-supplied style spreads first — the seed-derived background
   // properties come after so a caller can add unrelated style (e.g.
-  // transform) without being able to silently override the values FR-2's
+  // transform) without being able to silently override the values determinism
   // determinism guarantee depends on.
   const computedStyle: CSSProperties = {
     ...style,

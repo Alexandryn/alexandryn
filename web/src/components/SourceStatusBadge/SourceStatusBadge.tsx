@@ -13,7 +13,7 @@ export interface SourceStatusBadgeProps {
 }
 
 /**
- * SourceStatusBadge (frontend-source-management.md FR-3):
+ * SourceStatusBadge:
  * Renders one of eleven plainly-worded health states with status pill,
  * a "Check again" action when unreachable, and an accessibility live region.
  */

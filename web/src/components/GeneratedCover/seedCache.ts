@@ -1,7 +1,7 @@
 import { deriveSeed, type CoverSeed } from '../../lib/fnv1a'
 
 // Session-scoped (module-level, cleared only by a full page reload) —
-// correctness is guaranteed by fnv1a's own determinism (FR-2): the same
+// correctness is guaranteed by fnv1a's own determinism: the same
 // identifier always derives the same seed, so caching introduces no
 // staleness risk. Not localStorage/sessionStorage — nothing here needs to
 // survive a reload, only to avoid recomputing within one page's lifetime.

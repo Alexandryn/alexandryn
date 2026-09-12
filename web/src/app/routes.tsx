@@ -13,7 +13,7 @@ import { ParamPlaceholder, ScreenPlaceholder } from '../screens/ScreenPlaceholde
 import { SettingsIndex } from '../screens/Settings/SettingsIndex'
 import { MoreScreen } from '../screens/shell/MoreScreen'
 
-// Lazy route components — see lazyScreens.ts (audit 0016 issue 100).
+// Lazy route components — see lazyScreens.ts.
 import {
   AccessScreen,
   AcceptInviteScreen,
@@ -60,7 +60,7 @@ const shellChildren: RouteObject[] = [
   { path: 'activity', element: <ActivityScreen /> },
   { path: 'more', element: <MoreScreen /> },
 
-  // Multi-library administration (Phase 12)
+  // Multi-library administration
   {
     path: 'libraries',
     element: (
@@ -116,7 +116,7 @@ const shellChildren: RouteObject[] = [
   { path: 'settings', element: <SettingsIndex /> },
   { path: 'system', element: hostOnly('system', 'System') },
 
-  // Viewer surface (Phase 13)
+  // Viewer surface
   { path: 'access', element: <AccessScreen /> },
   { path: 'connect', element: <ConnectScreen /> },
   { path: 'reader/:id', element: <ParamPlaceholder title="Reader" param="id" /> },
@@ -129,7 +129,7 @@ export const routes: RouteObject[] = [
   {
     // A render or thrown error anywhere — a public screen, RequireAuth,
     // or the shell itself — surfaces here instead of React Router's raw
-    // error overlay (audit 0016 #150). The inner errorElement on
+    // error overlay. The inner errorElement on
     // shellChildren still catches a screen error inside the shell chrome.
     errorElement: <RouteError />,
     children: [

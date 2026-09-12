@@ -24,7 +24,7 @@ export interface ToastProps extends ComponentPropsWithoutRef<typeof RadixToast.R
 }
 
 /**
- * Radix Toast (FR-1) — auto-dismiss timing plus aria-live region
+ * Radix Toast — auto-dismiss timing plus aria-live region
  * management (role="status", aria-live="assertive" by default) is exactly
  * the hard-to-get-right-by-hand complexity this primitive picked Radix for.
  */

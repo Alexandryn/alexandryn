@@ -12,7 +12,7 @@ function Probe() {
   return <div>status:{ctx?.status}</div>
 }
 
-describe('CapabilityProvider (audit 0016 #216)', () => {
+describe('CapabilityProvider', () => {
   it('provides granted state when bootstrap succeeds', async () => {
     server.use(
       http.get('*/api/bootstrap', () =>

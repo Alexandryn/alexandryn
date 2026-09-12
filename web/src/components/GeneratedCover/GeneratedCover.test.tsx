@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { GeneratedCover } from './GeneratedCover'
 
-describe('GeneratedCover — degradation ladder (FR-3)', () => {
+describe('GeneratedCover — degradation ladder', () => {
   it('step 1: title + author present renders the full four-layer composition', () => {
     render(<GeneratedCover identifier="work-1" title="Dune" author="Frank Herbert" />)
     expect(screen.getByText('Dune')).toBeInTheDocument()

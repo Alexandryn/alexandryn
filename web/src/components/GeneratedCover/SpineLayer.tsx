@@ -6,7 +6,7 @@ export interface SpineLayerProps extends Omit<HTMLAttributes<HTMLDivElement>, 'a
   seed: CoverSeed
 }
 
-/** Pure — the same seed always produces the same spine color (FR-1/FR-2). Hue is procedural per-book, not a token color (D2). */
+/** Pure — the same seed always produces the same spine color. Hue is procedural per-book, not a token color. */
 export function SpineLayer({ seed, className, style, ...rest }: SpineLayerProps) {
   // Caller-supplied style first — the seed-derived backgroundColor comes
   // after so it can't be silently overridden (same reasoning as
