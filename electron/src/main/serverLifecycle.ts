@@ -1,15 +1,12 @@
-// desktop-host-process-model.md FR-4 — mid-session crash recovery.
-//
 // State machine for the Go server's lifecycle after first startup.
-// Distinct states (spec-required naming):
-//   Starting   — initial spawn, waiting for first readiness (FR-3)
+// Distinct states:
+//   Starting   — initial spawn, waiting for first readiness
 //   Ready      — /healthz 200 received; real UI is loaded
-//   Recovering — Go process exited post-readiness; respawning (FR-4)
+//   Recovering — Go process exited post-readiness; respawning
 //   Failed     — all attempts exhausted or first-start timeout; manual retry only
 //
-// `Degraded` is NOT modelled here — that is architecture-system.md's own state
-// (Go alive, PostgreSQL unreachable) and is surfaced by the React UI's own
-// API-error handling, not by this spec's or this module's concern at all.
+// Degraded state (Go alive, PostgreSQL unreachable) is surfaced by the
+// web UI's own API-error handling, not by this lifecycle module.
 
 import type { ChildProcess } from 'node:child_process'
 import { resolveServerBinaryPath } from './serverBinary'
@@ -28,13 +25,13 @@ export interface ServerEvent {
   attempt?: number
 }
 
-/** Maximum automatic respawn attempts after a post-readiness crash (FR-4). */
+/** Maximum automatic respawn attempts after a post-readiness crash. */
 export const MAX_RESPAWN_ATTEMPTS = 3
 
 /**
  * Returns the delay in milliseconds before respawn attempt `attempt` (1-based).
  *
- * FR-4: 1s / 4s / 9s (= n² seconds). This is a pure function — no I/O,
+ * 1s / 4s / 9s (= n² seconds). This is a pure function — no I/O,
  * no timers — so the unit test verifies the schedule in isolation from any
  * real process timing.
  */
@@ -43,7 +40,7 @@ export function backoffDelayMs(attempt: number): number {
 }
 
 export interface LifecycleOptions {
-  /** Config values passed to writeServerConfig (FR-5). */
+  /** Config values passed to writeServerConfig. */
   configValues?: Record<string, string>
   /**
    * Override the binary path resolver. Defaults to `resolveServerBinaryPath()`
@@ -58,7 +55,7 @@ export interface LifecycleOptions {
   extraArgs?: string[]
   /**
    * Override backoff delays (ms) for each attempt, for testing.
-   * Default: [1000, 4000, 9000] (FR-4).
+   * Default: [1000, 4000, 9000].
    */
   backoffDelaysMs?: readonly number[]
   /**
@@ -82,8 +79,6 @@ export interface LifecycleOptions {
 /**
  * Runs the Go server lifecycle: spawn → poll → Ready → crash detection →
  * bounded respawn → Recovering or Failed.
- *
- * desktop-host-process-model.md FR-2, FR-3, FR-4, FR-5.
  *
  * Returns the live child process once the server is ready (for the shutdown
  * handler in index.ts). Rejects if the server never becomes ready or all
@@ -114,7 +109,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
   // Throws on failure (binary missing, poll timeout).
   async function attempt(): Promise<{ child: ChildProcess; port: number; config: ServerConfigHandle }> {
     const binaryPath = binaryPathResolver()
-    // desktop-host-process-model.md FR-6 / E24: pass Electron's PID for child-side orphan monitoring
+    // Pass Electron's PID for child-side orphan monitoring
     const config = await writeServerConfig({
       DESKTOP_PARENT_PID: String(process.pid),
       ...configValues,
@@ -159,7 +154,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     throw err
   }
 
-  await config.cleanup() // delete config once ready (FR-5)
+  await config.cleanup() // delete config once ready
   onEvent({ state: 'Ready', port })
 
   if (signal?.aborted) {

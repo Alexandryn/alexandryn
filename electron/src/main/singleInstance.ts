@@ -1,10 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 
-// desktop-host-process-model.md FR-7 — single-instance lock must be
-// acquired BEFORE any window is created and BEFORE the spawn call (E9),
-// so a second process can never start a second Go server against the
-// same PostgreSQL data directory (the data-integrity risk the spec names
-// in its Security considerations).
+// Single-instance lock must be acquired BEFORE any window is created
+// and BEFORE the server spawn call, so a second process can never start
+// a second Go server against the same PostgreSQL data directory.
 
 /**
  * Acquires the Electron single-instance lock and wires the `second-instance`

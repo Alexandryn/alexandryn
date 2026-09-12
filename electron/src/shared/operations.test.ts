@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { OPERATIONS } from './operations'
 import { OPERATION_SCHEMAS } from '../main/ipc'
 
-// desktop-host-ipc-surface.md E23 Structural security tests:
+// IPC surface structural security tests:
 // (a) No ipcMain.handle anywhere outside src/main/ipc.ts
 // (b) Every operation has an entry in operations.ts and a valid Zod schema in ipc.ts
 // (c) Every operation rejects invalid argument shapes
-// (d) No operation accepts arbitrary paths from renderer (FR-4)
+// (d) No operation accepts arbitrary paths from renderer
 
 function getAllTypeScriptFiles(dir: string): string[] {
   const files: string[] = []
@@ -26,7 +26,7 @@ function getAllTypeScriptFiles(dir: string): string[] {
   return files
 }
 
-describe('IPC surface structural security tests (E23 / FR-1, FR-2, FR-3, FR-4)', () => {
+describe('IPC surface structural security tests', () => {
   it('no ipcMain.handle call sites exist anywhere outside src/main/ipc.ts', () => {
     const srcDir = join(import.meta.dirname, '..')
     const tsFiles = getAllTypeScriptFiles(srcDir)
@@ -60,7 +60,7 @@ describe('IPC surface structural security tests (E23 / FR-1, FR-2, FR-3, FR-4)',
     }
   })
 
-  it('every declared operation has an active Zod schema (FR-3 checklist item 1)', () => {
+  it('every declared operation has an active Zod schema', () => {
     for (const op of OPERATIONS) {
       const schema = OPERATION_SCHEMAS[op.name]
       expect(schema).toBeDefined()
@@ -68,7 +68,7 @@ describe('IPC surface structural security tests (E23 / FR-1, FR-2, FR-3, FR-4)',
     }
   })
 
-  it('every declared operation rejects malformed / hostile argument types (FR-3 checklist item 3)', () => {
+  it('every declared operation rejects malformed or hostile argument types', () => {
     const hostileInputs = [
       { extraField: 'evil', payload: '/etc/passwd' },
       '__proto__',
@@ -86,10 +86,10 @@ describe('IPC surface structural security tests (E23 / FR-1, FR-2, FR-3, FR-4)',
     }
   })
 
-  it('no declared operation in Phase 05 accepts arbitrary path strings (FR-4)', () => {
+  it('no declared operation accepts arbitrary path strings', () => {
     for (const op of OPERATIONS) {
       const schema = OPERATION_SCHEMAS[op.name]
-      // In Phase 05, all operations take void/undefined (no arbitrary renderer path parameter)
+      // All operations take void/undefined (no arbitrary renderer path parameter)
       const parseWithPath = schema!.safeParse({ path: '/some/path' })
       expect(parseWithPath.success).toBe(false)
     }

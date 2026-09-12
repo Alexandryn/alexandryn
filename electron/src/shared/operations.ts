@@ -1,6 +1,5 @@
-// desktop-host-ipc-surface.md FR-1, FR-2.
 // The single source of truth for all declared IPC operations.
-// Hand-maintained descriptor array (FR-1, constitution §9).
+// Hand-maintained descriptor array.
 // Preload script iterates this array with zero external dependencies.
 
 export interface OperationDescriptor {
@@ -12,7 +11,7 @@ export interface OperationDescriptor {
 // ── Operations ─────────────────────────────────────────────────────────────
 
 /**
- * system.getAppVersion (FR-5) — Returns the packaged app version string from package.json.
+ * system.getAppVersion — Returns the packaged app version string from package.json.
  * Takes no arguments.
  */
 export const SYSTEM_GET_APP_VERSION = {
@@ -22,7 +21,7 @@ export const SYSTEM_GET_APP_VERSION = {
 } as const satisfies OperationDescriptor
 
 /**
- * system.retryStartup (FR-3) — Re-triggers desktop server startup sequence after cold-start failure.
+ * system.retryStartup — Re-triggers desktop server startup sequence after cold-start failure.
  * Takes no arguments.
  */
 export const SYSTEM_RETRY_STARTUP = {
@@ -32,7 +31,7 @@ export const SYSTEM_RETRY_STARTUP = {
 } as const satisfies OperationDescriptor
 
 /**
- * source.pickLocalFolder (FR-6) — Opens the OS native folder-selection dialog
+ * source.pickLocalFolder — Opens the OS native folder-selection dialog
  * and returns the chosen absolute path, or null on cancellation.
  * Takes no arguments (main process does not accept arbitrary paths from renderer).
  */
@@ -44,7 +43,7 @@ export const SOURCE_PICK_LOCAL_FOLDER = {
 
 /**
  * Enumerated array of all declared IPC operations.
- * Main process and preload iterate this array directly at startup (FR-2).
+ * Main process and preload iterate this array directly at startup.
  */
 export const OPERATIONS = [
   SYSTEM_GET_APP_VERSION,

@@ -9,12 +9,11 @@ export function platformBinaryName(): string {
 }
 
 /**
- * The single source of truth for where the Go server binary lives
- * (desktop-host-process-model.md FR-1). Never re-derive this path
- * anywhere else — the spawn call (E9) is its one caller.
+ * The single source of truth for where the Go server binary lives.
+ * Never re-derive this path anywhere else — the spawn call is its one caller.
  *
- * - **Development** (`!app.isPackaged`): `<repo-root>/bin/<name>`. ADR 0008
- *   puts the Go module at the repo root and the electron package one
+ * - **Development** (`!app.isPackaged`): `<repo-root>/bin/<name>`.
+ *   The Go module is at the repo root and the electron package one
  *   level down, so the repo root is the parent of `app.getAppPath()`.
  *   `go build -o bin/alexandryn-server ./cmd/server` must run before
  *   `npm run dev` — a build-order dependency, documented in

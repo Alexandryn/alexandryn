@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron'
 import { MAX_RESPAWN_ATTEMPTS, type ServerEvent } from './serverLifecycle'
 
-// desktop-host-window-and-serving.md FR-5, FR-6 — loadURL sequencing & Recovering banner.
+// LoadURL sequencing & Recovering banner.
 // Starting   → loadFile(bootHtmlPath)
 // Ready      → loadURL('http://127.0.0.1:<port>')
 // Recovering → inject banner over existing real UI via insertCSS + executeJavaScript
@@ -126,7 +126,7 @@ export class WindowServingController {
 
       const attemptNum = Math.max(1, Math.floor(Number(attempt) || 1))
       const maxNum = MAX_RESPAWN_ATTEMPTS
-      // audit 0016 #193: Pass attempt and max as JSON-encoded arguments to a static
+      // Pass attempt and max as JSON-encoded arguments to a static
       // function rather than string-interpolating into the script template.
       // Use textContent instead of innerHTML to avoid any HTML injection risk.
       const script = `

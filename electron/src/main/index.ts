@@ -12,7 +12,7 @@ import { WindowServingController } from './windowServing'
 import { runServerLifecycle } from './serverLifecycle'
 import { registerIpcHandlers } from './ipc'
 
-// Phase 05: Full lifecycle orchestration (Tiers 1–4).
+// Full lifecycle orchestration.
 // Spawns the Go server, polls /healthz, displays boot asset before ready,
 // loads real UI on ready, handles crash recovery with Recovering banner,
 // exposes type-safe Zod-validated IPC surface, and shuts down cleanly on quit.
@@ -24,7 +24,7 @@ if (userDataArg) {
   app.setPath('userData', customUserData)
 }
 
-// E8 — FR-7: single-instance lock BEFORE window creation and BEFORE any
+// Single-instance lock BEFORE window creation and BEFORE any
 // spawn call, so a second process can never start a second Go server.
 if (!acquireSingleInstanceLock()) {
   app.quit()
@@ -33,7 +33,7 @@ if (!acquireSingleInstanceLock()) {
 
 let triggerRetry: (() => void) | undefined
 
-// E20 — Register declared IPC handlers
+// Register declared IPC handlers
 registerIpcHandlers({
   onRetryStartup: () => {
     triggerRetry?.()
@@ -42,24 +42,24 @@ registerIpcHandlers({
 
 const BOOT_HTML = join(import.meta.dirname, '../renderer/index.html')
 
-// The spawned Go server child process. Set by the spawn call (E9/Tier 1–3).
-// Accessed by the before-quit shutdown handler (E11).
+// The spawned Go server child process. Set by the spawn call.
+// Accessed by the before-quit shutdown handler.
 let serverChild: ChildProcess | undefined
 
 async function createWindow(): Promise<{ window: BrowserWindow; serving: WindowServingController }> {
-  // desktop-host-window-and-serving.md FR-1: no application menu bar on any platform for v1
+  // No application menu bar on any platform
   Menu.setApplicationMenu(null)
 
   const statePath = getWindowStatePath()
   const savedBounds = await loadWindowState(statePath)
   const window = new BrowserWindow(getBrowserWindowOptions({ bounds: savedBounds }))
 
-  // desktop-host-window-and-serving.md FR-2: persist size and position across sessions
+  // Persist size and position across sessions
   trackWindowState(window, statePath)
 
   const serving = new WindowServingController(window, BOOT_HTML)
 
-  // desktop-host-window-and-serving.md FR-4: external link interception and dynamic origin locking
+  // External link interception and dynamic origin locking
   setupWindowNavigation(window.webContents, {
     getAllowedOrigin: () => {
       const port = serving.getCurrentPort()
@@ -117,7 +117,7 @@ app.whenReady().then(async () => {
 
 
 
-// desktop-host-process-model.md FR-5: `before-quit` defers the default
+// `before-quit` defers the default
 // quit until the Go server shutdown sequence completes (SIGTERM + SIGKILL).
 // Without `preventDefault()`, Electron would exit while the child is still
 // running.
@@ -131,14 +131,13 @@ app.on('before-quit', (event) => {
   void shutdownServer(serverChild).then(() => app.quit())
 })
 
-// desktop-host-process-model.md FR-5 / architecture-desktop-host.md FR-11:
-// close-means-quit on every platform, including macOS (whose framework
+// Close-means-quit on every platform, including macOS (whose framework
 // default is the opposite — `window-all-closed` does NOT quit the app).
 app.on('window-all-closed', () => {
   app.quit()
 })
 
-// Expose for Tier 1–3 lifecycle management to set after a successful spawn.
+// Expose for lifecycle management to set after a successful spawn.
 export function setServerChild(child: ChildProcess): void {
   serverChild = child
 }

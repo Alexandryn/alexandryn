@@ -1,14 +1,13 @@
 import type { ChildProcess } from 'node:child_process'
 import { SERVER_SHUTDOWN_GRACE_MS } from './serverConfig'
 
-// desktop-host-process-model.md FR-5 — shutdown sequence.
+// Server shutdown sequence.
 // Extracted from index.ts so it can be unit-tested without importing the
 // Electron-dependent top-level side-effects in index.ts.
 
 /**
  * Shuts down the Go server child process gracefully.
  *
- * desktop-host-process-model.md FR-5:
  * - Sends SIGTERM; waits up to `graceMs` for the child to exit.
  * - If the grace period expires, sends SIGKILL.
  * - Resolves once the child has exited (by either signal).

@@ -1,4 +1,4 @@
-// desktop-host-window-and-serving.md FR-3 — boot asset client controller.
+// Boot asset client controller.
 // Switches between loading and error states based on query parameter or hash.
 
 function initBootAsset(): void {

@@ -5,18 +5,18 @@ import {
   setupWindowNavigation,
 } from './navigation'
 
-// desktop-host-window-and-serving.md FR-4, Constitution §4 — External link interception.
+// External link interception.
 // setWindowOpenHandler deny + scheme-validated shell.openExternal (http/https only).
 // will-navigate interception for non-loopback/LAN destinations.
 
-describe('isSafeExternalUrl (FR-4 scheme validator)', () => {
+describe('isSafeExternalUrl (scheme validator)', () => {
   it('accepts standard http and https URLs', () => {
     expect(isSafeExternalUrl('http://example.com')).toBe(true)
     expect(isSafeExternalUrl('https://example.com/path?q=1')).toBe(true)
     expect(isSafeExternalUrl('https://openlibrary.org/works/OL123W')).toBe(true)
   })
 
-  it('rejects dangerous and non-http schemes (Constitution §4)', () => {
+  it('rejects dangerous and non-http schemes', () => {
     expect(isSafeExternalUrl('file:///etc/passwd')).toBe(false)
     expect(isSafeExternalUrl('javascript:alert(1)')).toBe(false)
     expect(isSafeExternalUrl('data:text/html,<b>evil</b>')).toBe(false)
@@ -31,7 +31,7 @@ describe('isSafeExternalUrl (FR-4 scheme validator)', () => {
   })
 })
 
-describe('openExternalIfSafe (FR-4 opener)', () => {
+describe('openExternalIfSafe (opener)', () => {
   it('calls opener when URL is safe', () => {
     const opener = vi.fn().mockResolvedValue(undefined)
     const result = openExternalIfSafe('https://openlibrary.org', opener)
@@ -47,7 +47,7 @@ describe('openExternalIfSafe (FR-4 opener)', () => {
   })
 })
 
-describe('setupWindowNavigation (FR-4 webContents wiring)', () => {
+describe('setupWindowNavigation (webContents wiring)', () => {
   it('setWindowOpenHandler always returns action: deny and opens safe external URLs', () => {
     let windowOpenHandler!: (details: { url: string }) => { action: 'deny' }
     const opener = vi.fn().mockResolvedValue(undefined)

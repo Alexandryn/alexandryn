@@ -9,7 +9,6 @@ import {
 } from '../shared/operations'
 
 
-// desktop-host-ipc-surface.md FR-2, FR-3, FR-5, FR-6.
 // Tests for main process IPC registration and handler execution.
 
 // Mock ipcMain
@@ -38,7 +37,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('registerIpcHandlers (FR-2 / FR-3)', () => {
+describe('registerIpcHandlers', () => {
   it('registers an ipcMain handler for every declared operation in OPERATIONS', () => {
     registerIpcHandlers()
 
@@ -48,7 +47,7 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     }
   })
 
-  it('system.getAppVersion returns the version string on valid call (FR-5 / E21)', async () => {
+  it('system.getAppVersion returns the version string on valid call', async () => {
     registerIpcHandlers({ getAppVersion: () => '0.4.0' })
     const handler = handlers.get(SYSTEM_GET_APP_VERSION.name)!
     expect(handler).toBeDefined()
@@ -57,7 +56,7 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     expect(result).toBe('0.4.0')
   })
 
-  it('system.retryStartup calls onRetryStartup callback on valid invocation (FR-3)', async () => {
+  it('system.retryStartup calls onRetryStartup callback on valid invocation', async () => {
     const mockRetry = vi.fn().mockResolvedValue(undefined)
     registerIpcHandlers({ onRetryStartup: mockRetry })
     const handler = handlers.get(SYSTEM_RETRY_STARTUP.name)!
@@ -67,7 +66,7 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     expect(mockRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('source.pickLocalFolder returns path when user selects a directory (FR-6 / E22)', async () => {
+  it('source.pickLocalFolder returns path when user selects a directory', async () => {
 
     const mockShowOpenDialog = vi.fn().mockResolvedValue({
       canceled: false,
@@ -85,7 +84,7 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     })
   })
 
-  it('source.pickLocalFolder returns null when user cancels dialog (FR-6 / E22)', async () => {
+  it('source.pickLocalFolder returns null when user cancels dialog', async () => {
     const mockShowOpenDialog = vi.fn().mockResolvedValue({
       canceled: true,
       filePaths: [],
@@ -99,7 +98,7 @@ describe('registerIpcHandlers (FR-2 / FR-3)', () => {
     expect(result).toBeNull()
   })
 
-  it('rejects hostile / unexpected arguments with generic error before business logic (FR-3 / E23)', async () => {
+  it('rejects hostile / unexpected arguments with generic error before business logic', async () => {
     const mockShowOpenDialog = vi.fn().mockResolvedValue({
       canceled: false,
       filePaths: ['/some/path'],

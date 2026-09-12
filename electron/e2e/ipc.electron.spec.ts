@@ -3,12 +3,12 @@ import { join } from 'node:path'
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { launchHost } from './launch'
 
-// desktop-host-ipc-surface.md Checkpoint P5-E — E2E validation for Tier 4 IPC surface.
+// E2E validation for IPC surface.
 // Verifies:
-// 1. window.alexandryn namespace structure exists in renderer (FR-1 / FR-2)
-// 2. window.alexandryn.system.getAppVersion() returns package.json version (FR-5 / E21)
-// 3. window.alexandryn.source.pickLocalFolder() is callable (FR-6 / E22)
-// 4. Raw ipcRenderer is not exposed and undeclared channels do not exist (Constitution §5)
+// 1. window.alexandryn namespace structure exists in renderer
+// 2. window.alexandryn.system.getAppVersion() returns package.json version
+// 3. window.alexandryn.source.pickLocalFolder() is callable
+// 4. Raw ipcRenderer is not exposed and undeclared channels do not exist
 
 let app: ElectronApplication
 
@@ -21,7 +21,7 @@ test.afterEach(async () => {
   await app.close()
 })
 
-test('window.alexandryn bridge surface is exposed and sandboxed (FR-1 / FR-2 / FR-6 / Constitution §5)', async () => {
+test('window.alexandryn bridge surface is exposed and sandboxed', async () => {
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
 
@@ -53,7 +53,7 @@ test('window.alexandryn bridge surface is exposed and sandboxed (FR-1 / FR-2 / F
   expect(evaluation.hasUndeclaredChannel).toBe(false)
 })
 
-test('system.getAppVersion() returns correct package.json version through real IPC boundary (FR-5 / E21)', async () => {
+test('system.getAppVersion() returns correct package.json version through real IPC boundary', async () => {
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
 

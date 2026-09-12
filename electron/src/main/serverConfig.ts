@@ -3,12 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /**
- * `SHUTDOWN_GRACE_PERIOD`'s Go compiled default
- * (`backend-configuration.md`). Electron holds this in memory rather than
- * re-reading it from the config file at shutdown time — that file is
- * deleted the moment readiness succeeds (FR-5), long before shutdown
- * normally runs. If a future config ever overrides the key, the override
- * value is captured here when the file is authored.
+ * `SHUTDOWN_GRACE_PERIOD`'s Go compiled default.
+ * Electron holds this in memory rather than re-reading it from the config
+ * file at shutdown time — that file is deleted the moment readiness
+ * succeeds, long before shutdown normally runs. If a future config ever
+ * overrides the key, the override value is captured here when the file is authored.
  */
 export const SERVER_SHUTDOWN_GRACE_MS = 10_000
 
@@ -30,8 +29,8 @@ function tomlString(value: string): string {
 
 
 /**
- * Writes the Go server's `config.toml` (architecture-desktop-host.md
- * FR-5). Created under a fresh `mkdtemp` directory — an unpredictable
+ * Writes the Go server's `config.toml`.
+ * Created under a fresh `mkdtemp` directory — an unpredictable
  * name, mode 0700 — with the file itself mode 0600, so no other local
  * user can read it and there is no fixed path to race a symlink onto.
  * The main process passes only `path` to the child and calls `cleanup()`

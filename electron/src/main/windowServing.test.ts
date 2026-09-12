@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { WindowServingController } from './windowServing'
 
-// desktop-host-window-and-serving.md FR-5, FR-6 — loadURL sequencing & Recovering banner.
+// LoadURL sequencing & Recovering banner.
 // Starting → loadFile boot asset
 // Ready → loadURL http://127.0.0.1:<port>
 // Recovering → insertCSS + executeJavaScript (role="status", aria-live="polite")
@@ -9,7 +9,7 @@ import { WindowServingController } from './windowServing'
 // Ready after Recovering (diff port) → reload new port, then remove banner
 // Failed → loadFile error state
 
-describe('WindowServingController (FR-5, FR-6)', () => {
+describe('WindowServingController', () => {
   function createMockWindow() {
     return {
       loadFile: vi.fn().mockResolvedValue(undefined),
@@ -24,7 +24,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
 
   const BOOT_PATH = '/app/renderer/index.html'
 
-  it('Starting: loads the boot HTML file (FR-3)', async () => {
+  it('Starting: loads the boot HTML file', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 
@@ -34,7 +34,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
     expect(win.loadURL).not.toHaveBeenCalled()
   })
 
-  it('Ready (first start): loads the loopback URL with announced port (FR-5)', async () => {
+  it('Ready (first start): loads the loopback URL with announced port', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 
@@ -55,7 +55,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
     expect(controller.isRealUiLoaded()).toBe(false)
   })
 
-  it('Recovering: injects CSS and banner DOM node with role=status and aria-live=polite (FR-6)', async () => {
+  it('Recovering: injects CSS and banner DOM node with role=status and aria-live=polite', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 
@@ -74,7 +74,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
     )
   })
 
-  it('Ready after Recovering (SAME port): removes banner without reloading page (FR-6)', async () => {
+  it('Ready after Recovering (SAME port): removes banner without reloading page', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 
@@ -92,7 +92,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
     )
   })
 
-  it('Ready after Recovering (DIFFERENT port): fresh loadURL BEFORE banner removal (FR-6)', async () => {
+  it('Ready after Recovering (DIFFERENT port): fresh loadURL BEFORE banner removal', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 
@@ -108,7 +108,7 @@ describe('WindowServingController (FR-5, FR-6)', () => {
     expect(win.webContents.removeInsertedCSS).toHaveBeenCalledWith('css-key-123')
   })
 
-  it('Failed: loads error asset variant via loadFile (FR-3 / FR-6)', async () => {
+  it('Failed: loads error asset variant via loadFile', async () => {
     const win = createMockWindow()
     const controller = new WindowServingController(win, BOOT_PATH)
 

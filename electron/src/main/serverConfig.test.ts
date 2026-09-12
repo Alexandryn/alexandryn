@@ -7,8 +7,7 @@ import {
   type ServerConfigHandle,
 } from './serverConfig'
 
-// architecture-desktop-host.md FR-5 / desktop-host-process-model.md FR-5:
-// configuration reaches the Go server through a file, not argv or an
+// Configuration reaches the Go server through a file, not argv or an
 // inherited env var. Owner-only (0600) permissions, created under an
 // unpredictable directory (no fixed shared-temp path — TOCTOU / symlink
 // surface), passed by path only, deleted once readiness succeeds or the
@@ -72,7 +71,7 @@ describe('writeServerConfig', () => {
 })
 
 describe('SERVER_SHUTDOWN_GRACE_MS', () => {
-  it('matches the Go compiled default (10s) — retained in memory for FR-5 shutdown', () => {
+  it('matches the Go compiled default (10s) — retained in memory for shutdown', () => {
     expect(SERVER_SHUTDOWN_GRACE_MS).toBe(10_000)
   })
 })

@@ -1,13 +1,13 @@
-// desktop-host-process-model.md FR-3 — readiness polling.
+// Server readiness polling.
 // GET http://127.0.0.1:<port>/healthz at 250ms intervals until 200 or timeout.
 // Uses only Node's built-in `http` module — no extra dependencies.
 
 import * as http from 'node:http'
 
-/** Interval between poll attempts (FR-3: 250ms). */
+/** Interval between poll attempts (250ms). */
 export const POLL_INTERVAL_MS = 250
 
-/** Timeout before moving to Failed state (FR-3: 15s placeholder). */
+/** Timeout before moving to Failed state (15s). */
 export const READINESS_TIMEOUT_MS = 15_000
 
 /**
@@ -18,7 +18,7 @@ export const READINESS_TIMEOUT_MS = 15_000
  * Resolves when the server is ready. Rejects with an error whose message
  * starts with "Readiness timeout" if the timeout expires first.
  *
- * @param port     - The port announced by the spawned server (FR-2 stdout).
+ * @param port     - The port announced by the spawned server.
  * @param options  - Override interval/timeout for testing.
  */
 export function pollUntilReady(

@@ -7,7 +7,7 @@ const bootTokensPath = resolve(import.meta.dirname, 'src/renderer/boot/tokens.cs
 
 /**
  * Asserts web/src/tokens.css exists at build time (hard failure if missing)
- * and copies it into electron/src/renderer/boot/ for disk-loaded asset bundling (D4 / FR-3).
+ * and copies it into electron/src/renderer/boot/ for disk-loaded asset bundling.
  */
 export function syncTokensPlugin() {
   return {
@@ -23,13 +23,13 @@ export function syncTokensPlugin() {
   }
 }
 
-// Three build targets (D2, tasks/plan-phase05.md). electron-vite auto-
+// Three build targets. electron-vite auto-
 // detects src/main/index.ts and src/preload/index.ts and sets each
 // target's outDir (out/main, out/preload, out/renderer).
-//  - main    → the Electron main process (Tiers 1–3, 5)
-//  - preload → contextBridge / the IPC surface (Tier 4)
+//  - main    → the Electron main process
+//  - preload → contextBridge / the IPC surface
 //  - renderer (boot) → the disk-loaded loading/error asset
-//    (architecture-desktop-host.md FR-6/FR-7) — `loadFile` only, never
+//    — `loadFile` only, never
 //    `loadURL`; NOT the real web UI, which the Go server serves at runtime.
 //
 // `build.target` is set explicitly per target: Electron 44 bundles

@@ -7,11 +7,11 @@ import {
   MIN_WIDTH,
 } from './windowOptions'
 
-// desktop-host-window-and-serving.md FR-1 — BrowserWindow construction options.
+// BrowserWindow construction options.
 // Security flags (contextIsolation, sandbox, nodeIntegration), platform titleBarStyle,
 // minWidth/minHeight floor, default dimensions, bounds restoration.
 
-describe('getBrowserWindowOptions (FR-1)', () => {
+describe('getBrowserWindowOptions', () => {
   it('enforces the three mandatory security flags on webPreferences', () => {
     const opts = getBrowserWindowOptions()
     expect(opts.webPreferences).toBeDefined()

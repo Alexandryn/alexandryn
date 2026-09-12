@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import type { BrowserWindowConstructorOptions } from 'electron'
 
-// desktop-host-window-and-serving.md FR-1 — BrowserWindow construction.
+// BrowserWindow construction options.
 // Minimum width is the reflow breakpoint from web/src/breakpoints.ts (768).
 // Minimum height is the responsive layout floor (500).
 // Default window size is 1024x720.
@@ -25,7 +25,7 @@ export interface WindowOptionsParams {
 }
 
 /**
- * Produces BrowserWindowConstructorOptions conforming to desktop-host-window-and-serving.md FR-1.
+ * Produces BrowserWindowConstructorOptions for the application window.
  *
  * - Mandatory security flags: contextIsolation: true, sandbox: true, nodeIntegration: false
  * - macOS: titleBarStyle: 'hiddenInset'
@@ -46,7 +46,7 @@ export function getBrowserWindowOptions(params?: WindowOptionsParams): BrowserWi
     minHeight: MIN_HEIGHT,
     autoHideMenuBar: true,
     webPreferences: {
-      // architecture-desktop-host.md FR-2 — the privilege boundary
+      // The privilege boundary
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,

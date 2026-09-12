@@ -1,13 +1,13 @@
 // Test helper: a minimal Go HTTP server that mimics the Go server binary's
-// startup contract (architecture-desktop-host.md API and contracts):
+// startup contract:
 //   1. Binds a port (OS-assigned unless --port is given)
 //   2. Prints "PORT=<n>" on stdout
 //   3. Serves GET /healthz → 200 {"status":"ok"}
 //
 // Flags used by integration tests:
-//   --exit-before-ready      exit(1) before announcing the port (E10/E13 crash tests)
-//   --exit-after-ready       announce port + serve /healthz once, then exit(0) (E13)
-//   --slow-shutdown N        ignore SIGTERM for N seconds before exiting (E11 SIGKILL test)
+//   --exit-before-ready      exit(1) before announcing the port (crash tests)
+//   --exit-after-ready       announce port + serve /healthz once, then exit(0)
+//   --slow-shutdown N        ignore SIGTERM for N seconds before exiting (SIGKILL test)
 //   --port N                 bind to port N instead of OS-assigned
 //   --requests-to-serve N    exit after serving N requests (default: never)
 
@@ -136,7 +136,7 @@ func main() {
 	}
 
 	// Announce the port AFTER the listener is bound — matches the real
-	// server's contract (architecture-desktop-host.md API and contracts).
+	// server's contract.
 	if _, printErr := fmt.Printf("PORT=%d\n", actualPort); printErr != nil {
 		fmt.Fprintf(os.Stderr, "test-server: stdout print error: %v\n", printErr)
 		os.Exit(1)

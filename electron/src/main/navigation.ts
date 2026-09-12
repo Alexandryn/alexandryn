@@ -1,13 +1,13 @@
 import { shell } from 'electron'
 import type { WebContents } from 'electron'
 
-// desktop-host-window-and-serving.md FR-4, Constitution §4 — External-link interception.
+// External-link interception.
 // All external links and window.open calls are denied within Electron and forwarded
 // to the OS default browser via shell.openExternal, strictly validated for http/https.
 
 /**
  * Validates whether a URL has a safe http: or https: scheme.
- * Constitution §4: shell.openExternal on unvalidated schemes (e.g. file:, javascript:)
+ * shell.openExternal on unvalidated schemes (e.g. file:, javascript:)
  * can be an execution vector on various OS platforms.
  */
 export function isSafeExternalUrl(rawUrl: string): boolean {
@@ -49,7 +49,6 @@ export interface NavigationOptions {
 
 /**
  * Configures external-link interception and origin navigation locking on a WebContents instance.
- * desktop-host-window-and-serving.md FR-4.
  */
 export function setupWindowNavigation(
   webContents: WebContents,
