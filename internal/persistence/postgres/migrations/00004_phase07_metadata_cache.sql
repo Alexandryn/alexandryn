@@ -1,8 +1,6 @@
--- Phase 07: Metadata caching tables (backend-metadata-caching.md FR-1, FR-6, FR-7).
---
--- Stores normalised Open Library work, edition, and author records with fetched_at
--- timestamps for TTL staleness checking (30 days), and metadata_covers table for
--- LRU cover image tracking and missing cover sentinels.
+-- Metadata caching tables: stores normalized Open Library work, edition,
+-- and author records with fetched_at timestamps for TTL staleness checking,
+-- and metadata_covers table for cover image tracking.
 
 -- +goose Up
 

@@ -1,5 +1,4 @@
--- Phase 12: Authentication, RBAC & Multi-Library Namespacing
--- (backend-authentication.md, backend-authorization-rbac.md, backend-library-namespaces.md, ADR 0025, ADR 0026, ADR 0027).
+-- Authentication, RBAC, and multi-library namespacing schema.
 
 -- +goose Up
 
@@ -93,7 +92,7 @@ ALTER TABLE collections ADD COLUMN library_id TEXT NOT NULL DEFAULT '00000000-00
 ALTER TABLE sources ADD COLUMN library_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001' REFERENCES libraries(id) ON DELETE CASCADE;
 ALTER TABLE source_offerings ADD COLUMN library_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001' REFERENCES libraries(id) ON DELETE CASCADE;
 
--- 4. Retrofit user & library scoping on reading data (resolves A-11-01)
+-- 4. User and library scoping on reading data
 ALTER TABLE reading_progress ADD COLUMN user_id TEXT;
 ALTER TABLE reading_progress ADD COLUMN library_id TEXT REFERENCES libraries(id) ON DELETE CASCADE;
 ALTER TABLE reading_progress DROP CONSTRAINT IF EXISTS reading_progress_work_id_key;

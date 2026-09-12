@@ -1,4 +1,4 @@
--- Phase 16 (#116): index the leaderboard / finished-works hot path.
+-- Index the leaderboard and finished-works hot path.
 --
 -- FinishedWorksHandler (GET /api/v1/library/finished) and
 -- LibraryLeaderboardHandler (GET /api/v1/library/leaderboard) both scan

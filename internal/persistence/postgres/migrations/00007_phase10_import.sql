@@ -1,4 +1,4 @@
--- Phase 10: Import pipeline (backend-import-pipeline.md FR-3).
+-- Import pipeline staging tables.
 -- Staging and lifecycle table for discovered source items pending extraction,
 -- matching, or user confirmation before domain entity construction.
 
@@ -18,8 +18,7 @@ CREATE TABLE import_candidates (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- FR-3: Indexed on (source_id, status) for both discovery deduplication checks
--- and the resolution UI's listing queries.
+-- Index on (source_id, status) for discovery deduplication and candidate listings.
 CREATE INDEX import_candidates_source_status_idx ON import_candidates (source_id, status);
 
 -- +goose Down

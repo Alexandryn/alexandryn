@@ -1,5 +1,4 @@
--- Phase 14: Devices & Sync
--- (backend-device-sync.md FR-4/FR-5/FR-8, ADR 0029).
+-- Device synchronization and sync sequence tracking.
 
 -- +goose Up
 

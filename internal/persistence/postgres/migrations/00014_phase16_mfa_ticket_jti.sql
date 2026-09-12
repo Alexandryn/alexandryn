@@ -1,5 +1,4 @@
--- Phase 16: MFA ticket single-use replay defence
--- (audit 0016 SEC-09 / issue #189).
+-- Multi-factor authentication ticket single-use replay defence.
 
 -- +goose Up
 

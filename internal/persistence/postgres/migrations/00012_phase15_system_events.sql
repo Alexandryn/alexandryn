@@ -1,5 +1,4 @@
--- Phase 15: Observability
--- (backend-observability.md FR-7, ADR 0031).
+-- Observability system events log.
 
 -- +goose Up
 

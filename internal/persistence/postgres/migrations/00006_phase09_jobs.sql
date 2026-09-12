@@ -1,25 +1,7 @@
--- Phase 09: the background job queue's storage (backend-job-queue.md
--- FR-1, ADR 0014).
+-- Background job queue storage.
 --
--- One `jobs` table, claimed by a worker pool via
--- `SELECT ... FOR UPDATE SKIP LOCKED`. No child table: `payload` and
--- `progress` are JSONB because they are opaque to this table — a job's
--- kind decides their shape, and nothing here queries inside them.
---
--- TEXT primary key, matching every other table in this schema (migration
--- 00002's header): the id *value* is a UUID string generated Go-side by
--- internal/idgen through the same domain.IDGenerator the rest of the
--- codebase uses, so tests can inject a deterministic sequence.
---
--- `lease_token` is the fencing token (FR-4/FR-5): regenerated on every
--- claim and every reaper reclaim, it is what makes a delayed worker's
--- heartbeat or completion write hit zero rows after its lease was
--- reassigned. `locked_by` (the worker id) is a diagnostic only — not
--- load-bearing, but it makes a stuck job's owner visible.
---
--- `last_error` is written only through internal/jobs' single
--- truncate-and-redact helper (FR-6, Security considerations); the column
--- itself carries no constraint beyond being text.
+-- Supports concurrent worker claiming via SELECT ... FOR UPDATE SKIP LOCKED.
+-- Uses lease fencing tokens to prevent stale writes after worker timeouts.
 
 -- +goose Up
 
@@ -48,14 +30,11 @@ CREATE TABLE jobs (
         CHECK (max_attempts >= 1)
 );
 
--- FR-4's claim query: WHERE status IN ('queued','retrying') AND
--- available_at <= $now ORDER BY available_at LIMIT 1 FOR UPDATE SKIP
--- LOCKED. A partial index on exactly that predicate keeps the scan off
--- the completed/dead-letter rows that accumulate over time.
+-- Partial index on queued/retrying jobs for fast worker polling.
 CREATE INDEX jobs_claim_idx ON jobs (available_at)
     WHERE status IN ('queued', 'retrying');
 
--- FR-5's reaper sweep: WHERE status = 'running' AND locked_until < $now.
+-- Partial index for dead-worker recovery sweeps.
 CREATE INDEX jobs_reaper_idx ON jobs (locked_until)
     WHERE status = 'running';
 
