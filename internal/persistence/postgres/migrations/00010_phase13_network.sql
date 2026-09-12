@@ -1,5 +1,4 @@
--- Phase 13: Network Access & Device Pairing
--- (backend-network-api.md FR-7/FR-8, ADR 0021, ADR 0028).
+-- Network access and device pairing.
 
 -- +goose Up
 

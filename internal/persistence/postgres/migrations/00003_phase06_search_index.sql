@@ -1,21 +1,7 @@
--- Phase 06: full-text search support on works (backend-library-api.md FR-2).
+-- Full-text search support on works and authors.
 --
--- tsvector generated columns on works.title and authors.name, combined
--- into a per-work search vector via a materialized view. PostgreSQL
--- built-in, no new dependency (constitution §9, ADR 0004).
---
--- The approach: add a generated tsvector column to the works table,
--- and index it with GIN. Author names are folded in via a trigger so
--- the search vector always reflects the current work_authors rows.
---
--- search_vector includes:
---   setweight(to_tsvector('simple', title), 'A')        — title, weight A
---   setweight(to_tsvector('simple', subtitle), 'B')     — subtitle, weight B
--- Author names are updated via the trigger below (weight C).
---
--- Using the 'simple' dictionary: no stemming, matches substring via
--- tsquery prefix matching; matches the FR-2 goal of "matched against
--- title and author name" without ranking quality concerns (Non-goals).
+-- Adds generated tsvector columns indexed with GIN.
+-- Uses the 'simple' dictionary for unstemmed prefix matching.
 
 -- +goose Up
 
