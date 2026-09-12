@@ -20,14 +20,12 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// TestRun_ServesTLSWhenConfigHasACert is phase 13 Tier 0: when config
-// resolves an in-process-TLS bind, cmd/server wraps the listener in TLS —
-// a plaintext request to the port fails, an https request succeeds. Two
-// cases: a private bind with the opt-in TLS_CERT_FILE/TLS_KEY_FILE, and
-// an accepted public bind (0.0.0.0, classPublic). The public case is the
-// safety property validateBindAddress's loosened check depends on — a
-// public bind that Load accepts must actually be served over TLS by
-// run(), never plaintext.
+// TestRun_ServesTLSWhenConfigHasACert tests that when config resolves an
+// in-process-TLS bind, cmd/server wraps the listener in TLS: plaintext requests
+// to the port fail, while HTTPS requests succeed. Two cases: a private bind
+// with opt-in TLS_CERT_FILE/TLS_KEY_FILE, and an accepted public bind (0.0.0.0).
+// A public bind accepted by Load must actually be served over TLS by run(),
+// never plaintext.
 func TestRun_ServesTLSWhenConfigHasACert(t *testing.T) {
 	t.Run("private opt-in cert", func(t *testing.T) {
 		assertRunServesTLS(t, "127.0.0.1:0")
@@ -136,10 +134,9 @@ func assertRunServesTLS(t *testing.T, bindAddr string) {
 }
 
 // TestRun_PublicStaticBind_Serves80Redirect: a public static-cert bind
-// (Mode A) also runs a :80 listener that 308-redirects http:// to
-// https:// (backend-network-transport.md FR-3). The listen dep here maps
-// ":80" to an ephemeral loopback port so the test can exercise it
-// unprivileged.
+// also runs a :80 listener that 308-redirects http:// to https://. The listen
+// dependency here maps ":80" to an ephemeral loopback port so the test can
+// exercise it unprivileged.
 func TestRun_PublicStaticBind_Serves80Redirect(t *testing.T) {
 	certPEM, keyPEM := selfSignedCert(t)
 	readFile := func(path string) ([]byte, error) {

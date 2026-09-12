@@ -6,9 +6,8 @@ import (
 )
 
 // SameOrigin reports whether candidate resolves to the same origin
-// (scheme + host + port) as configured (backend-source-adapter.md
-// FR-11). Every URL that originated from a source's own response
-// content — a browse cursor's wrapped continuation link, a discovered
+// (scheme + host + port) as configured. Every URL that originated from a source's
+// own response content — a browse cursor's wrapped continuation link, a discovered
 // search link — is checked with this before it is ever fetched. A value
 // resolving to a different origin, or one that is not an absolute http
 // or https URL, returns false.

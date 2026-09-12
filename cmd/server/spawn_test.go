@@ -18,8 +18,7 @@ import (
 )
 
 // uninitDataDirStat is a stat fake for a data directory that has not been
-// initialized (no PG_VERSION) but exists with the 0700 mode initdb sets —
-// the shape EnsureDataDir now checks after running initdb (audit 0016 #264).
+// initialized (no PG_VERSION) but exists with the 0700 mode initdb sets.
 func uninitDataDirStat(name string) (os.FileInfo, error) {
 	if filepath.Base(name) == "PG_VERSION" {
 		return nil, os.ErrNotExist
@@ -31,14 +30,9 @@ type fakeDirInfo struct{ os.FileInfo }
 
 func (fakeDirInfo) Mode() os.FileMode { return fs.ModeDir | 0o700 }
 
-// backend-persistence.md's own required acceptance criterion
-// (architecture-persistence.md FR-7's named failure classes: corrupted
-// data directory, disk full): the spawn step's command runner is
-// replaced with a fake that fails unconditionally. spawnPostgresOnce
-// must fail cleanly and never retry internally — bounded retry belongs
-// to waitForPostgres, one layer up, not this function — proven here by
-// asserting the fake command runner (standing in for initdb) is invoked
-// exactly once.
+// Tests that when the spawn step's command runner fails unconditionally,
+// spawnPostgresOnce fails cleanly without internal retries (retry logic
+// belongs to waitForPostgres).
 func TestSpawnPostgresOnce_CommandRunnerFailureFailsCleanly(t *testing.T) {
 	runCalls := 0
 	failing := errors.New("initdb: could not create directory: permission denied")
@@ -76,8 +70,8 @@ func TestSpawnPostgresOnce_CommandRunnerFailureFailsCleanly(t *testing.T) {
 	}
 }
 
-// T25-D3: a second call within the same spawnState must not re-run
-// initdb or re-spawn — only the connectivity wait repeats.
+// A second call within the same spawnState must not re-run initdb or re-spawn;
+// only the connectivity check repeats.
 func TestSpawnPostgresOnce_SecondCallReusesStateAndOnlyWaitsForConnection(t *testing.T) {
 	runCalls, spawnCalls, dialCalls := 0, 0, 0
 
@@ -113,19 +107,15 @@ func TestSpawnPostgresOnce_SecondCallReusesStateAndOnlyWaitsForConnection(t *tes
 		t.Fatalf("second call: %v", err)
 	}
 	if runCalls != 1 || spawnCalls != 1 {
-		t.Fatalf("after second call: runCalls=%d spawnCalls=%d, want still 1 and 1 (T25-D3: no re-init, no re-spawn)", runCalls, spawnCalls)
+		t.Fatalf("after second call: runCalls=%d spawnCalls=%d, want still 1 and 1 (no re-init, no re-spawn)", runCalls, spawnCalls)
 	}
 	if dialCalls != 2 {
 		t.Fatalf("dial invoked %d times across both calls, want 2 (connectivity re-checked every call)", dialCalls)
 	}
 }
 
-// The same proof, driven through the full run() sequence rather than
-// spawnPostgresOnce directly — proves the real production wiring
-// (newObtainPostgres -> postgres.SelectStartupPath -> newSpawnPostgres)
-// composes correctly, with postgresMaxAttempts: 1 isolating the
-// assertion the same way backend-service-lifecycle.md FR-3's other
-// bounded-retry tests already do in run_test.go.
+// Tests spawn failure driven through run(), verifying that supervisor
+// errors cleanly propagate through startup error handling.
 func TestRun_ProductionSpawnFailure(t *testing.T) {
 	var order []string
 	deps, spy := recordingDeps(t, &order)

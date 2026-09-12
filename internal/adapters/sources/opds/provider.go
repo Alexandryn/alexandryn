@@ -1,8 +1,7 @@
-// Package opds is the OPDS source provider
-// (backend-source-adapter.md FR-4..FR-11): it fetches and normalises
-// OPDS 1.2 (Atom) and OPDS 2.0 (JSON) feeds, with redirect-following
-// disabled entirely and every source-supplied URL origin-checked
-// against the configured baseUrl before it is fetched.
+// Package opds is the OPDS source provider:
+// it fetches and normalises OPDS 1.2 (Atom) and OPDS 2.0 (JSON) feeds,
+// with redirect-following disabled entirely and every source-supplied URL
+// origin-checked against the configured baseUrl before it is fetched.
 package opds
 
 import (
@@ -23,7 +22,7 @@ type Config struct {
 	Credential    sources.Credential
 	HasCredential bool
 	// SearchTemplate is the origin-validated templated search URL
-	// captured at the last Probe (FR-11 — validated once, reused as-is).
+	// captured at the last Probe (validated once, reused as-is).
 	// Empty when the source advertises no usable search.
 	SearchTemplate string
 	Semaphore      *sources.Semaphore
@@ -61,9 +60,9 @@ func New(cfg Config) *Provider {
 	}
 }
 
-// Probe fetches the root feed, classifies reachability into FR-6's
-// closed vocabulary, and re-detects capabilities and the search link
-// (FR-5, FR-11). It never returns an error.
+// Probe fetches the root feed, classifies reachability into closed vocabulary
+// detail categories, and re-detects capabilities and the search link.
+// It never returns an error.
 func (p *Provider) Probe(ctx context.Context) sources.ProbeResult {
 	body, ferr := p.client.get(ctx, p.baseURL)
 	if ferr != nil {
@@ -90,7 +89,7 @@ func (p *Provider) Probe(ctx context.Context) sources.ProbeResult {
 
 // detectSearch resolves the feed's rel="search" link to an
 // origin-validated templated query URL, or "" when the source
-// advertises none or advertises an off-origin one (FR-11 — an unusable,
+// advertises none or advertises an off-origin one (an unusable,
 // untrusted link is discarded, not stored).
 func (p *Provider) detectSearch(ctx context.Context, pf parsedFeed) string {
 	if pf.searchHref == "" {
@@ -119,7 +118,7 @@ func (p *Provider) detectSearch(ctx context.Context, pf parsedFeed) string {
 	return resolveSameOrigin(p.baseURL, template)
 }
 
-// List returns one page of the catalog's publications (FR-7).
+// List returns one page of the catalog's publications.
 func (p *Provider) List(ctx context.Context, cursor string, limit int) (sources.CandidatePage, error) {
 	_ = sources.ClampLimit(limit) // page size is the feed's own; limit bounds nothing extra here
 
@@ -150,8 +149,8 @@ func (p *Provider) List(ctx context.Context, cursor string, limit int) (sources.
 	return normalise(pf, p.baseURL, p.codec, p.sourceID), nil
 }
 
-// Search runs a query against the catalog's advertised search endpoint
-// (FR-8). It returns Conflict when the source has no usable search.
+// Search runs a query against the catalog's advertised search endpoint.
+// It returns Conflict when the source has no usable search.
 func (p *Provider) Search(ctx context.Context, q, cursor string, limit int) (sources.CandidatePage, error) {
 	_ = sources.ClampLimit(limit)
 
@@ -177,7 +176,7 @@ func (p *Provider) Search(ctx context.Context, q, cursor string, limit int) (sou
 
 	// The expanded template must still be same-origin — a template
 	// captured at probe time was validated, but expansion cannot change
-	// the origin, so this is belt-and-braces before the fetch (FR-11).
+	// the origin, so this provides defensive verification before the fetch.
 	if !sources.SameOrigin(p.baseURL, fetchURL) {
 		return sources.CandidatePage{}, &domain.Error{Category: domain.Unavailable, Message: "source is unavailable right now"}
 	}
@@ -193,8 +192,8 @@ func (p *Provider) Search(ctx context.Context, q, cursor string, limit int) (sou
 	return normalise(pf, p.baseURL, p.codec, p.sourceID), nil
 }
 
-// Resolve fetches the bytes behind an acquisition reference (FR-15,
-// phase 10). The reference id is the acquisition href; it is
+// Resolve fetches the bytes behind an acquisition reference.
+// The reference id is the acquisition href; it is
 // origin-checked against baseUrl before any request.
 func (p *Provider) Resolve(ctx context.Context, ref domain.FileReference) (io.ReadCloser, error) {
 	target := resolveSameOrigin(p.baseURL, ref.ReferenceID)

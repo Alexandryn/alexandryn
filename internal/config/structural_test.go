@@ -2,36 +2,30 @@ package config
 
 import "testing"
 
-// FR-3 structural check: every key in FR-4's table must carry exactly one
-// of the three categories, matching backend-configuration.md's own table.
-// A key drifting into a different category than the spec declares — the
-// exact defect review 0022 found once (DATABASE_URL described as
-// "required in dev") — fails this test immediately, without depending on
-// someone remembering to add a matching pair of behavioral tests by hand.
-func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
+// TestFieldTable_Categories verifies that every configuration key is assigned
+// exactly one category (required, optional-default, or optional-no-default).
+func TestFieldTable_Categories(t *testing.T) {
 	want := map[string]category{
-		"DATABASE_URL":            categoryOptionalNoDefault,
-		"LOG_LEVEL":               categoryOptionalDefault,
-		"SHUTDOWN_GRACE_PERIOD":   categoryOptionalDefault,
-		"DB_POOL_MAX_CONNS":       categoryOptionalDefault,
-		"HTTP_MAX_BODY_BYTES":     categoryOptionalDefault,
-		"HTTP_READ_TIMEOUT":       categoryOptionalDefault,
-		"HTTP_WRITE_TIMEOUT":      categoryOptionalDefault,
-		"HTTP_IDLE_TIMEOUT":       categoryOptionalDefault,
-		"OPEN_LIBRARY_USER_AGENT": categoryRequired,
-		"BIND_ADDRESS":            categoryOptionalDefault,
-		"TLS_CERT_FILE":           categoryOptionalNoDefault,
-		"TLS_KEY_FILE":            categoryOptionalNoDefault,
-		"DESKTOP_PARENT_PID":      categoryOptionalNoDefault,
-		// Phase 13 (backend-configuration.md FR-4 amendment, ADR 0028).
-		"ACME_ENABLED":          categoryOptionalDefault,
-		"ACME_DOMAIN":           categoryOptionalNoDefault,
-		"ACME_EMAIL":            categoryOptionalNoDefault,
-		"ACME_CACHE_DIR":        categoryOptionalNoDefault,
-		"CORS_ALLOWED_ORIGINS":  categoryOptionalNoDefault,
-		"TRUSTED_PROXY_CIDRS":   categoryOptionalNoDefault,
-		"DEVICE_PAIRING_SECRET": categoryOptionalNoDefault,
-		// Phase 16 (audit 0016 #86 — SSRF guard opt-out).
+		"DATABASE_URL":                   categoryOptionalNoDefault,
+		"LOG_LEVEL":                      categoryOptionalDefault,
+		"SHUTDOWN_GRACE_PERIOD":          categoryOptionalDefault,
+		"DB_POOL_MAX_CONNS":              categoryOptionalDefault,
+		"HTTP_MAX_BODY_BYTES":            categoryOptionalDefault,
+		"HTTP_READ_TIMEOUT":              categoryOptionalDefault,
+		"HTTP_WRITE_TIMEOUT":             categoryOptionalDefault,
+		"HTTP_IDLE_TIMEOUT":              categoryOptionalDefault,
+		"OPEN_LIBRARY_USER_AGENT":        categoryRequired,
+		"BIND_ADDRESS":                   categoryOptionalDefault,
+		"TLS_CERT_FILE":                  categoryOptionalNoDefault,
+		"TLS_KEY_FILE":                   categoryOptionalNoDefault,
+		"DESKTOP_PARENT_PID":             categoryOptionalNoDefault,
+		"ACME_ENABLED":                   categoryOptionalDefault,
+		"ACME_DOMAIN":                    categoryOptionalNoDefault,
+		"ACME_EMAIL":                     categoryOptionalNoDefault,
+		"ACME_CACHE_DIR":                 categoryOptionalNoDefault,
+		"CORS_ALLOWED_ORIGINS":           categoryOptionalNoDefault,
+		"TRUSTED_PROXY_CIDRS":            categoryOptionalNoDefault,
+		"DEVICE_PAIRING_SECRET":          categoryOptionalNoDefault,
 		"SOURCE_ALLOW_PRIVATE_ADDRESSES": categoryOptionalDefault,
 	}
 
@@ -50,12 +44,12 @@ func TestFieldTable_CategoriesMatchTheSpec(t *testing.T) {
 			continue
 		}
 		if gotCat != wantCat {
-			t.Errorf("key %s category = %v, want %v (backend-configuration.md FR-4)", key, gotCat, wantCat)
+			t.Errorf("key %s category = %v, want %v", key, gotCat, wantCat)
 		}
 	}
 	for key := range got {
 		if _, expected := want[key]; !expected {
-			t.Errorf("key %s in the field table but not in this task's expected set — update this test's want map", key)
+			t.Errorf("key %s in the field table but not in expected set", key)
 		}
 	}
 }

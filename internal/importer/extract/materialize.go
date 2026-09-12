@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// Materialize spools r into a temporary file capped at 250 MiB (backend-file-extractors.md FR-1).
+// Materialize spools r into a temporary file capped at 250 MiB.
 // It returns the open *os.File positioned at offset 0, and a cleanup function that closes
 // and removes the temp file. If the stream exceeds 250 MiB, it aborts immediately and returns ErrOversized.
 func Materialize(ctx context.Context, r io.Reader) (*os.File, func(), error) {

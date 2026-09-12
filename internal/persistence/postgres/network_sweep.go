@@ -9,9 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NetworkSweep executes the background lifecycle sweep for phase-13
-// network pairing resources (backend-network-api.md FR-8, decision D-G).
-// It must NOT run on any request path.
+// NetworkSweep executes the background lifecycle sweep for expired
+// network pairing resources. It must NOT run on any request path.
 type NetworkSweep struct {
 	pool        *pgxpool.Pool
 	maxGrantTTL time.Duration

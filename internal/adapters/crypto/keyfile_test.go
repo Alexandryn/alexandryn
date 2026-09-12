@@ -74,7 +74,7 @@ func TestLoadOrCreateKey_MissingKeyWithCredentialedSourcesWarns(t *testing.T) {
 	if !bytes.Contains(logbuf.Bytes(), []byte("affectedSources=4")) {
 		t.Fatalf("warn line missing the affected count: %q", out)
 	}
-	// FR-13: never a source label in the line.
+	// Source labels must not leak in log lines.
 	if bytes.Contains(logbuf.Bytes(), []byte("label")) {
 		t.Fatalf("warn line leaked a source label: %q", out)
 	}

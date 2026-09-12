@@ -11,10 +11,10 @@ import (
 )
 
 // SourceRepository is internal/persistence/postgres's
-// domain.SourceRepository implementation (T24, R7). A single physical
+// domain.SourceRepository implementation. A single physical
 // table, one row per aggregate — no child tables. Save is upsert-by-id,
-// the same shape as WorkRepository/EditionRepository's own Save, per
-// T24's open question (no real caller exists yet to validate against).
+// the same shape as WorkRepository/EditionRepository's own Save
+// (no real caller exists yet to validate against).
 type SourceRepository struct {
 	pool *pgxpool.Pool
 }

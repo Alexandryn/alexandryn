@@ -36,11 +36,9 @@ type Claims struct {
 
 // Token type values for the Claims.Type field. A verifier on the
 // authentication path must assert the type, not only the signature: an
-// MFA ticket and (from phase 13) a pairing enrolment grant are signed
-// with related key material and carry a real Subject, so a signature-valid
-// token minted for one purpose must not be accepted on another
-// (AUDIT-0012-C2, CLAUDE.md token-type Reflex). An access token carries
-// either an empty type (the phase-12 shape) or TokenTypeAccess.
+// MFA ticket and a pairing enrolment grant are signed with related key
+// material and carry a real Subject, so a signature-valid token minted for
+// one purpose must not be accepted on another to prevent purpose confusion.
 const (
 	TokenTypeAccess    = "access"
 	TokenTypeMFATicket = "mfa_ticket"
@@ -72,9 +70,8 @@ type TokenSigner interface {
 type JWTSigner struct {
 	secret []byte
 	// mfaTicketSecret signs and verifies MFA tickets only — a distinct
-	// HKDF subkey of `secret`, so a signature-valid access token cannot
-	// verify as an MFA ticket even if the type assertion were bypassed
-	// (audit 0016 #106, reflex from review 0050 / audit 0012-C2).
+	// HKDF subkey of `secret`, ensuring a signature-valid access token cannot
+	// verify as an MFA ticket even if type assertions are bypassed.
 	mfaTicketSecret []byte
 	issuer          string
 }
@@ -124,12 +121,8 @@ func (s *JWTSigner) Verify(tokenString string, now time.Time) (*Claims, error) {
 }
 
 // VerifyAccessToken verifies the token and asserts it is an access token.
-// The type must be exactly TokenTypeAccess: a signature-valid token whose
-// type is "mfa_ticket", "enrol", or empty is rejected (AUDIT-0012-C2,
-// #173). Every issuance path sets Type explicitly; the only tokens with
-// an empty type are ones minted before this check landed, and access
-// tokens live 15 minutes, so the transition self-clears — a client with
-// an old token refreshes once.
+// The type must be exactly TokenTypeAccess: tokens with any other type or
+// an empty type are rejected.
 func (s *JWTSigner) VerifyAccessToken(tokenString string, now time.Time) (*Claims, error) {
 	claims, err := s.Verify(tokenString, now)
 	if err != nil {
@@ -154,8 +147,8 @@ func (s *JWTSigner) SignMFATicket(userID domain.UserID, expiresAt time.Time) (st
 		ExpiresAt: expiresAt.Unix(),
 		Issuer:    s.issuer,
 	}
-	// Signed with the dedicated MFA-ticket subkey (audit 0016 #106), not
-	// s.secret — the access-token path cannot produce or accept this.
+	// Signed with the dedicated MFA-ticket subkey, ensuring the access-token
+	// path cannot produce or accept this token.
 	return hs256Sign(s.mfaTicketSecret, claims)
 }
 

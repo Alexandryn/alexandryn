@@ -19,16 +19,15 @@ type ReadingExportStore interface {
 	ListMarks(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]postgres.ExportMark, error)
 }
 
-// readerRefs holds the phase-11 reader singletons populated once
+// readerRefs holds the reader singletons populated once
 // persistence is ready.
 type readerRefs struct {
 	contentCache atomic.Pointer[content.Cache]
 	readingAPI   atomic.Pointer[ReadingAPI]
 }
 
-// ReadingAPI bundles every repository the /api/v1/reading* handlers need
-// (backend-reading-api.md, reading-data-export.md) — set once when
-// persistence is ready, never a package global.
+// ReadingAPI bundles every repository the /api/v1/reading* handlers need —
+// set once when persistence is ready, never a package global.
 type ReadingAPI struct {
 	Progress       domain.ReadingProgressRepository
 	Bookmarks      domain.BookmarkRepository
@@ -43,8 +42,7 @@ type ReadingAPI struct {
 }
 
 // SetReaderContentCache stores the content cache once its resolver's
-// dependencies are all available (backend-reader-content.md FR-3 — built
-// once and injected, never a package global).
+// dependencies are all available (built once and injected, never a package global).
 func (r *PoolRef) SetReaderContentCache(c *content.Cache) {
 	r.reader.contentCache.Store(c)
 }

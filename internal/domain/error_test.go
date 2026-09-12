@@ -7,8 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// FR-1: the six categories are the closed set.
-func TestCategories_AreTheSixNamedByFR1(t *testing.T) {
+// TestCategories_ClosedSet asserts the six defined categories form a closed set.
+func TestCategories_ClosedSet(t *testing.T) {
 	want := []domain.Category{
 		domain.NotFound,
 		domain.InvalidInput,
@@ -48,8 +48,7 @@ func TestError_WrapsAnUnderlyingErrorForServerSideDetail(t *testing.T) {
 	}
 }
 
-// FR-4: an error not already carrying a category defaults to Internal —
-// nothing reaches the client without going through one of the six.
+// An error not already carrying a category defaults to Internal.
 func TestCategoryOf_DomainErrorReturnsItsOwnCategory(t *testing.T) {
 	err := &domain.Error{Category: domain.Conflict, Message: "already exists"}
 	if got := domain.CategoryOf(err); got != domain.Conflict {
@@ -70,7 +69,7 @@ func TestCategoryOf_WrappedDomainErrorReturnsItsCategory(t *testing.T) {
 func TestCategoryOf_UncategorizedErrorDefaultsToInternal(t *testing.T) {
 	plain := errors.New("unexpected panic recovered")
 	if got := domain.CategoryOf(plain); got != domain.Internal {
-		t.Fatalf("CategoryOf(plain error) = %v, want Internal (FR-4's default)", got)
+		t.Fatalf("CategoryOf(plain error) = %v, want Internal (default)", got)
 	}
 }
 

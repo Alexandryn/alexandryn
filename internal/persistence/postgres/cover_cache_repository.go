@@ -23,10 +23,10 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// DefaultCoverCacheMaxBytes is 500 MiB (backend-metadata-caching.md FR-7).
+// DefaultCoverCacheMaxBytes is 500 MiB.
 const DefaultCoverCacheMaxBytes int64 = 500 * 1024 * 1024
 
-// CoverCacheRepository defines persistence and filesystem caching for covers (FR-5, FR-6, FR-7).
+// CoverCacheRepository defines persistence and filesystem caching for covers.
 type CoverCacheRepository interface {
 	GetCover(ctx context.Context, coverID int64) (filePath string, contentType string, isMissing bool, hit bool, err error)
 	SaveCover(ctx context.Context, coverID int64, contentType string, data []byte) (string, error)
@@ -75,7 +75,7 @@ func NewCoverCacheRepositoryWithOptions(pool *pgxpool.Pool, coversDir string, ma
 
 var _ CoverCacheRepository = (*FilesystemCoverCacheRepository)(nil)
 
-// GetCover checks if a cover image is cached locally or recorded as missing (FR-6, FR-8).
+// GetCover checks if a cover image is cached locally or recorded as missing.
 func (r *FilesystemCoverCacheRepository) GetCover(ctx context.Context, coverID int64) (string, string, bool, bool, error) {
 	if coverID <= 0 {
 		return "", "", false, false, &domain.Error{Category: domain.InvalidInput, Message: "cover ID must be a positive integer"}
@@ -109,7 +109,7 @@ func (r *FilesystemCoverCacheRepository) GetCover(ctx context.Context, coverID i
 		return "", "", false, false, nil
 	}
 
-	// Update accessed_at for LRU eviction (FR-7)
+	// Update accessed_at for LRU eviction
 	now := r.now()
 	_, _ = r.pool.Exec(ctx, `UPDATE metadata_covers SET accessed_at = $1 WHERE cover_id = $2`, now, coverID)
 
@@ -183,16 +183,16 @@ func (r *FilesystemCoverCacheRepository) SaveCover(ctx context.Context, coverID 
 		if r.logger != nil {
 			r.logger.Warn("Failed to record cover in database", slog.Int64("cover_id", coverID), slog.Any("error", err))
 		}
-		// A cache-write failure MUST NOT fail the request (backend-metadata-caching.md Failure Modes)
+		// A cache-write failure MUST NOT fail the request
 	}
 
-	// Trigger LRU eviction check (FR-7)
+	// Trigger LRU eviction check
 	r.evictIfNeeded(ctx)
 
 	return finalPath, nil
 }
 
-// MarkMissing records a 404 sentinel in the cache (FR-6).
+// MarkMissing records a 404 sentinel in the cache.
 func (r *FilesystemCoverCacheRepository) MarkMissing(ctx context.Context, coverID int64) error {
 	if coverID <= 0 {
 		return &domain.Error{Category: domain.InvalidInput, Message: "cover ID must be a positive integer"}
@@ -217,7 +217,7 @@ func (r *FilesystemCoverCacheRepository) MarkMissing(ctx context.Context, coverI
 	return nil
 }
 
-// evictIfNeeded runs LRU eviction if total disk usage exceeds maxBytes (FR-7).
+// evictIfNeeded runs LRU eviction if total disk usage exceeds maxBytes.
 func (r *FilesystemCoverCacheRepository) evictIfNeeded(ctx context.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

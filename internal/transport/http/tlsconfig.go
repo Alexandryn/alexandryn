@@ -3,9 +3,8 @@ package http
 import "crypto/tls"
 
 // NewTLSConfig returns the version / cipher / ALPN policy every in-process
-// TLS listener uses (backend-network-transport.md FR-4, ADR 0028 §3). The
-// caller sets exactly one certificate source on the result — Certificates
-// for a static pair, or GetCertificate for an autocert.Manager.
+// TLS listener uses. The caller sets exactly one certificate source on
+// the result — Certificates for a static pair, or GetCertificate for an autocert.Manager.
 //
 //   - MinVersion TLS 1.2; TLS 1.3 is negotiated when the client offers it.
 //   - For TLS 1.2, an explicit AEAD + ECDHE (forward-secret) cipher list —

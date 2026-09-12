@@ -1,8 +1,6 @@
 // Package content resolves, sanitises, and serves individual entries
-// from inside an owned Edition's EPUB (backend-reader-content.md). It is
-// the second file-content boundary this project has built and the first
-// that hands parsed content back to a caller, so every byte served as
-// HTML/CSS passes an allowlist sanitiser first (ADR 0024).
+// from inside an owned Edition's EPUB archive. Every byte served as
+// HTML or CSS passes an allowlist sanitiser before returning to the client.
 package content
 
 import (
@@ -13,8 +11,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-// SanitizeReport counts what a pass removed, for the info-level
-// observability signal (backend-reader-content.md Observability):
+// SanitizeReport counts what a pass removed, for observability logging:
 // categories only, never the offending content or the surrounding
 // document.
 type SanitizeReport struct {
@@ -51,7 +48,7 @@ var (
 	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:[^/:]|/[^/])[^:]*|#\S*)$`)
 
 	// A relative-only reference that does not begin with "//" and rejects data: schemes.
-	// Used on <a href> so that books cannot embed data:text/html anchors (audit 0016 #253).
+	// Used on <a href> so that books cannot embed data:text/html anchors to prevent UI-redress.
 	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:[^/:]|/[^/])[^:]*|#\S*)$`)
 )
 
@@ -71,16 +68,16 @@ var htmlContentElements = []string{
 	"table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
 	"ruby", "rt", "rp", "bdi", "bdo", "del", "ins",
 	// A stylesheet link whose href is relative or data: only — it fetches
-	// the (also-sanitised) CSS from this system's own origin, so it is not
-	// an external-fetch element in FR-6's sense. An http(s) or //host href
+	// the (also-sanitised) CSS from this system's own origin, so it does not
+	// trigger external network requests. An http(s) or //host href
 	// is rejected by reRelativeOrData below, same as an <img src>.
 	"link",
 }
 
-// htmlPolicy builds the sanitisation policy (ADR 0024). A fresh
+// htmlPolicy builds the sanitisation policy. A fresh
 // allowlist policy — not UGCPolicy, whose AllowStandardURLs permanently
 // whitelists http/https and cannot be reset — so href/src accept only
-// relative paths and data: URIs (FR-6). <style> is not in the allowlist;
+// relative paths and data: URIs. <style> is not in the allowlist;
 // SanitizeHTML lifts its CSS out, runs it through SanitizeCSS, and
 // re-injects one sanitised <style> block, so bluemonday never has to
 // reason about raw CSS text.
@@ -90,7 +87,7 @@ func htmlPolicy() *bluemonday.Policy {
 	p.AllowElements(htmlContentElements...)
 
 	p.AllowAttrs("id", "class", "lang", "dir", "title").Globally()
-	// A relative path only on <a> (audit 0016 #253: data: href on <a> disallowed).
+	// A relative path only on <a> (data: href on <a> is disallowed).
 	// Rejects protocol-relative //host references and data: URIs.
 	p.AllowAttrs("href").Matching(reRelativeOnly).OnElements("a")
 	p.AllowAttrs("src").Matching(reRelativeOrData).OnElements("img")
@@ -112,9 +109,9 @@ func htmlPolicy() *bluemonday.Policy {
 	return p
 }
 
-// SanitizeHTML applies FR-6: strips scripts, event handlers, inline
-// <svg>, style attributes, external-fetch elements, and any non-relative
-// non-data: href/src; routes <style> block text through SanitizeCSS.
+// SanitizeHTML strips scripts, event handlers, inline <svg>, style
+// attributes, external-fetch elements, and any non-relative, non-data:
+// href/src attributes; routes <style> block text through SanitizeCSS.
 func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	var rep SanitizeReport
 	rep.ScriptsStripped = len(reScriptTag.FindAll(raw, -1)) + len(reEventAttr.FindAll(raw, -1))
@@ -122,9 +119,8 @@ func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	rep.StyleAttrsStripped = len(reStyleAttr.FindAll(raw, -1))
 	rep.ExternalRefsStripped = len(reExternalHREF.FindAll(raw, -1))
 
-	// Lift every <style> block's CSS out and run it through SanitizeCSS
-	// (FR-6: it is CSS, it gets CSS's rule), then drop inline <svg>
-	// wholesale, before the HTML policy runs.
+	// Lift every <style> block's CSS out and run it through SanitizeCSS,
+	// then drop inline <svg> wholesale, before the HTML policy runs.
 	var css strings.Builder
 	for _, m := range reStyleBlock.FindAllSubmatch(raw, -1) {
 		safe, cssRep := SanitizeCSS(m[1])
@@ -152,10 +148,9 @@ func stripSVG(raw []byte) []byte {
 	return out
 }
 
-// SanitizeCSS applies FR-7: strips any url()/@import target whose URL has
-// a scheme other than data:. A scheme-less (relative) reference is left
-// unchanged. This is a bounded token scan, not a full CSS parser (ADR
-// 0024).
+// SanitizeCSS strips any url()/@import target whose URL has a scheme
+// other than data:. A scheme-less (relative) reference is left
+// unchanged. This is a bounded token scan rather than a full CSS parser.
 func SanitizeCSS(raw []byte) ([]byte, SanitizeReport) {
 	var rep SanitizeReport
 
@@ -185,9 +180,8 @@ func SanitizeCSS(raw []byte) ([]byte, SanitizeReport) {
 	return out, rep
 }
 
-// schemeDisallowed is FR-7's exact rule: "has a scheme: prefix at all,
-// and that scheme isn't data:". A bare relative reference (no scheme) is
-// allowed.
+// schemeDisallowed checks if a URL has a scheme prefix other than data:.
+// A bare relative reference (no scheme) is allowed.
 func schemeDisallowed(url string) bool {
 	url = strings.TrimSpace(url)
 	if url == "" {

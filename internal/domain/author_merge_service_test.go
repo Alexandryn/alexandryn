@@ -17,11 +17,8 @@ func mustNewAuthor(t *testing.T, id domain.AuthorID, name string) *domain.Author
 	return a
 }
 
-// AuthorMergeService is the identical pattern to WorkMergeService
-// (domain-bibliographic.md FR-7 requires the same reversibility
-// guarantee as FR-4 gives Work) — one representative case per behaviour,
-// not the full matrix WorkMergeService's own tests already cover in
-// depth.
+// AuthorMergeService follows the same pattern as WorkMergeService,
+// providing representative test coverage for author merge operations.
 func TestAuthorMergeService_RecordMerge(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

@@ -12,11 +12,11 @@ import (
 )
 
 // LibraryEntryRepository is internal/persistence/postgres's
-// domain.LibraryEntryRepository implementation (T24, R6). A single
+// domain.LibraryEntryRepository implementation. A single
 // physical table, one row per aggregate — no child tables, no Save
 // replace-of-children shape. Save is insert-only (ON CONFLICT DO
 // NOTHING): a LibraryEntry has no mutable field once created, and the
-// real UNIQUE constraint on library_entries.edition_id (FR-7) is what
+// real UNIQUE constraint on library_entries.edition_id is what
 // enforces at-most-one-per-Edition, not application logic — a second
 // Save for the same edition_id with a different id must lose the race,
 // not silently overwrite the first entry the way Work/Author's
@@ -49,9 +49,8 @@ func (r *LibraryEntryRepository) FindByEdition(ctx context.Context, editionID do
 	return domain.NewLibraryEntry(domain.LibraryEntryID(id), editionID, addedAt), nil
 }
 
-// EditionInLibrary reports whether editionID is owned in libraryID
-// (AUDIT-0012-C1). library_entries.library_id is NOT NULL (migration
-// 00009 backfilled it), so a plain equality is enough.
+// EditionInLibrary reports whether editionID is owned in libraryID.
+// library_entries.library_id is NOT NULL, so a plain equality is enough.
 func (r *LibraryEntryRepository) EditionInLibrary(ctx context.Context, editionID domain.EditionID, libraryID domain.LibraryID) (bool, error) {
 	exec := executorFrom(ctx, r.pool)
 	var exists bool

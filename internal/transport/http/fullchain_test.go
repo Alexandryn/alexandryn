@@ -16,23 +16,16 @@ import (
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
-// T21: backend-errors-and-logging.md FR-10/FR-11 and the Concurrency
-// layer's panic-isolation case, all exercised against the real assembled
-// chain (Recovery, Limits, Logging via transporthttp.Chain) rather than
-// individual middlewares wired by hand — the specific gap the test plan's
-// Risk assessment names: a Unit-layer test of Recovery alone can't prove
-// the fallback still works with Logging genuinely present in the chain,
-// and FR-11's check is vacuous without a real construction-to-wire
-// exercise.
+// Full-chain error and logging integration tests: exercises panic recovery
+// and logging behavior against the real assembled chain (Recovery, Limits,
+// Logging via transporthttp.Chain) rather than individual middlewares wired by hand.
 
-// FR-10: a panic in a layer positioned before Logging (Limits' position
-// in the real chain) must still produce a response with a non-empty
-// correlationId — Recovery's own fallback, since Logging never gets a
-// chance to assign one. Distinct from the existing
-// TestRecovery_GeneratesAFallbackCorrelationIDWhenNoneIsSet (no Logging
-// in that chain at all) and TestRecovery_WrappingLogging_UsesLoggingsRealCorrelationID
-// (panic happens *after* Logging assigns an ID) — this is the middle
-// case: Logging is present in the chain but never reached.
+// A panic in a layer positioned before Logging (Limits' position in the real chain)
+// must still produce a response with a non-empty correlationId — Recovery's own fallback,
+// since Logging never gets a chance to assign one. Distinct from
+// TestRecovery_GeneratesAFallbackCorrelationIDWhenNoneIsSet (no Logging in that chain at all)
+// and TestRecovery_WrappingLogging_UsesLoggingsRealCorrelationID (panic happens after Logging
+// assigns an ID) — this tests the case where Logging is present in the chain but never reached.
 func TestFullChain_PanicBeforeLoggingRuns_StillGetsAFallbackCorrelationID(t *testing.T) {
 	logger := slog.New(testutil.NewSpyHandler())
 	recoveryIDs := testutil.NewFakeIDGenerator("recovery-fallback-id")
@@ -76,11 +69,8 @@ func TestFullChain_PanicBeforeLoggingRuns_StillGetsAFallbackCorrelationID(t *tes
 	}
 }
 
-// FR-11: forbiddenMessagePatterns and messageLeaksInternals are this
-// package's dedicated automated check (the spec allows either an
-// architecture-contracts.md contract test or "a dedicated test in this
-// package" — phase 03 registers no domain endpoint the contract test
-// could exercise yet, see the test plan's own recorded deviation).
+// forbiddenMessagePatterns and messageLeaksInternals ensure error responses
+// never leak sensitive internal details, paths, or query fragments to clients.
 var forbiddenMessagePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\.go:\d+`),                                                   // stack-trace-shaped (file.go:123)
 	regexp.MustCompile(`(?i)goroutine \d+`),                                          // stack trace header
@@ -117,11 +107,9 @@ func TestMessageLeaksInternals_DetectsKnownBadPatterns(t *testing.T) {
 	}
 }
 
-// The real FR-11 exercise: a test-only handler, registered only here,
-// deterministically triggers each of the six FR-1 categories via real
-// domain.Error construction and the real WriteError helper, behind the
-// real chain — proving the actual construction-to-wire pipeline is
-// clean, not just that the regex above works in isolation.
+// Exercises the construction-to-wire pipeline: a test handler deterministically
+// triggers each of the error categories via domain.Error and WriteError behind the
+// real middleware chain, verifying no internal details are leaked to clients.
 func TestFullChain_ErrorMessagesAcrossAllCategoriesNeverLeakInternals(t *testing.T) {
 	logger := slog.New(testutil.NewSpyHandler())
 	idCounter := 0
@@ -171,7 +159,7 @@ func TestFullChain_ErrorMessagesAcrossAllCategoriesNeverLeakInternals(t *testing
 				t.Fatalf("response body isn't valid JSON: %v", err)
 			}
 			if messageLeaksInternals(body.Message) {
-				t.Fatalf("category %s: message %q leaks internal detail (FR-11)", cat, body.Message)
+				t.Fatalf("category %s: message %q leaks internal detail", cat, body.Message)
 			}
 		})
 	}

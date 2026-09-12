@@ -25,7 +25,7 @@ type authConfig struct {
 type LoginOption func(*authConfig)
 type RefreshOption = LoginOption
 
-// WithEnrolmentGrant configures the login handler to process device enrolment grants (T4.7, FR-9).
+// WithEnrolmentGrant configures the login handler to process device enrolment grants.
 func WithEnrolmentGrant(
 	grantSigner *auth.EnrolmentGrantSigner,
 	devRepo domain.PairedDeviceRepository,
@@ -40,7 +40,7 @@ func WithEnrolmentGrant(
 	}
 }
 
-// WithNetworkSettings configures network settings (such as rememberDeviceDays) for token expiry (T4.7, FR-3/FR-4).
+// WithNetworkSettings configures network settings (such as rememberDeviceDays) for token expiry.
 func WithNetworkSettings(settingsRepo domain.NetworkSettingsRepository) LoginOption {
 	return func(c *authConfig) {
 		c.settingsRepo = settingsRepo
@@ -48,7 +48,7 @@ func WithNetworkSettings(settingsRepo domain.NetworkSettingsRepository) LoginOpt
 }
 
 // applyEnrolmentGrant associates a device with a user via an enrolment
-// grant (T4.7, FR-9). Called only once a login is actually completing —
+// grant. Called only once a login is actually completing —
 // LoginHandler calls it after the TOTP-MFA gate (not before: a password-only
 // step that only returns mfaRequired must not durably assign device
 // ownership or spend the grant's JTI), and TOTPVerifyHandler calls it after
@@ -109,7 +109,7 @@ func generateRandomToken(bytesLen int) (raw string, hash string, err error) {
 	return raw, hash, nil
 }
 
-// SetupStatusHandler reports whether initial admin setup has been completed (FR-1).
+// SetupStatusHandler reports whether initial admin setup has been completed.
 func SetupStatusHandler(userRepo domain.UserRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -124,7 +124,7 @@ func SetupStatusHandler(userRepo domain.UserRepository) http.Handler {
 	})
 }
 
-// SetupHandler handles initial admin registration wizard (FR-1).
+// SetupHandler handles initial admin registration wizard.
 func SetupHandler(
 	userRepo domain.UserRepository,
 	credRepo domain.CredentialRepository,
@@ -229,7 +229,7 @@ func SetupHandler(
 	})
 }
 
-// LoginHandler authenticates users with Argon2id and issues tokens (FR-3).
+// LoginHandler authenticates users with Argon2id and issues tokens.
 func LoginHandler(
 	userRepo domain.UserRepository,
 	credRepo domain.CredentialRepository,
@@ -371,7 +371,7 @@ func LoginHandler(
 	})
 }
 
-// RefreshHandler rotates refresh tokens and issues fresh access tokens (FR-4).
+// RefreshHandler rotates refresh tokens and issues fresh access tokens.
 func RefreshHandler(
 	rtRepo domain.RefreshTokenRepository,
 	userRepo domain.UserRepository,
@@ -470,7 +470,7 @@ func RefreshHandler(
 	})
 }
 
-// LogoutHandler revokes the active refresh token (FR-5).
+// LogoutHandler revokes the active refresh token.
 func LogoutHandler(rtRepo domain.RefreshTokenRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -488,7 +488,7 @@ func LogoutHandler(rtRepo domain.RefreshTokenRepository) http.Handler {
 	})
 }
 
-// PasswordResetRequestHandler generates a reset token without revealing account presence (FR-6).
+// PasswordResetRequestHandler generates a reset token without revealing account presence.
 func PasswordResetRequestHandler(
 	userRepo domain.UserRepository,
 	prRepo domain.PasswordResetRepository,
@@ -536,7 +536,7 @@ func PasswordResetRequestHandler(
 	})
 }
 
-// PasswordResetConfirmHandler updates password and revokes existing sessions (FR-6).
+// PasswordResetConfirmHandler updates password and revokes existing sessions.
 func PasswordResetConfirmHandler(
 	userRepo domain.UserRepository,
 	credRepo domain.CredentialRepository,
@@ -604,10 +604,10 @@ func PasswordResetConfirmHandler(
 	})
 }
 
-// TOTPSetupHandler starts 2FA enrollment (ADR 0027). Generating a fresh
+// TOTPSetupHandler starts 2FA enrollment. Generating a fresh
 // secret overwrites any existing enrolment, so it is a step-up action:
 // the account password is required even though the access token already
-// authenticates the request (audit 0016 #107).
+// authenticates the request.
 func TOTPSetupHandler(mfaRepo domain.MFARepository, credRepo domain.CredentialRepository, hasher auth.PasswordHasher, totpEngine *auth.TOTPEngine, masterKey []byte) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -676,7 +676,7 @@ func TOTPSetupHandler(mfaRepo domain.MFARepository, credRepo domain.CredentialRe
 	})
 }
 
-// TOTPConfirmHandler confirms 2FA enrollment with first code (ADR 0027).
+// TOTPConfirmHandler confirms 2FA enrollment with first code.
 func TOTPConfirmHandler(mfaRepo domain.MFARepository, totpEngine *auth.TOTPEngine, masterKey []byte) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := CorrelationIDFromContext(r.Context())
@@ -736,11 +736,10 @@ func writeTooManyRequests(w http.ResponseWriter, corrID, message string) {
 	})
 }
 
-// TOTPVerifyHandler verifies MFA during login (ADR 0027). ipLimiter
+// TOTPVerifyHandler verifies MFA during login. ipLimiter
 // throttles per source address (parity with LoginHandler); userLimiter
 // throttles per user id so an attacker who has a password cannot grind
-// the ~10^6 TOTP space by rotating addresses (audit 0016 #89). Both are
-// nil-safe.
+// the ~10^6 TOTP space by rotating addresses. Both are nil-safe.
 func TOTPVerifyHandler(
 	mfaRepo domain.MFARepository,
 	userRepo domain.UserRepository,

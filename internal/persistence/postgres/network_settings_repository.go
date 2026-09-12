@@ -11,8 +11,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// NetworkSettingsRepository implements domain.NetworkSettingsRepository
-// (backend-network-api.md FR-7).
+// NetworkSettingsRepository implements domain.NetworkSettingsRepository.
 type NetworkSettingsRepository struct {
 	pool *pgxpool.Pool
 }

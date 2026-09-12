@@ -8,11 +8,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// FR-4: a read of a canonical Work's authors/subjects/external
-// references/containment references MUST return the union across that
-// Work and every Work merged into it, transitively — a three-level merge
-// chain, reading the canonical Work's resolved view returns the union,
-// not just the canonical row's own fields (spec's own required fixture).
+// A read of a canonical Work's authors/subjects/external references/containment
+// references returns the union across that Work and every Work merged into it,
+// transitively across a three-level merge chain.
 func TestResolveWork_UnionsAcrossAThreeLevelMergeChain(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

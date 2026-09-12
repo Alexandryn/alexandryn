@@ -39,20 +39,12 @@ var (
 	serverStartTime = time.Now()
 )
 
-// postgresReadyMaxAttempts and postgresReadyBackoff bound FR-1 step 5's
-// "wait for Postgres to become reachable" retry (FR-3's sole retry
-// exception). The spec's own Open questions leave the exact number to
-// backend-persistence.md, which is better positioned to measure real
-// spawn/start timing than this spec; ~30 seconds is a provisional guess
-// pending that number, not a considered decision — revisit here once
-// backend-persistence.md fixes one.
+// postgresReadyMaxAttempts and postgresReadyBackoff bound the startup
+// retry loop waiting for PostgreSQL to become reachable.
 //
 // postgresConnectAttemptTimeout bounds each individual connect attempt:
 // without it, a host that accepts the TCP handshake but never completes
-// Postgres's own startup message exchange could block a single attempt
-// far longer than postgresReadyBackoff implies, turning the "~30 second"
-// budget above into an unbounded one (found in Checkpoint F's security
-// review — DATABASE_URL is operator-supplied, constitution §4).
+// the startup handshake could block an attempt indefinitely.
 const (
 	postgresReadyMaxAttempts      = 30
 	postgresReadyBackoff          = time.Second
@@ -97,9 +89,8 @@ func main() {
 		newJobSystem: func(cfg *config.Config, logger *slog.Logger, pool pgPool) (jobRunner, error) {
 			// The pool run holds is the pgPool interface; the job
 			// subsystem needs the concrete *pgxpool.Pool it shares with
-			// every repository (backend-job-queue.md FR-1 — one pool, not
-			// a second). In production newPool always returns exactly
-			// that; a mismatch is a wiring bug worth failing loudly on.
+			// the repositories. In production newPool always returns that;
+			// a mismatch is a configuration or wiring bug.
 			pgxPool, ok := pool.(*pgxpool.Pool)
 			if !ok {
 				return nil, fmt.Errorf("job worker pool needs a *pgxpool.Pool, got %T", pool)
@@ -113,21 +104,13 @@ func main() {
 	}))
 }
 
-// newObtainPostgres (spawn.go, spawn_darwin.go) is FR-1 step 5's real,
-// per-platform implementation: spawn a bundled instance when no
-// DATABASE_URL is configured (the Electron-hosted target's production
-// path), or connect directly to the one configured (the Electron
-// target's dev/CI/test override, and the container-hosted target's
-// normal production path, ADR 0015) — exactly one of the two, chosen by
-// postgres.SelectStartupPath.
+// newObtainPostgres (spawn.go, spawn_darwin.go) is the per-platform startup
+// implementation: spawn a bundled instance when no DATABASE_URL is
+// configured, or connect directly to the configured database.
 
 // connectPostgres returns a connect function for postgres.SelectStartupPath:
 // one attempt at establishing (and immediately closing) a real connection
-// to cfg.DatabaseURL — proof of reachability, per FR-1 step 5, without
-// building the long-lived pool step 6 owns. Bounded by
-// postgresConnectAttemptTimeout so a host that accepts the TCP connection
-// but never completes Postgres's own handshake can't block a single
-// attempt indefinitely.
+// to cfg.DatabaseURL, bounded by postgresConnectAttemptTimeout.
 func connectPostgres(cfg *config.Config) func(ctx context.Context) error {
 	return connectPostgresWithTimeout(cfg, postgresConnectAttemptTimeout)
 }
@@ -162,11 +145,9 @@ func sleepOrDone(ctx context.Context, d time.Duration) {
 	}
 }
 
-// newProductionRouter assembles the real router: /healthz and /readyz
-// wired to poolRef, no /api/v1 routes yet (phase 03 registers none), and
-// the embedded web/dist build as the SPA-fallback catch-all — wrapped by
-// the middleware chain in architecture-backend.md FR-6's fixed order
-// (recovery, limits, logging, routing).
+// newProductionRouter assembles the application router: health endpoints,
+// API routes, static assets, and SPA fallback, wrapped with the standard
+// middleware pipeline.
 func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.Logger, poolRef *transporthttp.PoolRef, publicLimiter *auth.IPRateLimiter) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", transporthttp.Healthz(poolRef))
@@ -196,8 +177,8 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	sourceRepo := transporthttp.NewLazySourceRecordRepository(poolRef)
 	sourceSem := sources.NewSemaphore(sources.DefaultOutboundLimit)
-	// audit 0016 #86 — the outbound OPDS client blocks non-public targets
-	// unless the operator opts in for a source on their own machine / LAN.
+	// Outbound OPDS client blocks non-public targets unless the operator
+	// explicitly allows private addresses for local/LAN sources.
 	poolRef.SetSourceAllowPrivateAddresses(cfg.SourceAllowPrivateAddresses)
 
 	adminOnly := transporthttp.RequireRole(domain.RoleAdmin)
@@ -239,10 +220,8 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("PUT /api/v1/reading/preferences", transporthttp.Chain(transporthttp.ReadingPreferencesPutHandler(poolRef), syncMW))
 	mux.Handle("GET /api/v1/reading/export", transporthttp.ReadingExportHandler(poolRef, logger, time.Now))
 
-	// Auth routes (Phase 12). /auth/setup and /auth/login are, like
-	// /network/pair/verify, unauthenticated state-changing POST routes
-	// (IsPublicPath) — OriginValidation applies to all three for the same
-	// reason (backend-network-transport.md FR-7, ADR 0028 §5).
+	// Auth routes. /auth/setup and /auth/login are unauthenticated
+	// state-changing POST routes requiring origin validation.
 	allowedOrigins := computeAllowedOrigins(cfg)
 	originValidated := func(h http.Handler) http.Handler {
 		return transporthttp.Chain(h, transporthttp.OriginValidation(allowedOrigins))
@@ -260,7 +239,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("POST /api/v1/auth/mfa/totp/verify", transporthttp.LazyTOTPVerifyHandler(poolRef))
 	mux.Handle("POST /api/v1/auth/mfa/totp/disable", transporthttp.LazyTOTPDisableHandler(poolRef))
 
-	// Multi-Library routes (Phase 12)
+	// Multi-library routes
 	mux.Handle("GET /api/v1/libraries", transporthttp.LazyListLibrariesHandler(poolRef))
 	mux.Handle("POST /api/v1/libraries", transporthttp.LazyCreateLibraryHandler(poolRef))
 	mux.Handle("GET /api/v1/libraries/{id}", transporthttp.LazyGetLibraryHandler(poolRef))
@@ -270,7 +249,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("POST /api/v1/libraries/{id}/invitations", transporthttp.LazyCreateInvitationHandler(poolRef))
 	mux.Handle("POST /api/v1/invitations/{token}/accept", transporthttp.LazyAcceptInvitationHandler(poolRef))
 
-	// Network & Pairing routes (Phase 13)
+	// Network and pairing routes
 	pairInitiateLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/5), 3, 15*time.Minute)
 	pairInitiateLimiter.StartEviction(ctx)
 	pairVerifyLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute/10), 5, 15*time.Minute)
@@ -295,7 +274,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
 	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
 
-	// Device Management & Sync routes (Phase 14)
+	// Device management and sync routes
 	mux.Handle("GET /api/v1/devices", transporthttp.Chain(transporthttp.LazyListDevicesHandler(poolRef), syncMW))
 	mux.Handle("DELETE /api/v1/devices/{id}", transporthttp.Chain(transporthttp.LazyRevokeDeviceHandler(poolRef), syncMW))
 	mux.Handle("GET /api/v1/sync/reading", transporthttp.Chain(transporthttp.LazySyncReadingHandler(poolRef), syncMW))
@@ -303,7 +282,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 
 	mux.Handle("GET /api/bootstrap", transporthttp.LazyBootstrapHandler(poolRef))
 
-	// Observability & Activity routes (Phase 15)
+	// Observability and activity routes
 	mux.Handle("GET /api/v1/diagnostics", adminOnly(transporthttp.LazyDiagnosticsHandler(poolRef, serverStartTime, gitCommit, buildTime)))
 	mux.Handle("GET /api/v1/activity/events", adminOnly(transporthttp.LazyActivityEventsHandler(poolRef)))
 	mux.Handle("POST /api/v1/activity/pause-all", adminOnly(transporthttp.LazyActivityPauseAllHandler(poolRef)))
@@ -320,8 +299,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	metricsReg := observability.NewRegistry()
 	poolRef.SetMetricsRegistry(metricsReg)
 
-	// The middleware chain, outermost-in (backend-http-transport.md FR-1
-	// as amended for ADR 0028, architecture-backend.md FR-6, backend-observability.md FR-4):
+	// The middleware chain, outermost-in:
 	//   recovery -> limits -> logging -> metrics -> security headers (all binds) ->
 	//   HSTS (in-process TLS only) -> global rate limit (health probes) ->
 	//   CORS -> auth -> routing.
@@ -338,10 +316,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	)
 }
 
-// newCorrelationID generates a random per-request correlation ID
-// (backend-errors-and-logging.md FR-7) — 16 bytes of crypto/rand, hex
-// encoded, no new dependency for something the standard library already
-// does.
+// newCorrelationID generates a 16-byte cryptographically random hex correlation ID.
 func newCorrelationID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {

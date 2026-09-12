@@ -151,9 +151,8 @@ func (r *fakeEditionRepository) Save(_ context.Context, e *domain.Edition) error
 
 var _ domain.EditionRepository = (*fakeEditionRepository)(nil)
 
-// fakeLibraryEntryRepository is the same pattern, for
-// domain.LibraryEntryRepository, keyed by EditionID since that's the
-// uniqueness key FR-7 requires.
+// fakeLibraryEntryRepository is an in-memory implementation of
+// domain.LibraryEntryRepository, keyed by EditionID.
 type fakeLibraryEntryRepository struct {
 	mu      sync.Mutex
 	entries map[domain.EditionID]*domain.LibraryEntry
@@ -430,9 +429,8 @@ func (r *fakeSourceOfferingRepository) Delete(_ context.Context, id domain.Sourc
 
 var _ domain.SourceOfferingRepository = (*fakeSourceOfferingRepository)(nil)
 
-// fakeReadingProgressRepository is the same pattern, for
-// domain.ReadingProgressRepository, keyed by WorkID since FR-1's
-// singleton-per-Work invariant makes that the real uniqueness key.
+// fakeReadingProgressRepository is an in-memory implementation of
+// domain.ReadingProgressRepository, keyed by WorkID.
 type fakeReadingProgressRepository struct {
 	mu       sync.Mutex
 	progress map[domain.WorkID]*domain.ReadingProgress
@@ -628,8 +626,8 @@ func (r *fakeHighlightRepository) Delete(_ context.Context, id domain.HighlightI
 
 var _ domain.HighlightRepository = (*fakeHighlightRepository)(nil)
 
-// fakeReadingPreferencesRepository is the same pattern, for
-// domain.ReadingPreferencesRepository, keyed by DeviceID (FR-5).
+// fakeReadingPreferencesRepository is an in-memory implementation of
+// domain.ReadingPreferencesRepository, keyed by DeviceID.
 type fakeReadingPreferencesRepository struct {
 	mu    sync.Mutex
 	prefs map[domain.DeviceID]*domain.ReadingPreferences

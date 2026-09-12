@@ -6,14 +6,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-bibliographic.md FR-8: an Edition cannot be constructed without
-// a parent Work reference — literally unrepresentable via Go's type
-// system, not a nil-check convention. There is nothing to assert at
-// runtime about this (unlike a nil check, which a test could exercise) —
-// the proof is that NewEdition's signature requires a WorkID as a
-// positional argument with no overload omitting it, so no call site
-// compiles without supplying one. Every test below supplies a WorkID for
-// exactly this reason, not by omission.
+// TestNewEdition_RequiresParentWork verifies that an Edition cannot be constructed
+// without a parent Work reference. NewEdition requires WorkID as a positional
+// parameter, enforcing the relationship through the type system.
 func TestNewEdition_RequiresParentWork(t *testing.T) {
 	lang, _ := domain.NewLanguage("en")
 	e, err := domain.NewEdition(domain.EditionID("edition-1"), domain.WorkID("work-1"), lang, nil, "", nil, nil)
@@ -56,15 +51,9 @@ func TestNewEdition_ISBNOptionalButValidatedWhenPresent(t *testing.T) {
 	})
 }
 
-// FR-10: Edition has its own Language field, independent of
-// Work.OriginalLanguage — this is the field that actually varies per
-// translation.
-//
-// The translation fixture: same Work, two Editions, different
-// Edition.Language, distinguished from the reissue fixture: same Work,
-// same language, different year/publisher (both required, named
-// explicitly by domain-bibliographic.md's own Test strategy section, not
-// generic placeholders).
+// TestEdition_TranslationVsReissue verifies that translations (same Work,
+// different Edition.Language) and reissues (same Work, same language,
+// different year or publisher) are properly modeled and distinguished.
 func TestEdition_TranslationVsReissue(t *testing.T) {
 	work := domain.WorkID("work-1")
 	en, _ := domain.NewLanguage("en")

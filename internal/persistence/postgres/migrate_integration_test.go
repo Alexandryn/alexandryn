@@ -16,9 +16,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// TestMain gives this package its own isolated database
-// (testutil.WithPackageDatabase, backend-test-harness.md FR-3 Variant B,
-// T26-5) before any test in this file runs.
+// TestMain gives this package its own isolated database before any test in this file runs.
 func TestMain(m *testing.M) {
 	os.Exit(testutil.IntegrationTestMain(os.LookupEnv, testutil.WithPackageDatabase("postgres", os.Getenv, os.Setenv, os.Stderr, m.Run), os.Stderr))
 }
@@ -33,10 +31,8 @@ func testDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// resetSchema gives each test a genuinely empty database, regardless of
-// what an earlier run left behind — backend-test-harness.md FR-3's
-// isolation requirement, applied here as a full schema reset rather than
-// per-table truncation, since a migration test's whole point is what
+// resetSchema gives each test an empty database — a full schema reset
+// rather than per-table truncation, since a migration test's whole point is what
 // exists in the schema itself, including goose's own tracking table.
 func resetSchema(t *testing.T, db *sql.DB) {
 	t.Helper()
@@ -58,9 +54,8 @@ func tableExists(t *testing.T, db *sql.DB, name string) bool {
 	return exists
 }
 
-// FR-6: migrations apply to an empty database — phase 03's own named
-// exit criterion — proven against the real embedded migration files via
-// the real, production Migrate function, not a fixture.
+// Migrations apply cleanly to an empty database — proven against the real
+// embedded migration files via the real, production Migrate function.
 func TestMigrate_AppliesToAnEmptyDatabase(t *testing.T) {
 	db := testDB(t)
 	resetSchema(t, db)
@@ -75,7 +70,7 @@ func TestMigrate_AppliesToAnEmptyDatabase(t *testing.T) {
 	}
 }
 
-// FR-7: the next startup attempt after a failed, partial migration must
+// The next startup attempt after a failed, partial migration must
 // also fail at the same step, not silently proceed — goose's own
 // applied-migrations tracking table is what makes this true, proven here
 // by actually causing a partial failure and retrying, not inferred from

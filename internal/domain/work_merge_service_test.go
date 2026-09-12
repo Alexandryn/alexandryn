@@ -58,10 +58,8 @@ func TestWorkMergeService_RecordMerge(t *testing.T) {
 		}
 	})
 
-	// The exact case review 0048 finding 9 fixed: A merged into B, then a
-	// later attempt to merge B into A must be rejected — not just direct
-	// self-reference. An earlier draft only checked A == A and left this
-	// legal, giving FR-4's resolve-through no fixed point.
+	// Indirect cycle: A merged into B, then a later attempt to merge B
+	// into A must be rejected — not just direct self-reference.
 	t.Run("indirect cycle (A into B, then B into A) is rejected", func(t *testing.T) {
 		a := mustNewWork(t, "work-a", "Title A")
 		b := mustNewWork(t, "work-b", "Title B")

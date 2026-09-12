@@ -4,8 +4,7 @@ import (
 	"time"
 )
 
-// NetworkSettings stores user-configurable host network options
-// (backend-network-api.md FR-7).
+// NetworkSettings stores user-configurable host network options.
 type NetworkSettings struct {
 	HostName           string
 	RememberDeviceDays int

@@ -12,8 +12,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// PairedDeviceRepository implements domain.PairedDeviceRepository
-// (backend-network-api.md FR-7 / FR-8 / FR-9).
+// PairedDeviceRepository implements domain.PairedDeviceRepository.
 type PairedDeviceRepository struct {
 	pool *pgxpool.Pool
 }

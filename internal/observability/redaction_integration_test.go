@@ -42,7 +42,7 @@ func fastJobConfig() jobs.Config {
 	}
 }
 
-// scanRecordsForViolations inspects captured slog.Record items against ADR 0032 violation patterns.
+// scanRecordsForViolations inspects captured slog.Record items against sensitive data redaction patterns.
 func scanRecordsForViolations(t *testing.T, records []slog.Record, canaries ...string) {
 	t.Helper()
 	if len(records) == 0 {
@@ -78,7 +78,7 @@ func scanRecordsForViolations(t *testing.T, records []slog.Record, canaries ...s
 	}
 }
 
-// TestRedaction_EndToEndExercisesSensitivePaths tests the 4 paths mandated by FR-14 and ADR 0032:
+// TestRedaction_EndToEndExercisesSensitivePaths tests sensitive paths across subsystems:
 // 1. Source sync with credential
 // 2. Authentication flow with password and issued JWT
 // 3. Import job with book title
@@ -139,7 +139,7 @@ func TestRedaction_EndToEndExercisesSensitivePaths(t *testing.T) {
 		Payload: map[string]any{
 			"status": "failed",
 			// Try injecting sensitive keys into event payload — at the top
-			// level, nested in an object, and inside a slice (audit 0016 #296).
+			// level, nested in an object, and inside a slice.
 			"password":   userPassCanary,
 			"token":      syntheticJWT,
 			"book_title": bookTitleCanary,

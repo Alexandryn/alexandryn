@@ -37,7 +37,7 @@ func TestCredential_NeverAppearsInLogs(t *testing.T) {
 
 	// Single-attribute path.
 	logger.Info("single", slog.Any("credential", c))
-	// Whole-struct path — the case FR-8 exists to close.
+	// Whole-struct path — ensures nested structs also do not leak credentials.
 	type wrapper struct {
 		Label      string
 		Credential sources.Credential

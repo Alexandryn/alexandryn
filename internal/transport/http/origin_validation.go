@@ -7,8 +7,7 @@ import (
 )
 
 // OriginValidation wraps the UNAUTHENTICATED state-changing routes:
-// POST /api/v1/network/pair/verify (backend-network-transport.md FR-7,
-// ADR 0028 §5), and POST /api/v1/auth/setup and /api/v1/auth/login — the
+// POST /api/v1/network/pair/verify, and POST /api/v1/auth/setup and /api/v1/auth/login — the
 // other two IsPublicPath routes that change state with no Authorization
 // header to make them CSRF-safe by construction. Every *authenticated*
 // state-changing route doesn't need this: a browser does not attach the

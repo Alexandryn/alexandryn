@@ -7,16 +7,15 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// Phase 13 Tier 0 (backend-network-transport.md FR-2, ADR 0028 §1):
-// BIND_ADDRESS classification is stated, not left implicit.
+// BIND_ADDRESS classification and TLS validation rules:
 //   - IP literal -> loopback/private check; else public.
-//   - "localhost" -> private.
-//   - any other host string -> public, WITHOUT DNS resolution.
+//   - "localhost" -> loopback.
+//   - any other host string -> public, without DNS resolution.
 // Per class:
-//   - private: legal; opt-in in-process TLS if TLS_CERT_FILE/KEY_FILE
+//   - private: legal for plaintext; opt-in in-process TLS if TLS_CERT_FILE/KEY_FILE
 //     both present (no SAN check); ACME on a private bind is an error.
-//   - public: ServeTLS mandatory; accepted with a valid static cert
-//     (SAN must include a named host); ACME issuance lands in Tier 2.
+//   - public: TLS mandatory; accepted with a valid static cert
+//     (SAN must include a named host) or ACME configuration.
 
 func setBind(t *testing.T, addr string) {
 	t.Helper()
@@ -138,7 +137,7 @@ func TestBind_PrivateIP_WithOptInCert_Accepted(t *testing.T) {
 	certPEM, keyPEM := validCert(t)
 	rf := withCert(t, certPEM, keyPEM)
 	if _, err := config.Load("", rf, fakeUserConfigDir); err != nil {
-		t.Fatalf("Load() error = %v, want nil — opt-in in-process TLS on a private bind (ADR 0028 §1)", err)
+		t.Fatalf("Load() error = %v, want nil — opt-in in-process TLS on a private bind", err)
 	}
 }
 
@@ -162,13 +161,9 @@ func TestBind_PrivateIP_ACMEEnabled_IsAConflict(t *testing.T) {
 }
 
 func TestBind_Unspecified_ClassifiesPublic_FailClosed(t *testing.T) {
-	// D-B (tasks/plan-phase13-network.md): 0.0.0.0 / :: bind every
-	// interface, public ones included. The classifier has no
-	// all-interfaces carve-out — an unspecified address is neither
-	// loopback nor a private range, so it classifies public and, with no
-	// certificate, is refused. Writing the specific private interface IP
-	// for a LAN deployment is the (deferred) first-run flow's job, not a
-	// looser classifier here.
+	// 0.0.0.0 and [::] bind all interfaces, including public ones.
+	// An unspecified address is classified as public and rejected if no certificate
+	// or ACME configuration is provided.
 	for _, addr := range []string{"0.0.0.0:8080", "[::]:8080"} {
 		t.Run(addr, func(t *testing.T) {
 			setBind(t, addr)
@@ -182,9 +177,7 @@ func TestBind_Unspecified_ClassifiesPublic_FailClosed(t *testing.T) {
 }
 
 func TestBind_Unspecified_WithValidCert_Accepted(t *testing.T) {
-	// The other half of D-B: 0.0.0.0 is Mode A, so a valid static cert
-	// makes it legal (and cmd/server then serves it over TLS). Bare-IP,
-	// so no SAN name check.
+	// 0.0.0.0 with a valid certificate is accepted and served over TLS.
 	setBind(t, "0.0.0.0:8443")
 	certPEM, keyPEM := validCert(t)
 	rf := withCert(t, certPEM, keyPEM)
@@ -227,9 +220,8 @@ func TestBind_HalfConfiguredCertPair_Rejected(t *testing.T) {
 }
 
 func TestBind_LoopbackAndPrivate_NoCert_StillAccepted(t *testing.T) {
-	// 169.254.0.0/16 / fe80::/10 (link-local) join the private class
-	// alongside RFC 1918 / ULA: never publicly routable, an operator with
-	// no DHCP lease can legitimately bind here (D-B, tasks/plan-phase13-network.md).
+	// Link-local addresses (169.254.0.0/16 and fe80::/10) join RFC 1918 and IPv6 ULA
+	// as private/local-only addresses permitted for plaintext binding.
 	for _, addr := range []string{"127.0.0.1:0", "[::1]:0", "localhost:8080", "10.0.0.5:8080", "[fc00::1]:8080", "169.254.1.5:8080", "[fe80::1]:8080"} {
 		t.Run(addr, func(t *testing.T) {
 			setBind(t, addr)

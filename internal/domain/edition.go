@@ -1,12 +1,11 @@
 package domain
 
-// Edition (domain-bibliographic.md FR-2/FR-8/FR-10) — cannot be
-// constructed without a parent Work: WorkID is a required, non-pointer
-// field, so there is no Go value of this type with "no parent," the same
-// property FR-8 requires ("literally unrepresentable... not a nil-check
-// convention"). Language is Edition's own field, independent of
-// Work.OriginalLanguage — the field that actually varies per translation
-// (FR-10). ISBN, publisher, publication year are all optional.
+// Edition represents a specific publication of a Work. An Edition cannot be
+// constructed without a parent Work: WorkID is a required, non-pointer field,
+// ensuring there is no valid instance without a parent work.
+// Language is the edition's specific language, independent of Work.OriginalLanguage,
+// allowing translations to be modeled accurately. ISBN, publisher, and publication
+// year are all optional.
 type Edition struct {
 	id                 EditionID
 	workID             WorkID

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// backend-observability.md FR-7: migration 00012 adds the `system_events` table with
+// Migration 00012 adds the `system_events` table with
 // TEXT foreign keys, JSONB payload, created_at, purge_at, and required indexes.
 func TestSchema_SystemEventsTableExistsAfterMigration(t *testing.T) {
 	pool := schemaTestPool(t)

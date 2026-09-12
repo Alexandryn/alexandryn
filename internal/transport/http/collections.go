@@ -101,7 +101,7 @@ func extractCollectionAndWorkID(r *http.Request) (string, string) {
 	return collID, workID
 }
 
-// ListCollectionsHandler returns the HTTP handler for GET /api/v1/collections (backend-library-api.md FR-6).
+// ListCollectionsHandler returns the HTTP handler for GET /api/v1/collections.
 func ListCollectionsHandler(repo domain.CollectionRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -127,7 +127,7 @@ func ListCollectionsHandler(repo domain.CollectionRepository) http.Handler {
 	})
 }
 
-// CreateCollectionHandler returns the HTTP handler for POST /api/v1/collections (backend-library-api.md FR-6).
+// CreateCollectionHandler returns the HTTP handler for POST /api/v1/collections.
 func CreateCollectionHandler(repo domain.CollectionRepository, ids domain.IDGenerator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -167,7 +167,7 @@ func CreateCollectionHandler(repo domain.CollectionRepository, ids domain.IDGene
 	})
 }
 
-// GetCollectionHandler returns the HTTP handler for GET /api/v1/collections/{id} (backend-library-api.md FR-6).
+// GetCollectionHandler returns the HTTP handler for GET /api/v1/collections/{id}.
 func GetCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -194,7 +194,7 @@ func GetCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	})
 }
 
-// RenameCollectionHandler returns the HTTP handler for PATCH /api/v1/collections/{id} (backend-library-api.md FR-6).
+// RenameCollectionHandler returns the HTTP handler for PATCH /api/v1/collections/{id}.
 func RenameCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -237,7 +237,7 @@ func RenameCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	})
 }
 
-// DeleteCollectionHandler returns the HTTP handler for DELETE /api/v1/collections/{id} (backend-library-api.md FR-6).
+// DeleteCollectionHandler returns the HTTP handler for DELETE /api/v1/collections/{id}.
 func DeleteCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -261,7 +261,7 @@ func DeleteCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	})
 }
 
-// AddWorkToCollectionHandler returns the HTTP handler for POST /api/v1/collections/{id}/works (backend-library-api.md FR-7).
+// AddWorkToCollectionHandler returns the HTTP handler for POST /api/v1/collections/{id}/works.
 func AddWorkToCollectionHandler(repo domain.CollectionRepository, clock func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -317,7 +317,7 @@ func AddWorkToCollectionHandler(repo domain.CollectionRepository, clock func() t
 	})
 }
 
-// RemoveWorkFromCollectionHandler returns the HTTP handler for DELETE /api/v1/collections/{id}/works/{workId} (backend-library-api.md FR-7).
+// RemoveWorkFromCollectionHandler returns the HTTP handler for DELETE /api/v1/collections/{id}/works/{workId}.
 func RemoveWorkFromCollectionHandler(repo domain.CollectionRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())

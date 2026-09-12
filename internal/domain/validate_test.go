@@ -7,11 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// FR-5/FR-6 (domain-bibliographic.md): every free-form string field routes
-// through this one bounded-text validator — length bound, control-character
-// rejection — plus review 0049 finding 5's amendment: empty or
-// whitespace-only fails the same as over-length, not a distinct "absent"
-// case.
+// TestValidateBoundedText verifies length bounds, control character rejection,
+// and empty or whitespace-only rejections for bounded text fields.
 func TestValidateBoundedText(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -49,9 +46,7 @@ func TestValidateBoundedText(t *testing.T) {
 	}
 }
 
-// FR-5 (domain-bibliographic.md): Language is a BCP-47 tag, not arbitrary
-// text. Structural shape check, not full IANA subtag-registry validation
-// (an explicit, narrower scope — see validate.go's own doc comment).
+// TestValidateLanguageTag verifies structural validation of BCP-47 language tags.
 func TestValidateLanguageTag(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -86,12 +81,7 @@ func TestValidateLanguageTag(t *testing.T) {
 	}
 }
 
-// FR-2 (domain-bibliographic.md): ISBN-10/13 shape-validated. Checksum
-// validation, not just length/format — resolves that spec's own Open
-// questions item ("ISBN-10 vs. ISBN-13 checksum validation, or just
-// format/length... a phase 03/07 implementation detail once there's real
-// data to validate against") in favor of the stronger check: it's a
-// well-defined, cheap algorithm with no external dependency needed.
+// TestValidateISBN verifies checksum and format validation for ISBN-10 and ISBN-13 strings.
 func TestValidateISBN(t *testing.T) {
 	tests := []struct {
 		name    string

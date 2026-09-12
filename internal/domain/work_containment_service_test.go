@@ -85,11 +85,9 @@ func TestWorkContainmentService_AddContains(t *testing.T) {
 	})
 }
 
-// The exact case domain-bibliographic.md's Open questions section
-// resolved: A contains B (recorded first, legally — no cycle exists
-// yet), then B is later merged into A. Checking raw references would
-// miss this; resolving first turns it into a cycle the merge itself is
-// rejected for.
+// TestWorkMergeService_RejectsAMergeThatWouldCreateASelfContainmentCycle verifies
+// that when A contains B, merging B into A is rejected because it would create
+// a self-containment cycle.
 func TestWorkMergeService_RejectsAMergeThatWouldCreateASelfContainmentCycle(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

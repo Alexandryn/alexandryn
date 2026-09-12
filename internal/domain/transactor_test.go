@@ -10,7 +10,7 @@ import (
 
 // fakeTransactor is an in-memory domain.Transactor — it calls fn directly
 // (no real rollback semantics; that's internal/persistence/postgres's own
-// implementation, T24's job) but records how many times InTx was invoked,
+// implementation) but records how many times InTx was invoked,
 // which is what this package's tests need to prove a cross-aggregate
 // operation was actually composed through it rather than left as two
 // unsequenced calls.

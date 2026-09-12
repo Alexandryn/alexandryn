@@ -7,8 +7,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// maxPathLen is the resolved-path length ceiling
-// (backend-source-adapter.md FR-3, amended for review 0049 finding 6).
+// maxPathLen is the resolved-path length ceiling.
 // Linux PATH_MAX is 4096; this is a shape check, not the OS's own
 // enforcement.
 const maxPathLen = 4096
@@ -16,7 +15,7 @@ const maxPathLen = 4096
 const maxBaseURLLen = 2048
 
 // ValidateLocalFolderPath checks a local-folder config.basePath's
-// *shape* at create/update time (FR-3): a non-empty, absolute path, no
+// shape at create/update time: a non-empty, absolute path, no
 // control characters, within the length ceiling. Windows UNC paths
 // (\\server\share\...) are accepted as absolute. Whether the path
 // currently exists or is readable is a health-check concern, not a shape
@@ -61,7 +60,7 @@ func isASCIILetter(b byte) bool {
 }
 
 // ValidateOPDSBaseURL checks an opds config.baseUrl at create/update
-// time (FR-4): a well-formed absolute http or https URL with a host.
+// time: a well-formed absolute http or https URL with a host.
 func ValidateOPDSBaseURL(baseURL string) error {
 	if strings.TrimSpace(baseURL) == "" {
 		return &domain.Error{Category: domain.InvalidInput, Message: "config.baseUrl must not be empty"}
@@ -83,8 +82,7 @@ func ValidateOPDSBaseURL(baseURL string) error {
 }
 
 // IsHTTPS reports whether baseURL uses the https scheme. Used to surface
-// the plain-HTTP Basic Auth warning (FR-4, frontend-source-management.md
-// FR-5) — this is the backend's own view of the same fact.
+// plain-HTTP Basic Auth warnings when credentials might be transmitted unencrypted.
 func IsHTTPS(baseURL string) bool {
 	u, err := url.Parse(baseURL)
 	return err == nil && u.Scheme == "https"

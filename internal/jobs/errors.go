@@ -9,9 +9,8 @@ import (
 )
 
 // translateError converts a raw pgx/driver error into a typed
-// *domain.Error, the same closed mapping internal/persistence/postgres's
-// own TranslateError uses (backend-errors-and-logging.md FR-3). The raw
-// error stays reachable via Unwrap for server-side logging; the
+// *domain.Error, matching the mapping used by internal/persistence/postgres.
+// The raw error stays reachable via Unwrap for server-side logging; the
 // client-facing Message is always a fixed generic string.
 func translateError(err error) error {
 	if err == nil {

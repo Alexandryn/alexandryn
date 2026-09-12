@@ -13,7 +13,7 @@ type syncRefs struct {
 	syncAPI atomic.Pointer[SyncAPI]
 }
 
-// SyncAPI bundles dependencies for device management and reading sync endpoints (Phase 14).
+// SyncAPI bundles dependencies for device management and reading sync endpoints.
 type SyncAPI struct {
 	Devices        domain.PairedDeviceRepository
 	Progress       domain.ReadingProgressRepository

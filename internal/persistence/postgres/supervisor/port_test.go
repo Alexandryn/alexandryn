@@ -6,7 +6,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
-// T25-D2: a real OS interaction (a real net.Listen probe), not faked —
+// A real OS interaction (a real net.Listen probe), not faked —
 // there's no faithful pure-logic substitute for "ask the OS for a free
 // port." Called twice; only validity is asserted, not that the two calls
 // differ — the OS is free to reuse a just-closed port, and asserting

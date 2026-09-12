@@ -14,7 +14,7 @@ import (
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
 )
 
-// --- FR-1: composition order — recovery, limits, logging, [auth,
+// --- Composition order — recovery, limits, logging, [auth,
 // reserved], routing, each layer's own marker firing in that fixed
 // sequence. ---
 
@@ -50,7 +50,7 @@ func TestChain_ComposesInFixedOrder(t *testing.T) {
 	}
 }
 
-// --- FR-3: panic recovery ---
+// --- Panic recovery ---
 
 func TestRecovery_CatchesAPanicAndReturnsInternal(t *testing.T) {
 	spy := testutil.NewSpyHandler()
@@ -95,8 +95,7 @@ func TestRecovery_CatchesAPanicAndReturnsInternal(t *testing.T) {
 func TestRecovery_GeneratesAFallbackCorrelationIDWhenNoneIsSet(t *testing.T) {
 	// A panic before the logging middleware ever ran means the request
 	// context carries no correlation ID yet — recovery must generate one
-	// itself so the response is never missing one
-	// (backend-errors-and-logging.md FR-10).
+	// itself so the response is never missing one.
 	logger := slog.New(testutil.NewSpyHandler())
 	ids := testutil.NewFakeIDGenerator("recovery-fallback-id")
 
@@ -167,7 +166,7 @@ func TestRecovery_NoPanicPassesThroughUnaffected(t *testing.T) {
 	}
 }
 
-// backend-errors-and-logging.md FR-10's non-error-panic-value case: a
+// Non-error-panic-value case: a
 // nil-valued panic must still be recovered like any other, never
 // producing a second panic from the recovery path's own attempt to
 // format the value. Go 1.21+ converts panic(nil) to a non-nil
@@ -205,7 +204,7 @@ func TestRecovery_PanicWithNilValue_StillRecoversWithoutASecondPanic(t *testing.
 	}
 }
 
-// --- FR-4: logging middleware skeleton ---
+// --- Logging middleware skeleton ---
 
 func TestLogging_EmitsDebugStartAndInfoCompletionWithTheSameCorrelationID(t *testing.T) {
 	spy := testutil.NewSpyHandler()
@@ -278,7 +277,7 @@ func TestLogging_AttachesTheCorrelationIDToTheRequestContext(t *testing.T) {
 	}
 }
 
-// FR-7: the ID MUST be randomly generated, "never derived from anything
+// The ID MUST be randomly generated, "never derived from anything
 // request-supplied" — a client-supplied X-Correlation-Id header must
 // never be trusted as the log-tying value, well-formed or not, since
 // that would let a malicious client inject an ID chosen to collide with
@@ -316,7 +315,7 @@ func TestLogging_IgnoresClientSuppliedCorrelationIDHeader(t *testing.T) {
 }
 
 // Regression guard: Recovery wraps Logging, exactly as the real chain
-// composes them (FR-1). A panic after Logging has already assigned a
+// composes them. A panic after Logging has already assigned a
 // correlation ID must surface that same ID in the response, not a
 // fallback — proving the two middlewares actually share state across
 // the real call stack, not just when tested against a hand-simulated
@@ -385,7 +384,7 @@ func TestMetrics_ObservesRouteLatencyAndIgnoresAssets(t *testing.T) {
 	}
 }
 
-// audit 0016 #293: with a mux, the route label is the registered pattern
+// With a mux, the route label is the registered pattern
 // regardless of whether r.Pattern was populated, so a path with a
 // per-request id does not spawn a fresh histogram, and an unmatched path
 // is bucketed rather than labelled with its raw URL.

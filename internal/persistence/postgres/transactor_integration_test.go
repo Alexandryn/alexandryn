@@ -44,7 +44,7 @@ func fixtureRowExists(t *testing.T, pool *pgxpool.Pool, id string) bool {
 	return false
 }
 
-// ADR 0021: a function that writes inside InTx and returns nil commits.
+// A function that writes inside InTx and returns nil commits.
 func TestTransactor_CommitsOnSuccess(t *testing.T) {
 	ctx := context.Background()
 	pool := transactorTestPool(t)
@@ -63,7 +63,7 @@ func TestTransactor_CommitsOnSuccess(t *testing.T) {
 	}
 }
 
-// ADR 0021: a function that writes inside InTx and returns an error
+// A function that writes inside InTx and returns an error
 // rolls back — the write must not be visible afterward.
 func TestTransactor_RollsBackOnError(t *testing.T) {
 	ctx := context.Background()

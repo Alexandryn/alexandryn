@@ -4,9 +4,9 @@ import "testing"
 
 import "github.com/Alexandryn/alexandryn/internal/domain"
 
-// domain-reading.md FR-5: ReadingPreferences MUST be scoped per DeviceID.
-// A new DeviceID's first ReadingPreferences MUST start from system
-// defaults — there is no cross-device inheritance.
+// ReadingPreferences is scoped per DeviceID. A new DeviceID's first
+// ReadingPreferences starts from system defaults — there is no cross-device
+// inheritance.
 func TestNewReadingPreferences_StartsEmpty(t *testing.T) {
 	prefs := domain.NewReadingPreferences("device-1")
 	if prefs.DeviceID() != "device-1" {

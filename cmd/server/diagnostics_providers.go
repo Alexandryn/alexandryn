@@ -10,8 +10,7 @@ import (
 )
 
 // poolStatsProvider adapts a live pgxpool to the diagnostics endpoint's
-// PoolStatsProvider. Without this wiring GET /api/v1/diagnostics reports a
-// zeroed db_pool (audit 0016 #295).
+// PoolStatsProvider to expose connection pool metrics.
 func poolStatsProvider(pool *pgxpool.Pool) observability.PoolStatsProvider {
 	return func() observability.PoolStats {
 		s := pool.Stat()
@@ -25,8 +24,7 @@ func poolStatsProvider(pool *pgxpool.Pool) observability.PoolStatsProvider {
 }
 
 // queueDepthProvider adapts the job queue's per-state counts to the
-// diagnostics endpoint's QueueDepthProvider. Without this wiring
-// GET /api/v1/diagnostics reports an empty queue_depth (audit 0016 #295).
+// diagnostics endpoint's QueueDepthProvider to report queue depth.
 func queueDepthProvider(count func(context.Context) (map[jobs.State]int, error)) observability.QueueDepthProvider {
 	return func(ctx context.Context) (map[string]int, error) {
 		counts, err := count(ctx)

@@ -266,7 +266,7 @@ func (m *memExport) WorkExists(_ context.Context, id string) (bool, error) { ret
 
 // gotUser records the userID the last ListProgress/ListMarks call was
 // scoped to, so a handler test can assert the handler passed the context
-// user (AUDIT-0012-C1) rather than an empty string.
+// user rather than an empty string.
 func (m *memExport) ListProgress(_ context.Context, userID domain.UserID, _ domain.LibraryID, workID string) ([]postgres.ExportProgress, error) {
 	m.gotUser = userID
 	rows := m.progress
@@ -491,9 +491,9 @@ func hdr(pairs ...string) map[string]string {
 	return m
 }
 
-// TestReading_PerUserIDOR is the AUDIT-0012-C1 close-gate test: user B
+// TestReading_PerUserIDOR tests authorization isolation: user B
 // must not be able to read, modify, delete, or export user A's reading
-// data by knowing an id. Without the per-user scoping fix, every one of
+// data by knowing an id. Without per-user scoping, every one of
 // these assertions fails.
 func TestReading_PerUserIDOR(t *testing.T) {
 	api, exp := newReadingAPI()

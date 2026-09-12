@@ -11,7 +11,7 @@ import (
 )
 
 // EditionRepository is internal/persistence/postgres's
-// domain.EditionRepository implementation (T24, R5). An Edition spans
+// domain.EditionRepository implementation. An Edition spans
 // two physical tables (editions, edition_external_references); Save
 // replaces every external-reference row for this Edition's id on each
 // call, the same replace-on-Save shape as WorkRepository/

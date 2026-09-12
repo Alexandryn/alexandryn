@@ -43,9 +43,9 @@ func ActiveLibraryFromContext(ctx context.Context) domain.LibraryID {
 }
 
 // writeForbidden writes a 403 with the shared error-body shape. The domain
-// error taxonomy (backend-errors-and-logging.md) has no Forbidden
-// category — 403 is an authorization outcome the transport layer owns, so
-// it is written directly rather than mapped from a domain error.
+// error taxonomy has no Forbidden category — 403 is an authorization outcome
+// the transport layer owns, so it is written directly rather than mapped from
+// a domain error.
 func writeForbidden(w http.ResponseWriter, message, corrID string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusForbidden)
@@ -95,7 +95,7 @@ func IsPublicPath(path string) bool {
 	return false
 }
 
-// AuthMiddleware validates JWT Bearer tokens on all protected routes (Constitution §6, ADR 0025).
+// AuthMiddleware validates JWT Bearer tokens on all protected routes.
 func AuthMiddleware(signer auth.TokenSigner) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,8 +114,7 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 			// VerifyAccessToken asserts the token type — a signature-valid
-			// MFA ticket or pairing enrolment grant is rejected here
-			// (AUDIT-0012-C2).
+			// MFA ticket or pairing enrolment grant is rejected here.
 			claims, err := signer.VerifyAccessToken(tokenString, time.Now())
 			if err != nil {
 				WriteError(w, domain.Unauthorized, "invalid or expired token", corrID)
@@ -132,11 +131,10 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 			// Active library resolution from the X-Library-Id header. A
 			// header naming a library the token does not grant is rejected
 			// (403) — it is not silently used, and it does not fall back to
-			// a default (AUDIT-0012-P12-4, backend-library-namespaces.md
-			// FR-3).
+			// a default.
 			// If claims.Libraries is empty, reject protected routes with 403
 			// rather than defaulting to DefaultLibraryID without a membership
-			// check (audit 0016 #246). Listing libraries (GET /api/v1/libraries)
+			// check. Listing libraries (GET /api/v1/libraries)
 			// is permitted so the user can discover available memberships.
 			activeLibID := domain.LibraryID(r.Header.Get("X-Library-Id"))
 			if activeLibID == "" {

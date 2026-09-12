@@ -13,7 +13,7 @@ import (
 )
 
 // HighlightRepository is internal/persistence/postgres's
-// domain.HighlightRepository implementation (T24, R8). A single physical
+// domain.HighlightRepository implementation. A single physical
 // table, one row per aggregate. Save is upsert-by-id, the same shape as
 // BookmarkRepository's own Save — Highlight has no uniqueness invariant
 // beyond its own id.
@@ -46,7 +46,7 @@ func (r *HighlightRepository) FindByID(ctx context.Context, id domain.HighlightI
 }
 
 // FindByIDAndUser returns the highlight only when it belongs to userID.
-// A missing and a foreign row are both NotFound (AUDIT-0012-C1).
+// A missing and a foreign row are both NotFound.
 func (r *HighlightRepository) FindByIDAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) (*domain.Highlight, error) {
 	exec := executorFrom(ctx, r.pool)
 
@@ -171,7 +171,7 @@ func (r *HighlightRepository) Delete(ctx context.Context, id domain.HighlightID)
 	return nil
 }
 
-// DeleteAndUser deletes only a row owned by userID (AUDIT-0012-C1).
+// DeleteAndUser deletes only a row owned by userID.
 func (r *HighlightRepository) DeleteAndUser(ctx context.Context, userID domain.UserID, id domain.HighlightID) error {
 	exec := executorFrom(ctx, r.pool)
 

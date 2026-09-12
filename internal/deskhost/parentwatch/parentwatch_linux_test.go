@@ -86,7 +86,6 @@ func runHelperParentSpawner() {
 	select {}
 }
 
-// architecture-desktop-host.md FR-8 / desktop-host-process-model.md FR-6 / ADR 0005:
 // Killing the parent process (Electron desktop host) kills the Go server child
 // process on Linux via PR_SET_PDEATHSIG.
 func TestParentwatch_Linux_ChildDiesWhenParentKilled(t *testing.T) {

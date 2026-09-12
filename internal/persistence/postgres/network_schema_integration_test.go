@@ -12,7 +12,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// backend-network-api.md FR-7 / T3.1: migration 00010 creates the four network tables:
+// Migration 00010 creates the four network tables:
 // pairing_sessions, paired_devices, enrolment_grant_jtis, network_settings.
 func TestSchema_Phase13NetworkTablesExistAfterMigration(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -94,7 +94,7 @@ func TestSchema_Phase13NetworkTablesExistAfterMigration(t *testing.T) {
 	}
 }
 
-// FR-7: pairing_sessions state is constrained to {pending, verified, consumed, expired};
+// pairing_sessions state is constrained to {pending, verified, consumed, expired};
 // code_index is UNIQUE; (state, expires_at) index exists.
 func TestSchema_PairingSessionsConstraints(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -143,7 +143,7 @@ func TestSchema_PairingSessionsConstraints(t *testing.T) {
 	}
 }
 
-// FR-7: paired_devices constraints:
+// paired_devices constraints:
 // - device_class ∈ {phone,tablet,desktop,tv,unknown}
 // - enrolled_via ∈ {pairing_code,password_login}
 // - owner_id is nullable (provisional pairing)
@@ -189,7 +189,7 @@ func TestSchema_PairedDevicesConstraints(t *testing.T) {
 	}
 }
 
-// FR-7 / acceptance criteria: migration 00010 rolls back cleanly (down to 9)
+// Verifies migration 00010 rolls back cleanly (down to 9)
 // leaving earlier migrations intact, and re-applies cleanly.
 func TestSchema_Phase13MigrationIsReversible(t *testing.T) {
 	db := testDB(t)

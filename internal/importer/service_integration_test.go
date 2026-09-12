@@ -83,7 +83,7 @@ func TestService_AutoImport_NeverCreatesNewWorkOrEdition(t *testing.T) {
 		t.Fatalf("Create cand: %v", err)
 	}
 
-	// Auto-import with verified format epub (FR-6: corrects format to content-sniffed epub)
+	// Auto-import with verified format epub (corrects format to content-sniffed epub)
 	if err := svc.AutoImport(ctx, "cand-auto-1", "src-auto-1", string(editionID), ref, extract.FormatEPUB, now); err != nil {
 		t.Fatalf("AutoImport: %v", err)
 	}

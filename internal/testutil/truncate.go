@@ -8,12 +8,10 @@ import (
 )
 
 // TruncateTables empties every named table and cascades to dependent
-// rows, restarting identity sequences — backend-test-harness.md FR-3's
-// prescribed isolation mechanism: a test-level teardown, not an outer
-// transaction rolled back at the end. An outer transaction doesn't
-// compose with a repository method that opens and commits its own
-// internal transaction against the shared pool (backend-persistence.md
-// FR-4) — the two would not share a connection or transaction context.
+// rows, restarting identity sequences. This provides test-level teardown
+// isolation rather than an outer transaction rolled back at the end,
+// because outer transactions do not compose with repository methods that
+// open and commit their own internal transactions against the shared pool.
 // Call it via t.Cleanup so teardown runs whether or not the test itself
 // failed.
 func TruncateTables(ctx context.Context, db *sql.DB, tables ...string) error {

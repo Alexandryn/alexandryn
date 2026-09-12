@@ -13,11 +13,10 @@ import (
 )
 
 // ReadingProgressRepository is internal/persistence/postgres's
-// domain.ReadingProgressRepository implementation (T24, R8). Save is
+// domain.ReadingProgressRepository implementation. Save is
 // upsert-by-id, the same shape as Work/Edition/Source's own Save — a
-// normal update-in-place operation, unlike SourceOffering's tuple-
-// identity Save. domain-reading.md FR-1's singleton-per-Work invariant
-// (a *different* id for an already-recorded WorkID) is not caught by
+// normal update-in-place operation. The singleton-per-Work invariant
+// (a different id for an already-recorded WorkID) is not caught by
 // the id-conflict clause here; it surfaces as a real unique_violation on
 // reading_progress.work_id's own UNIQUE constraint, translated to
 // Conflict by TranslateError.
@@ -36,7 +35,7 @@ func (r *ReadingProgressRepository) FindByWork(ctx context.Context, workID domai
 }
 
 // FindByWorkForUpdate adds SELECT ... FOR UPDATE so the reconcile
-// transaction's read-then-write is atomic (backend-reading-api.md FR-2).
+// transaction's read-then-write is atomic.
 func (r *ReadingProgressRepository) FindByWorkForUpdate(ctx context.Context, workID domain.WorkID) (*domain.ReadingProgress, error) {
 	return r.findByWork(ctx, "", "", workID, " FOR UPDATE")
 }

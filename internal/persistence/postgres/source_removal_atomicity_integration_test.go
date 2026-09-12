@@ -57,21 +57,16 @@ func (f *failAfterNDeletes) Delete(ctx context.Context, id domain.SourceOffering
 
 var _ domain.SourceOfferingRepository = (*failAfterNDeletes)(nil)
 
-// backend-persistence.md's own required acceptance criterion: a
-// multi-step operation's transaction rolls back completely on a
-// mid-operation failure. SourceRemovalService's real cascade — deleting
-// every SourceOffering referencing a Source, then the Source itself — is
-// the one phase 02 operation that actually spans two repositories inside
-// one Transactor.InTx call (domain-source.md FR-6's 2026-08-21
-// atomicity amendment). This proves it against real Postgres: the first
-// of two SourceOfferings is really deleted (a real row, really removed,
-// inside the transaction), the second delete fails, and everything —
-// including the already-executed first delete — must be exactly as it
-// was before Remove was called: both SourceOfferings and the Source
-// itself still present, not a partial cascade. Verified through a
-// second, independent *pgxpool.Pool connection (not the same tx handle
-// the operation itself used), matching TestSchema_ReMigratingLeavesExistingRowsIntact's
-// own precedent for proving state via a separate connection.
+// Verifies that a multi-step operation's transaction rolls back completely
+// on a mid-operation failure. SourceRemovalService's cascade — deleting
+// every SourceOffering referencing a Source, then the Source itself — spans
+// two repositories inside one Transactor.InTx call.
+// This proves it against real Postgres: the first of two SourceOfferings is
+// deleted inside the transaction, the second delete fails, and everything —
+// including the already-executed first delete — must be exactly as it was
+// before Remove was called: both SourceOfferings and the Source itself still
+// present, preventing partial cascades. Verified through a second, independent
+// connection.
 func TestSourceRemovalService_Remove_RollsBackWholeCascadeOnMidOperationFailure(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

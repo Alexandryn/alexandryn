@@ -19,7 +19,7 @@ func parseFloat(s string) (float64, error) { return strconv.ParseFloat(s, 64) }
 func formatFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
 // deviceIDHeader is the client-generated UUID v4 the progress and
-// preferences endpoints require (backend-reading-api.md FR-1). Bookmark
+// preferences endpoints require. Bookmark
 // and highlight endpoints do not require it — those aggregates carry no
 // DeviceID field.
 const deviceIDHeader = "X-Device-Id"
@@ -35,9 +35,9 @@ func readingDeps(poolRef *PoolRef, w http.ResponseWriter, correlationID string) 
 
 // readingScope resolves the authenticated user and validated active
 // library for a reading request. Every reading handler scopes its
-// repository calls to both (AUDIT-0012-C1, backend-reading-api.md FR-9):
+// repository calls to both:
 // reading data — position, bookmarks, highlight notes — is private to its
-// owner (constitution §8). The auth middleware populates the context; a
+// owner. The auth middleware populates the context; a
 // missing user is a 401.
 func readingScope(r *http.Request, w http.ResponseWriter, correlationID string) (domain.UserID, domain.LibraryID, bool) {
 	user := UserFromContext(r.Context())
@@ -53,7 +53,7 @@ func readingScope(r *http.Request, w http.ResponseWriter, correlationID string) 
 }
 
 // assertEditionInLibrary confirms editionID is owned in libID before a
-// write is scoped to that library (AUDIT-0012-C1, review of PR #78): the
+// write is scoped to that library: the
 // read path (reader_content) and every write path must agree that reading
 // data only references editions inside the caller's active library.
 // "not in your library" and "does not exist" are the same 404 — no
@@ -95,7 +95,7 @@ func assertWorkInLibrary(deps ReadingAPI, r *http.Request, w http.ResponseWriter
 }
 
 // assertDeviceActive verifies that if X-Device-Id is presented on a write route,
-// the device is owned by the caller and has not been revoked (FR-9, AUDIT-0014).
+// the device is owned by the caller and has not been revoked.
 // If X-Device-Id is absent or device is unknown (e.g. unpaired browser reader), it returns true.
 // If the lookup errors or device is revoked/unowned, it writes 401/error and returns false (fails closed).
 func assertDeviceActive(deps ReadingAPI, r *http.Request, w http.ResponseWriter, userID domain.UserID, correlationID string) bool {
@@ -135,7 +135,7 @@ func assertDeviceActive(deps ReadingAPI, r *http.Request, w http.ResponseWriter,
 
 // writeJSON marshals body to a buffer before touching the response, so a
 // marshal failure produces a clean 500 (logged with the correlation ID)
-// rather than a 200 with a truncated body (audit 0016 #185).
+// rather than a 200 with a truncated body.
 func writeJSON(w http.ResponseWriter, status int, body any, correlationID string) {
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -150,7 +150,7 @@ func writeJSON(w http.ResponseWriter, status int, body any, correlationID string
 }
 
 // writeJSONCapped marshals body and refuses to write a response over
-// maxBytes (reading-data-export.md FR-6) — the 500 status keeps a
+// maxBytes — the 500 status keeps a
 // browser from saving a truncated document as valid.
 func writeJSONCapped(w http.ResponseWriter, status int, body any, maxBytes int, correlationID string) {
 	raw, err := json.Marshal(body)
@@ -320,7 +320,7 @@ func ReadingProgressReportHandler(poolRef *PoolRef, now func() time.Time) http.H
 
 // progressStore adapts a ReadingProgressRepository to readerapi's
 // ProgressStore, closing over the authenticated user and active library so
-// the row-lock read and the write are both scoped (AUDIT-0012-C1). The
+// the row-lock read and the write are both scoped. The
 // ProgressStore interface signature is unchanged — the scope is carried
 // by the adapter, not threaded through readerapi.
 type progressStore struct {
@@ -585,7 +585,7 @@ func ReadingHighlightCreateHandler(poolRef *PoolRef, now func() time.Time) http.
 }
 
 // ReadingHighlightPatchHandler: PATCH /api/v1/reading/highlights/{highlightId}
-// — updates note/category only, never the position (FR-7).
+// — updates note/category only, never the position.
 func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		correlationID := CorrelationIDFromContext(r.Context())
@@ -637,8 +637,7 @@ func ReadingHighlightPatchHandler(poolRef *PoolRef) http.Handler {
 
 		// Skip a no-op PATCH: the highlights BEFORE UPDATE trigger assigns
 		// a fresh sync_sequence on every write, so an unchanged note or
-		// category would fan a needless delta out to every other device
-		// (audit 0016 #183).
+		// category would fan a needless delta out to every other device.
 		if note != existing.Note() || category != existing.Category() {
 			// Update note/category only — a PATCH must not move the highlight
 			// into whatever library X-Library-Id currently names (PR #78
@@ -688,8 +687,8 @@ type wirePreferences struct {
 	ColumnWidth string  `json:"columnWidth"`
 }
 
-// defaultPreferences is domain-reading.md FR-5's "new device starts from
-// system defaults" made concrete, matching the atReader canvas.
+// defaultPreferences provides default reading preferences for a new device,
+// matching the atReader canvas.
 func defaultPreferences() wirePreferences {
 	return wirePreferences{
 		Font: "serif", FontSize: 19, LineSpacing: 1.5,

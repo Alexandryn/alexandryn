@@ -17,9 +17,7 @@ import (
 )
 
 // TestMain gives this package its own isolated database
-// (testutil.WithPackageDatabase, backend-test-harness.md FR-3 Variant B)
-// before any test runs, and fails loudly when TEST_DATABASE_URL is unset
-// (FR-2).
+// before any test runs, and fails loudly when TEST_DATABASE_URL is unset.
 func TestMain(m *testing.M) {
 	os.Exit(testutil.IntegrationTestMain(
 		os.LookupEnv,

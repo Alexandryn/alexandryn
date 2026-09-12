@@ -9,7 +9,7 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
 
-// ExtractPDF extracts metadata from a PDF file using pdfcpu (backend-file-extractors.md FR-11).
+// ExtractPDF extracts metadata from a PDF file using pdfcpu.
 func ExtractPDF(ctx context.Context, f *os.File) (meta ExtractedMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {

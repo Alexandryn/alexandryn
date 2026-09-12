@@ -5,11 +5,10 @@ import (
 	"unicode/utf8"
 )
 
-// maxLastErrorBytes bounds every last_error write (backend-job-queue.md
-// FR-6, Security considerations). A handler's error text is attacker-
-// influenced in the general case (it can wrap a source's response), so
-// the column never grows without limit and never stores more than a
-// bounded diagnostic snippet.
+// maxLastErrorBytes bounds every last_error write.
+// A handler's error text is attacker-influenced in the general case
+// (it can wrap an external source's response), so the column never
+// grows without limit and never stores more than a bounded diagnostic snippet.
 const maxLastErrorBytes = 512
 
 // redactedPlaceholder is what RedactedText shows anywhere it would
@@ -17,13 +16,10 @@ const maxLastErrorBytes = 512
 const redactedPlaceholder = "[redacted]"
 
 // RedactedText holds a last_error value. Go callers of GetJob/ListJobs
-// read the real text via String() (FR-9 returns the full row shape to
-// this codebase's own code). Every logging and JSON path is redacted:
-// the Observability requirement forbids a status-transition log line
-// from carrying last_error content, and this makes that a property of
-// the type rather than a rule each call site must remember — the same
-// dual-interface posture config.RedactedString uses
-// (backend-errors-and-logging.md FR-8).
+// read the real text via String(). Every logging and JSON path is redacted:
+// status-transition log lines are forbidden from carrying arbitrary error
+// content, and this makes that a property of the type rather than a rule
+// each call site must remember — using both slog.LogValuer and json.Marshaler.
 type RedactedText string
 
 // String returns the real, unredacted text.

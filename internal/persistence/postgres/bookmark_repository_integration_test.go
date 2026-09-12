@@ -179,9 +179,8 @@ func TestBookmarkRepository_SQLInjectionProof(t *testing.T) {
 	}
 }
 
-// TestBookmarkRepository_PerUserIDOR is the AUDIT-0012-C1 close-gate
-// integration test: one user's bookmark is invisible and undeletable to
-// another user through the …AndUser methods.
+// TestBookmarkRepository_PerUserIDOR verifies that one user's bookmark is
+// invisible and undeletable to another user through the …AndUser methods.
 func TestBookmarkRepository_PerUserIDOR(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

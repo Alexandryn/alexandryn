@@ -7,11 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-bibliographic.md FR-7: Author supports the same identity
-// pattern as Work (FR-1) — internal ID primary, optional external
-// reference. A Work may reference zero authors, and symmetrically an
-// Author may have zero external references — not an error state, same
-// reasoning as FR-3.
+// Tests Author identity pattern: internal ID primary, optional external
+// references. An Author may have zero external references.
 func TestNewAuthor(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -57,9 +54,8 @@ func TestNewAuthor_WithExternalReference(t *testing.T) {
 	}
 }
 
-// FR-4/FR-7: MergedInto is nil at construction — recording a merge is a
-// domain-service operation (Tier 2 of this plan), not a constructor
-// argument.
+// MergedInto is nil at construction; recording a merge is handled by
+// AuthorMergeService.
 func TestNewAuthor_MergedIntoIsNilAtConstruction(t *testing.T) {
 	a, err := domain.NewAuthor(domain.AuthorID("author-1"), "Ursula K. Le Guin", nil)
 	if err != nil {

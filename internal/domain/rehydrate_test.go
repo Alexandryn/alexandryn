@@ -10,8 +10,8 @@ import (
 // RehydrateWork is a repository's own "read from storage" path, distinct
 // from NewWork's "construct and validate new user input" path — it
 // accepts MergedInto/Contains directly, which NewWork does not expose
-// (those fields are set only by WorkMergeService/WorkContainmentService,
-// ADR 0020's own invariant). A repository reading a row back is
+// (those fields are set only by WorkMergeService/WorkContainmentService).
+// A repository reading a row back is
 // reconstructing already-decided, already-validated state, not deciding
 // it, so this doesn't reopen either service's cycle check on the write
 // path — nothing outside internal/domain can call WorkMergeService's

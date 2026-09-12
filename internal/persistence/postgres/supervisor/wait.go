@@ -15,9 +15,8 @@ import (
 type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 // WaitForConnection polls dial against host:port until it succeeds or
-// ctx is done, sleeping interval between attempts — the "wait for
-// Postgres to accept connections" phase architecture-persistence.md's
-// own State transitions names as a distinct step after spawn, separate
+// ctx is done, sleeping interval between attempts — waiting for
+// Postgres to accept connections as a distinct step after spawn, separate
 // from spawn itself succeeding merely at starting the process.
 func WaitForConnection(ctx context.Context, dial DialFunc, host string, port int, interval time.Duration) error {
 	address := net.JoinHostPort(host, strconv.Itoa(port))

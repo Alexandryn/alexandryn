@@ -9,11 +9,10 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/testutil"
 )
 
-// FR-6 canary (backend-test-harness.md): a FakeFS constructed with no
-// files present observes a not-exists result for Stat without touching
-// the real filesystem at all. Proven by using a path containing a NUL
-// byte — invalid for a real Stat call (which fails with a distinct,
-// non-"not exist" error), but a perfectly ordinary fstest.MapFS key. If
+// FakeFS constructed with no files present observes a not-exists result
+// for Stat without touching the real filesystem at all. Proven by using a
+// path containing a NUL byte — invalid for a real Stat call (which fails with
+// a distinct, non-"not exist" error), but a perfectly ordinary fstest.MapFS key. If
 // the fake ever fell through to the real filesystem, this assertion
 // would fail with the wrong error rather than pass by accident.
 func TestFakeFS_StatOnAbsentPathNeverTouchesRealDisk(t *testing.T) {

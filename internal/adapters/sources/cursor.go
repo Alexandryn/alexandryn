@@ -11,11 +11,10 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Cursor is the decoded form of a browse/search continuation token
-// (backend-source-adapter.md FR-7). Position is a resumable sort key,
-// never concatenated into a filesystem path or fetched without an
-// origin check — a last-seen filename for local-folder, a feed's own
-// next-page URL for opds (which FR-11 requires be re-validated against
+// Cursor is the decoded form of a browse/search continuation token.
+// Position is a resumable sort key, never concatenated into a filesystem path
+// or fetched without an origin check — a last-seen filename for local-folder,
+// a feed's own next-page URL for opds (which requires origin re-validation against
 // the source's configured origin before use).
 type Cursor struct {
 	SourceID string `json:"s"`
@@ -84,7 +83,7 @@ func (cc *CursorCodec) Decode(token, wantSourceID string) (Cursor, error) {
 }
 
 // ForOPDSPosition validates that a decoded opds cursor's position is a
-// same-origin URL relative to baseURL before it is fetched (FR-11), and
+// same-origin URL relative to baseURL before it is fetched, and
 // returns it. An off-origin position is rejected with InvalidInput —
 // never fetched.
 func (c Cursor) ForOPDSPosition(baseURL string) (string, error) {

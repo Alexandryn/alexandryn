@@ -16,10 +16,9 @@ var migrationsFS embed.FS
 
 // connectionFailure marks a migration failure caused by not being able
 // to reach the database at all, distinct from a genuine SQL/schema
-// failure once connected — the distinction backend-persistence.md FR-6
-// requires so a connection failure's own error text (which can embed the
-// DSN) is never surfaced, while a real SQL failure's diagnostic detail
-// (which carries no connection-string risk) is retained.
+// failure once connected — ensuring a connection failure's own error text
+// (which can embed the DSN) is never surfaced, while a real SQL failure's
+// diagnostic detail (which carries no connection-string risk) is retained.
 type connectionFailure struct{ err error }
 
 func (e *connectionFailure) Error() string { return e.err.Error() }
@@ -32,7 +31,7 @@ func ConnectionFailure(err error) error { return &connectionFailure{err: err} }
 
 // RunMigrations opens a short-lived *sql.DB via open, runs up against it,
 // and closes it immediately afterward regardless of outcome — never
-// passed to or reused by any repository (backend-persistence.md FR-6).
+// passed to or reused by any repository.
 // open and up are injected so this is provable without a real database;
 // production callers use Migrate, below.
 func RunMigrations(ctx context.Context, databaseURL string, open func(driverName, dataSourceName string) (*sql.DB, error), up func(ctx context.Context, db *sql.DB) error) error {

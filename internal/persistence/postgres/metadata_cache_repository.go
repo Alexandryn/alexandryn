@@ -13,10 +13,10 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// MetadataCacheTTL is the 30-day staleness window (backend-metadata-caching.md FR-3).
+// MetadataCacheTTL is the 30-day staleness window.
 const MetadataCacheTTL = 30 * 24 * time.Hour
 
-// MetadataCacheRepository defines the persistence interface for metadata caching (FR-1, FR-2, FR-4).
+// MetadataCacheRepository defines the persistence interface for metadata caching.
 type MetadataCacheRepository interface {
 	GetWork(ctx context.Context, key string) (*openlibrary.DiscoverWorkDetail, bool, error)
 	GetAuthor(ctx context.Context, key string) (*openlibrary.NormalisedAuthor, bool, error)
@@ -45,7 +45,7 @@ func NewMetadataCacheRepositoryWithClock(pool *pgxpool.Pool, now func() time.Tim
 
 var _ MetadataCacheRepository = (*PostgresMetadataCacheRepository)(nil)
 
-// GetWork fetches a cached work, its editions, and authors if fresh (within 30 days, FR-2, FR-3).
+// GetWork fetches a cached work, its editions, and authors if fresh (within 30 days).
 func (r *PostgresMetadataCacheRepository) GetWork(ctx context.Context, key string) (*openlibrary.DiscoverWorkDetail, bool, error) {
 	key = openlibrary.CleanKey(key)
 	if !openlibrary.IsValidWorkKey(key) {
@@ -73,7 +73,7 @@ func (r *PostgresMetadataCacheRepository) GetWork(ctx context.Context, key strin
 		return nil, false, &domain.Error{Category: domain.Internal, Message: "failed to query metadata cache"}
 	}
 
-	// Staleness check (FR-3: 30 days)
+	// Staleness check (30 days)
 	if r.now().Sub(fetchedAt) > MetadataCacheTTL {
 		return nil, false, nil // Cache miss due to staleness
 	}
@@ -103,7 +103,7 @@ func (r *PostgresMetadataCacheRepository) GetWork(ctx context.Context, key strin
 		editions = []openlibrary.NormalisedEdition{}
 	}
 
-	// 2. Fetch authors via join table preserving position (FR-1)
+	// 2. Fetch authors via join table preserving position
 	authorRows, err := r.pool.Query(ctx,
 		`SELECT a.key, a.name
 		 FROM metadata_authors a
@@ -148,7 +148,7 @@ func (r *PostgresMetadataCacheRepository) GetWork(ctx context.Context, key strin
 	}, true, nil
 }
 
-// GetAuthor fetches a cached author by key if fresh (FR-2, FR-3).
+// GetAuthor fetches a cached author by key if fresh.
 func (r *PostgresMetadataCacheRepository) GetAuthor(ctx context.Context, key string) (*openlibrary.NormalisedAuthor, bool, error) {
 	key = openlibrary.CleanKey(key)
 	if key == "" {
@@ -181,7 +181,7 @@ func (r *PostgresMetadataCacheRepository) GetAuthor(ctx context.Context, key str
 	}, true, nil
 }
 
-// SaveWork stores the normalised work, its editions, and authors in a single transaction (FR-4).
+// SaveWork stores the normalised work, its editions, and authors in a single transaction.
 func (r *PostgresMetadataCacheRepository) SaveWork(ctx context.Context, workKey string, detail *openlibrary.DiscoverWorkDetail) error {
 	workKey = openlibrary.CleanKey(workKey)
 	if !openlibrary.IsValidWorkKey(workKey) {
@@ -306,7 +306,7 @@ func (r *PostgresMetadataCacheRepository) SaveWork(ctx context.Context, workKey 
 	return nil
 }
 
-// SaveAuthor stores or refreshes a single author in the cache (FR-2, FR-4).
+// SaveAuthor stores or refreshes a single author in the cache.
 func (r *PostgresMetadataCacheRepository) SaveAuthor(ctx context.Context, author *openlibrary.NormalisedAuthor) error {
 	if author == nil || author.OpenLibraryAuthorKey == nil || *author.OpenLibraryAuthorKey == "" || strings.TrimSpace(author.Name) == "" {
 		return nil

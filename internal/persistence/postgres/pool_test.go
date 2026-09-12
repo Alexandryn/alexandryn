@@ -6,9 +6,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// FR-1: pool sizing is config-driven for MaxConns, fixed for MinConns —
+// Pool sizing is config-driven for MaxConns, fixed for MinConns —
 // proven by inspecting the constructed pgxpool.Config, no real
-// connection needed (backend-persistence.md's own test plan).
+// connection needed.
 func TestPoolConfig_MaxConnsMatchesConfig(t *testing.T) {
 	cfg, err := postgres.PoolConfig("postgres://user:pass@localhost:5432/alexandryn", 25)
 	if err != nil {

@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// Argon2idParams defines hashing configuration conforming to OWASP recommendations (ADR 0025).
+// Argon2idParams defines hashing configuration conforming to OWASP recommendations.
 type Argon2idParams struct {
 	Memory      uint32
 	Iterations  uint32

@@ -18,14 +18,13 @@ import (
 const (
 	defaultOpenLibraryBaseURL = "https://openlibrary.org"
 	defaultCoversBaseURL      = "https://covers.openlibrary.org"
-	maxMetadataResponseBytes  = 5 * 1024 * 1024  // 5 MiB (FR-9)
-	maxCoverResponseBytes     = 10 * 1024 * 1024 // 10 MiB (backend-metadata-caching.md FR-6)
-	defaultRequestTimeout     = 5 * time.Second  // 5 seconds (FR-9)
+	maxMetadataResponseBytes  = 5 * 1024 * 1024  // 5 MiB
+	maxCoverResponseBytes     = 10 * 1024 * 1024 // 10 MiB
+	defaultRequestTimeout     = 5 * time.Second  // 5 seconds
 
 	// getWorkTotalTimeout bounds a whole GetWork call — one work fetch,
 	// one editions fetch, and up to 20 author fetches, each otherwise
-	// getting its own defaultRequestTimeout. Without this a slow Open
-	// Library could hold the caller for 22 x 5s (#180).
+	// getting its own defaultRequestTimeout.
 	getWorkTotalTimeout = 15 * time.Second
 )
 
@@ -180,7 +179,7 @@ func (c *HTTPClient) doRequest(ctx context.Context, reqURL string, maxBytes int6
 	return body, contentType, resp.StatusCode, nil
 }
 
-// Search executes a search query against Open Library (FR-1).
+// Search executes a search query against Open Library.
 func (c *HTTPClient) Search(ctx context.Context, q string, limit, offset int) (*NormalisedSearchResponse, error) {
 	q = strings.TrimSpace(q)
 	if q == "" || len([]rune(q)) > 200 {
@@ -208,7 +207,7 @@ func (c *HTTPClient) Search(ctx context.Context, q string, limit, offset int) (*
 	return NormaliseSearchResponse(body, limit, offset)
 }
 
-// GetWork fetches and normalises an Open Library work and its editions (FR-3).
+// GetWork fetches and normalises an Open Library work and its editions.
 func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*DiscoverWorkDetail, error) {
 	openLibraryID = CleanKey(openLibraryID)
 	if !IsValidWorkKey(openLibraryID) {
@@ -216,7 +215,7 @@ func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*Discov
 	}
 
 	// Bound the whole call (work + editions + author fan-out), not just
-	// each request individually (#180).
+	// each request individually.
 	ctx, cancel := context.WithTimeout(ctx, c.getWorkTimeout)
 	defer cancel()
 
@@ -245,7 +244,7 @@ func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*Discov
 		editions = []NormalisedEdition{}
 	}
 
-	// 3. Resolve authors (capped at first 20 distinct authors per FR-3)
+	// 3. Resolve authors (capped at first 20 distinct authors)
 	authorKeys := ExtractAuthorKeys(workBody)
 	if len(authorKeys) > 20 {
 		authorKeys = authorKeys[:20]
@@ -256,7 +255,7 @@ func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*Discov
 		authorURL := fmt.Sprintf("%s/authors/%s.json", c.baseURL, aKey)
 		aBody, _, _, aErr := c.doRequest(ctx, authorURL, maxMetadataResponseBytes)
 		if aErr != nil {
-			// FR-3 & FR-9: single author fetch failure degrades to omission
+			// Single author fetch failure degrades to omission.
 			continue
 		}
 		if normAuthor, normErr := NormaliseAuthor(aKey, aBody); normErr == nil {
@@ -274,7 +273,7 @@ func (c *HTTPClient) GetWork(ctx context.Context, openLibraryID string) (*Discov
 	}, nil
 }
 
-// FetchCover downloads a cover image binary from Open Library Covers API (backend-metadata-caching.md FR-6).
+// FetchCover downloads a cover image binary from Open Library Covers API.
 func (c *HTTPClient) FetchCover(ctx context.Context, coverID int64) ([]byte, string, error) {
 	if coverID <= 0 {
 		return nil, "", &domain.Error{Category: domain.InvalidInput, Message: "coverId must be a positive integer"}

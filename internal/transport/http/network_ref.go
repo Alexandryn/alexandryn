@@ -14,7 +14,7 @@ type networkRefs struct {
 	networkAPI atomic.Pointer[NetworkAPI]
 }
 
-// NetworkAPI bundles dependencies for network and pairing endpoints (Phase 13).
+// NetworkAPI bundles dependencies for network and pairing endpoints.
 type NetworkAPI struct {
 	PairingSessions    domain.PairingSessionRepository
 	PairedDevices      domain.PairedDeviceRepository

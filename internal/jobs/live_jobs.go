@@ -8,9 +8,8 @@ import (
 // liveJobs tracks the cancel function of every job a worker in this
 // process is currently executing. An admin cancel writes dead_letter to
 // the row and then aborts the handler here immediately, instead of
-// leaving it running until the next heartbeat tick notices the row moved
-// (audit 0016 #299). All methods are nil-safe so a Queue or Engine built
-// without one (tests) still works.
+// leaving it running until the next heartbeat tick notices the row moved.
+// All methods are nil-safe so a Queue or Engine built without one (tests) still works.
 type liveJobs struct {
 	mu      sync.Mutex
 	cancels map[ID]context.CancelFunc

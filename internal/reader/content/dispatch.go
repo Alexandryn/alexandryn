@@ -11,7 +11,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
 )
 
-// Kind is how a resolved entry must be served (backend-reader-content.md FR-5).
+// Kind represents how a resolved archive entry must be served.
 type Kind int
 
 const (
@@ -20,10 +20,9 @@ const (
 	KindBinary             // image/font — serve as-is, still size-capped
 )
 
-// ValidateResourcePath rejects a client-supplied *path before it is ever
-// used to look up a zip entry (FR-1): no "..", no absolute segment, no
-// empty path. The path comes from the client, so this runs before the
-// entry-table lookup, not only after.
+// ValidateResourcePath rejects an untrusted resource path before it is
+// used to look up a zip entry: no "..", no absolute segment, and no
+// empty path. This validation runs prior to archive entry lookup.
 func ValidateResourcePath(p string) error {
 	if p == "" {
 		return &domain.Error{Category: domain.InvalidInput, Message: "resource path is empty"}
@@ -42,7 +41,7 @@ func ValidateResourcePath(p string) error {
 	return nil
 }
 
-// FindEntry looks p up in an already-open archive's entry table (FR-4).
+// FindEntry looks up path p in an open archive's entry table.
 // Returns a *domain.Error with category NotFound when no entry matches.
 func FindEntry(zr *zip.Reader, p string) (*zip.File, error) {
 	for _, f := range zr.File {
@@ -53,9 +52,8 @@ func FindEntry(zr *zip.Reader, p string) (*zip.File, error) {
 	return nil, &domain.Error{Category: domain.NotFound, Message: "no such resource in this book"}
 }
 
-// ReadEntry decompresses a single entry under the same streaming
-// byte-count cap phase 10's extractor uses (FR-4: 200 MiB, reused —
-// applied here per served entry, a stricter reapplication).
+// ReadEntry decompresses a single entry under the maximum decompressed
+// byte-count cap (200 MiB) applied per served entry.
 func ReadEntry(f *zip.File) ([]byte, error) {
 	rc, err := f.Open()
 	if err != nil {
@@ -73,11 +71,11 @@ func ReadEntry(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-// Classify decides how an entry is served, by its sniffed content —
-// never the path's extension alone (FR-5). HTML/XHTML -> KindHTML;
-// text/css -> KindCSS; a non-SVG image or font -> KindBinary served with
-// that MIME type. Standalone image/svg+xml, and any unrecognised or
-// unexpected type (an embedded executable), are refused with
+// Classify decides how an entry is served based on its sniffed content
+// rather than path extension alone. HTML/XHTML -> KindHTML;
+// text/css -> KindCSS; non-SVG images or fonts -> KindBinary served with
+// that MIME type. Standalone image/svg+xml and any unrecognised or
+// unexpected types (such as executables) are refused with
 // InvalidInput.
 func Classify(entryName string, data []byte) (Kind, string, error) {
 	sniff := http.DetectContentType(data)

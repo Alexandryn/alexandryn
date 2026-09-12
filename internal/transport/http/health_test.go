@@ -20,7 +20,7 @@ type fakePinger struct{ err error }
 
 func (p *fakePinger) Ping(context.Context) error { return p.err }
 
-// FR-5 /healthz: takes the same pool-reference parameter /readyz reads,
+// /healthz takes the same pool-reference parameter /readyz reads,
 // but must never touch it — proven with a spy whose call count is
 // asserted zero after a request, not merely that the response is 200.
 func TestHealthz_NeverTouchesThePoolReference(t *testing.T) {
@@ -56,7 +56,7 @@ func TestHealthz_ReturnsOKWithNoPoolReferenceSetAtAll(t *testing.T) {
 	}
 }
 
-// FR-5 /readyz: three states, table-driven, distinguished by body text.
+// /readyz: three states, table-driven, distinguished by body text.
 func TestReadyz_ThreeStates(t *testing.T) {
 	t.Run("reference unset", func(t *testing.T) {
 		ref := &transporthttp.PoolRef{}
@@ -127,7 +127,7 @@ func TestReadyz_ContentTypeAndSharedErrorShape(t *testing.T) {
 	}
 }
 
-// FR-5 DSN-redaction regression guard: a liveness-query failure whose
+// DSN-redaction regression guard: a liveness-query failure whose
 // .Error() string contains a synthetic, obviously-fake DSN-shaped
 // substring must never surface it — the response body is always the
 // fixed, generic "lost the connection" message.

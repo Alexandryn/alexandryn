@@ -11,7 +11,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// RateLimiter bounds outbound Open Library requests per usage policy (FR-7).
+// RateLimiter bounds outbound Open Library requests per upstream usage policy.
 type RateLimiter struct {
 	limiter       *rate.Limiter
 	waiterCap     int64

@@ -9,13 +9,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// backend-errors-and-logging.md FR-7: the correlation ID "MUST be a
-// randomly generated value ... never derived from anything
-// request-supplied." Every other test in this codebase exercises the
-// logging/recovery middleware against testutil.FakeIDGenerator for
-// determinism — this is the one test of the real generator itself,
-// proving it actually produces distinct values rather than a fixed or
-// predictable one.
+// Correlation IDs must be randomly generated values never derived from
+// request input. This tests the real generator directly, proving it
+// produces distinct values across repeated invocations.
 func TestNewCorrelationID_ProducesDistinctValues(t *testing.T) {
 	const n = 1000
 	seen := make(map[string]bool, n)
@@ -32,14 +28,10 @@ func TestNewCorrelationID_ProducesDistinctValues(t *testing.T) {
 	}
 }
 
-// Checkpoint F's security review (MEDIUM): without a per-attempt timeout,
-// a host that accepts the TCP connection but never completes Postgres's
-// own startup handshake could block a single connectPostgres attempt
-// indefinitely, turning the documented ~30-second retry budget
-// (postgresReadyMaxAttempts * postgresReadyBackoff) into an unbounded
-// one. This proves the bound is real: a real TCP listener accepts the
-// connection and then sends nothing, ever — connectPostgresWithTimeout
-// must still return within its configured timeout, not hang.
+// Without a per-attempt timeout, a host that accepts TCP connections but
+// never completes the PostgreSQL startup handshake could block connection
+// attempts indefinitely. This tests that connectPostgresWithTimeout returns
+// within its configured timeout when a host accepts connections without responding.
 func TestConnectPostgresWithTimeout_BoundsABlackHoleHost(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

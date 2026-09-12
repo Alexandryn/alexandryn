@@ -1,9 +1,8 @@
 package domain
 
-// ID types, one per aggregate (E0, tasks/plan-phase02-domain.md). Distinct
-// named types rather than one bare string type: passing a WorkID where an
-// AuthorID is expected fails to compile, at zero runtime cost — no spec
-// mandates this shape, it's a deliberate choice recorded in the plan.
+// Distinct named ID types per aggregate prevent accidental substitution
+// (e.g. passing a WorkID where an AuthorID is expected fails to compile)
+// at zero runtime cost.
 type (
 	WorkID            string
 	EditionID         string
@@ -16,7 +15,7 @@ type (
 	BookmarkID        string
 	HighlightID       string
 
-	// Phase 12 (Authentication, RBAC & Multi-Library Namespacing) IDs
+	// Authentication, RBAC, and multi-library namespacing IDs
 	UserID              string
 	LibraryID           string
 	LibraryMembershipID string
@@ -24,26 +23,18 @@ type (
 	RefreshTokenID      string
 	PasswordResetID     string
 
-	// DeviceID identifies a reading device (domain-reading.md's own
-	// Non-goals: "this spec assumes a DeviceID exists... without
-	// designing device management" — phase 14 owns the real thing).
+	// DeviceID identifies a registered device.
 	DeviceID string
 
-	// Phase 13 (domain-device-pairing.md) — one pairing handshake.
+	// PairingSessionID identifies an active pairing session.
 	PairingSessionID string
 )
 
 // IDGenerator produces a new, unique identifier value at aggregate
-// construction time (domain-bibliographic.md FR-1: "generated at creation,
-// never derived from external data"). The single string-returning method
-// is deliberately untyped per-aggregate — callers convert the result to
-// the ID type they need (WorkID(gen.NewID())) — so one interface and one
-// injected implementation serves every aggregate, matching this project's
-// existing Clock/FS injection pattern (go-backend-conventions/SKILL.md).
-//
-// internal/testutil.FakeIDGenerator already implements this shape (built
-// in phase 03's T1, before this interface existed) — E1 declares the
-// interface to match the fake, not the other way around.
+// construction time ("generated at creation, never derived from external data").
+// The single string-returning method is deliberately untyped per-aggregate —
+// callers convert the result to the ID type they need (e.g., WorkID(gen.NewID()))
+// so one interface and one injected implementation serves every aggregate.
 type IDGenerator interface {
 	NewID() string
 }

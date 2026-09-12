@@ -13,9 +13,8 @@ type registration struct {
 }
 
 // Registry maps a job kind to its handler. It is an in-process map, not
-// a database table: handlers are Go code compiled into this binary
-// (backend-job-queue.md FR-2). Registration happens once at process
-// startup; lookups happen on every claim.
+// a database table: handlers are Go code compiled into this binary.
+// Registration happens once at process startup; lookups happen on every claim.
 type Registry struct {
 	mu      sync.RWMutex
 	entries map[Kind]registration
@@ -29,8 +28,7 @@ func NewRegistry() *Registry {
 // Register binds a handler to a kind with a per-job attempt limit. It
 // panics on a misconfiguration that can only be a programming error
 // caught at startup: an empty kind, a nil handler, maxAttempts below 1,
-// or a kind already registered — the same fail-loud posture
-// backend-configuration.md FR-6 takes for config keys.
+// or a kind already registered.
 func (r *Registry) Register(kind Kind, maxAttempts int, handler HandlerFunc) {
 	if kind == "" {
 		panic("jobs: Register called with an empty kind")

@@ -1,10 +1,6 @@
 // Package idgen provides the production implementation of
-// domain.IDGenerator: RFC 4122 UUID v4, generated via crypto/rand only —
-// no dependency beyond the standard library (T24-D1,
-// tasks/plan-t24-repositories.md). github.com/google/uuid is already
-// present transitively in go.sum, but promoting it to a direct
-// dependency isn't warranted for what amounts to sixteen random bytes
-// and two bit twiddles.
+// domain.IDGenerator: RFC 4122 UUID v4, generated via crypto/rand
+// using the standard library.
 package idgen
 
 import (

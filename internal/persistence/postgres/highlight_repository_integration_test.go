@@ -182,9 +182,8 @@ func TestHighlightRepository_SQLInjectionProof(t *testing.T) {
 	}
 }
 
-// TestHighlightRepository_PerUserIDOR is the AUDIT-0012-C1 close-gate
-// integration test for highlights (whose note field carries private
-// user content).
+// TestHighlightRepository_PerUserIDOR verifies that user highlight data
+// (including private notes) cannot be accessed across user boundaries.
 func TestHighlightRepository_PerUserIDOR(t *testing.T) {
 	pool := schemaTestPool(t)
 	ctx := context.Background()

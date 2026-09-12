@@ -12,7 +12,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// backend-import-pipeline.md FR-3: migration 00007 adds the `import_candidates` table
+// Migration 00007 adds the `import_candidates` table
 // with the columns and indexes the import pipeline reads and writes.
 func TestSchema_ImportCandidatesTableExistsAfterMigration(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -41,7 +41,7 @@ func TestSchema_ImportCandidatesTableExistsAfterMigration(t *testing.T) {
 	}
 }
 
-// FR-3: `status` is a closed six-value vocabulary.
+// `status` is a closed six-value vocabulary.
 func TestSchema_ImportCandidatesStatusConstrained(t *testing.T) {
 	pool := schemaTestPool(t)
 
@@ -60,7 +60,7 @@ func TestSchema_ImportCandidatesStatusConstrained(t *testing.T) {
 	}
 }
 
-// FR-3: composite index on (source_id, status) exists for dedup and filtering.
+// Composite index on (source_id, status) exists for dedup and filtering.
 func TestSchema_ImportCandidatesIndexExists(t *testing.T) {
 	pool := schemaTestPool(t)
 
@@ -75,7 +75,7 @@ func TestSchema_ImportCandidatesIndexExists(t *testing.T) {
 	}
 }
 
-// backend-persistence.md acceptance criterion: the down migration is reversible and re-appliable.
+// Verifies that the down migration is reversible and re-appliable.
 func TestSchema_ImportCandidatesMigrationIsReversible(t *testing.T) {
 	db := testDB(t)
 	resetSchema(t, db)

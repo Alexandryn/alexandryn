@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Role represents a user's system-wide or per-library role (backend-authorization-rbac.md FR-1).
+// Role represents a user's system-wide or per-library role.
 type Role string
 
 const (
@@ -34,7 +34,7 @@ func (r Role) IsValid() bool {
 	return r == RoleAdmin || r == RoleReader
 }
 
-// User represents an authenticated identity in Alexandryn (backend-authentication.md).
+// User represents an authenticated identity in Alexandryn.
 type User struct {
 	id        UserID
 	username  string
@@ -111,7 +111,7 @@ func (c *UserCredentials) UserID() UserID       { return c.userID }
 func (c *UserCredentials) PasswordHash() string { return c.passwordHash }
 func (c *UserCredentials) UpdatedAt() time.Time { return c.updatedAt }
 
-// RefreshToken represents a stateful, rotatable session refresh token (ADR 0025).
+// RefreshToken represents a stateful, rotatable session refresh token.
 type RefreshToken struct {
 	id        RefreshTokenID
 	userID    UserID
@@ -166,7 +166,7 @@ func (r *RefreshToken) Revoke(now time.Time) {
 	r.revokedAt = &now
 }
 
-// TOTPSettings records MFA settings and encrypted secrets (ADR 0027).
+// TOTPSettings records MFA settings and encrypted secrets.
 type TOTPSettings struct {
 	userID             UserID
 	encryptedSecret    []byte

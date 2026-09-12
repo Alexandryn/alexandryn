@@ -18,7 +18,7 @@ func fixtureWebDist() fstest.MapFS {
 	}
 }
 
-// FR-8: a request matching a real embedded file gets that file, with the
+// A request matching a real embedded file gets that file, with the
 // Content-Type its extension implies (Go's own mime.TypeByExtension via
 // http.FileServerFS, never a hardcoded map).
 func TestStaticHandler_ServesARealFileWithTheCorrectContentType(t *testing.T) {
@@ -53,9 +53,8 @@ func TestStaticHandler_ServesARealFileWithTheCorrectContentType(t *testing.T) {
 	}
 }
 
-// FR-8: a request matching no real file falls back to index.html (200,
-// the SPA-fallback pattern frontend-shell-and-routing.md's client-side
-// routing needs) rather than a 404.
+// A request matching no real file falls back to index.html (200,
+// the SPA-fallback pattern client-side routing needs) rather than a 404.
 func TestStaticHandler_UnknownPathFallsBackToIndexHTML(t *testing.T) {
 	handler := transporthttp.StaticHandler(fixtureWebDist())
 
@@ -73,7 +72,7 @@ func TestStaticHandler_UnknownPathFallsBackToIndexHTML(t *testing.T) {
 	}
 }
 
-// FR-7/FR-8 boundary: an unmatched /api/v1/... path still gets the JSON
+// An unmatched /api/v1/... path still gets the JSON
 // 404, never the SPA fallback — proven together, not assumed, since
 // they're two different catch-alls that could easily be mis-registered
 // to shadow each other.
@@ -107,7 +106,7 @@ func TestRoutingPrecedence_APINotFoundNeverFallsBackToSPA(t *testing.T) {
 	})
 }
 
-// The real, embedded placeholder (D2) is a valid target too — proves the
+// The real, embedded placeholder is a valid target too — proves the
 // production wiring, not just the fixture-backed handler.
 func TestDefaultStaticHandler_ServesTheEmbeddedPlaceholder(t *testing.T) {
 	handler := transporthttp.DefaultStaticHandler()

@@ -12,10 +12,10 @@ import (
 )
 
 // SourceOfferingRepository is internal/persistence/postgres's
-// domain.SourceOfferingRepository implementation (T24, R7). Unlike
+// domain.SourceOfferingRepository implementation. Unlike
 // Work/Author/Edition/Source, Save upserts on the real UNIQUE constraint
-// on (source_id, edition_id, file_reference_format) — domain-source.md
-// FR-2/FR-3's own identity for a SourceOffering — not on id: re-observing
+// on (source_id, edition_id, file_reference_format) — the identity
+// for a SourceOffering — not on id: re-observing
 // the same (Source, Edition, Format) tuple must update that row's
 // FileReference/ObservedAt, matching SourceOffering.UniquenessKey(),
 // rather than inserting a second row keyed on a fresh id. The row's own
@@ -72,7 +72,7 @@ func (r *SourceOfferingRepository) FindBySource(ctx context.Context, sourceID do
 }
 
 // FindByEdition returns every offering for editionID, most recently
-// observed first (backend-reader-content.md FR-2's fallback order).
+// observed first.
 func (r *SourceOfferingRepository) FindByEdition(ctx context.Context, editionID domain.EditionID) ([]*domain.SourceOffering, error) {
 	exec := executorFrom(ctx, r.pool)
 

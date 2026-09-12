@@ -766,7 +766,7 @@ func TestNetworkStatus_AdminScope(t *testing.T) {
 }
 
 func TestNetworkStatus_ScrubbingAudit(t *testing.T) {
-	// Canary secrets that MUST NEVER appear in any status response (FR-4)
+	// Canary secrets that MUST NEVER appear in any status response
 	canaries := []string{
 		"/home/operator/alexandryn/data",
 		"C:\\Users\\Operator\\cert.pem",
@@ -1498,7 +1498,7 @@ func TestLogin_WithInvalidGrantIgnored(t *testing.T) {
 
 	loginHandler.ServeHTTP(rec, req)
 
-	// Login MUST STILL SUCCEED (FR-9: invalid grant is ignored, login does not fail)
+	// Login MUST STILL SUCCEED (invalid grant is ignored, login does not fail)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("login with bad grant: status = %d, want 200", rec.Code)
 	}
@@ -1732,10 +1732,9 @@ func TestTOTPVerify_TicketIsSingleUse(t *testing.T) {
 	}
 }
 
-// TestTOTPVerify_RateLimited is the audit 0016 #89 regression: an
-// attacker with the victim's password must not be able to grind the TOTP
-// space. The per-IP limiter throttles a single address; the per-user
-// limiter throttles the account even as the address rotates.
+// TestTOTPVerify_RateLimited verifies that an attacker with the victim's password
+// cannot grind the TOTP space. The per-IP limiter throttles a single address; the
+// per-user limiter throttles the account even as the address rotates.
 func TestTOTPVerify_RateLimited(t *testing.T) {
 	users := newMemUsers()
 	mfaRepo := newMemMFA()
@@ -1935,7 +1934,7 @@ func TestRefresh_WithRememberDeviceDays(t *testing.T) {
 	}
 }
 
-// audit 0016 #143: GET /api/v1/network/settings returns the saved
+// GET /api/v1/network/settings returns the saved
 // settings for an admin, and 403 for a non-admin.
 func TestNetworkSettings_GetForAdmin(t *testing.T) {
 	repo := newMemNetworkSettings()

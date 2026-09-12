@@ -1,17 +1,13 @@
 package domain
 
-// maxTitleLength is a reasoned placeholder (no spec gives a number),
-// shared by Work's title and subtitle.
+// maxTitleLength defines the maximum allowed length shared by Work's title and subtitle.
 const maxTitleLength = 500
 
-// Work (domain-bibliographic.md FR-1/FR-3/FR-6) — internal ID primary,
-// external references optional. A Work with zero Editions and zero
-// external references is a legal, permanent state (FR-3), not an error
-// or a "pending" case; Editions themselves aren't a field here — they
-// reference their parent Work by ID (FR-2), never the reverse embedding.
-// MergedInto and Contains are empty at construction — both are
-// domain-service operations (ADR 0020, this plan's Tier 2), never
-// constructor arguments.
+// Work represents a conceptual intellectual work with an internal ID and
+// optional external references. A Work with zero Editions and zero external
+// references is a valid state; Editions reference their parent Work by ID,
+// rather than being embedded on the Work. MergedInto and Contains are managed
+// exclusively by domain services, never set directly in constructors.
 type Work struct {
 	id                 WorkID
 	title              string

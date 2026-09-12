@@ -20,17 +20,15 @@ type CommandRunner func(ctx context.Context, name string, args ...string) error
 type StatFunc func(name string) (os.FileInfo, error)
 
 // EnsureDataDir initializes dataDir via initDBPath if it isn't already a
-// PostgreSQL data directory (architecture-persistence.md FR-1: "applies
-// if the directory does not already exist") — a no-op when PG_VERSION is
-// already present, so a retried call (waitForPostgres's own bounded
-// retry, T25-D3) doesn't attempt to run initdb a second time against a
+// PostgreSQL data directory — a no-op when PG_VERSION is
+// already present, so a retried call doesn't attempt to run initdb a second time against a
 // directory a previous attempt already initialized.
 //
-// dataDir must be an absolute path (audit 0016 #264 — a value that
-// traces to $XDG_CONFIG_HOME must not be able to start with a dash or be
-// interpreted relative to the working directory), and after
-// initialization the directory must be inaccessible to group and other
-// (0700) — the mode initdb sets and PostgreSQL refuses to start without.
+// dataDir must be an absolute path (a value that traces to configuration
+// must not be able to start with a dash or be interpreted relative to the
+// working directory), and after initialization the directory must be
+// inaccessible to group and other (0700) — the mode initdb sets and
+// PostgreSQL refuses to start without.
 func EnsureDataDir(ctx context.Context, stat StatFunc, run CommandRunner, initDBPath, dataDir string) error {
 	if !filepath.IsAbs(dataDir) {
 		return fmt.Errorf("PostgreSQL data directory %q must be an absolute path", dataDir)

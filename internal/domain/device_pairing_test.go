@@ -9,12 +9,11 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Phase 13 (domain-device-pairing.md). Pure types, injected clock, no
-// I/O. Tests that MUST fail before implementation: the full PairingSession
+// Pure types, injected clock, no I/O. Tests verify the full PairingSession
 // legal-path test, the illegal-transition table, and the PairingCode
 // constant-time-Equal structural test.
 
-// --- T1.1 PairingCode (FR-1/FR-2) ---
+// --- PairingCode ---
 
 func mustCode(t *testing.T, s string) domain.PairingCode {
 	t.Helper()
@@ -74,7 +73,7 @@ func TestPairingCode_EqualIsConstantTimeAndNormalizes(t *testing.T) {
 		t.Fatal("Equal should be false for different values")
 	}
 	// The type must not be == comparable — the only equality path is
-	// Equal (FR-1). This is enforced structurally: a non-comparable
+	// Equal. This is enforced structurally: a non-comparable
 	// field makes == a compile error. See device_pairing_audit_test.go.
 }
 
@@ -104,7 +103,7 @@ func TestPairingCode_DisplayAndRedaction(t *testing.T) {
 	}
 }
 
-// --- T1.2 PairingSession (FR-3..FR-7) ---
+// --- PairingSession ---
 
 const testTTL = 5 * time.Minute
 
@@ -288,7 +287,7 @@ func TestPairingSession_Expiry(t *testing.T) {
 	})
 }
 
-// --- T1.3 PairedDevice (FR-8/FR-9) ---
+// --- PairedDevice ---
 
 func mustDevice(t *testing.T, now time.Time) *domain.PairedDevice {
 	t.Helper()
@@ -366,7 +365,7 @@ func TestPairedDevice_RevokeAndTouch(t *testing.T) {
 	})
 }
 
-// --- T1.4 rehydration (FR-3 Reliability NFR) ---
+// --- Rehydration ---
 
 func TestRehydratePairingSession_RevalidatesInvariants(t *testing.T) {
 	now := time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC)

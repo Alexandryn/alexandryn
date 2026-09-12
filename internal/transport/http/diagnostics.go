@@ -28,7 +28,7 @@ type diagnosticsRuntime struct {
 	GCCycles        uint32 `json:"gc_cycles"`
 }
 
-// DiagnosticsHandler returns an HTTP handler serving GET /api/v1/diagnostics (FR-5, FR-6).
+// DiagnosticsHandler returns an HTTP handler serving GET /api/v1/diagnostics.
 func DiagnosticsHandler(reg *observability.Registry, startTime time.Time, commit, buildTime string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -37,8 +37,8 @@ func TestLatencyHistogram_Percentiles(t *testing.T) {
 	}
 }
 
-// audit 0016 #302: an observation slower than the last finite bucket
-// bound must land in the "+Inf" overflow bucket, not vanish.
+// TestLatencyHistogram_OverflowBucket tests that observations slower than
+// the last finite bucket bound land in the "+Inf" overflow bucket.
 func TestLatencyHistogram_OverflowBucket(t *testing.T) {
 	h := observability.NewLatencyHistogram()
 	h.Observe(50 * time.Millisecond)
@@ -60,8 +60,8 @@ func TestLatencyHistogram_OverflowBucket(t *testing.T) {
 	}
 }
 
-// audit 0016 #302: Snapshot publishes into the expvar map ADR 0030 names
-// as the read mechanism.
+// TestMetrics_Snapshot_PublishesToExpvar tests that Snapshot publishes metrics
+// to expvar for monitoring.
 func TestMetrics_Snapshot_PublishesToExpvar(t *testing.T) {
 	m := observability.NewRegistry()
 	m.ObserveRequest("GET /x", 5*time.Millisecond)

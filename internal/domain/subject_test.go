@@ -7,8 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-bibliographic.md FR-5: Subject is a constrained value type,
-// bounded, printable text with control characters rejected.
+// Subject is a constrained value type: bounded, printable text with
+// control characters rejected.
 func TestNewSubject(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -144,7 +144,7 @@ func TestEditionRepository_FindByWork(t *testing.T) {
 	}
 }
 
-// domain-bibliographic.md FR-8: an Edition cannot exist without a real
+// An Edition cannot exist without a real
 // parent Work — proven here against the repository's own Save call, not
 // just the schema's FK directly (schema_integration_test.go already
 // covers the raw constraint).

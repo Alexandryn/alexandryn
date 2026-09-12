@@ -2,10 +2,8 @@ package domain
 
 import "time"
 
-// LibraryEntry (domain-library.md FR-1) is the unit of "the user has
-// this" — references exactly one Edition, never a Work directly. No
-// availability field: that's read from domain-source.md's model, never
-// duplicated here (FR-3: existence MUST NOT depend on availability).
+// LibraryEntry represents ownership of a specific Edition (never a Work directly).
+// Availability is maintained separately and does not determine library entry existence.
 type LibraryEntry struct {
 	id        LibraryEntryID
 	editionID EditionID

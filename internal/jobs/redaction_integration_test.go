@@ -46,7 +46,7 @@ func TestEngine_NoPayloadOrErrorValueIsLogged(t *testing.T) {
 	job := waitForState(t, sys.Queue(), id, jobs.StateDeadLetter)
 
 	// The stored value is truncated; it is allowed to contain the error
-	// marker (FR-9 returns it to Go callers), but never the payload.
+	// marker, but never the payload.
 	if len(job.LastError.String()) > 512 {
 		t.Fatalf("stored last_error is %d bytes, want <= 512", len(job.LastError.String()))
 	}

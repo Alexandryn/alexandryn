@@ -1,7 +1,6 @@
 // Package postgres implements Alexandryn's repository interfaces
-// (internal/domain) against PostgreSQL via pgx (ADR 0012), and owns the
-// connection pool and migration runner's construction
-// (backend-persistence.md).
+// against PostgreSQL via pgx, and owns the connection pool and migration
+// runner's construction.
 package postgres
 
 import (
@@ -14,14 +13,12 @@ import (
 // MinConns is fixed, not configurable: a round-number floor that keeps a
 // couple of connections warm at idle, not a capacity ceiling — it has no
 // DB_POOL_MAX_CONNS-style config key because it doesn't need
-// per-deployment tuning the way MaxConns does (backend-persistence.md
-// FR-1).
+// per-deployment tuning the way MaxConns does.
 const MinConns = 2
 
 // PoolConfig builds a *pgxpool.Config for a single-process pool, sized
-// MinConns/maxConns, without opening a real connection — the shape
-// backend-persistence.md FR-1 fixes, inspectable in a test with no real
-// Postgres. maxConns comes from config.Config.DBPoolMaxConns.
+// MinConns/maxConns, without opening a real connection — inspectable in a
+// test with no real Postgres. maxConns comes from config.Config.DBPoolMaxConns.
 func PoolConfig(databaseURL string, maxConns int) (*pgxpool.Config, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
@@ -32,10 +29,9 @@ func PoolConfig(databaseURL string, maxConns int) (*pgxpool.Config, error) {
 	return cfg, nil
 }
 
-// NewPool constructs and opens the one *pgxpool.Pool this process uses,
-// per PoolConfig's sizing. Constructed once in main/run and passed to
-// repository constructors — never a package-level global
-// (backend-service-lifecycle.md FR-2).
+// NewPool constructs and opens the *pgxpool.Pool this process uses,
+// per PoolConfig's sizing. Constructed once in server startup and passed to
+// repository constructors — never a package-level global.
 func NewPool(ctx context.Context, databaseURL string, maxConns int) (*pgxpool.Pool, error) {
 	cfg, err := PoolConfig(databaseURL, maxConns)
 	if err != nil {

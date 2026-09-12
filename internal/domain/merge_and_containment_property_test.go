@@ -10,18 +10,11 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Checkpoint P-H / domain-bibliographic.md's own Test strategy: "FR-8's
-// invariants: no construction path produces a cycle... tested by
-// generating adversarial inputs, not just hand-picked examples." Tier 2
-// proved every *named* cycle shape (direct, 2-hop, 3-hop, merge-triggers-
-// containment) by hand; this generates 500 randomized merge/containment
-// operations across 6 Works and asserts the one property that actually
-// matters: every Work's merge/containment graph stays resolvable —
-// ResolveWork never fails — after every single operation, accepted or
-// rejected. A surviving cycle would surface here as resolveCanonicalWork's
-// own defensive "existing cycle" error, not a hang (it's bounded, not an
-// infinite loop), so this test can never itself get stuck even if the
-// property it's checking for turns out to be violated.
+// TestWorkMergeAndContainment_NoCycleSurvivesRandomizedOperations verifies that
+// randomized sequences of merge and containment operations never produce an
+// unresolvable cycle in the work graph. It executes 500 randomized operations
+// across 6 works and asserts that ResolveWork remains successful for all works
+// after every accepted or rejected operation.
 func TestWorkMergeAndContainment_NoCycleSurvivesRandomizedOperations(t *testing.T) {
 	ctx := context.Background()
 	rng := rand.New(rand.NewSource(20260821))

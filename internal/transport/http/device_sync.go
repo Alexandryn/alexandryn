@@ -28,7 +28,7 @@ func DeviceFromContext(ctx context.Context) *domain.PairedDevice {
 	return d
 }
 
-// SyncMiddleware validates that the requesting device is active and touches last_seen_at (FR-9).
+// SyncMiddleware validates that the requesting device is active and touches last_seen_at.
 // For /api/v1/sync/* routes, a valid device identifier is required.
 // For /api/v1/devices/* routes, a device identifier is optional (allowing host web admins),
 // but if provided, it must be valid and active.
@@ -93,7 +93,7 @@ func SyncMiddleware(deviceRepo domain.PairedDeviceRepository, now func() time.Ti
 				currentTime = now()
 			}
 
-			// Throttle UpdateLastSeen DB writes (audit 0016 #301): only write
+			// Throttle UpdateLastSeen DB writes: only write
 			// to the repository if last_seen_at is zero or at least 1 minute old.
 			// This avoids continuous DB write amplification on polled GET /sync/reading requests.
 			shouldUpdateDB := dev.LastSeenAt().IsZero() || currentTime.Sub(dev.LastSeenAt()) >= 60*time.Second
@@ -131,7 +131,7 @@ type ListDevicesResponse struct {
 	Devices []DeviceResponse `json:"devices"`
 }
 
-// ListDevicesHandler returns the authenticated user's paired devices (FR-1).
+// ListDevicesHandler returns the authenticated user's paired devices.
 // Scoped to the authenticated user's ID via FindByOwner.
 func ListDevicesHandler(deviceRepo domain.PairedDeviceRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +176,7 @@ func ListDevicesHandler(deviceRepo domain.PairedDeviceRepository) http.Handler {
 	})
 }
 
-// RevokeDeviceHandler revokes a device owned by the authenticated user (FR-2).
+// RevokeDeviceHandler revokes a device owned by the authenticated user.
 // Returns 404 on nonexistent device or cross-user attempt (no oracle).
 // Returns 409 if device is already revoked.
 func RevokeDeviceHandler(deviceRepo domain.PairedDeviceRepository, now func() time.Time) http.Handler {
@@ -230,7 +230,7 @@ type SyncStore interface {
 	GetSyncSequenceCeiling(ctx context.Context) (int64, error)
 }
 
-// SyncReadingHandler handles GET /api/v1/sync/reading?since=<cursor> (FR-6).
+// SyncReadingHandler handles GET /api/v1/sync/reading?since=<cursor>.
 // Returns incremental delta of reading data for active library and advances requesting device's cursor.
 func SyncReadingHandler(store SyncStore, devRepo domain.PairedDeviceRepository, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -333,7 +333,7 @@ type LibraryEntryChecker interface {
 	WorkInLibrary(ctx context.Context, workID domain.WorkID, libID domain.LibraryID) (bool, error)
 }
 
-// SyncProgressHandler handles POST /api/v1/sync/progress (FR-7).
+// SyncProgressHandler handles POST /api/v1/sync/progress.
 // Runs ReconcileProgress under row lock, updates canonical progress if Advanced,
 // and advances the device's sync cursor in the same transaction.
 func SyncProgressHandler(
@@ -410,7 +410,7 @@ func SyncProgressHandler(
 
 		// A precise position's tagged edition must belong to the reported
 		// work — the same boundary check the single-device progress path
-		// enforces (#111, backend-reading-api.md FR-5).
+		// enforces.
 		if err := readerapi.CheckPrecisePositionWork(r.Context(), editions, workID, pos); err != nil {
 			writeDomainError(w, err, corrID)
 			return
@@ -487,7 +487,7 @@ func SyncProgressHandler(
 
 			// Advance the device's pull cursor past this write ONLY when
 			// the write is provably the very next sequence on the global
-			// timeline (audit 0016 #90). sync_seq is one shared sequence
+			// timeline. sync_seq is one shared sequence
 			// across progress, bookmarks and highlights of every device;
 			// jumping the cursor to an arbitrary later value would place it
 			// above rows another device wrote in the gap, which the next
@@ -518,7 +518,7 @@ func SyncProgressHandler(
 		// unchanged, or advanced by exactly one to skip this write's own
 		// echo (see the advance guard above). It is never a jump to an
 		// arbitrary later sequence, so a client may safely persist it as
-		// the next `since` for GET /sync/reading (audit 0016 #90).
+		// the next `since` for GET /sync/reading.
 		writeJSON(w, http.StatusOK, map[string]any{
 			"outcome":  string(outcome),
 			"progress": progressToWire(res),

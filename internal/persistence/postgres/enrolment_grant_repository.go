@@ -9,8 +9,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// EnrolmentGrantJTIRepository implements domain.EnrolmentGrantJTIRepository
-// (backend-network-api.md FR-7 / FR-9).
+// EnrolmentGrantJTIRepository implements domain.EnrolmentGrantJTIRepository.
 type EnrolmentGrantJTIRepository struct {
 	pool *pgxpool.Pool
 }

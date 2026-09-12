@@ -8,18 +8,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-source.md FR-6: removing a Source MUST remove every
-// SourceOffering referencing it, and MUST NOT touch domain-library.md's
-// LibraryEntry records — the spec's own required fixture: a Source with
-// offerings for an Edition that also has a LibraryEntry. Offerings
-// removed, LibraryEntry untouched. Proven structurally here: the
-// LibraryEntryRepository fake is never even passed to
-// SourceRemovalService, so there is nothing for it to touch.
-//
-// FR-6's 2026-08-21 amendment: this cascade MUST apply as a single
-// atomic unit (ADR 0021) — composed through the Transactor, not two
-// unsequenced repository calls. Proven here by asserting InTx was
-// actually invoked, not just that the end state looks right.
+// Removing a Source removes every SourceOffering referencing it, and
+// does not touch LibraryEntry records. The cascade applies as a single
+// atomic unit composed through the Transactor.
 func TestSourceRemovalService_Remove(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

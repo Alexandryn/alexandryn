@@ -1,16 +1,6 @@
 openapi: 3.1.0
 
-# The system contract (architecture-contracts.md). Hand-authored,
-# spec-first (FR-1), versioned with the code (FR-2). It currently
-# describes only the health endpoints — the one thing that already
-# exists (architecture-contracts.md Acceptance criteria: "exists ... even
-# if it initially contains only the health endpoint"). Phase 06 adds the
-# first /api/v1 resources.
-#
-# Seeded during phase 04 Tier 4 (frontend shell): the frontend's MSW
-# mock layer (frontend-shell-and-routing.md FR-6) generates its
-# contract-covered fixtures from this file, so it had to exist for that
-# tier-(a) mechanism to be real rather than a documented intention.
+# The system contract. Hand-authored, spec-first, versioned with the code.
 
 info:
   title: Alexandryn system API
@@ -18,16 +8,14 @@ info:
   description: >-
     The contract between the Go server and every client (the Electron
     renderer and any LAN browser). Errors share one shape across every
-    endpoint (FR-5). Authentication is reserved but unused until phase 12
-    (FR-6).
+    endpoint.
 
 servers:
   - url: /
     description: The Go server's own origin (loopback by default, constitution §6).
 
-# Path-based versioning (FR-4). No /api/v1 resources exist yet; health
-# lives at the root, outside the versioned surface, because it predates
-# and is independent of it.
+# Path-based versioning. Health lives at the root, outside the versioned
+# surface, because it predates and is independent of it.
 paths:
   /healthz:
     get:
@@ -74,8 +62,7 @@ paths:
                 message: not yet started
                 correlationId: 00000000-0000-0000-0000-000000000000
 
-  # ── Phase 06: Library domain endpoints ───────────────────────────────
-  # backend-library-api.md FR-1 through FR-7
+  # ── Library domain endpoints ─────────────────────────────────────────
 
   /api/v1/library:
     get:
@@ -83,8 +70,7 @@ paths:
       summary: List works in the library (cursor-paginated)
       description: >-
         Returns a cursor-paginated list of Works reachable via the given
-        filter (backend-library-api.md FR-1–FR-4). Default limit 50,
-        max 100.
+        filter. Default limit 50, max 100.
       security: []
       parameters:
         - name: cursor
@@ -114,8 +100,7 @@ paths:
             type: string
             maxLength: 200
           description: >-
-            Full-text search query (PostgreSQL tsquery, parameterized —
-            backend-library-api.md FR-2). Max 200 characters.
+            Full-text search query (PostgreSQL tsquery, parameterized). Max 200 characters.
         - name: filter
           in: query
           required: false
@@ -124,8 +109,7 @@ paths:
             enum: [owned, wanted, all]
             default: all
           description: >-
-            Closed vocabulary (backend-library-api.md FR-3). An
-            unrecognized value is 400 InvalidInput.
+            Closed vocabulary. An unrecognized value is 400 InvalidInput.
         - name: sort
           in: query
           required: false
@@ -134,8 +118,7 @@ paths:
             enum: [added_at, title]
             default: added_at
           description: >-
-            Closed vocabulary (backend-library-api.md FR-4). An
-            unrecognized value is 400 InvalidInput.
+            Closed vocabulary. An unrecognized value is 400 InvalidInput.
       responses:
         '200':
           description: A page of works.
@@ -175,9 +158,9 @@ paths:
       summary: Get a single work's detail
       description: >-
         Returns one Work's metadata, owned editions (with formats), and
-        collection memberships (backend-library-api.md FR-5). Absent-
-        but-optional fields (cover URL, availability) are simply missing
-        from the response object, not present-but-null.
+        collection memberships. Absent-but-optional fields (cover URL,
+        availability) are simply missing from the response object, not
+        present-but-null.
       security: []
       parameters:
         - name: id
@@ -238,9 +221,8 @@ paths:
       operationId: listCollections
       summary: List all collections (unpaginated)
       description: >-
-        Returns every collection with its work count
-        (backend-library-api.md FR-6). No pagination — household-scale
-        collection count assumed manageable.
+        Returns every collection with its work count. No pagination —
+        household-scale collection count assumed manageable.
       security: []
       responses:
         '200':
@@ -265,8 +247,7 @@ paths:
       operationId: createCollection
       summary: Create a new collection
       description: >-
-        Creates a new collection (backend-library-api.md FR-6). Name is
-        validated against domain-bibliographic.md FR-5/FR-6's bar
+        Creates a new collection. Name is validated
         (max 100 chars, no control characters).
       security: []
       requestBody:
@@ -303,8 +284,7 @@ paths:
       summary: Get a collection's detail including member works
       description: >-
         Returns one collection and its member Works, each with the
-        per-membership added-at (backend-library-api.md FR-6,
-        domain-library.md FR-9).
+        per-membership added-at timestamp.
       security: []
       parameters:
         - name: id
@@ -360,9 +340,8 @@ paths:
       operationId: renameCollection
       summary: Rename a collection
       description: >-
-        Renames a collection (backend-library-api.md FR-6). Membership
-        changes go through POST/DELETE /api/v1/collections/{id}/works,
-        never bundled here.
+        Renames a collection. Membership changes go through
+        POST/DELETE /api/v1/collections/{id}/works, never bundled here.
       security: []
       parameters:
         - name: id
@@ -412,8 +391,7 @@ paths:
       summary: Delete a collection
       description: >-
         Deletes the collection and its membership rows. Non-cascading —
-        Works, Editions, and LibraryEntries are untouched
-        (domain-library.md FR-10, backend-library-api.md FR-6).
+        Works, Editions, and LibraryEntries are untouched.
       security: []
       parameters:
         - name: id
@@ -450,9 +428,9 @@ paths:
       operationId: addWorkToCollection
       summary: Add a work to a collection
       description: >-
-        Adds a Work to a Collection (backend-library-api.md FR-7).
-        Idempotent — adding an already-member Work is a no-op (200,
-        original added_at preserved, ON CONFLICT DO NOTHING).
+        Adds a Work to a Collection. Idempotent — adding an already-member
+        Work is a no-op (200, original added_at preserved, ON CONFLICT
+        DO NOTHING).
       security: []
       parameters:
         - name: id
@@ -505,9 +483,9 @@ paths:
       summary: Remove a work from a collection
       description: >-
         Removes the specific (collectionId, workId) membership row — a
-        hard delete (backend-library-api.md FR-7). The Work, Edition,
-        and every other Collection's membership are untouched. A
-        re-add after removal is a new membership with a fresh added_at.
+        hard delete. The Work, Edition, and every other Collection's
+        membership are untouched. A re-add after removal is a new
+        membership with a fresh added_at.
       security: []
       parameters:
         - name: id
@@ -546,8 +524,7 @@ paths:
                 message: "no membership found for that work in this collection"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
-  # ── Phase 07: Metadata discovery endpoints ─────────────────────────
-  # backend-metadata-adapter.md FR-1 through FR-9, backend-metadata-caching.md FR-6
+  # ── Metadata discovery endpoints ─────────────────────────────────────
 
   /api/v1/discover:
     get:
@@ -555,7 +532,7 @@ paths:
       summary: Search Open Library for works (offset-paginated)
       description: >-
         Proxies search query to Open Library, returning normalised bibliographic
-        results (backend-metadata-adapter.md FR-1, FR-2).
+        results.
       security: []
       parameters:
         - name: q
@@ -630,8 +607,7 @@ paths:
       summary: Fetch and normalise an Open Library work and its editions
       description: >-
         Fetches an Open Library work record by its key (e.g. OL82563W), normalises
-        its bibliographic fields, and resolves up to 50 editions and 20 authors
-        (backend-metadata-adapter.md FR-3, backend-metadata-caching.md FR-2).
+        its bibliographic fields, and resolves up to 50 editions and 20 authors.
       security: []
       parameters:
         - name: openLibraryId
@@ -704,7 +680,7 @@ paths:
       summary: Fetch or serve cached cover image for an Open Library cover ID
       description: >-
         Serves binary cover image from local disk cache or proxies from Open Library
-        Covers API with immutable caching (backend-metadata-caching.md FR-6).
+        Covers API with immutable caching.
       security: []
       parameters:
         - name: coverId
@@ -763,8 +739,7 @@ paths:
                 message: "Open Library Covers API is temporarily unavailable"
                 correlationId: 00000000-0000-0000-0000-000000000000
 
-  # ── Phase 08: Sources ──────────────────────────────────────────────
-  # backend-source-adapter.md FR-1..FR-9
+  # ── Sources ──────────────────────────────────────────────────────────
 
   /api/v1/sources:
     get:
@@ -773,8 +748,7 @@ paths:
       description: >-
         Returns all configured sources with health status and detected
         capabilities. A stored credential is represented only as
-        `hasCredential` — the username and password are never echoed
-        back (backend-source-adapter.md FR-2).
+        `hasCredential` — the username and password are never echoed back.
       security: []
       responses:
         '200':
@@ -805,8 +779,7 @@ paths:
       description: >-
         Creates a source and runs a synchronous health check as part of
         creation. The source is created even if the health check fails —
-        an unreachable source now may be reachable later
-        (backend-source-adapter.md FR-1).
+        an unreachable source now may be reachable later.
       security: []
       requestBody:
         required: true
@@ -897,8 +870,7 @@ paths:
       description: >-
         Updates label, config, or credential and re-runs the health
         check. A credential update replaces the stored value entirely —
-        there is no partial-field credential update
-        (backend-source-adapter.md FR-2).
+        there is no partial-field credential update.
       security: []
       parameters:
         - name: id
@@ -959,8 +931,7 @@ paths:
       summary: Remove a source
       description: >-
         Removes the source and cascades to every SourceOffering
-        referencing it, atomically (domain-source.md FR-6). LibraryEntry
-        records are untouched.
+        referencing it, atomically. LibraryEntry records are untouched.
       security: []
       parameters:
         - name: id
@@ -987,9 +958,9 @@ paths:
       operationId: checkSourceHealth
       summary: Probe a source's reachability now
       description: >-
-        Runs a lightweight reachability probe and re-detects capabilities
-        (backend-source-adapter.md FR-5, FR-6). `detail` is a closed
-        vocabulary — never a raw error message or response body.
+        Runs a lightweight reachability probe and re-detects capabilities.
+        `detail` is a closed vocabulary — never a raw error message or
+        response body.
       security: []
       parameters:
         - name: id
@@ -1026,9 +997,8 @@ paths:
       description: >-
         Returns a page of SourceCandidate items — a title/author guess, a
         FileReference, and an optional cover URL. Never a domain
-        SourceOffering (backend-source-adapter.md FR-7, FR-9, FR-10). The
-        cursor is opaque and server-validated; an off-origin continuation
-        link is rejected before any fetch (FR-11).
+        SourceOffering. The cursor is opaque and server-validated; an
+        off-origin continuation link is rejected before any fetch.
       security: []
       parameters:
         - name: id
@@ -1091,7 +1061,7 @@ paths:
           description: >-
             The source is unavailable — unreachable, a redirect, a
             decryption failure, or the outbound concurrency cap was
-            reached (backend-source-adapter.md FR-13, FR-14).
+            reached.
           content:
             application/json:
               schema:
@@ -1108,8 +1078,7 @@ paths:
       description: >-
         Same SourceCandidate shape as browse, via the source's advertised
         search mechanism. Returns 409 when the source's detected
-        CanSearch is false — never a silent empty result
-        (backend-source-adapter.md FR-8).
+        CanSearch is false — never a silent empty result.
       security: []
       parameters:
         - name: id
@@ -1412,7 +1381,7 @@ paths:
       operationId: getImportCandidateCover
       summary: Serve extracted cover image for an import candidate
       description: >-
-        Serves binary cover image from candidate's extracted metadata (backend-import-pipeline.md FR-9).
+        Serves binary cover image from candidate's extracted metadata.
       parameters:
         - name: id
           in: path
@@ -1751,7 +1720,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
               example: { code: not_found, message: "no work with that id", correlationId: 00000000-0000-0000-0000-000000000000 }
 
-  # ── Phase 12: Authentication, RBAC & Multi-Library Namespacing ───────
+  # ── Authentication, RBAC & Multi-Library Namespacing ─────────────────
 
   /api/v1/auth/setup/status:
     get:
@@ -2304,8 +2273,7 @@ paths:
                 libraryId: "00000000-0000-0000-0000-000000000001"
                 role: "reader"
 
-  # ── Phase 13: Network and Device Pairing endpoints ───────────────────
-  # backend-network-api.md FR-1 through FR-6
+  # ── Network and Device Pairing endpoints ─────────────────────────────
 
   /api/v1/network/pair/initiate:
     post:
@@ -2776,8 +2744,6 @@ paths:
 
 components:
   securitySchemes:
-    # Reserved from the start (FR-6); no endpoint requires it until
-    # phase 12.
     bearerAuth:
       type: http
       scheme: bearer
@@ -2944,9 +2910,8 @@ components:
       additionalProperties: false
       required: [code, message, correlationId]
       description: >-
-        The one error shape every endpoint uses (FR-5). `correlationId`
-        matches the id in the server's structured logs for the same
-        request.
+        The one error shape every endpoint uses. `correlationId` matches
+        the id in the server's structured logs for the same request.
       properties:
         code:
           type: string
@@ -2963,16 +2928,14 @@ components:
           description: Ties this response to one server log line.
           example: 00000000-0000-0000-0000-000000000000
 
-    # ── Phase 06: Library domain schemas ─────────────────────────────
-    # backend-library-api.md FR-1/FR-5/FR-6/FR-7
+    # ── Library domain schemas ───────────────────────────────────────
 
     WorkSummary:
       type: object
       additionalProperties: false
       required: [id, title, subtitle, authors, isOwned, collections]
       description: >-
-        One work in the /api/v1/library paginated list
-        (backend-library-api.md FR-1).
+        One work in the /api/v1/library paginated list.
       properties:
         id:
           type: string
@@ -2991,7 +2954,7 @@ components:
           type: boolean
           description: >-
             True when at least one Edition of this Work has a LibraryEntry
-            (domain-library.md FR-2, computed not stored).
+            (computed, not stored).
         collections:
           type: array
           items:
@@ -3012,8 +2975,7 @@ components:
       additionalProperties: false
       required: [works, nextCursor]
       description: >-
-        Response body for GET /api/v1/library
-        (backend-library-api.md FR-1).
+        Response body for GET /api/v1/library.
       properties:
         works:
           type: array
@@ -3032,8 +2994,7 @@ components:
       additionalProperties: false
       required: [id, language, publisher, formats]
       description: >-
-        One owned Edition in a WorkDetail response
-        (backend-library-api.md FR-5). Amended for phase 11: formats
+        One owned Edition in a WorkDetail response. formats
         carries the distinct Format values across every SourceOffering
         referencing this Edition.
       properties:
@@ -3061,10 +3022,9 @@ components:
           items:
             type: string
           description: >-
-            Distinct Format values (domain-source.md FR-2) across every
-            SourceOffering referencing this Edition. Empty array when no
-            SourceOfferings exist. Always present (never absent), per
-            backend-library-api.md FR-5 amendment.
+            Distinct Format values across every SourceOffering referencing
+            this Edition. Empty array when no SourceOfferings exist. Always
+            present (never absent).
 
     CollectionRef:
       type: object
@@ -3072,7 +3032,7 @@ components:
       required: [id, name]
       description: >-
         Minimal collection reference embedded in WorkSummary and
-        WorkDetail (backend-library-api.md FR-5/FR-6).
+        WorkDetail.
       properties:
         id:
           type: string
@@ -3083,16 +3043,15 @@ components:
           type: string
           format: date-time
           description: >-
-            domain-library.md FR-9's per-membership added-at timestamp —
-            when this Work was added to this Collection.
+            Per-membership added-at timestamp — when this Work was added
+            to this Collection.
 
     WorkDetail:
       type: object
       additionalProperties: false
       required: [id, title, subtitle, authors, ownedEditions, collections]
       description: >-
-        Response body for GET /api/v1/works/{id}
-        (backend-library-api.md FR-5).
+        Response body for GET /api/v1/works/{id}.
       properties:
         id:
           type: string
@@ -3119,23 +3078,21 @@ components:
           items:
             $ref: '#/components/schemas/OwnedEdition'
           description: >-
-            Editions of this Work for which a LibraryEntry exists
-            (domain-library.md FR-1).
+            Editions of this Work for which a LibraryEntry exists.
         collections:
           type: array
           items:
             $ref: '#/components/schemas/CollectionRef'
           description: >-
             Collections this Work is a member of, each with the
-            per-membership added-at (domain-library.md FR-9).
+            per-membership added-at timestamp.
 
     CollectionSummary:
       type: object
       additionalProperties: false
       required: [id, name, workCount]
       description: >-
-        One collection in the GET /api/v1/collections list
-        (backend-library-api.md FR-6).
+        One collection in the GET /api/v1/collections list.
       properties:
         id:
           type: string
@@ -3150,8 +3107,7 @@ components:
       additionalProperties: false
       required: [id, name, works]
       description: >-
-        Response body for GET /api/v1/collections/{id}
-        (backend-library-api.md FR-6).
+        Response body for GET /api/v1/collections/{id}.
       properties:
         id:
           type: string
@@ -3163,28 +3119,26 @@ components:
             $ref: '#/components/schemas/WorkSummary'
           description: >-
             Works in this Collection, each carrying the per-membership
-            added-at (domain-library.md FR-9).
+            added-at timestamp.
 
     CollectionCreate:
       type: object
       additionalProperties: false
       required: [name]
       description: >-
-        Request body for POST /api/v1/collections
-        (backend-library-api.md FR-6).
+        Request body for POST /api/v1/collections.
       properties:
         name:
           type: string
           maxLength: 100
-          description: Collection name (domain-library.md validation bar).
+          description: Collection name.
 
     CollectionRename:
       type: object
       additionalProperties: false
       required: [name]
       description: >-
-        Request body for PATCH /api/v1/collections/{id}
-        (backend-library-api.md FR-6).
+        Request body for PATCH /api/v1/collections/{id}.
       properties:
         name:
           type: string
@@ -3195,21 +3149,19 @@ components:
       additionalProperties: false
       required: [workId]
       description: >-
-        Request body for POST /api/v1/collections/{id}/works
-        (backend-library-api.md FR-7).
+        Request body for POST /api/v1/collections/{id}/works.
       properties:
         workId:
           type: string
 
-    # ── Phase 07: Discovery domain schemas ─────────────────────────────
-    # backend-metadata-adapter.md FR-1/FR-2/FR-3
+    # ── Discovery domain schemas ───────────────────────────────────────
 
     NormalisedAuthor:
       type: object
       additionalProperties: false
       required: [name]
       description: >-
-        A normalised author reference (backend-metadata-adapter.md FR-2).
+        A normalised author reference.
       properties:
         openLibraryAuthorKey:
           type: string
@@ -3224,8 +3176,7 @@ components:
       additionalProperties: false
       required: [openLibraryWorkKey, title, authors, editionCount]
       description: >-
-        A single search result item in /api/v1/discover
-        (backend-metadata-adapter.md FR-2).
+        A single search result item in /api/v1/discover.
       properties:
         openLibraryWorkKey:
           type: string
@@ -3255,8 +3206,7 @@ components:
       additionalProperties: false
       required: [items, total, limit, offset]
       description: >-
-        Paginated response body for GET /api/v1/discover
-        (backend-metadata-adapter.md FR-1).
+        Paginated response body for GET /api/v1/discover.
       properties:
         items:
           type: array
@@ -3277,7 +3227,7 @@ components:
       additionalProperties: false
       required: [title, subtitle, description, subjects, authors]
       description: >-
-        Normalised Open Library work details (backend-metadata-adapter.md FR-3).
+        Normalised Open Library work details.
       properties:
         title:
           type: string
@@ -3307,7 +3257,7 @@ components:
       additionalProperties: false
       required: [title, publisher, publishDate, language, openLibraryEditionKey]
       description: >-
-        One edition of an Open Library work (backend-metadata-adapter.md FR-3).
+        One edition of an Open Library work.
       properties:
         title:
           type: string
@@ -3333,8 +3283,7 @@ components:
       additionalProperties: false
       required: [work, editions]
       description: >-
-        Response body for GET /api/v1/discover/works/{openLibraryId}
-        (backend-metadata-adapter.md FR-3).
+        Response body for GET /api/v1/discover/works/{openLibraryId}.
       properties:
         work:
           $ref: '#/components/schemas/NormalisedWork'
@@ -3344,23 +3293,20 @@ components:
             $ref: '#/components/schemas/NormalisedEdition'
           description: First 50 editions of this work.
 
-    # ── Phase 08: Source domain schemas ───────────────────────────────
-    # backend-source-adapter.md FR-1/FR-2/FR-5/FR-6/FR-9
+    # ── Source domain schemas ─────────────────────────────────────────
 
     SourceKind:
       type: string
       enum: [local-folder, opds]
       description: >-
-        The provider kind — a closed vocabulary
-        (backend-source-adapter.md FR-1).
+        The provider kind — a closed vocabulary.
 
     SourceCapabilities:
       type: object
       additionalProperties: false
       required: [canList, canSearch, canDownload]
       description: >-
-        The fixed capability set (domain-source.md FR-1), re-detected on
-        every health check (backend-source-adapter.md FR-5).
+        The fixed capability set, re-detected on every health check.
       properties:
         canList:
           type: boolean
@@ -3374,8 +3320,7 @@ components:
       additionalProperties: false
       required: [status, checkedAt, detail]
       description: >-
-        The result of the last reachability probe
-        (backend-source-adapter.md FR-6).
+        The result of the last reachability probe.
       properties:
         status:
           type: string
@@ -3413,8 +3358,7 @@ components:
       description: >-
         Kind-specific connection config: `basePath` for `local-folder`,
         `baseUrl` for `opds`. Exactly one is present per source. Neither
-        is secret — both are echoed back
-        (backend-source-adapter.md FR-2).
+        is secret — both are echoed back.
       properties:
         basePath:
           type: string
@@ -3429,7 +3373,7 @@ components:
       required: [username, password]
       description: >-
         HTTP Basic Auth credential — write-only, opds sources only. Never
-        returned by any response (backend-source-adapter.md FR-1, FR-2).
+        returned by any response.
       properties:
         username:
           type: string
@@ -3445,8 +3389,8 @@ components:
       additionalProperties: false
       required: [id, label, kind, config, hasCredential, health, capabilities]
       description: >-
-        A configured source (backend-source-adapter.md FR-2). A stored
-        credential appears only as `hasCredential: true` — the response
+        A configured source. A stored credential appears only as
+        `hasCredential: true` — the response
         shape structurally cannot carry the username or password.
       properties:
         id:
@@ -3481,13 +3425,12 @@ components:
       additionalProperties: false
       required: [label, kind, config]
       description: >-
-        Request body for POST /api/v1/sources
-        (backend-source-adapter.md FR-1).
+        Request body for POST /api/v1/sources.
       properties:
         label:
           type: string
           maxLength: 100
-          description: Source label (domain-source.md validation bar).
+          description: Source label.
         kind:
           $ref: '#/components/schemas/SourceKind'
         config:
@@ -3500,8 +3443,7 @@ components:
       additionalProperties: false
       description: >-
         Request body for PATCH /api/v1/sources/{id}. Every field is
-        optional; a present `credential` replaces the stored value
-        entirely (backend-source-adapter.md FR-2).
+        optional; a present `credential` replaces the stored value entirely.
       properties:
         label:
           type: string
@@ -3516,7 +3458,7 @@ components:
       additionalProperties: false
       required: [referenceId, format, sizeBytes]
       description: >-
-        An opaque, source-scoped file identifier (domain-source.md FR-4).
+        An opaque, source-scoped file identifier.
         `referenceId` is never a path or URL a client should interpret.
       properties:
         referenceId:
@@ -3536,7 +3478,7 @@ components:
       required: [title, author, fileReference, coverUrl]
       description: >-
         One browsed or searched item — an unmatched candidate, never a
-        domain SourceOffering (backend-source-adapter.md FR-9, FR-10).
+        domain SourceOffering.
         Every string here has already passed the adapter's normalisation
         and validation.
       properties:
@@ -3560,7 +3502,7 @@ components:
       required: [items, nextCursor]
       description: >-
         A page of candidates for GET /api/v1/sources/{id}/browse and
-        /search (backend-source-adapter.md FR-7, FR-8).
+        /search.
       properties:
         items:
           type: array
@@ -3729,8 +3671,7 @@ components:
         role: { type: string, enum: [admin, reader] }
         createdAt: { type: string, format: date-time }
 
-    # ── Phase 13: Network and Device Pairing schemas ─────────────────
-    # backend-network-api.md FR-1 through FR-6
+    # ── Network and Device Pairing schemas ───────────────────────────
 
     InitiatePairingResponse:
       type: object
@@ -3927,8 +3868,7 @@ components:
         progress: { $ref: '#/components/schemas/ReadingProgress' }
         cursor: { type: integer }
 
-# Applied globally so the reserved scheme is visible in the contract;
-# every current operation opts out with `security: []` until phase 12.
+# Applied globally so the reserved scheme is visible in the contract.
 security:
   - bearerAuth: []
 

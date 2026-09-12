@@ -13,7 +13,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// FR-3, confirmed against reality: a genuine unique-constraint violation
+// Confirmed against reality: a genuine unique-constraint violation
 // triggered against a real PostgreSQL instance surfaces as pgx's actual
 // *pgconn.PgError shape, and the same TranslateError used by the Unit
 // layer's synthetic test correctly categorizes it as Conflict — proof

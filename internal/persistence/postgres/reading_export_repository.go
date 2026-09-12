@@ -11,10 +11,9 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// ReadingExportRepository is the bulk-read surface reading-data-export.md
-// needs — a straight read of the three reading tables, optionally scoped
-// to one Work. It is read-only and performs no writes and no source
-// calls (FR-5).
+// ReadingExportRepository is the bulk-read surface for reading data export —
+// a straight read of the three reading tables, optionally scoped to one Work.
+// It is read-only and performs no writes and no source calls.
 type ReadingExportRepository struct {
 	pool *pgxpool.Pool
 }
@@ -50,7 +49,7 @@ type ExportMark struct {
 
 // ListProgress returns the authenticated user's ReadingProgress in the
 // active library, or just workID's when it is non-empty. It never returns
-// another user's rows (AUDIT-0012-C1). Ordered by work id for a
+// another user's rows. Ordered by work id for a
 // deterministic document.
 func (r *ReadingExportRepository) ListProgress(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportProgress, error) {
 	exec := executorFrom(ctx, r.pool)
@@ -87,7 +86,7 @@ func (r *ReadingExportRepository) ListProgress(ctx context.Context, userID domai
 
 // ListMarks returns the authenticated user's bookmarks and highlights in
 // the active library, or just those on the editions of workID when it is
-// non-empty. It never returns another user's rows (AUDIT-0012-C1).
+// non-empty. It never returns another user's rows.
 // Ordered by (edition_id, created_at, id).
 func (r *ReadingExportRepository) ListMarks(ctx context.Context, userID domain.UserID, libraryID domain.LibraryID, workID string) ([]ExportMark, error) {
 	exec := executorFrom(ctx, r.pool)
@@ -127,7 +126,7 @@ func (r *ReadingExportRepository) ListMarks(ctx context.Context, userID domain.U
 	return out, rows.Err()
 }
 
-// WorkExists reports whether workID names a real Work (FR-2's 404).
+// WorkExists reports whether workID names an existing Work record.
 func (r *ReadingExportRepository) WorkExists(ctx context.Context, workID string) (bool, error) {
 	exec := executorFrom(ctx, r.pool)
 	var exists bool

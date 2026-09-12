@@ -182,12 +182,12 @@ func TestEngine_PanicIsRecoveredAndTreatedAsFailure(t *testing.T) {
 }
 
 // TestEngine_FencingAfterReclaim: the worker's heartbeat is delayed
-// past the lease (HeartbeatInterval > LeaseDuration here, simulating the
-// GC-pause / starved-goroutine race FR-5 names). The reaper reclaims the
+// past the lease (HeartbeatInterval > LeaseDuration here, simulating a
+// pause or starved goroutine). The reaper reclaims the
 // job with a fresh token while the original handler still runs; the late
 // heartbeat then detects the lost lease and cancels the handler, and the
 // original worker writes no result — the row stays the reaper's, never a
-// completion (the database-write half of "no double execution").
+// completion.
 func TestEngine_FencingAfterReclaim(t *testing.T) {
 	cfg := jobs.Config{
 		Concurrency:       1,
@@ -294,7 +294,7 @@ func TestEngine_ReaperRecoversAbandonedJob(t *testing.T) {
 // TestEngine_ShutdownCancelsHandlersAndLeavesRowIntact: on shutdown a
 // running handler's context is cancelled; a cooperative handler returns
 // promptly and shutdown completes cleanly, and the job row is left
-// `running` for the reaper with no synthetic failure written (FR-10).
+// `running` for the reaper with no synthetic failure written.
 func TestEngine_ShutdownCancelsHandlersAndLeavesRowIntact(t *testing.T) {
 	cfg := fastConfig()
 	cfg.Concurrency = 1
@@ -371,7 +371,7 @@ func TestEngine_ShutdownAbandonsUncooperativeHandler(t *testing.T) {
 	}
 }
 
-// audit 0016 #299: an admin cancel must abort the running handler's
+// An admin cancel must abort the running handler's
 // context immediately, not leave it running until the next heartbeat.
 // The heartbeat interval here is far longer than the test's patience.
 func TestEngine_CancelJobAbortsHandlerContextImmediately(t *testing.T) {

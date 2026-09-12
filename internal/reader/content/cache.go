@@ -9,7 +9,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// Clock is the injected time source (backend-test-harness.md FR-5) — no
+// Clock is the injected time source — no
 // direct time.Now / timer, so idle eviction is testable without a real
 // ten-minute wait.
 type Clock interface {
@@ -25,8 +25,7 @@ func (systemClock) Now() time.Time { return time.Now() }
 // over it plus a cleanup that closes the reader and removes the temp
 // file. It runs under a cache-owned context (not any HTTP request's), so
 // the temp file lives until the cache evicts the entry — never until the
-// request that happened to populate it completes (backend-reader-content.md
-// FR-2).
+// request that happened to populate it completes.
 type Loader func(ctx context.Context, editionID domain.EditionID) (*zip.Reader, func(), error)
 
 const (
@@ -35,7 +34,7 @@ const (
 	defaultLoadTimeout = 30 * time.Second
 )
 
-// Cache holds up to a handful of open EPUB archives (FR-3): keyed by
+// Cache holds up to a handful of open EPUB archives: keyed by
 // editionID, LRU-evicted at capacity, idle-evicted after a TTL, and
 // reference-counted so an in-flight request pins its entry against
 // eviction until it completes. Constructed once and injected, never a
@@ -68,7 +67,7 @@ type loadCall struct {
 }
 
 // NewCache builds a Cache with the production wall clock and default
-// bounds (FR-3: 5 open editions, 10-minute idle TTL).
+// bounds (5 open editions, 10-minute idle TTL).
 func NewCache(loader Loader) *Cache {
 	return newCache(loader, systemClock{}, defaultMaxOpen, defaultIdleTTL, defaultLoadTimeout)
 }

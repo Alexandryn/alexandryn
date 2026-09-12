@@ -8,10 +8,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-library.md FR-4/FR-8: a Collection contains Works, not Editions
-// or files. An empty Collection (zero Works) is a legal, ordinary state,
-// same reasoning as domain-bibliographic.md FR-3's "zero is not an
-// error."
+// A Collection contains Works, not Editions or files. An empty Collection
+// (zero Works) is a valid, ordinary initial state.
 func TestNewCollection(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -46,8 +44,8 @@ func TestNewCollection_IsLegallyEmpty(t *testing.T) {
 	}
 }
 
-// FR-9: Collection membership carries its own added-at timestamp per
-// Work, independent of any LibraryEntry's.
+// Collection membership carries its own added-at timestamp per Work,
+// independent of any LibraryEntry's.
 func TestCollection_AddMember(t *testing.T) {
 	c, err := domain.NewCollection(domain.CollectionID("collection-1"), "Want to Read")
 	if err != nil {

@@ -8,16 +8,14 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/config"
 )
 
-// validEnv sets every key this task covers (backend-configuration.md
-// FR-4's nine non-BIND_ADDRESS keys) to a value that passes validation,
-// so an individual test can override just the one key it cares about
-// without Load failing on OPEN_LIBRARY_USER_AGENT's required-ness.
+// validEnv sets default values for required environment variables (e.g.
+// OPEN_LIBRARY_USER_AGENT) so individual tests can isolate and test specific keys.
 func validEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("OPEN_LIBRARY_USER_AGENT", "Alexandryn/dev (test)")
 }
 
-// --- FR-2: per-key precedence (default, then environment; file is T4's) ---
+// Tests verifying configuration precedence:
 
 func TestLoad_Precedence(t *testing.T) {
 	cases := []struct {
@@ -122,7 +120,7 @@ func TestLoad_EveryOptionalKeySetSimultaneouslyResolvesIndependently(t *testing.
 	}
 }
 
-// --- FR-3: category discipline ---
+// Tests verifying required and optional category behaviors:
 
 func TestLoad_RequiredKeyMissingErrors(t *testing.T) {
 	// OPEN_LIBRARY_USER_AGENT deliberately left unset.
@@ -157,7 +155,7 @@ func TestLoad_DatabaseURLAbsentIsZeroValueNotError(t *testing.T) {
 	}
 }
 
-// --- FR-4: type/enum validation, table-driven ---
+// Table-driven tests for type and enum validation:
 
 func TestLoad_TypeValidation(t *testing.T) {
 	cases := []struct {
@@ -212,7 +210,7 @@ func TestLoad_TypeValidation(t *testing.T) {
 	}
 }
 
-// --- FR-6: error content names the specific key and problem ---
+// Tests verifying that error messages identify the specific problematic key:
 
 func TestLoad_ErrorContentNamesTheKey(t *testing.T) {
 	cases := []struct {
@@ -252,17 +250,17 @@ func TestLoad_ErrorContentNamesTheKey(t *testing.T) {
 				t.Fatalf("error %q doesn't name %q", err.Error(), tc.wantSub)
 			}
 			if strings.Contains(strings.ToLower(err.Error()), "invalid configuration") {
-				t.Fatalf("error %q uses the generic phrase this spec forbids", err.Error())
+				t.Fatalf("error %q should name the specific failure", err.Error())
 			}
 		})
 	}
 }
 
-// --- Adversarial cases (the ones reachable without file or BIND_ADDRESS support) ---
+// Tests for resilience against unrecognized keys and unstructured values:
 
 func TestLoad_UnrelatedEnvironmentVariableIsIgnored(t *testing.T) {
 	validEnv(t)
-	t.Setenv("HTTP_REQUEST_TIMEOUT", "5s") // retired key name, not in FR-4's table
+	t.Setenv("HTTP_REQUEST_TIMEOUT", "5s") // retired key name
 
 	if _, err := config.Load("", noFile, fakeUserConfigDir); err != nil {
 		t.Fatalf("Load() error = %v, want nil — an unrelated variable must have no effect", err)
@@ -275,7 +273,7 @@ func TestLoad_DatabaseURLGarbageTextIsPassedThroughUnexamined(t *testing.T) {
 
 	cfg, err := config.Load("", noFile, fakeUserConfigDir)
 	if err != nil {
-		t.Fatalf("Load() error = %v, want nil — this spec defines no parse rule for DATABASE_URL", err)
+		t.Fatalf("Load() error = %v, want nil", err)
 	}
 	if cfg.DatabaseURL != "not a connection string at all" {
 		t.Fatalf("DatabaseURL = %q, want the raw value passed through unexamined", cfg.DatabaseURL)

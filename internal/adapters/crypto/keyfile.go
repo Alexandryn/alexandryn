@@ -10,15 +10,13 @@ import (
 	"path/filepath"
 )
 
-// KeyFileName is the credential key's filename within the app-data
-// directory (backend-source-adapter.md FR-13).
+// KeyFileName is the credential key's filename within the app-data directory.
 const KeyFileName = "source-credentials.key"
 
 // CredentialCounter reports how many stored sources currently hold an
-// encrypted credential. LoadOrCreateKey uses it to tell a genuine first
-// run (generate a key silently) from a lost key file with credentialed
-// sources still present (generate a replacement, but log a warning
-// first) — FR-13's exact distinction.
+// encrypted credential. LoadOrCreateKey uses it to distinguish an initial
+// run (generate a key silently) from a missing key file with existing
+// credentialed sources (generate replacement and log a warning).
 type CredentialCounter func() (int, error)
 
 // KeyPath returns the credential key file's path under appDataDir.
@@ -26,22 +24,15 @@ func KeyPath(appDataDir string) string {
 	return filepath.Join(appDataDir, KeyFileName)
 }
 
-// LoadOrCreateKey reads the credential key from appDataDir, or creates
-// one following FR-13's rules:
+// LoadOrCreateKey reads the credential key from appDataDir, or creates one:
 //
 //   - key file present and 32 bytes: return it.
-//   - key file absent, no credentialed sources: genuine first run (or
-//     every credentialed source was removed) — generate a key silently,
-//     write it 0600.
-//   - key file absent, at least one credentialed source: the key was
-//     lost. Log a warn line with the affected count (never labels),
-//     then generate a replacement 0600 key. Every existing ciphertext
-//     is now permanently undecryptable, which surfaces per-source as
-//     that source's next health check failing with "auth-rejected".
+//   - key file absent, no credentialed sources: initial run — generate a key silently (mode 0600).
+//   - key file absent, credentialed sources present: log a warning with the count
+//     of affected sources, then generate a replacement key. Existing ciphertexts
+//     will need credentials re-entered.
 //
-// countCredentialed may be nil, in which case a missing key file is
-// always treated as first run (the only caller that passes nil is a
-// context with no persistence yet).
+// countCredentialed may be nil, in which case a missing key file is treated as first run.
 func LoadOrCreateKey(appDataDir string, countCredentialed CredentialCounter, logger *slog.Logger) ([]byte, error) {
 	path := KeyPath(appDataDir)
 

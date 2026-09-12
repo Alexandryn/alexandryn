@@ -55,7 +55,7 @@ type wireWorkDetail struct {
 
 // activeLibraryScoped resolves the authenticated user and the active
 // library, and verifies the user is a member of it. It mirrors the
-// leaderboard/reading pattern so the catalog handlers (audit 0016 #88)
+// leaderboard/reading pattern so the catalog handlers
 // carry the same defence-in-depth check the middleware already enforces.
 // On failure it writes the response and returns ok=false.
 func activeLibraryScoped(w http.ResponseWriter, r *http.Request, corrID string) (domain.LibraryID, bool) {
@@ -72,7 +72,7 @@ func activeLibraryScoped(w http.ResponseWriter, r *http.Request, corrID string) 
 	return activeLib, true
 }
 
-// LibraryHandler returns the HTTP handler for GET /api/v1/library (backend-library-api.md FR-1–FR-4).
+// LibraryHandler returns the HTTP handler for GET /api/v1/library.
 func LibraryHandler(repo domain.WorkRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -193,7 +193,7 @@ func LibraryHandler(repo domain.WorkRepository) http.Handler {
 	})
 }
 
-// WorkDetailHandler returns the HTTP handler for GET /api/v1/works/{id} (backend-library-api.md FR-5).
+// WorkDetailHandler returns the HTTP handler for GET /api/v1/works/{id}.
 func WorkDetailHandler(repo domain.WorkRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())

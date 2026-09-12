@@ -9,9 +9,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// TokenTypeEnrolment is the typ of a device-pairing enrolment grant
-// (backend-network-transport.md FR-10, ADR 0028 §6). It is minted by
-// POST /api/v1/network/pair/verify and spent once at
+// TokenTypeEnrolment is the typ of a device-pairing enrolment grant.
+// It is minted by POST /api/v1/network/pair/verify and spent once at
 // POST /api/v1/auth/login to associate the new session's device with the
 // PairingSession. It carries NO UserID and NO role — it authorises
 // exactly that one association step and nothing else.
@@ -19,8 +18,7 @@ import (
 // A grant is signed with its OWN HKDF subkey ("enrolment-grant-v1"),
 // never the access-token key, so it is structurally impossible for it to
 // be accepted on the access path — VerifyAccessToken's type check AND the
-// distinct key both reject it (the phase-12 MFA-ticket-as-bearer defect,
-// AUDIT-0012-C2, is not repeated).
+// distinct key both reject it.
 const TokenTypeEnrolment = "enrol"
 
 // EnrolmentGrantTTL is fixed at 10 minutes — the flow is "type your
@@ -51,8 +49,7 @@ func NewEnrolmentGrantSigner(secret []byte, issuer string, ids domain.IDGenerato
 }
 
 // Sign mints a grant for sessionID. The jti is fresh per call; the caller
-// records it as spent at login time (single-use, backend-network-api.md
-// FR-9) — this function persists nothing.
+// records it as spent at login time for single-use replay protection.
 func (s *EnrolmentGrantSigner) Sign(sessionID domain.PairingSessionID, now time.Time) (string, error) {
 	if sessionID == "" {
 		return "", errors.New("auth: enrolment grant needs a pairing session ID")
@@ -68,10 +65,9 @@ func (s *EnrolmentGrantSigner) Sign(sessionID domain.PairingSessionID, now time.
 }
 
 // Verify checks the algorithm, signature (constant time), expiry, issuer,
-// and that typ is exactly "enrol". An expired / tampered / wrong-subkey /
+// and that typ is exactly "enrol". An expired, tampered, wrong-subkey, or
 // wrong-typ grant is rejected — the caller (the login handler) treats a
-// rejection as "no device association", not "login failed"
-// (backend-network-api.md FR-9).
+// rejection as "no device association", not "login failed".
 func (s *EnrolmentGrantSigner) Verify(token string, now time.Time) (*EnrolmentClaims, error) {
 	claimsJSON, err := hs256VerifiedClaims(s.secret, token)
 	if err != nil {

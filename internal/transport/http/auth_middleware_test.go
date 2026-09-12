@@ -129,7 +129,7 @@ func TestAuthMiddleware(t *testing.T) {
 		}
 	})
 
-	t.Run("X-Library-Id not in the token's claims is rejected 403 (AUDIT-0012-P12-4)", func(t *testing.T) {
+	t.Run("X-Library-Id not in the token's claims is rejected 403", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/library", nil)
 		req.Header.Set("Authorization", "Bearer valid-token")
 		req.Header.Set("X-Library-Id", "lib-the-user-does-not-belong-to")
@@ -148,8 +148,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 func TestAuthMiddleware_RejectsNonAccessTokenTypes(t *testing.T) {
 	now := time.Now()
-	// AUDIT-0012-C2: a signature-valid token minted as an MFA ticket must
-	// not authenticate the access path.
+	// A signature-valid token minted as an MFA ticket must not authenticate the access path.
 	signer := &dummyTokenSigner{claims: &auth.Claims{
 		Subject:   "u-1",
 		Role:      domain.RoleAdmin,

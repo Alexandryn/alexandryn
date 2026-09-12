@@ -28,10 +28,9 @@ const packageDatabaseTimeout = 30 * time.Second
 // DerivePackageDatabaseURL rewrites base's database name to
 // "<original>_<pkgName>", leaving every other URL component (user, host,
 // port, query parameters) unchanged. It is the pure half of
-// backend-test-harness.md FR-3 Variant B's per-package isolation
-// mechanism — no I/O, so it's unit-tested directly without a real
-// Postgres. EnsurePackageDatabase is the real-I/O half that actually
-// creates the database this URL names.
+// the per-package isolation mechanism — no I/O, so it's unit-tested
+// directly without a real Postgres. EnsurePackageDatabase is the real-I/O
+// half that actually creates the database this URL names.
 func DerivePackageDatabaseURL(base, pkgName string) (dbName, derivedURL string, err error) {
 	if pkgName == "" {
 		return "", "", fmt.Errorf("DerivePackageDatabaseURL: pkgName must not be empty")
@@ -55,7 +54,7 @@ func DerivePackageDatabaseURL(base, pkgName string) (dbName, derivedURL string, 
 // EnsurePackageDatabase creates the per-package database
 // DerivePackageDatabaseURL(baseDatabaseURL, pkgName) names, if it doesn't
 // already exist, and returns the URL pointing at it. This is the real-I/O
-// half of FR-3 Variant B's isolation mechanism: a TestMain calls it once,
+// half of the isolation mechanism: a TestMain calls it once,
 // before m.Run(), then sets the TEST_DATABASE_URL environment variable to
 // the returned URL so every existing call site in the package that reads
 // it — Migrate, testDB, resetSchema — transparently targets the isolated
@@ -105,7 +104,7 @@ func EnsurePackageDatabase(ctx context.Context, baseDatabaseURL, pkgName string)
 }
 
 // WithPackageDatabase wraps run so it first gives the calling package its
-// own isolated database (EnsurePackageDatabase, FR-3 Variant B), rewriting
+// own isolated database (EnsurePackageDatabase), rewriting
 // TEST_DATABASE_URL via setenv before run executes. This is the one shape
 // all three integration-tagged TestMains need
 // (internal/testutil, internal/persistence/postgres, cmd/server) — factored
@@ -113,8 +112,7 @@ func EnsurePackageDatabase(ctx context.Context, baseDatabaseURL, pkgName string)
 // packageDatabaseTimeout since it runs before go test's own -timeout
 // watchdog is armed. getenv/setenv are injected (matching
 // IntegrationTestMain's own lookupEnv) so this file never calls os.Getenv/
-// os.Setenv directly — the import-boundary check's own rule
-// (backend-configuration.md FR-1) restricts direct env access to
+// os.Setenv directly — architectural boundaries restrict direct env access to
 // internal/config and _integration_test.go files, neither of which this
 // file is; os.Getenv and os.Setenv satisfy these signatures directly at
 // each call site.

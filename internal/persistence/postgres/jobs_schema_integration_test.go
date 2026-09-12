@@ -12,7 +12,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// backend-job-queue.md FR-1: migration 00006 adds the `jobs` table with
+// Migration 00006 adds the `jobs` table with
 // the columns the store (internal/jobs) reads and writes.
 func TestSchema_JobsTableExistsAfterMigration(t *testing.T) {
 	pool := schemaTestPool(t)
@@ -39,7 +39,7 @@ func TestSchema_JobsTableExistsAfterMigration(t *testing.T) {
 	}
 }
 
-// FR-1: `status` is a closed vocabulary.
+// `status` is a closed vocabulary.
 func TestSchema_JobsStatusConstrained(t *testing.T) {
 	pool := schemaTestPool(t)
 
@@ -55,7 +55,7 @@ func TestSchema_JobsStatusConstrained(t *testing.T) {
 	}
 }
 
-// FR-1: attempts is non-negative and max_attempts is at least 1.
+// Attempts is non-negative and max_attempts is at least 1.
 func TestSchema_JobsAttemptBoundsConstrained(t *testing.T) {
 	pool := schemaTestPool(t)
 
@@ -70,7 +70,7 @@ func TestSchema_JobsAttemptBoundsConstrained(t *testing.T) {
 	assertCheckViolation(t, err)
 }
 
-// FR-1: the claim query and the reaper sweep each have a supporting index.
+// The claim query and the reaper sweep each have a supporting index.
 func TestSchema_JobsClaimAndReaperIndexesExist(t *testing.T) {
 	pool := schemaTestPool(t)
 
@@ -87,7 +87,7 @@ func TestSchema_JobsClaimAndReaperIndexesExist(t *testing.T) {
 	}
 }
 
-// backend-persistence.md acceptance criterion: the down migration is
+// Verifies that the down migration is
 // reversible and re-appliable.
 func TestSchema_JobsMigrationIsReversible(t *testing.T) {
 	db := testDB(t)

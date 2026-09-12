@@ -36,7 +36,7 @@ type loaderStub struct {
 	cleaned map[domain.EditionID]*int64
 	mu      sync.Mutex
 	block   chan struct{} // if non-nil, load blocks until closed
-	started chan struct{} // if non-nil, closed when load is entered (audit 0016 #212)
+	started chan struct{} // if non-nil, closed when load is entered
 }
 
 func (l *loaderStub) load(ctx context.Context, id domain.EditionID) (*zip.Reader, func(), error) {
@@ -87,7 +87,7 @@ func tinyZipForTest() *zip.Reader {
 	return zr
 }
 
-// FR-3: a second request for an already-cached Edition does not re-load.
+// A second request for an already-cached Edition does not re-load.
 func TestCache_HitDoesNotReload(t *testing.T) {
 	l := &loaderStub{}
 	c := newCache(l.load, &fakeClock{now: time.Unix(0, 0)}, 5, 10*time.Minute, time.Second)
@@ -108,7 +108,7 @@ func TestCache_HitDoesNotReload(t *testing.T) {
 	}
 }
 
-// FR-3: idle eviction after the TTL, driven by the injected Clock,
+// Idle eviction after the TTL, driven by the injected Clock,
 // closes the reader and removes the temp file.
 func TestCache_IdleEvictionUsesInjectedClock(t *testing.T) {
 	l := &loaderStub{}
@@ -134,7 +134,7 @@ func TestCache_IdleEvictionUsesInjectedClock(t *testing.T) {
 	}
 }
 
-// FR-3: LRU eviction at capacity.
+// Verifies LRU eviction at capacity.
 func TestCache_LRUEvictionAtCapacity(t *testing.T) {
 	l := &loaderStub{}
 	clk := &fakeClock{now: time.Unix(0, 0)}
@@ -157,7 +157,7 @@ func TestCache_LRUEvictionAtCapacity(t *testing.T) {
 	}
 }
 
-// FR-3: a referenced entry survives an eviction sweep that would
+// A referenced entry survives an eviction sweep that would
 // otherwise remove it — closed only when its last handle is released.
 func TestCache_ReferencedEntrySurvivesEviction(t *testing.T) {
 	l := &loaderStub{}
@@ -185,7 +185,7 @@ func TestCache_ReferencedEntrySurvivesEviction(t *testing.T) {
 	}
 }
 
-// FR-2: concurrent first requests for the same Edition load it once.
+// Concurrent first requests for the same Edition load it once.
 func TestCache_ConcurrentMissLoadsOnce(t *testing.T) {
 	l := &loaderStub{block: make(chan struct{}), started: make(chan struct{})}
 	c := newCache(l.load, &fakeClock{now: time.Unix(0, 0)}, 5, time.Hour, time.Second)

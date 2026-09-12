@@ -33,22 +33,17 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// pgPool is the minimal interface run's step 6 needs from whatever
-// internal/persistence/postgres.NewPool returns: transporthttp.Pinger for
-// /readyz, plus Close for the graceful-shutdown sequence (FR-6). A real
-// *pgxpool.Pool already implements both natively; tests use a fake.
+// pgPool is the minimal interface run needs from the database pool:
+// transporthttp.Pinger for /readyz, plus Close for graceful shutdown.
+// A real *pgxpool.Pool implements both natively; tests use a fake.
 type pgPool interface {
 	transporthttp.Pinger
 	Close()
 }
 
-// shutdownableServer is the minimal interface run needs from whatever
-// serves HTTP: Serve to start (step 4), Shutdown to stop cleanly (FR-4),
-// Close to force-close whatever Shutdown's grace period couldn't finish
-// (Shutdown alone never touches active connections — it only waits for
-// them; net/http's own docs say so). A real *http.Server already
-// implements all three natively; tests use a fake that never opens a
-// real socket.
+// shutdownableServer is the minimal interface run needs from the HTTP server:
+// Serve to start, Shutdown to stop cleanly, and Close to force-close active
+// connections if the grace period expires.
 type shutdownableServer interface {
 	Serve(l net.Listener) error
 	Shutdown(ctx context.Context) error
@@ -56,21 +51,14 @@ type shutdownableServer interface {
 }
 
 // jobRunner is the minimal surface run needs from the background job
-// worker pool (backend-job-queue.md): start it once PostgreSQL is
-// reachable (FR-1 step 6), stop it during graceful shutdown, between the
-// HTTP server stopping and the shared pool closing
-// (backend-service-lifecycle.md FR-6, amended for phase 09). *jobs.System
-// implements it; tests use a fake that records call order.
+// worker pool: start it once PostgreSQL is reachable, stop it during
+// graceful shutdown between the HTTP server stopping and the shared pool closing.
 type jobRunner interface {
 	Start(ctx context.Context)
 	Shutdown(ctx context.Context) error
 }
 
-// clock is the one method run needs from "now" — FR-5's grace-period
-// deadline is computed from it instead of time.Now() directly, so a test
-// can fix it and assert the exact deadline without any real waiting
-// (go-backend-conventions: inject Clock, never call time.Now() inline).
-// testutil.FakeClock satisfies this structurally.
+// clock provides the current time for computing shutdown grace period deadlines.
 type clock interface {
 	Now() time.Time
 }
@@ -80,10 +68,7 @@ type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now() }
 
-// runDeps carries every one of run's constructor dependencies as fields,
-// never package-level state (backend-service-lifecycle.md FR-2). main
-// populates it with the real config/logging/transport/persistence
-// packages; tests substitute fakes that record call order.
+// runDeps carries run's dependencies as struct fields to enable test injection.
 type runDeps struct {
 	loadConfig func() (*config.Config, error)
 	newLogger  func(cfg *config.Config) *slog.Logger
@@ -92,40 +77,27 @@ type runDeps struct {
 	newServer  func(cfg *config.Config, handler http.Handler) shutdownableServer
 	clock      clock
 
-	// obtainPostgres makes one attempt at FR-1 step 5's "obtain a
-	// reachable PostgreSQL" (spawn-or-connect, chosen by DATABASE_URL's
-	// presence) — retried up to postgresMaxAttempts times with
-	// postgresBackoff between attempts, the one FR-3 names as the sole
-	// exception to "every other step fails once."
+	// obtainPostgres makes one attempt to obtain a reachable PostgreSQL
+	// instance (spawn or connect, selected by DATABASE_URL), retried up to
+	// postgresMaxAttempts with postgresBackoff.
 	obtainPostgres      func(ctx context.Context, cfg *config.Config) error
 	postgresMaxAttempts int
 	postgresBackoff     time.Duration
-	// sleep must return early on ctx cancellation, not just after d — a
-	// shutdown signal arriving mid-retry must interrupt the backoff wait,
-	// not be absorbed by it (FR-4: a clean signal must never be treated
-	// as an ordinary startup failure).
+	// sleep waits for the backoff duration and returns early on ctx cancellation.
 	sleep func(ctx context.Context, d time.Duration)
 
-	// runMigrations is a single-attempt, ordinary FR-3 failure — distinct
-	// from obtainPostgres's bounded retry (Failure modes table).
+	// runMigrations executes database schema migrations on startup.
 	runMigrations func(ctx context.Context, cfg *config.Config) error
 
-	// newPool constructs the connection pool once PostgreSQL is reachable
-	// and migrated (FR-1 step 6); its first result populates the pool
-	// reference step 3 already wired into the router. Its second result
-	// is every T24 repository implementation, constructed against that
-	// same pool — the spec's own step 6 covers both in one step
-	// ("construct pool... construct repositories"), so both are built by
-	// one call rather than two separate hooks.
+	// newPool constructs the connection pool and repositories once PostgreSQL
+	// is reachable and migrated.
 	newPool func(ctx context.Context, cfg *config.Config) (pgPool, *repositories, error)
 
 	// newJobSystem constructs the background job worker pool against the
-	// shared connection pool (FR-1 step 6). nil disables jobs — the
-	// default for tests that don't exercise them. A non-nil hook
-	// returning an error fails startup like any other step (FR-3).
+	// shared connection pool.
 	newJobSystem func(cfg *config.Config, logger *slog.Logger, pool pgPool) (jobRunner, error)
 
-	// watchParent watches the Electron host parent process PID for termination (E25).
+	// watchParent watches the Electron host parent process PID for termination.
 	watchParent func(pid int) error
 
 	userConfigDir func() (string, error)
@@ -134,17 +106,11 @@ type runDeps struct {
 }
 
 // waitForPostgres calls obtain up to maxAttempts times, sleeping backoff
-// between failed attempts (never after the last one), and returns nil on
-// the first success or the last attempt's error, wrapped, once the budget
-// is exhausted — FR-3's bounded-retry carve-out for "wait for Postgres to
-// become reachable," the only step allowed to retry at all.
+// between failed attempts, and returns nil on the first success or the
+// last attempt's error once the budget is exhausted.
 //
-// It checks ctx.Err() before every attempt and again after a failed one,
-// returning it immediately rather than continuing to retry or sleep — a
-// shutdown signal arriving mid-retry must stop the retry loop right away,
-// not be treated as just another failed attempt (FR-4). Callers
-// distinguish this case from an ordinary exhausted-budget failure by
-// checking ctx.Err() on the returned error.
+// It checks ctx.Err() before every attempt and after failed attempts,
+// returning immediately if cancelled so a shutdown signal stops retry loops promptly.
 func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(context.Context, *config.Config) error, maxAttempts int, backoff time.Duration, sleep func(context.Context, time.Duration), logger *slog.Logger) error {
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
@@ -166,22 +132,17 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 	return fmt.Errorf("postgresql did not become reachable after %d attempts: %w", maxAttempts, lastErr)
 }
 
-// gracefulShutdown runs FR-4/5/6's shutdown sequence: stop accepting new
-// connections and let in-flight requests finish within the configured
-// grace period (Shutdown), force-close whatever is still active if that
-// period expires (Close — Shutdown alone never touches active
-// connections, it only waits for them), then close pool once Shutdown/
-// Close have both had their chance — never before, never concurrently.
-// pool may be nil: a shutdown signal arriving before FR-1 step 6 has
-// constructed one has nothing to close yet.
+// gracefulShutdown executes the shutdown sequence: stop accepting new
+// connections, allow in-flight requests to complete within the configured
+// grace period, stop background jobs, drain observability sweeps, and close
+// the database connection pool.
 func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, eventReaper *observability.Reaper, logger *slog.Logger) int {
 	logger.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
 	defer cancel()
 
-	// The :80 redirect/ACME listener (if any) drains alongside the main
-	// server, bounded by the same grace period (FR-11), concurrently.
+	// The HTTP redirect listener (if any) drains concurrently alongside the main server.
 	var shutdownWG sync.WaitGroup
 
 	if redirectSrv != nil {
@@ -200,12 +161,8 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 		defer shutdownWG.Done()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				// The grace period expired with requests still in flight
-				// (Failure modes table) — expected under load, not an error
-				// to report, but Shutdown alone leaves those connections
-				// open; force-close what's left so they're cleanly cancelled
-				// rather than left for the process exit to reap out from
-				// under them (FR-4).
+				// The grace period expired with requests still in flight. Force-close
+				// remaining connections to cancel them cleanly.
 				if closeErr := srv.Close(); closeErr != nil {
 					logger.Error("force-close after shutdown timeout failed", "error", closeErr.Error())
 				}
@@ -217,12 +174,8 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 
 	shutdownWG.Wait()
 
-	// backend-service-lifecycle.md FR-6, amended for phase 09: the job
-	// worker pool stops after the HTTP server has stopped accepting work
-	// and before the shared pgxpool a running job's heartbeat/completion
-	// write depends on is closed. A job still running when this grace
-	// period expires is abandoned to the reaper (backend-job-queue.md
-	// FR-10), not force-killed.
+	// Stop the job worker pool after the HTTP server stops accepting work and
+	// before closing the shared pgxpool required for job state persistence.
 	if jobSystem != nil {
 		jobCtx, jobCancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
 		if err := jobSystem.Shutdown(jobCtx); err != nil {
@@ -231,9 +184,8 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 		jobCancel()
 	}
 
-	// Stop the retention reaper before closing the pool: its sweep writes
-	// through pool, and Stop blocks until any in-flight sweep returns
-	// (audit 0016 #303).
+	// Stop the retention reaper before closing the pool, waiting for any
+	// in-flight retention sweep to finish.
 	if eventReaper != nil {
 		eventReaper.Stop()
 	}
@@ -245,21 +197,9 @@ func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, 
 	return 0
 }
 
-// run executes backend-service-lifecycle.md FR-1's startup sequence:
-// load and validate config; construct the logger; construct the router
-// and middleware chain with an atomically-held, still-empty pool
-// reference wired to /healthz and /readyz (FR-7); bind the listener and
-// start serving (the process is now "alive"); obtain a reachable
-// PostgreSQL with FR-3's bounded retry, run migrations, construct the
-// pool and populate the reference; then report ready. On ctx's
-// cancellation (a shutdown signal), it stops accepting new connections
-// and lets in-flight requests finish within the configured grace period
-// before closing the pool (FR-4/5/6).
-//
-// Each step logs a line on success at info level (FR-1's observability
-// requirement) once the logger exists; config failure — the only step
-// that can fail before the logger is constructed — is reported to stderr
-// instead, since there is no logger yet to report it through.
+// run executes the server lifecycle: load configuration, initialize logger,
+// router, and listener, verify PostgreSQL reachability, run migrations,
+// initialize repositories and background systems, and handle graceful shutdown.
 func run(ctx context.Context, deps runDeps) int {
 	cfg, err := deps.loadConfig()
 	if err != nil {
@@ -271,9 +211,7 @@ func run(ctx context.Context, deps runDeps) int {
 	logger.Info("startup step completed", "step", "config")
 	logger.Info("startup step completed", "step", "logger")
 
-	// The per-user data directory (architecture-persistence.md FR-1) —
-	// resolved once, used for the ACME certificate cache and the source
-	// credential key.
+	// The per-user data directory, used for certificate caches and keys.
 	appDataDir := ""
 	userConfigDirFn := deps.userConfigDir
 	if userConfigDirFn == nil {
@@ -299,9 +237,8 @@ func run(ctx context.Context, deps runDeps) int {
 	// ranges, and collapse IPv6 clients to their /64 (#195).
 	transporthttp.SetTrustedProxyCIDRs(cfg.TrustedProxyCIDRs)
 
-	// The unauthenticated health-probe rate limiter (backend-network-transport.md
-	// FR-8). Its per-IP map is evicted on a ticker bound to ctx — without
-	// that the map only grows.
+	// The unauthenticated health-probe rate limiter, with periodic eviction
+	// to prevent unbounded map growth.
 	publicLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, 10*time.Minute)
 	publicLimiter.StartEviction(ctx)
 
@@ -315,17 +252,13 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	boundPort := ""
 	if tcpAddr, ok := listener.Addr().(*net.TCPAddr); ok {
-		// desktop-host-process-model.md FR-2 / architecture-desktop-host.md:
 		// Announces bound ephemeral port to Electron host process.
 		fmt.Printf("PORT=%d\n", tcpAddr.Port)
 		boundPort = strconv.Itoa(tcpAddr.Port)
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
-	// TLS mode + the :80 redirect listener (ADR 0028 §1/§2/§3,
-	// backend-network-transport.md FR-2/FR-3). config.TLSMode()/Reachability()
-	// were fixed by validateBindAddress from the address class plus the
-	// certificate/ACME state — never a flag.
+	// TLS configuration and optional redirect listener.
 	var acmeManager *autocert.Manager
 	switch cfg.TLSMode() {
 	case "static":
@@ -346,10 +279,7 @@ func run(ctx context.Context, deps runDeps) int {
 		if acmeManager.Client != nil && acmeManager.Client.DirectoryURL != "" {
 			caURL = acmeManager.Client.DirectoryURL
 		}
-		// The cache directory path is NOT logged — it is home-relative
-		// (constitution §8, CLAUDE.md reflex). The operator sets or knows
-		// ACME_CACHE_DIR; whether it is the default or explicit is all the
-		// log needs to say.
+		// Path is omitted from logs for privacy; only explicit/default status is logged.
 		cacheDirKind := "default (acme/ under the data directory)"
 		if cfg.ACMECacheDir != "" {
 			cacheDirKind = "ACME_CACHE_DIR"
@@ -414,20 +344,12 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if err := waitForPostgres(ctx, cfg, deps.obtainPostgres, deps.postgresMaxAttempts, deps.postgresBackoff, deps.sleep, logger); err != nil {
 		if ctx.Err() != nil {
-			// The signal that ended this loop was a shutdown, not a
-			// database failure — FR-4 requires attempting Shutdown, not
-			// exiting through the ordinary FR-3 failure path below.
+			// A shutdown signal terminated startup. Proceed with graceful shutdown.
 			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
-			// FR-3's security amendment (review 0028): a pgx connection
-			// or DSN-parse error can embed DATABASE_URL itself — the
-			// same leak backend-http-transport.md FR-5 already redacts
-			// for /readyz's response body, applied here to this log
-			// line instead. The generic message only applies when a
-			// DATABASE_URL is actually in play; the spawn path's own
-			// errors carry no connection string to leak.
+			// Redact potential connection string / DSN details from log output.
 			msg = "could not connect to the configured database"
 		}
 		logger.Error("startup failed", "step", "postgres", "error", msg)
@@ -441,13 +363,6 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
-			// Defense in depth, matching the postgres/pool steps: today
-			// internal/persistence/postgres.RunMigrations already
-			// returns a fixed generic message for every connection-class
-			// failure, so this guard is currently redundant — but it's
-			// the one place a future change to that package's error
-			// wrapping could silently reintroduce a DSN leak without
-			// this step noticing.
 			msg = "could not run migrations against the configured database"
 		}
 		logger.Error("startup failed", "step", "migrate", "error", msg)
@@ -455,8 +370,7 @@ func run(ctx context.Context, deps runDeps) int {
 	}
 	logger.Info("startup step completed", "step", "migrate")
 
-	// Held so gracefulShutdown can wait for an in-flight retention sweep
-	// to finish before the pool closes (audit 0016 #303).
+	// Held so gracefulShutdown can wait for an in-flight retention sweep to finish.
 	var eventReaper *observability.Reaper
 
 	pool, repos, err := deps.newPool(ctx, cfg)
@@ -635,9 +549,7 @@ func run(ctx context.Context, deps runDeps) int {
 			// ticker, same as publicLimiter (previously this map only grew).
 			authLimiter := auth.NewIPRateLimiter(rate.Every(time.Second/5), 10, 15*time.Minute)
 			authLimiter.StartEviction(ctx)
-			// Per-user MFA-verification throttle (audit 0016 #89): 5 burst,
-			// then 1/min, evicted after an hour idle. Not evadable by
-			// rotating source addresses the way the per-IP limiter is.
+			// Per-user MFA-verification throttle: 5 burst, then 1/min, evicted after 1 hour idle.
 			mfaUserLimiter := auth.NewIPRateLimiter(rate.Every(time.Minute), 5, time.Hour)
 			mfaUserLimiter.StartEviction(ctx)
 			poolRef.SetAuthAPI(transporthttp.AuthAPI{
@@ -684,18 +596,13 @@ func run(ctx context.Context, deps runDeps) int {
 		}
 		if pgxPool, ok := pool.(*pgxpool.Pool); ok {
 			poolRef.SetDBPool(pgxPool)
-			// Feed live connection-pool stats to the diagnostics endpoint;
-			// without this GET /api/v1/diagnostics reports a zeroed db_pool
-			// (audit 0016 #295).
+			// Feed live connection-pool stats to the diagnostics endpoint.
 			if reg, ok := poolRef.GetMetricsRegistry(); ok {
 				reg.SetPoolStatsProvider(poolStatsProvider(pgxPool))
 			}
 			eventStore := observability.NewEventStore(pgxPool, time.Now)
 			poolRef.SetEventStore(eventStore)
-			// system_events retention reaper (ADR 0031, Constitution §8).
-			// Each row carries its own purge_at; this deletes rows past it
-			// on an hourly sweep. Without this wiring the ledger grows
-			// without bound and nothing is ever purged (audit 0016 #294).
+			// System events retention reaper. Sweeps periodically to delete events past purge_at.
 			eventReaper = observability.NewReaper(eventStore, time.Hour, logger)
 			eventReaper.Start(ctx)
 		}
@@ -715,9 +622,7 @@ func run(ctx context.Context, deps runDeps) int {
 			if jsConcrete, ok := js.(*jobs.System); ok {
 				poolRef.SetJobSystem(jsConcrete)
 				poolRef.SetJobQueue(jsConcrete.Queue())
-				// Feed live per-state job counts to the diagnostics
-				// endpoint; without this GET /api/v1/diagnostics reports an
-				// empty queue_depth (audit 0016 #295).
+				// Feed live per-state job counts to the diagnostics endpoint.
 				if reg, ok := poolRef.GetMetricsRegistry(); ok {
 					reg.SetQueueDepthProvider(queueDepthProvider(jsConcrete.Queue().CountByState))
 				}
@@ -750,11 +655,8 @@ func run(ctx context.Context, deps runDeps) int {
 	case <-ctx.Done():
 		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, eventReaper, logger)
 	case err := <-serveErr:
-		// The server stopped on its own, not via a shutdown signal — no
-		// Shutdown was called, but FR-6's "close the pool before the
-		// process exits" applies regardless of why the process is
-		// exiting. The job worker pool still stops first, so a running
-		// job's final write lands before the pool goes away.
+		// The server stopped without a shutdown signal. Close background jobs
+		// and the database pool before exiting.
 		if jobSystem != nil {
 			jobCtx, jobCancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
 			if sErr := jobSystem.Shutdown(jobCtx); sErr != nil {

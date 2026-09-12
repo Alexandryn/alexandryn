@@ -10,8 +10,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
-// architecture-persistence.md's own State transitions: "wait for
-// Postgres to accept connections" is a distinct step after spawn
+// Waiting for Postgres to accept connections is a distinct step after spawn
 // succeeds merely at starting the process. A fake dial that fails a
 // fixed number of times, then succeeds, proves the wait phase keeps
 // retrying rather than giving up on the first failed attempt.

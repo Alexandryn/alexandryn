@@ -207,7 +207,7 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 		}
 	})
 
-	// audit 0016 #262: a non-admin non-member must not be able to read a
+	// A non-admin non-member must not be able to read a
 	// library's details or enumerate its members (usernames + emails).
 	t.Run("outsider cannot read library or members", func(t *testing.T) {
 		outsider := &transporthttp.AuthenticatedUser{UserID: "u-outsider", Role: domain.RoleReader}
@@ -258,7 +258,7 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 		}
 	})
 
-	// audit 0016 #262: the admin of one library must not be able to invite
+	// The admin of one library must not be able to invite
 	// members to a different library. `callerIsLibraryAdmin` checks the
 	// membership role in the *target* library, not a global admin bit.
 	t.Run("library admin of one library cannot invite to another", func(t *testing.T) {
@@ -289,7 +289,7 @@ func TestLibraryHandlers_CRUDAndInvitations(t *testing.T) {
 		}
 	})
 
-	// audit 0016 #262: the accept endpoint must reject a token that has
+	// The accept endpoint must reject a token that has
 	// been tampered with, already used, or has expired — each as 404, with
 	// no signal distinguishing the three.
 	t.Run("accept rejects a tampered, used, or expired token", func(t *testing.T) {

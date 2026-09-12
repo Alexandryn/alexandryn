@@ -23,7 +23,7 @@ func containsDisallowedControlChars(s string) bool {
 	return false
 }
 
-// DiscoverSearchHandler handles GET /api/v1/discover (backend-metadata-adapter.md FR-1).
+// DiscoverSearchHandler handles GET /api/v1/discover.
 func DiscoverSearchHandler(client openlibrary.Client) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -80,7 +80,7 @@ func DiscoverSearchHandler(client openlibrary.Client) http.Handler {
 	})
 }
 
-// DiscoverWorkDetailHandler handles GET /api/v1/discover/works/{openLibraryId} (FR-3).
+// DiscoverWorkDetailHandler handles GET /api/v1/discover/works/{openLibraryId}.
 func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.MetadataCacheRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -93,7 +93,7 @@ func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.Met
 			return
 		}
 
-		// 1. Read-through cache check (backend-metadata-caching.md FR-2, FR-3)
+		// 1. Read-through cache check
 		if cacheRepo != nil {
 			if cached, hit, err := cacheRepo.GetWork(r.Context(), openLibraryID); err == nil && hit && cached != nil {
 				w.Header().Set("Content-Type", "application/json")
@@ -128,7 +128,7 @@ func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.Met
 	})
 }
 
-// DiscoverCoverHandler handles GET /api/v1/discover/covers/{coverId} (backend-metadata-caching.md FR-6).
+// DiscoverCoverHandler handles GET /api/v1/discover/covers/{coverId}.
 func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCacheRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
@@ -141,7 +141,7 @@ func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCac
 			return
 		}
 
-		// 1. Check cover cache (FR-6)
+		// 1. Check cover cache
 		if cacheRepo != nil {
 			filePath, contentType, isMissing, hit, err := cacheRepo.GetCover(r.Context(), coverID)
 			if err == nil && hit {

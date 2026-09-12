@@ -1,9 +1,7 @@
-// Package local is the local-folder source provider
-// (backend-source-adapter.md FR-3, FR-7, FR-12): it lists the ebook
-// files in a configured directory, treating every filename the OS
-// returns as a string an attacker chose (CLAUDE.md). A file whose
-// real, symlink-resolved path escapes the configured root is silently
-// omitted, never surfaced as an error.
+// Package local is the local-folder source provider:
+// it lists ebook files in a configured directory, treating every filename
+// returned by the OS as untrusted input. A file whose real, symlink-resolved
+// path escapes the configured root is silently omitted, never surfaced as an error.
 package local
 
 import (
@@ -21,8 +19,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// supportedExtensions is the closed set of ebook formats this phase
-// lists. Anything else in the directory is skipped, not surfaced.
+// supportedExtensions is the closed set of ebook formats supported
+// by the local folder provider. Anything else in the directory is skipped.
 var supportedExtensions = map[string]string{
 	".epub": "EPUB",
 	".pdf":  "PDF",
@@ -34,8 +32,7 @@ var supportedExtensions = map[string]string{
 	".djvu": "DJVU",
 }
 
-// Provider lists a single configured directory. It recurses into no
-// subdirectory this phase (FR-7 Open questions).
+// Provider lists a single configured directory without recursing into subdirectories.
 type Provider struct {
 	sourceID string
 	basePath string
@@ -45,9 +42,9 @@ type Provider struct {
 
 var _ sources.Provider = (*Provider)(nil)
 
-// New constructs a Provider. basePath's shape is validated here
-// (FR-3); its existence and readability are a Probe concern, since an
-// unmounted drive may be back later.
+// New constructs a Provider. basePath's shape is validated here;
+// its existence and readability are checked at Probe time, since an
+// unmounted drive may become available later.
 func New(sourceID, basePath string, codec *sources.CursorCodec, logger *slog.Logger) (*Provider, error) {
 	if err := sources.ValidateLocalFolderPath(basePath); err != nil {
 		return nil, err
@@ -55,9 +52,9 @@ func New(sourceID, basePath string, codec *sources.CursorCodec, logger *slog.Log
 	return &Provider{sourceID: sourceID, basePath: basePath, codec: codec, logger: logger}, nil
 }
 
-// Probe checks the directory exists, is a directory, and is readable
-// (FR-6). Capabilities for a reachable local folder are fixed: list and
-// download yes, search no (FR-5).
+// Probe checks that the directory exists, is a directory, and is readable.
+// Capabilities for a reachable local folder are fixed: list and download
+// are enabled, while search is unsupported.
 func (p *Provider) Probe(_ context.Context) sources.ProbeResult {
 	unreachable := func(detail string) sources.ProbeResult {
 		return sources.ProbeResult{Status: sources.HealthUnreachable, Detail: detail}
@@ -91,9 +88,9 @@ func (p *Provider) Probe(_ context.Context) sources.ProbeResult {
 }
 
 // List returns one page of the directory's ebook files, sorted by
-// filename, resuming after the cursor's last-seen name (FR-7). A file
+// filename, resuming after the cursor's last-seen name. A file
 // whose resolved path lies outside the configured root, or a broken
-// symlink, is omitted from the page entirely (FR-12).
+// symlink, is omitted from the page entirely.
 func (p *Provider) List(_ context.Context, cursor string, limit int) (sources.CandidatePage, error) {
 	limit = sources.ClampLimit(limit)
 
@@ -198,7 +195,7 @@ func (p *Provider) candidateFor(realBase, name string) (sources.SourceCandidate,
 }
 
 // withinRoot reports whether real is root itself or lies beneath it,
-// comparing resolved paths (FR-12 — filepath.Clean alone is not enough).
+// comparing resolved paths (filepath.Clean alone is not sufficient).
 func withinRoot(root, real string) bool {
 	if real == root {
 		return true
@@ -210,9 +207,8 @@ func withinRoot(root, real string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
-// titleFromFilename is a best-effort display title — the filename minus
-// its extension, underscores to spaces. The real title comes from
-// phase 10's matching; this is only a candidate guess (FR-9).
+// titleFromFilename produces a best-effort display title from the filename minus
+// its extension, converting underscores to spaces.
 func titleFromFilename(name string) string {
 	base := strings.TrimSuffix(name, filepath.Ext(name))
 	base = strings.ReplaceAll(base, "_", " ")
@@ -223,12 +219,12 @@ func titleFromFilename(name string) string {
 	return base
 }
 
-// Search is not supported for a local folder (FR-5 / FR-8).
+// Search is not supported for a local folder.
 func (p *Provider) Search(_ context.Context, _, _ string, _ int) (sources.CandidatePage, error) {
 	return sources.CandidatePage{}, &domain.Error{Category: domain.Conflict, Message: "this source does not support search"}
 }
 
-// Resolve opens the bytes behind ref (FR-15, phase 10). The reference id
+// Resolve opens the bytes behind ref. The reference id
 // is treated as opaque and re-checked for traversal safety before any
 // file operation.
 func (p *Provider) Resolve(_ context.Context, ref domain.FileReference) (io.ReadCloser, error) {
@@ -237,9 +233,8 @@ func (p *Provider) Resolve(_ context.Context, ref domain.FileReference) (io.Read
 		return nil, &domain.Error{Category: domain.InvalidInput, Message: "file reference is not valid for this source"}
 	}
 	// Only book files are resolvable — the same extension filter List
-	// applies. A request for a .env, .ssh key, or any other file the
-	// listing would never surface is treated as not found, no oracle
-	// (#176).
+	// applies. A request for an arbitrary file that the listing would
+	// never surface is treated as not found without leaking existence.
 	if !p.isSupported(name) {
 		return nil, &domain.Error{Category: domain.NotFound, Message: "file not found in this source"}
 	}

@@ -2,35 +2,30 @@ package jobs
 
 import "time"
 
-// Config tunes the worker pool. Every value here is a reasoned
-// placeholder, not a load-tested number — no real job type exists yet to
-// tune against (backend-job-queue.md Open questions). Phase 10 or 14's
-// real handlers are the trigger to revisit them.
+// Config tunes the worker pool.
 type Config struct {
-	// Concurrency is the number of poller goroutines (FR-4).
+	// Concurrency is the number of poller goroutines.
 	Concurrency int
 	// PollInterval is how long a poller waits after finding no
-	// claimable job before trying again (FR-4).
+	// claimable job before trying again.
 	PollInterval time.Duration
 	// LeaseDuration is how far ahead of now a claim or heartbeat sets
-	// locked_until (FR-4/FR-5).
+	// locked_until.
 	LeaseDuration time.Duration
 	// HeartbeatInterval is how often a running job's worker extends its
 	// lease. Set to a third of LeaseDuration so two consecutive missed
-	// heartbeats, not one, are needed before the lease expires (FR-5).
+	// heartbeats, not one, are needed before the lease expires.
 	HeartbeatInterval time.Duration
-	// ReaperInterval is the stale-job sweep period (FR-5).
+	// ReaperInterval is the stale-job sweep period.
 	ReaperInterval time.Duration
-	// Backoff is the retry delay curve (FR-7).
+	// Backoff is the retry delay curve.
 	Backoff Backoff
 	// ShutdownGracePeriod bounds how long Shutdown waits for running
-	// handlers to return before abandoning them to the reaper (FR-10).
-	// Defaulted from backend-service-lifecycle.md FR-5's grace period by
-	// the caller, not configured separately.
+	// handlers to return before abandoning them to the reaper.
 	ShutdownGracePeriod time.Duration
 }
 
-// Default worker-pool tuning (FR-4, FR-5, FR-7 — all placeholders).
+// Default worker-pool tuning.
 const (
 	defaultConcurrency         = 4
 	defaultPollInterval        = 2 * time.Second
@@ -42,7 +37,7 @@ const (
 	defaultShutdownGracePeriod = 10 * time.Second
 )
 
-// DefaultConfig returns the spec's placeholder tuning.
+// DefaultConfig returns the default worker-pool tuning.
 func DefaultConfig() Config {
 	return Config{
 		Concurrency:         defaultConcurrency,

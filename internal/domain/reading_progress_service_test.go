@@ -8,11 +8,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-reading.md's own construction-time wording ("a PrecisePosition
-// whose tagged Edition does not belong to the ReadingProgress's own Work
-// — checked at construction") was corrected by ADR 0020: an Edition's
-// parent Work is stored on the Edition, so deciding this requires
-// reading it — a domain-service operation, not a bare constructor call.
+// TestReadingProgressService_AttachPrecisePosition verifies that a PrecisePosition
+// can only be attached if its tagged Edition belongs to the ReadingProgress's own Work.
 func TestReadingProgressService_AttachPrecisePosition(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

@@ -7,8 +7,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/domain"
 )
 
-// domain-library.md FR-1: a LibraryEntry MUST reference exactly one
-// Edition (not a Work directly) and MUST record when it was added.
+// A LibraryEntry references exactly one Edition (not a Work directly) and
+// records when it was added.
 func TestNewLibraryEntry(t *testing.T) {
 	now := time.Now()
 	entry := domain.NewLibraryEntry(domain.LibraryEntryID("entry-1"), domain.EditionID("edition-1"), now)

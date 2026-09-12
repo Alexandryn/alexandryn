@@ -14,18 +14,13 @@ import (
 )
 
 // generateCert builds a self-signed certificate/key PEM pair valid across
-// [notBefore, notAfter), for tests only. A fixed past or future window
-// (rather than relative to time.Now()) makes an expired/not-yet-valid
-// fixture deterministic without needing to inject a clock into FR-8's
-// validation — the fixture's own dates already sit on the correct side of
-// "now" for any runtime this test could plausibly execute on.
+// [notBefore, notAfter), for tests only.
 func generateCert(t *testing.T, notBefore, notAfter time.Time) (certPEM, keyPEM []byte) {
 	t.Helper()
 	return generateCertSAN(t, notBefore, notAfter, nil)
 }
 
-// generateCertSAN is generateCert with explicit subjectAltNames (DNS
-// names and/or IP strings) — for the phase-13 SAN-match check.
+// generateCertSAN builds a test certificate/key pair with explicit Subject Alternative Names.
 func generateCertSAN(t *testing.T, notBefore, notAfter time.Time, sans []string) (certPEM, keyPEM []byte) {
 	t.Helper()
 

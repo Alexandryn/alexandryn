@@ -13,17 +13,8 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 )
 
-// repositories holds every domain repository interface implementation
-// (backend-persistence.md FR-2, all 11 aggregates) plus the Transactor
-// (ADR 0021), constructed once against the real connection pool as part
-// of FR-1 step 6 (backend-service-lifecycle.md), alongside pool
-// construction itself — the spec's own State transitions section
-// describes step 6 as one step: "construct pool... construct
-// repositories," not two. No handler consumes these yet: phase 03
-// registers no /api/v1 routes (backend-service-lifecycle.md's own
-// Non-goals), so there is nothing here for a future phase's handlers to
-// reach for except this struct itself, per FR-2's constructor-injection
-// requirement — a struct field, not a package-level global.
+// repositories holds domain repository implementations and services constructed
+// against the database connection pool during server startup.
 type repositories struct {
 	pool               *pgxpool.Pool
 	works              domain.WorkRepository
@@ -61,9 +52,7 @@ type repositories struct {
 	readingSync        *postgres.ReadingSyncRepository
 }
 
-// newRepositories constructs every T24 repository implementation
-// (internal/persistence/postgres) against pool — production's real
-// implementation of runDeps.newPool's repository half.
+// newRepositories constructs repository implementations against the provided pool.
 func newRepositories(pool *pgxpool.Pool, loggers ...*slog.Logger) *repositories {
 	var l *slog.Logger
 	if len(loggers) > 0 {

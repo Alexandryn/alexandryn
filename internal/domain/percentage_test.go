@@ -4,8 +4,7 @@ import "testing"
 
 import "github.com/Alexandryn/alexandryn/internal/domain"
 
-// domain-reading.md's own risk table: "progress never exceeds its
-// bounds."
+// TestNewPercentage verifies that progress percentage values remain within [0.0, 1.0].
 func TestNewPercentage(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -31,8 +30,7 @@ func TestNewPercentage(t *testing.T) {
 	}
 }
 
-// FR-8: a reading status MUST be computed from Percentage, never stored
-// separately.
+// Reading status is computed from Percentage, never stored separately.
 func TestPercentage_Status(t *testing.T) {
 	tests := []struct {
 		name  string

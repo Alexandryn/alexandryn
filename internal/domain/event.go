@@ -2,11 +2,10 @@ package domain
 
 import "time"
 
-// Event is the sealed base every domain event satisfies (domain-events.md
-// FR-1). The unexported isDomainEvent method seals it to this package —
-// no type outside internal/domain can implement Event, which is what
-// makes the PublicEvent/SensitiveEvent split below exhaustive: no event
-// can exist that is neither public nor sensitive.
+// Event is the sealed base interface every domain event satisfies. The
+// unexported isDomainEvent method seals it to this package so no type
+// outside internal/domain can implement Event, ensuring the
+// PublicEvent and SensitiveEvent split is exhaustive.
 type Event interface {
 	Type() string
 	AggregateID() string
@@ -14,14 +13,10 @@ type Event interface {
 	isDomainEvent()
 }
 
-// PublicEvent and SensitiveEvent are the two mutually exclusive markers
-// every concrete event type below implements exactly one of (FR-1).
-// Sensitivity is carried by the type, never computed from an event's own
-// data or a Sensitive() bool method — Go cannot dispatch on a method's
-// return value, so a bool-returning classification cannot stop a logging
-// sink from accepting a stream carrying sensitive events (review 0048
-// finding 4). A sink declared over PublicEvent cannot be handed a
-// SensitiveEvent — that's a compile error, not a runtime check.
+// PublicEvent and SensitiveEvent are two mutually exclusive markers that
+// concrete event types implement. Sensitivity is carried by the type itself
+// rather than a runtime method, allowing compile-time enforcement so logging
+// sinks declared over PublicEvent cannot accept SensitiveEvent values.
 type PublicEvent interface {
 	Event
 	isPublicEvent()
@@ -53,12 +48,11 @@ type sensitiveMarker struct{}
 
 func (sensitiveMarker) isSensitiveEvent() {}
 
-// --- PublicEvent catalog (13) — domain-bibliographic.md, domain-source.md ---
+// --- PublicEvent catalog (13) ---
 
-// WorkCreated/EditionCreated/AuthorCreated are the catalog-entry path
-// (FR-2's acquisition split): emitted when a record enters the catalog
-// without entering anyone's possession (e.g. Discover browsing). The
-// phase-10 import path emits WorkImported/EditionImported instead.
+// WorkCreated, EditionCreated, and AuthorCreated are emitted when a record
+// enters the catalog independently of library acquisition (e.g. metadata discovery).
+// WorkImported and EditionImported are used for the acquisition import path.
 type WorkCreated struct {
 	baseEvent
 	publicMarker
@@ -92,9 +86,8 @@ func NewAuthorCreated(aggregateID string, occurredAt time.Time) AuthorCreated {
 	return AuthorCreated{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// WorkMerged/WorkMergeUndone/AuthorMerged/AuthorMergeUndone: the merge
-// mechanism's own events (domain-bibliographic.md FR-4/FR-7), reversible
-// pairs — an undo event exists because the merge itself does.
+// WorkMerged, WorkMergeUndone, AuthorMerged, and AuthorMergeUndone represent
+// merge operations and their corresponding reversals.
 type WorkMerged struct {
 	baseEvent
 	publicMarker
@@ -139,8 +132,8 @@ func NewAuthorMergeUndone(aggregateID string, occurredAt time.Time) AuthorMergeU
 	return AuthorMergeUndone{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// WorkContainsAdded/WorkContainsRemoved: the omnibus containment mutation
-// (domain-bibliographic.md FR-9), cycle-checked the same way merges are.
+// WorkContainsAdded and WorkContainsRemoved represent containment relationships
+// between works, subject to cycle prevention.
 type WorkContainsAdded struct {
 	baseEvent
 	publicMarker
@@ -163,9 +156,8 @@ func NewWorkContainsRemoved(aggregateID string, occurredAt time.Time) WorkContai
 	return WorkContainsRemoved{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// SourceCreated/SourceRemoved/SourceOfferingObserved/SourceOfferingRemoved
-// (domain-source.md): a Source's own lifecycle and what it claims to
-// offer are never sensitive — they say nothing about what the user owns.
+// SourceCreated, SourceRemoved, SourceOfferingObserved, and SourceOfferingRemoved
+// track the lifecycle and offerings of external sources, which carry no private user data.
 type SourceCreated struct {
 	baseEvent
 	publicMarker
@@ -199,9 +191,8 @@ func NewSourceOfferingObserved(aggregateID string, occurredAt time.Time) SourceO
 	return SourceOfferingObserved{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// SourceOfferingRemoved is domain-source.md FR-6's cascade-delete
-// counterpart — emitted once per SourceOffering removed when a Source is
-// removed, not once per Source.
+// SourceOfferingRemoved is emitted when an offering is removed, including
+// when cascading from source removal.
 type SourceOfferingRemoved struct {
 	baseEvent
 	publicMarker
@@ -213,13 +204,10 @@ func NewSourceOfferingRemoved(aggregateID string, occurredAt time.Time) SourceOf
 	return SourceOfferingRemoved{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// --- SensitiveEvent catalog (10) — domain-bibliographic.md, domain-library.md, domain-reading.md ---
+// --- SensitiveEvent catalog (10) ---
 
-// WorkImported/EditionImported are FR-2's acquisition-path counterparts
-// to WorkCreated/EditionCreated: the same record creation, but as part of
-// acquiring a file — which is exactly what LibraryEntryAdded is protected
-// for, so this path discloses the same fact and must be classified the
-// same way.
+// WorkImported and EditionImported represent record creation during file acquisition,
+// which discloses library contents and is classified as sensitive.
 type WorkImported struct {
 	baseEvent
 	sensitiveMarker
@@ -242,10 +230,8 @@ func NewEditionImported(aggregateID string, occurredAt time.Time) EditionImporte
 	return EditionImported{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// LibraryEntryAdded/LibraryEntryRemoved (domain-library.md FR-1/FR-6):
-// "owns" is "reads" for constitution §8's purposes — a list of what
-// someone owns is revealing, treated as sensitive by the more protective
-// reading.
+// LibraryEntryAdded and LibraryEntryRemoved track book possession in a user's
+// library and are classified as sensitive under privacy policy (Constitution §8).
 type LibraryEntryAdded struct {
 	baseEvent
 	sensitiveMarker
@@ -268,11 +254,8 @@ func NewLibraryEntryRemoved(aggregateID string, occurredAt time.Time) LibraryEnt
 	return LibraryEntryRemoved{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// CollectionCreated/CollectionMemberAdded/CollectionMemberRemoved
-// (domain-library.md FR-4): a curated "want to read" list reveals
-// book-level interest as directly as ownership does. CollectionCreated
-// is sensitive even with zero members — the collection's own
-// user-chosen name can itself disclose sensitive interest.
+// CollectionCreated, CollectionMemberAdded, and CollectionMemberRemoved track
+// user-curated collections and reading lists, which are classified as sensitive.
 type CollectionCreated struct {
 	baseEvent
 	sensitiveMarker
@@ -306,14 +289,9 @@ func NewCollectionMemberRemoved(aggregateID string, occurredAt time.Time) Collec
 	return CollectionMemberRemoved{baseEvent: newBaseEvent(aggregateID, occurredAt)}
 }
 
-// ReadingProgressUpdated/BookmarkCreated/HighlightCreated
-// (domain-reading.md): constitution §8's direct case — what someone
-// reads, never logged, including from their own log files.
-// ReadingProgressUpdated's real emission site is ReconcileProgress
-// (domain-reading.md FR-6/FR-7), which this plan does not implement —
-// separately blocked, unrelated defect — so this type exists with no
-// real emitter yet, named in the plan rather than silently assumed
-// covered.
+// ReadingProgressUpdated, BookmarkCreated, and HighlightCreated track user reading
+// activity, progress, and annotations, strictly classified as sensitive under
+// privacy policy (Constitution §8).
 type ReadingProgressUpdated struct {
 	baseEvent
 	sensitiveMarker
