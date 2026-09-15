@@ -4,7 +4,7 @@ openapi: 3.1.0
 
 info:
   title: Alexandryn system API
-  version: 0.0.0
+  version: 1.0.0
   description: >-
     The contract between the Go server and every client (the Electron
     renderer and any LAN browser). Errors share one shape across every
@@ -62,6 +62,34 @@ paths:
                 message: not yet started
                 correlationId: 00000000-0000-0000-0000-000000000000
 
+  /api/bootstrap:
+    get:
+      operationId: getBootstrap
+      summary: Capability probe for the current caller
+      description: >-
+        Answers which UI capabilities (sources, import, settings, system,
+        network) the caller may use, based on role and, for readers, the
+        active library's upload setting. Deliberately public (outside the
+        /api/v1 prefix, exempt from AuthMiddleware) so the frontend can
+        probe capabilities before a session exists; an absent or invalid
+        Authorization header simply yields the anonymous capability set
+        (all false) rather than a 401.
+      security: []
+      responses:
+        '200':
+          description: The caller's current capability set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+              example:
+                capabilities:
+                  sources: false
+                  import: false
+                  settings: false
+                  system: false
+                  network: false
+
   # ── Library domain endpoints ─────────────────────────────────────────
 
   /api/v1/library:
@@ -71,7 +99,6 @@ paths:
       description: >-
         Returns a cursor-paginated list of Works reachable via the given
         filter. Default limit 50, max 100.
-      security: []
       parameters:
         - name: cursor
           in: query
@@ -161,7 +188,6 @@ paths:
         collection memberships. Absent-but-optional fields (cover URL,
         availability) are simply missing from the response object, not
         present-but-null.
-      security: []
       parameters:
         - name: id
           in: path
@@ -223,7 +249,6 @@ paths:
       description: >-
         Returns every collection with its work count. No pagination —
         household-scale collection count assumed manageable.
-      security: []
       responses:
         '200':
           description: All collections.
@@ -249,7 +274,6 @@ paths:
       description: >-
         Creates a new collection. Name is validated
         (max 100 chars, no control characters).
-      security: []
       requestBody:
         required: true
         content:
@@ -285,7 +309,6 @@ paths:
       description: >-
         Returns one collection and its member Works, each with the
         per-membership added-at timestamp.
-      security: []
       parameters:
         - name: id
           in: path
@@ -342,7 +365,6 @@ paths:
       description: >-
         Renames a collection. Membership changes go through
         POST/DELETE /api/v1/collections/{id}/works, never bundled here.
-      security: []
       parameters:
         - name: id
           in: path
@@ -392,7 +414,6 @@ paths:
       description: >-
         Deletes the collection and its membership rows. Non-cascading —
         Works, Editions, and LibraryEntries are untouched.
-      security: []
       parameters:
         - name: id
           in: path
@@ -431,7 +452,6 @@ paths:
         Adds a Work to a Collection. Idempotent — adding an already-member
         Work is a no-op (200, original added_at preserved, ON CONFLICT
         DO NOTHING).
-      security: []
       parameters:
         - name: id
           in: path
@@ -486,7 +506,6 @@ paths:
         hard delete. The Work, Edition, and every other Collection's
         membership are untouched. A re-add after removal is a new
         membership with a fresh added_at.
-      security: []
       parameters:
         - name: id
           in: path
@@ -533,7 +552,6 @@ paths:
       description: >-
         Proxies search query to Open Library, returning normalised bibliographic
         results.
-      security: []
       parameters:
         - name: q
           in: query
@@ -608,7 +626,6 @@ paths:
       description: >-
         Fetches an Open Library work record by its key (e.g. OL82563W), normalises
         its bibliographic fields, and resolves up to 50 editions and 20 authors.
-      security: []
       parameters:
         - name: openLibraryId
           in: path
@@ -681,7 +698,6 @@ paths:
       description: >-
         Serves binary cover image from local disk cache or proxies from Open Library
         Covers API with immutable caching.
-      security: []
       parameters:
         - name: coverId
           in: path
@@ -749,7 +765,6 @@ paths:
         Returns all configured sources with health status and detected
         capabilities. A stored credential is represented only as
         `hasCredential` — the username and password are never echoed back.
-      security: []
       responses:
         '200':
           description: All configured sources.
@@ -780,7 +795,6 @@ paths:
         Creates a source and runs a synchronous health check as part of
         creation. The source is created even if the health check fails —
         an unreachable source now may be reachable later.
-      security: []
       requestBody:
         required: true
         content:
@@ -824,7 +838,6 @@ paths:
     get:
       operationId: getSource
       summary: Get one source
-      security: []
       parameters:
         - name: id
           in: path
@@ -871,7 +884,6 @@ paths:
         Updates label, config, or credential and re-runs the health
         check. A credential update replaces the stored value entirely —
         there is no partial-field credential update.
-      security: []
       parameters:
         - name: id
           in: path
@@ -932,7 +944,6 @@ paths:
       description: >-
         Removes the source and cascades to every SourceOffering
         referencing it, atomically. LibraryEntry records are untouched.
-      security: []
       parameters:
         - name: id
           in: path
@@ -961,7 +972,6 @@ paths:
         Runs a lightweight reachability probe and re-detects capabilities.
         `detail` is a closed vocabulary — never a raw error message or
         response body.
-      security: []
       parameters:
         - name: id
           in: path
@@ -999,7 +1009,6 @@ paths:
         FileReference, and an optional cover URL. Never a domain
         SourceOffering. The cursor is opaque and server-validated; an
         off-origin continuation link is rejected before any fetch.
-      security: []
       parameters:
         - name: id
           in: path
@@ -1079,7 +1088,6 @@ paths:
         Same SourceCandidate shape as browse, via the source's advertised
         search mechanism. Returns 409 when the source's detected
         CanSearch is false — never a silent empty result.
-      security: []
       parameters:
         - name: id
           in: path
@@ -1429,7 +1437,6 @@ paths:
     get:
       operationId: getReaderContent
       summary: Serve one sanitised resource from inside an owned Edition's EPUB
-      security: []
       parameters:
         - name: editionId
           in: path
@@ -1472,7 +1479,6 @@ paths:
     get:
       operationId: getReadingProgress
       summary: Get the canonical reading progress for a Work
-      security: []
       parameters:
         - { name: workId, in: path, required: true, schema: { type: string } }
       responses:
@@ -1485,7 +1491,6 @@ paths:
     post:
       operationId: reportReadingProgress
       summary: Report reading progress, reconciled by max over (epoch, percentage)
-      security: []
       parameters:
         - { name: workId, in: path, required: true, schema: { type: string } }
         - name: X-Device-Id
@@ -1517,7 +1522,6 @@ paths:
     get:
       operationId: listBookmarks
       summary: List bookmarks for an Edition
-      security: []
       parameters:
         - { name: editionId, in: path, required: true, schema: { type: string } }
       responses:
@@ -1530,7 +1534,6 @@ paths:
     post:
       operationId: createBookmark
       summary: Create a bookmark at a CFI
-      security: []
       parameters:
         - { name: editionId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -1556,7 +1559,6 @@ paths:
     delete:
       operationId: deleteBookmark
       summary: Delete a bookmark
-      security: []
       parameters:
         - { name: bookmarkId, in: path, required: true, schema: { type: string } }
       responses:
@@ -1572,7 +1574,6 @@ paths:
     get:
       operationId: listHighlights
       summary: List highlights for an Edition
-      security: []
       parameters:
         - { name: editionId, in: path, required: true, schema: { type: string } }
       responses:
@@ -1585,7 +1586,6 @@ paths:
     post:
       operationId: createHighlight
       summary: Create a highlight over a CFI range
-      security: []
       parameters:
         - { name: editionId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -1611,7 +1611,6 @@ paths:
     patch:
       operationId: patchHighlight
       summary: Update a highlight's note or category (never its position)
-      security: []
       parameters:
         - { name: highlightId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -1641,7 +1640,6 @@ paths:
     delete:
       operationId: deleteHighlight
       summary: Delete a highlight
-      security: []
       parameters:
         - { name: highlightId, in: path, required: true, schema: { type: string } }
       responses:
@@ -1657,7 +1655,6 @@ paths:
     get:
       operationId: getReadingPreferences
       summary: Get this device's reading preferences (system defaults if none stored)
-      security: []
       parameters:
         - { name: X-Device-Id, in: header, required: true, schema: { type: string, format: uuid } }
       responses:
@@ -1670,7 +1667,6 @@ paths:
     put:
       operationId: putReadingPreferences
       summary: Replace this device's reading preferences
-      security: []
       parameters:
         - { name: X-Device-Id, in: header, required: true, schema: { type: string, format: uuid } }
       requestBody:
@@ -1696,7 +1692,6 @@ paths:
     get:
       operationId: exportReadingData
       summary: Download reading progress, bookmarks, and highlights as versioned JSON
-      security: []
       parameters:
         - name: workId
           in: query
@@ -2749,6 +2744,21 @@ components:
       scheme: bearer
 
   schemas:
+    BootstrapCapabilities:
+      type: object
+      required: [sources, import, settings, system, network]
+      properties:
+        sources: { type: boolean }
+        import: { type: boolean }
+        settings: { type: boolean }
+        system: { type: boolean }
+        network: { type: boolean }
+    BootstrapResponse:
+      type: object
+      required: [capabilities]
+      properties:
+        capabilities:
+          $ref: '#/components/schemas/BootstrapCapabilities'
     PrecisePosition:
       type: object
       required: [editionId, cfi]
