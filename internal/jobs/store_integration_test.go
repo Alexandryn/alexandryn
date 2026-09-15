@@ -355,10 +355,10 @@ func TestStore_ListJobs_FilterByKindAndState(t *testing.T) {
 	}
 }
 
-// TestStore_ConcurrentClaim_NeverDoubleClaims is review 0036's required
-// proof: N goroutines on real pooled connections race ClaimNext against
-// M < N claimable jobs. Exactly M claims, zero duplicates, attempts == 1
-// on every claimed row.
+// TestStore_ConcurrentClaim_NeverDoubleClaims proves that N goroutines on
+// real pooled connections racing ClaimNext against M < N claimable jobs
+// yields exactly M claims, zero duplicates, and attempts == 1 on every
+// claimed row.
 func TestStore_ConcurrentClaim_NeverDoubleClaims(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
