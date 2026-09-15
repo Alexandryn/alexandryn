@@ -33,6 +33,17 @@ import json, sys
 with open('$ROOT/package-lock.json') as f:
     d = json.load(f)
 for name, pkg in d.get('packages', {}).items():
+    if 'resolved' not in pkg:
+        # Not a fetched registry dependency: the root entry (keyed '')
+        # and every npm workspace member (keyed by its own directory,
+        # e.g. 'web', 'electron') describe this repo's own packages, not
+        # something pulled in. Every real dependency npm actually
+        # fetched carries 'resolved' (+ 'integrity'); a local workspace
+        # package never does. This repo's own AGPL-3.0-or-later license
+        # (already verified above) lives on these entries too — on npm
+        # 11+, skipping them is what keeps that from tripping this same
+        # copyleft gate against itself.
+        continue
     if pkg.get('dev', False):
         continue
     lic = str(pkg.get('license', ''))
