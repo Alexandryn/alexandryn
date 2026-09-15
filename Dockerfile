@@ -20,10 +20,17 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /out/alexandryn-server /usr/local/bin/alexandryn-server
 USER app
 
-# Healthcheck queries /readyz over loopback using busybox wget.
-# Note: BIND_ADDRESS must be set to a fixed port when running the container
-# because the server's default is an ephemeral port.
+# Healthcheck queries /readyz on the container's own interface, not its
+# loopback: BIND_ADDRESS may be a fixed private address rather than
+# 127.0.0.1 (docker-compose.yml's default profile binds one, since a
+# published port or a sibling container reaches this container's real
+# interface, never its loopback) — `hostname -i` reports that same
+# address from inside the container regardless of which one BIND_ADDRESS
+# ends up being, so this works for both that case and a plain `docker
+# run` with a loopback bind. BIND_ADDRESS must be set to a fixed port
+# when running the container because the server's default is an
+# ephemeral port.
 HEALTHCHECK --interval=5s --timeout=3s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:8080/readyz || exit 1
+  CMD wget -qO- "http://$(hostname -i):8080/readyz" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/alexandryn-server"]

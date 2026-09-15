@@ -5,11 +5,39 @@
 # backend's depends_on uses `required: false` so that running backend
 # against an external DATABASE_URL without the bundled-db profile does not
 # fail on an undefined service dependency.
+#
+# backend binds to a fixed address on this compose file's own private
+# bridge subnet (below), not to 0.0.0.0 and not to 127.0.0.1:
+#   - 0.0.0.0 doesn't work here: internal/config/bindaddress.go classifies
+#     it as a public bind (it can't tell a wide-open interface from one
+#     Docker happens to isolate) and refuses to start without TLS — a real
+#     startup failure this compose file hit and had to be fixed around,
+#     not something to work around by relaxing that check.
+#   - 127.0.0.1 doesn't work either: Docker's port publishing (and
+#     container-to-container traffic over this network) delivers packets
+#     to the container's own interface, never to its loopback, so a
+#     server bound strictly to loopback is unreachable from outside its
+#     own container even with a port published.
+#   - A fixed address in the private subnet below satisfies both: it's
+#     genuinely RFC 1918 private (bindaddress.go's classPrivate, no TLS
+#     required to start) and it's the real interface Docker delivers
+#     traffic to, so a published port or a future reverse-proxy sidecar
+#     on this network can actually reach it.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
 services:
   backend:
     build: .
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
     environment:
-      - BIND_ADDRESS=127.0.0.1:8080
+      - BIND_ADDRESS=172.28.0.10:8080
       # If your own .env sets DATABASE_URL, that value takes precedence.
       # Unset it in your shell or comment it out in .env before using the
       # bundled-db profile, or backend will connect to your host-side database
@@ -21,11 +49,17 @@ services:
       postgres:
         condition: service_healthy
         required: false
-    # Loopback binding by default; no exposed ports or host networking on default profile.
+    # No exposed ports or host networking on this, the tracked default
+    # profile (enforced by scripts/check-compose-published-port.sh) —
+    # unreachable from the host or LAN until you opt in. Copy
+    # docker-compose.override.yml.example to docker-compose.override.yml
+    # to publish a port; that file is git-ignored so your choice is local
+    # and doesn't loosen what this repo ships by default.
 
   postgres:
     image: postgres:16-alpine
     profiles: ["bundled-db"]
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}

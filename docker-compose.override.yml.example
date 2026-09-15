@@ -1,0 +1,25 @@
+# Local override to reach the containerized server from outside the
+# container. Not used automatically: copy this file to
+# docker-compose.override.yml (git-ignored, so your choice stays local)
+# and Compose picks it up on the next `up`.
+#
+# The published mapping below binds the host side to 127.0.0.1 only — the
+# server becomes reachable from this machine (e.g. a browser at
+# http://localhost:8080), but not from your LAN or the internet. This is
+# the loopback-by-default posture Alexandryn ships with everywhere else
+# (constitution §6); nothing about running in Docker changes it.
+#
+# To go beyond this machine — reachable from other devices on your home
+# network — two things must both be true first, per ADR 0017:
+#   1. Authentication is already on by default; nothing to do there.
+#   2. TLS is in place: either a reverse proxy in front of this container
+#      already terminating TLS on a private-only bind, or Alexandryn's
+#      own in-process TLS with a validated certificate if you're binding
+#      publicly. See the self-hosting guide for both paths.
+# Only once TLS is in place should the host-side address below change
+# from 127.0.0.1 to your LAN interface (or be removed, if a reverse
+# proxy is what's actually exposed).
+services:
+  backend:
+    ports:
+      - "127.0.0.1:8080:8080"
