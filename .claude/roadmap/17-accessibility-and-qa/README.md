@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | In progress |
+| **Status** | Closed |
 | **Depends on** | Phase 16 |
 | **Blocks** | Phase 18 |
 | **Opened** | 2026-09-11 |
-| **Closed** | — |
+| **Closed** | 2026-09-11 |
 
 ## Gate 0 decisions (2026-09-11, maintainer)
 
@@ -175,22 +175,34 @@ inside this phase.
 
 ## Exit criteria
 
-- [ ] WCAG 2.1 AA conformance verified across 100% of the routes listed in
+- [x] WCAG 2.1 AA conformance verified across 100% of the routes listed in
       Scope — automated (`axe-core`) and manual, both recorded separately in
-      the audit doc.
-- [ ] Full keyboard operability verified across 100% of the flows listed in
-      Scope — zero mouse traps.
-- [ ] Cross-browser and responsive matrix executed (Chromium, Firefox,
-      WebKit, two mobile viewports) in CI.
-- [ ] Large-library scale benchmark (10,000+ items) passed: virtualization
+      the audit doc. **Known gap:** the manual keyboard/320px walkthrough of
+      Reader and Import specifically was not completed — audit `0017`'s
+      verdict line records it as still open. Closed anyway per maintainer
+      decision 2026-09-15: the automated coverage (axe-core, cross-browser
+      matrix) for both screens is in place and green; the manual walkthrough
+      is deferred, not silently treated as done.
+- [x] Full keyboard operability verified across 100% of the flows listed in
+      Scope — zero mouse traps. Same Reader/Import manual-walkthrough gap as
+      above applies here too.
+- [x] Cross-browser and responsive matrix executed (Chromium, Firefox,
+      WebKit, two mobile viewports) in CI — green on PR #313.
+- [x] Large-library scale benchmark (10,000+ items) passed: virtualization
       confirmed, ≥55 FPS scroll, no layout collapse, no memory/DOM-node leak
-      across repeated Reader open/close cycles.
-- [ ] Every finding filed as an individual GitHub issue with severity, area,
+      across repeated Reader open/close cycles — confirmed clean at 20,000
+      items (A-17-03), no leak pattern found (A-17-06).
+- [x] Every finding filed as an individual GitHub issue with severity, area,
       and `phase-17` labels.
-- [ ] Zero open Critical or High accessibility/QA findings.
-- [ ] Security audit reviewed for the redaction/live-region overlap noted
+- [x] Zero open Critical or High accessibility/QA findings — one Medium
+      (A-17-02, #315) remains open, escalated by maintainer direction and
+      deferred rather than fixed in this phase; permitted under this phase's
+      own G0-5 remediation-scope decision.
+- [x] Security audit reviewed for the redaction/live-region overlap noted
       above — no new Critical/High security findings introduced by this
       phase's remediation.
-- [ ] Documentation updated (this README, the audit doc, audit README index,
+- [x] Documentation updated (this README, the audit doc, audit README index,
       top-level roadmap README, task list).
-- [ ] Maintainer approval recorded.
+- [x] Maintainer approval recorded — 2026-09-15, confirming the merged work
+      (PR #313, audit `0017`) closes this phase with the known gaps above
+      recorded rather than hidden.

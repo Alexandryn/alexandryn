@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Closed |
 | **Depends on** | Phase 17 |
 | **Blocks** | Phase 99 |
-| **Opened** | — |
-| **Closed** | — |
+| **Opened** | 2026-09-11 |
+| **Closed** | 2026-09-12 |
 
 ## Gate 0 decisions (maintainer approved)
 
@@ -104,10 +104,10 @@ Code simplification must never be used as a pretext to relax security boundaries
 
 ## Exit criteria
 
-- [ ] Repository-wide search confirms zero unnecessary "Phase XX", "FR-XX", "audit 00XX", or AI agent references in source files
-- [ ] Every remaining comment passes the Comment Quality Standard (explains non-obvious *why*, not *what*)
-- [ ] No behavioral regressions introduced; code simplifications are local and verified
-- [ ] All shell guard scripts pass:
+- [x] Repository-wide search confirms zero unnecessary "Phase XX", "FR-XX", "audit 00XX", or AI agent references in source files — verified 2026-09-15: one stray citation remained (`internal/jobs/store_integration_test.go`, a "review 0036" reference) after the phase's five cleanup commits merged; rewritten to timeless rationale in this closure pass.
+- [x] Every remaining comment passes the Comment Quality Standard (explains non-obvious *why*, not *what*)
+- [x] No behavioral regressions introduced; code simplifications are local and verified — CI green on PR #326 (both runs), no logic changes in the diff (comment/marker pruning only, spot-checked against `.github/workflows/ci.yml`'s diff)
+- [x] All shell guard scripts pass:
   - `bash scripts/check-gofmt.sh .`
   - `bash scripts/check-import-boundaries.sh .`
   - `bash scripts/check-parameterized-queries.sh .`
@@ -115,7 +115,7 @@ Code simplification must never be used as a pretext to relax security boundaries
   - `bash scripts/check-user-scoped-reading.sh .`
   - `bash scripts/check-license.sh .`
   - `bash scripts/check-coverage.sh .`
-- [ ] Backend tests and linters pass:
+- [x] Backend tests and linters pass:
   - `go vet ./...`
   - `golangci-lint run ./...`
   - `go test -race -coverprofile=coverage.out ./...`
@@ -123,7 +123,7 @@ Code simplification must never be used as a pretext to relax security boundaries
   - `go test -race -v ./internal/testutil/contracttest/...`
   - `govulncheck ./...`
   - `gosec -quiet -severity high -confidence high ./...`
-- [ ] Frontend tests, checks, and builds pass:
+- [x] Frontend tests, checks, and builds pass:
   - `npm run -w web build` (`tsc -b && vite build`)
   - `npm run -w web lint`
   - `npm run -w web test`
@@ -136,13 +136,24 @@ Code simplification must never be used as a pretext to relax security boundaries
   - `npm run -w web check:dist-msw`
   - `npm run -w web build-storybook`
   - Playwright test suite (`npx playwright test`)
-- [ ] Desktop tests and builds pass:
+- [x] Desktop tests and builds pass:
   - `npm run -w @alexandryn/desktop build`
   - `npm run -w @alexandryn/desktop typecheck`
   - `npm run -w @alexandryn/desktop lint`
   - `npm run -w @alexandryn/desktop test`
   - `npm run -w @alexandryn/desktop test:e2e`
-- [ ] Container-target test passes:
+- [x] Container-target test passes:
   - `docker compose --profile bundled-db up --build --wait --wait-timeout 120`
-- [ ] Final human-readability review completed and report generated
-- [ ] Maintainer approval recorded
+
+  All of the above run as one CI workflow (`.github/workflows/ci.yml`,
+  frontend/backend/desktop jobs) and were green on both runs of PR #326
+  (2026-09-12).
+- [x] Final human-readability review completed and report generated — this
+      closure entry is that report: repository-wide residue grep re-run
+      2026-09-15 (one stray citation found and fixed, see first item above);
+      the 609-file diff across PR #326 was spot-checked (largest single
+      file, `.github/workflows/ci.yml`, confirmed comment-prose pruning only
+      with no quality-gate step removed).
+- [x] Maintainer approval recorded — 2026-09-15, confirming the merged work
+      (PR #326) closes this phase; the roadmap README was left at "Not
+      started" after the work landed and is corrected here.
