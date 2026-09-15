@@ -1,0 +1,66 @@
+# Packaging config for the desktop host. Produces unsigned installers —
+# no code-signing certificate exists yet (macOS notarization, Windows
+# Authenticode); this is recorded as a known release gap, not silently
+# worked around. build/icon.png is a placeholder generated for this
+# phase, not final branding — electron-builder derives the per-platform
+# .icns/.ico from it automatically.
+appId: com.alexandryn.desktop
+productName: Alexandryn
+executableName: alexandryn
+copyright: Copyright © Alexandryn contributors
+
+directories:
+  output: dist
+  buildResources: build
+
+# The renderer/main/preload bundle (electron-vite build output) plus the
+# package.json electron itself reads at startup. The web UI is not
+# bundled here — the Electron window loads it from the Go server's own
+# loopback URL at runtime (electron/README.md).
+files:
+  - out/**/*
+  - package.json
+
+# The Go server binary, built once per platform by the CI job running on
+# that platform's own runner (no cross-compilation), lands at
+# ../bin/alexandryn-server(.exe) before packaging — see
+# electron/src/main/serverBinary.ts's documented resourcesPath/server/
+# convention, which this maps to directly.
+extraResources:
+  - from: ../bin
+    to: server
+
+asar: true
+npmRebuild: false
+publish: null
+# package.json's name is scoped (@alexandryn/desktop) — deb's own default
+# artifact-name template pulls the raw package name rather than
+# productName, producing an artifact path containing a literal "/" and
+# failing to write it. Pin every target to productName explicitly.
+artifactName: '${productName}-${version}-${arch}.${ext}'
+
+afterPack: scripts/afterPack.cjs
+
+mac:
+  target: dmg
+  category: public.app-category.reference
+  icon: build/icon.png
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  identity: null
+
+win:
+  target: nsis
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Office
+  icon: build/icon.png
+  synopsis: Self-hosted digital library

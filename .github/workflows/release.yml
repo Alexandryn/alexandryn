@@ -1,0 +1,125 @@
+name: Release
+
+# Tag-triggered only: produces the release artifacts (container image,
+# desktop installers) phase 99's release process publishes. Never runs on
+# a plain push or pull request — see .github/workflows/ci.yml for the
+# gate every change already goes through before a tag is ever cut.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Least privilege for GITHUB_TOKEN, restated per job below so an added
+# job never silently inherits a wider default (matches ci.yml's own
+# convention).
+permissions:
+  contents: read
+
+jobs:
+  docker-image:
+    name: Docker image (GHCR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # ADR 0036: GHCR specifically because it needs no separate
+      # credential — GITHUB_TOKEN already has packages:write above.
+      # TAG/ACTOR come from the tag-push trigger itself (only a
+      # maintainer with tag-push rights sets these, not PR/issue text
+      # from an external contributor) but are passed through env rather
+      # than interpolated directly into the shell command regardless.
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      - name: Build image
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          docker build \
+            -t "ghcr.io/alexandryn/alexandryn:$TAG" \
+            -t ghcr.io/alexandryn/alexandryn:latest \
+            .
+
+      - name: Push image
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          docker push "ghcr.io/alexandryn/alexandryn:$TAG"
+          docker push ghcr.io/alexandryn/alexandryn:latest
+
+  installers:
+    name: Desktop installer (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            builder-flag: --linux
+            server-binary: bin/alexandryn-server
+          - os: macos-latest
+            platform: macos
+            builder-flag: --mac
+            server-binary: bin/alexandryn-server
+          - os: windows-latest
+            platform: windows
+            builder-flag: --win
+            server-binary: bin/alexandryn-server.exe
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web
+        run: npm run -w web build
+
+      # No cross-compilation: each matrix leg builds the Go binary on its
+      # own native runner, matching electron/src/main/serverBinary.ts's
+      # per-platform naming (`.exe` on Windows only) and
+      # electron-builder.yml's extraResources, which bundles whatever
+      # lands in bin/ as-is.
+      - name: Build server binary
+        run: go build -o ${{ matrix.server-binary }} ./cmd/server
+
+      - name: Build desktop bundle
+        run: npm run -w @alexandryn/desktop build
+
+      # Sets and verifies Electron's packaged-binary fuses
+      # (electron/scripts/afterPack.cjs) — a release blocker per phase 99,
+      # not optional hardening. Unsigned: no code-signing certificate
+      # exists yet (macOS notarization, Windows Authenticode), recorded
+      # as a known gap rather than silently worked around.
+      - name: Package (electron-builder)
+        run: npm run -w @alexandryn/desktop package -- ${{ matrix.builder-flag }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: installer-${{ matrix.platform }}
+          path: |
+            electron/dist/*.AppImage
+            electron/dist/*.deb
+            electron/dist/*.dmg
+            electron/dist/*.exe
+          if-no-files-found: error
+          retention-days: 90

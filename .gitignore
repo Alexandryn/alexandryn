@@ -25,6 +25,11 @@ node_modules/
 !.yarn/versions
 dist/
 build/
+# electron-builder's own convention: source-controlled packaging inputs
+# (icons, entitlements), not build output — the generic build/ ignore
+# above would otherwise also catch this.
+!electron/build/
+!electron/build/**
 out/
 .next/
 .vite/
