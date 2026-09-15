@@ -725,6 +725,22 @@ func TestReadingContractResponses(t *testing.T) {
 	})
 }
 
+// TestBootstrapContractResponse proves the anonymous capability probe
+// (deliberately public — see api/openapi.yaml's getBootstrap) returns a
+// body matching BootstrapResponse even with no Authorization header and no
+// registered auth API.
+func TestBootstrapContractResponse(t *testing.T) {
+	v := contracttest.New(t)
+	poolRef := &transporthttp.PoolRef{}
+
+	h := transporthttp.LazyBootstrapHandler(poolRef)
+	req := mustRequest(t, "GET", "/api/bootstrap", nil)
+	rr := v.ValidateResponse(t, h, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+}
+
 type ctUsers struct{}
 
 func (ctUsers) FindByID(context.Context, domain.UserID) (*domain.User, error) { return nil, nil }
