@@ -122,11 +122,17 @@ jobs:
           path: web/test-results
           retention-days: 7
 
+      # Consumed only by this same run's backend/desktop jobs, within
+      # minutes — not a human-facing download. The default 90-day
+      # retention on artifacts like this one is what filled the repo's
+      # artifact storage quota and started blocking every CI run;
+      # 1 day is generous for a same-run handoff.
       - name: Upload web/dist
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: web-dist
           path: web/dist
+          retention-days: 1
 
   backend:
     name: Backend
@@ -177,6 +183,9 @@ jobs:
           # Record checksum to verify the desktop job executes the exact artifact built here.
           ( cd bin && sha256sum alexandryn-server > alexandryn-server.sha256 )
 
+      # Consumed only by this same run's desktop job, within minutes —
+      # see the web/dist upload above for why this is 1 day, not the
+      # 90-day default.
       - name: Upload server binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -184,6 +193,7 @@ jobs:
           path: |
             bin/alexandryn-server
             bin/alexandryn-server.sha256
+          retention-days: 1
 
       - name: Vet
         run: go vet ./...
@@ -256,11 +266,16 @@ jobs:
       - name: Coverage floor
         run: bash scripts/check-coverage.sh .
 
+      # Human-facing (debugging a coverage regression after the fact),
+      # unlike web/dist and server-binary above, so this keeps a real
+      # retention window rather than 1 day — 7 days matches the existing
+      # playwright-traces convention in the frontend job above.
       - name: Upload coverage profile
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage
           path: coverage.out
+          retention-days: 7
 
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
