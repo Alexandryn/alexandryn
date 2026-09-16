@@ -16,6 +16,17 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  getBootstrap: {
+    '200': {
+      capabilities: {
+        sources: false,
+        import: false,
+        settings: false,
+        system: false,
+        network: false,
+      },
+    },
+  },
   listLibrary: {
     '200': {
       works: [
