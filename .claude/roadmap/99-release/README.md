@@ -103,8 +103,9 @@ Cleanup had to land first.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Container registry has never been chosen — no ADR names one | High | Medium | Step 5.3 requires recording the choice as an ADR before publishing the image; surfaced here so it isn't decided implicitly by whichever registry the CI token happens to authenticate against |
+| ~~Container registry has never been chosen~~ — resolved: ADR 0036, GitHub Container Registry, specifically because it needs no separate credential | — | — | Resolved 2026-09-16; `release.yml` wired to push there on tag push |
 | Cross-platform installer testing needs macOS/Windows runners or hardware this environment may not have | High | High | Document the gap explicitly per Constitution §12 rather than asserting "should work"; GitHub Actions provides `macos-latest`/`windows-latest` runners for CI-produced artifacts even where local manual testing isn't possible |
+| **Realized**: this repo's GitHub Actions is blocked — first by an artifact/cache storage quota (worked around: 560 old artifacts + 14 caches deleted, retention capped in `ci.yml` going forward), then by an org-level billing issue ("recent account payments have failed or your spending limit needs to be increased") that stops jobs before they even start | Confirmed | High | Requires the maintainer's own action on GitHub (org Settings → Billing & plans) — nothing in this repository can resolve it. All CI-equivalent checks are being run locally in the meantime (shell guards, Go/web/desktop test suites, Playwright, the container-target cycle) so this phase's own work keeps moving; macOS/Windows installer builds and the actual GHCR push remain genuinely blocked until Actions runs again |
 | Local sandbox cannot install WebKit's system dependencies (`libicu74`, `libxml2`, `libflite1`) without root — confirmed during Step 0's pre-flight battery, `npx playwright install-deps` requires `sudo` and no password is available here | Confirmed | Low | Chromium/Firefox/Mobile Chrome fully verified locally (128/128 passed); WebKit/Mobile Safari verified via CI's own runners (which do have root) rather than this sandbox — CI's historical runs (PR #313, #326) confirm the full matrix passes there |
 | Electron fuse configuration silently regresses (e.g., a future dependency bump reintroduces `nodeIntegration` or drops `contextIsolation`) | Low | Critical | Fuse posture is asserted in the packaging pipeline itself (Step 4), not just documented, and re-checked in the Step 9 security audit before tagging |
 | Docker image leaks a build-time secret into a layer (registry credential, signing key) | Low | Critical | Audit `Dockerfile` build stages for anything copied before a multi-stage `COPY --from=builder`; Step 9's packaging-attacker pass checks this explicitly |
@@ -166,10 +167,17 @@ inside this phase.
 
 ## Exit criteria
 
-- [ ] Installers built and tested on all three desktop platforms
-- [ ] Docker self-hosting stack (phase 03's baseline, hardened here)
-      verified with persistent volumes
+- [ ] Installers built and tested on all three desktop platforms — Linux
+      (AppImage + `.deb`) built and fuse-verified locally this session;
+      macOS/Windows depend on CI, currently blocked (see Risks)
+- [x] Docker self-hosting stack (phase 03's baseline, hardened here)
+      verified with persistent volumes — `postgres-data` and (added this
+      session, audit `0018` A-18-01) `app-data` (the credential-
+      encryption key and ACME cache) both verified to survive a full
+      container removal and recreation, not just a stop/start
 - [ ] OpenAPI spec published and versioned alongside the release it describes
+      — spec itself finalized and versioned (`1.0.0`) this session; actual
+      release-asset publication is a Step 10 (tag-gated) action
 - [ ] `docs` repo created, with self-hosting and admin documentation complete
 - [ ] `website` repo created, with the landing page live
 - [ ] Release tagged and published
