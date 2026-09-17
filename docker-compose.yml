@@ -41,8 +41,10 @@ services:
       # If your own .env sets DATABASE_URL, that value takes precedence.
       # Unset it in your shell or comment it out in .env before using the
       # bundled-db profile, or backend will connect to your host-side database
-      # instead of the bundled container instance.
-      - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-admin}@postgres:5432/${POSTGRES_DB:-alexandryn}?sslmode=disable}
+      # instead of the bundled container instance. POSTGRES_PASSWORD has no
+      # default (below) — a real secret, unlike POSTGRES_USER/POSTGRES_DB,
+      # which aren't.
+      - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — see .env.example}@postgres:5432/${POSTGRES_DB:-alexandryn}?sslmode=disable}
       # Required by Open Library's API policy. Must be set in .env.
       - OPEN_LIBRARY_USER_AGENT
     depends_on:
@@ -62,7 +64,11 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      # No default: a weak, well-known literal here would be a secret
+      # baked into every quick-start invocation of this file, exactly
+      # what "no secrets in ... environment defaults" (phase 99's own
+      # release standard) exists to prevent. Must be set in .env.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-alexandryn}
     volumes:
       - postgres-data:/var/lib/postgresql/data
