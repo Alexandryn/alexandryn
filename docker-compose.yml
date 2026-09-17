@@ -47,6 +47,19 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — see .env.example}@postgres:5432/${POSTGRES_DB:-alexandryn}?sslmode=disable}
       # Required by Open Library's API policy. Must be set in .env.
       - OPEN_LIBRARY_USER_AGENT
+    volumes:
+      # cmd/server/run.go resolves appDataDir from $HOME (os.UserConfigDir())
+      # — /home/app/.config/alexandryn for this image's `app` user. Without
+      # this volume, every container recreation (a rebuild, an upgrade, a
+      # plain `down` + `up` of a replaced container) loses this directory
+      # along with it: internal/adapters/crypto/keyfile.go's credential
+      # master key (source credentials become permanently undecryptable —
+      # the code already warns loudly and generates a replacement key
+      # rather than crashing, but that's a data-loss recovery path, not
+      # something a default deployment should hit on every routine
+      # restart) and the ACME certificate cache, forcing re-issuance each
+      # time. Same persistence reasoning as postgres-data below.
+      - app-data:/home/app/.config/alexandryn
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,3 +93,4 @@ services:
 
 volumes:
   postgres-data:
+  app-data:
