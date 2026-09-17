@@ -91,3 +91,9 @@ Thumbs.db
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# ---- docs repo draft content -------------------------------------------
+# Per ADR 0006, user-facing documentation lives in a separate `docs`
+# repo, not here. This is a local staging area for that content until
+# the repo exists (Phase 99, Step 6) — never committed to this repo.
+docs-draft/
