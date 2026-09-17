@@ -36,6 +36,9 @@ Initial public release.
   update the same book while offline.
 - A settings screen listing your paired devices, with the ability to
   revoke any of them.
+- A Docker/Compose deployment target for running Alexandryn on a server
+  or NAS instead of (or alongside) the desktop app, with a bundled
+  PostgreSQL option for a single-command start.
 - Health and diagnostics endpoints for operators running their own
   instance.
 - A keyboard-operable, screen-reader-tested interface conforming to WCAG
@@ -65,11 +68,16 @@ Initial public release.
 - A whole-application adversarial security review covered every trust
   boundary in the system before this release; findings are tracked
   publicly in this repository's issue tracker.
-
-<!--
-This section will be extended before the v1.0.0 tag is cut, once the
-Electron installer hardening and Docker image hardening steps of the
-release phase land, so those checks are reflected here alongside the
-application-level work above rather than asserted ahead of the work
-actually happening.
--->
+- The desktop app's packaged binary has Electron's own security fuses
+  set: it cannot be launched as a raw Node process, cannot receive
+  debugger or `NODE_OPTIONS` arguments, and only loads its own signed
+  application archive.
+- The Docker deployment target runs as a non-root user, publishes no
+  network port by default, refuses to start with a placeholder database
+  password, and keeps your encryption key and stored source credentials
+  on a persistent volume that survives an image update or container
+  restart.
+- The desktop installers are not yet code-signed (macOS notarization,
+  Windows Authenticode). Your operating system will warn you about this
+  on first launch; this is expected until signing is set up in a future
+  release.
