@@ -4,6 +4,7 @@
 // (phase 99's own release standard — see .claude/roadmap/99-release).
 'use strict'
 
+const fs = require('node:fs')
 const path = require('node:path')
 const {
   flipFuses,
@@ -32,20 +33,48 @@ function desiredFuses(platform) {
   return fuses
 }
 
-function electronBinaryPath(appOutDir, platform, executableName) {
-  if (platform === 'darwin') {
-    return path.join(appOutDir, `${executableName}.app`, 'Contents', 'MacOS', executableName)
+// electron-builder only fills `packager.executableName` on Linux. On Windows and
+// macOS it is undefined, and the binary is named after productName instead
+// (the first release run built "undefined.exe" from it). So the names to try are
+// every candidate the packager offers, and the binary is the first path that
+// really exists: a wrong guess fails loudly instead of flipping fuses on nothing.
+function resolveBinaryPath({ appOutDir, platform, names }) {
+  const candidates = [...new Set(names.filter(Boolean))]
+  if (candidates.length === 0) {
+    throw new Error(`afterPack: no executable name to look for on ${platform}`)
   }
-  if (platform === 'win32') {
-    return path.join(appOutDir, `${executableName}.exe`)
+  const paths = []
+  for (const name of candidates) {
+    if (platform === 'darwin') {
+      for (const bundle of candidates) {
+        paths.push(path.join(appOutDir, `${bundle}.app`, 'Contents', 'MacOS', name))
+      }
+    } else if (platform === 'win32') {
+      paths.push(path.join(appOutDir, `${name}.exe`))
+    } else {
+      paths.push(path.join(appOutDir, name))
+    }
   }
-  return path.join(appOutDir, executableName)
+  const found = paths.find((candidate) => fs.existsSync(candidate))
+  if (!found) {
+    throw new Error(
+      `afterPack: no Electron binary found for ${platform}; tried:\n${paths.join('\n')}`,
+    )
+  }
+  return found
 }
 
 exports.default = async function afterPack(context) {
   const { appOutDir, packager, electronPlatformName } = context
-  const executableName = packager.executableName
-  const binaryPath = electronBinaryPath(appOutDir, electronPlatformName, executableName)
+  const binaryPath = resolveBinaryPath({
+    appOutDir,
+    platform: electronPlatformName,
+    names: [
+      packager.executableName,
+      packager.config?.executableName,
+      packager.appInfo?.productFilename,
+    ],
+  })
   const fuses = desiredFuses(electronPlatformName)
 
   await flipFuses(binaryPath, {
@@ -81,3 +110,5 @@ exports.default = async function afterPack(context) {
     `afterPack: fuses verified on packaged ${electronPlatformName} binary (${binaryPath})`,
   )
 }
+
+exports.resolveBinaryPath = resolveBinaryPath
