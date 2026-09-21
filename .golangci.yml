@@ -4,3 +4,11 @@ version: "2"
 # separately via scripts/check-import-boundaries.sh.
 run:
   timeout: 5m
+
+linters:
+  exclusions:
+    paths:
+      # Throwaway spike programs that back ADR 0005 (process model). They are
+      # kept as evidence for the decision, not as production code, so they are
+      # built by `go build ./...` but not held to the lint rules.
+      - docs/decisions/.*
