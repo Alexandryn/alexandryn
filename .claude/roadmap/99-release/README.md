@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Released 2026-09-21 (Linux only, built locally); macOS/Windows installers, container image, and website hosting outstanding |
+| **Status** | Released (v1.0.1, 2026-09-21). Outstanding: website hosting (private repo, no Pages), GHCR package visibility, macOS/Windows runtime testing |
 | **Depends on** | Phase 18 |
 | **Blocks** | — |
 | **Opened** | 2026-09-15 |
@@ -167,9 +167,12 @@ inside this phase.
 
 ## Exit criteria
 
-- [ ] Installers built and tested on all three desktop platforms — Linux
-      (AppImage + `.deb`) built and fuse-verified locally this session;
-      macOS/Windows depend on CI, currently blocked (see Risks)
+- [x] Installers built on all three desktop platforms — `v1.0.1` (2026-09-21)
+      built Linux (AppImage + `.deb`), Windows (x64 `.exe`) and macOS (arm64
+      `.dmg`, Apple silicon only) in CI, fuse-verified at package time, and
+      attached to the GitHub release with `SHA256SUMS.txt`. **Not
+      runtime-tested on macOS or Windows** (no machine available), and the
+      Electron end-to-end suite has only run on Linux CI, not locally
 - [x] Docker self-hosting stack (phase 03's baseline, hardened here)
       verified with persistent volumes — `postgres-data` and (added this
       session, audit `0018` A-18-01) `app-data` (the credential-
@@ -184,17 +187,16 @@ inside this phase.
       reference, merged to `main` 2026-09-21; not yet deployed (Actions billing)
 - [ ] `website` repo created (private, `Alexandryn/website`), landing page built and
       merged to `main` 2026-09-21; **not live**: Pages has not been enabled or run
-- [x] Release tagged and published — `v1.0.0` tagged 2026-09-21 (commit `467595b`)
-      and published as a GitHub release the same day, **built and checked locally
-      because GitHub Actions is blocked by billing** (the release workflow run
-      failed before any job started). Attached: Linux AppImage and `.deb` (fuses
-      verified), `openapi.yaml`, `SHA256SUMS.txt`. **Outstanding, all needing
-      Actions or another machine:** macOS and Windows installers, and the
-      container image at `ghcr.io/alexandryn/alexandryn` (the local `gh` token has
-      no `write:packages` scope). When billing returns, re-run the failed `Release`
-      run: its `publish` job adds to the existing release, so a re-run is safe.
-      The full CI suite was also run locally on 2026-09-21 against the tagged
-      content, see below
+- [x] Release tagged and published — `v1.0.0` (Linux only, published by hand
+      because Actions was billing-blocked) and **`v1.0.1`** (2026-09-21, commit
+      `1c388d4`): the release workflow built the container image and all three
+      installers and published them. `v1.0.0`'s run failed on Windows and macOS
+      because the afterPack hook read `packager.executableName`, which
+      electron-builder sets only on Linux (fixed in #335); the tag is protected
+      and cannot move, so the fix shipped as 1.0.1. Public repositories are not
+      subject to the billing block, which is what unblocked CI. The container
+      image is at `ghcr.io/alexandryn/alexandryn:v1.0.1`; the package is private
+      by default and needs its visibility set to public in the package settings
 - [x] Maintainer approval recorded: audit `0018` approved by Luann Moreira,
       2026-09-21, and the `v1.0.0` tag authorised in the same message
 
