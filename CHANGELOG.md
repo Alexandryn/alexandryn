@@ -5,7 +5,7 @@ All notable changes to Alexandryn are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-09-21
 
 Initial public release.
 

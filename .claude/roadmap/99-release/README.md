@@ -178,7 +178,11 @@ inside this phase.
 - [ ] OpenAPI spec published and versioned alongside the release it describes
       — spec itself finalized and versioned (`1.0.0`) this session; actual
       release-asset publication is a Step 10 (tag-gated) action
-- [ ] `docs` repo created, with self-hosting and admin documentation complete
-- [ ] `website` repo created, with the landing page live
+- [x] `docs` repo created (public, `Alexandryn/docs`), with a Starlight documentation site
+      covering self-hosting, administration, security, updating, and the API
+      reference, merged to `main` 2026-09-21; not yet deployed (Actions billing)
+- [ ] `website` repo created (private, `Alexandryn/website`), landing page built and
+      merged to `main` 2026-09-21; **not live**: Pages has not been enabled or run
 - [ ] Release tagged and published
-- [ ] Maintainer approval recorded
+- [x] Maintainer approval recorded: audit `0018` approved by Luann Moreira,
+      2026-09-21, and the `v1.0.0` tag authorised in the same message
