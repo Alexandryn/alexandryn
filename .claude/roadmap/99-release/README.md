@@ -183,6 +183,13 @@ inside this phase.
       reference, merged to `main` 2026-09-21; not yet deployed (Actions billing)
 - [ ] `website` repo created (private, `Alexandryn/website`), landing page built and
       merged to `main` 2026-09-21; **not live**: Pages has not been enabled or run
-- [ ] Release tagged and published
+- [ ] Release tagged and published — `v1.0.0` tagged and pushed 2026-09-21 (commit
+      `467595b`), but the release workflow run failed before any job started: GitHub
+      Actions billing block ("recent account payments have failed"). No container
+      image, installers, or GitHub release exist. The maintainer has chosen to
+      continue without them until billing is restored; re-run the failed `Release`
+      workflow run then (the `publish` job updates an existing release, so a re-run
+      is safe). Until then the website's download links and the docs install page
+      point at a Releases page with nothing on it
 - [x] Maintainer approval recorded: audit `0018` approved by Luann Moreira,
       2026-09-21, and the `v1.0.0` tag authorised in the same message
