@@ -5,6 +5,19 @@ All notable changes to Alexandryn are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-09-21
+
+### Fixed
+
+- The Windows and macOS installers can now be built. The release packaging
+  step looked up the application binary by a name that electron-builder only
+  provides on Linux, so the 1.0.0 release run built a Linux installer and
+  failed on the other two platforms. Windows, macOS and Linux installers, and
+  their checksums, are attached to this release.
+
+No changes to the application, the API contract or the container image
+behaviour. The API contract remains version 1.0.0.
+
 ## [1.0.0] - 2026-09-21
 
 Initial public release.
