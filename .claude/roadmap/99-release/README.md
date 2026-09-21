@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress |
+| **Status** | Released 2026-09-21 (Linux only, built locally); macOS/Windows installers, container image, and website hosting outstanding |
 | **Depends on** | Phase 18 |
 | **Blocks** | — |
 | **Opened** | 2026-09-15 |
@@ -175,21 +175,49 @@ inside this phase.
       session, audit `0018` A-18-01) `app-data` (the credential-
       encryption key and ACME cache) both verified to survive a full
       container removal and recreation, not just a stop/start
-- [ ] OpenAPI spec published and versioned alongside the release it describes
-      — spec itself finalized and versioned (`1.0.0`) this session; actual
-      release-asset publication is a Step 10 (tag-gated) action
+- [x] OpenAPI spec published and versioned alongside the release it describes
+      — versioned `1.0.0`, attached to the `v1.0.0` GitHub release as
+      `openapi.yaml` (checksum matches the docs site's copy), and rendered as
+      the API reference on the docs site
 - [x] `docs` repo created (public, `Alexandryn/docs`), with a Starlight documentation site
       covering self-hosting, administration, security, updating, and the API
       reference, merged to `main` 2026-09-21; not yet deployed (Actions billing)
 - [ ] `website` repo created (private, `Alexandryn/website`), landing page built and
       merged to `main` 2026-09-21; **not live**: Pages has not been enabled or run
-- [ ] Release tagged and published — `v1.0.0` tagged and pushed 2026-09-21 (commit
-      `467595b`), but the release workflow run failed before any job started: GitHub
-      Actions billing block ("recent account payments have failed"). No container
-      image, installers, or GitHub release exist. The maintainer has chosen to
-      continue without them until billing is restored; re-run the failed `Release`
-      workflow run then (the `publish` job updates an existing release, so a re-run
-      is safe). Until then the website's download links and the docs install page
-      point at a Releases page with nothing on it
+- [x] Release tagged and published — `v1.0.0` tagged 2026-09-21 (commit `467595b`)
+      and published as a GitHub release the same day, **built and checked locally
+      because GitHub Actions is blocked by billing** (the release workflow run
+      failed before any job started). Attached: Linux AppImage and `.deb` (fuses
+      verified), `openapi.yaml`, `SHA256SUMS.txt`. **Outstanding, all needing
+      Actions or another machine:** macOS and Windows installers, and the
+      container image at `ghcr.io/alexandryn/alexandryn` (the local `gh` token has
+      no `write:packages` scope). When billing returns, re-run the failed `Release`
+      run: its `publish` job adds to the existing release, so a re-run is safe.
+      The full CI suite was also run locally on 2026-09-21 against the tagged
+      content, see below
 - [x] Maintainer approval recorded: audit `0018` approved by Luann Moreira,
       2026-09-21, and the `v1.0.0` tag authorised in the same message
+
+## Local CI run, 2026-09-21
+
+Actions could not run, so the CI workflow's steps were run by hand against the
+tagged content (a clean checkout for the checks that read the working tree).
+
+- **Backend, under the pinned Go 1.26.6:** build, vet, gofmt, import-boundary,
+  parameterized-query, compose-published-port, user-scoped-reading, licence and
+  release-notes checks (and their self-tests), golangci-lint (0 issues), unit tests
+  with `-race`, integration tests against a local PostgreSQL 16, contract tests,
+  coverage floor, govulncheck, gosec: all pass.
+- **Frontend:** token and fixture drift, contrast, build, lint, unit tests,
+  Storybook build, token-styling, a11y, bundle-size, radix-dedup, dist-secrets,
+  dist-msw, `npm audit`, Playwright on chromium, firefox and mobile Chrome: all pass.
+- **Desktop:** server binary, build, typecheck, lint, unit tests: pass.
+- **Container target:** `docker compose --profile bundled-db up --build --wait`
+  reached healthy, then torn down.
+- **Not run:** WebKit and mobile Safari Playwright projects, and the Electron
+  end-to-end tests (no `xvfb` on this machine); macOS and Windows anything.
+- Two local-environment failures were not code defects and are recorded so nobody
+  re-diagnoses them: a git-ignored `docker-compose.override.yml` tripped the
+  published-port check (clean checkout passes), and golangci-lint 2.12.2 panics
+  on Go 1.27 (passes under the pinned 1.26.6).
+
