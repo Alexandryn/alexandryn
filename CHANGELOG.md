@@ -5,6 +5,16 @@ All notable changes to Alexandryn are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The container image now creates the credential-key directory owned by the
+  application user. With Docker, a new `app-data` volume mounted over a
+  directory the image did not have was owned by root, so the server could not
+  write its credential key and restarted in a loop; it started on Podman, which
+  is how it was first checked. Recreate the container after updating.
+
 ## [1.0.1] - 2026-09-21
 
 ### Fixed
