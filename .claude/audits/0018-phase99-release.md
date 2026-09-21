@@ -7,6 +7,7 @@
 | **Date** | 2026-09-17 |
 | **Commit** | `9d8488e` |
 | **Verdict** | Clear — three findings, all fixed during this audit, none open |
+| **Maintainer approval** | Approved by Luann Moreira on 2026-09-21, including the release-publishing addendum below. The addendum's `publish` job, the macOS and Windows installers, and the GHCR push remain unverified end to end: CI was blocked at approval time. |
 
 ## Scope and method
 
