@@ -72,7 +72,7 @@ type LibraryEntryRepository interface {
 // CollectionRepository backs CollectionService's Create/Delete and its
 // member-mutation round-trips. Every method is scoped to one library:
 // collections belong to the Alexandryn library they were created in, and
-// a caller in another library must not see or mutate them (constitution §3/§6).
+// a caller in another library must not see or mutate them.
 // A collection id that exists in a different library is reported as
 // NotFound — no cross-library existence oracle.
 type CollectionRepository interface {

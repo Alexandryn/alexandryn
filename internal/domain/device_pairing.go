@@ -100,7 +100,7 @@ func (c PairingCode) Display() string {
 
 // String is deliberately redacted: a PairingCode is a short-lived
 // credential-equivalent and must not leak through an accidental %v or a
-// structured log of a containing value (constitution §8). Use Normalized
+// structured log of a containing value. Use Normalized
 // or Display explicitly.
 func (c PairingCode) String() string { return "[pairing code]" }
 

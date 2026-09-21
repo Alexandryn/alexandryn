@@ -16,7 +16,7 @@
 [![Zero Telemetry](https://img.shields.io/badge/telemetry-zero-4A8A68.svg)](#strict-privacy--security-model)
 [![Web Reader](https://img.shields.io/badge/reader-EPUB_%26_PDF-863BFF.svg)](#distraction-free-reading-engine)
 
-[**Website**](https://alexandryn.github.io/website/) · [**Documentation**](https://alexandryn.github.io/docs/) · [**Architecture Decisions**](.claude/decisions/) · [**Specifications**](.claude/specs/)
+[**Website**](https://alexandryn.github.io/website/) · [**Documentation**](https://alexandryn.github.io/docs/) · [**Architecture Decisions**](docs/decisions/) · [**Specifications**](docs/specs/)
 
 </div>
 
@@ -219,14 +219,14 @@ Then navigate to `http://<server-ip>:8080` to complete the initial administrator
 Alexandryn was developed from day one with an uncompromising specification-first and test-driven engineering discipline:
 
 - **100% Test-First**: Every backend endpoint, domain transition, and frontend screen is covered by automated unit, integration, or end-to-end tests.
-- **The Constitution ([`.claude/constitution.md`](.claude/constitution.md))**: Twelve non-negotiable architectural invariants:
+- **The Constitution ([`docs/constitution.md`](docs/constitution.md))**: Twelve non-negotiable architectural invariants:
   - Input validation with strict shape and timeout limits (§4).
   - Domain separation between metadata, storage, and user libraries (§3).
   - Tenant-scoped queries preventing horizontal access violations (§6).
   - Web Content Accessibility Guidelines (WCAG 2.1 AA) compliance across all viewports (§7).
   - Zero credential or reading content logging (§8).
-- **Adversarial Security Audits ([`.claude/audits/`](.claude/audits/))**: Every major milestone underwent multi-pass adversarial security sweeps before closure.
-- **Architecture Decision Records ([`.claude/decisions/`](.claude/decisions/))**: All significant decisions, from database engine selection to licensing, are formally recorded with context and consequences.
+- **Adversarial security review**: every major milestone underwent multi-pass adversarial security sweeps before closure; the results are in the repository history.
+- **Architecture Decision Records ([`docs/decisions/`](docs/decisions/))**: All significant decisions, from database engine selection to licensing, are formally recorded with context and consequences.
 
 ---
 
@@ -241,7 +241,7 @@ Alexandryn was developed from day one with an uncompromising specification-first
 
 ## Contributing
 
-We welcome contributions that respect the project's quality bar. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [`.claude/constitution.md`](.claude/constitution.md) before opening a pull request.
+We welcome contributions that respect the project's quality bar. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [`docs/constitution.md`](docs/constitution.md) before opening a pull request.
 
 ---
 
@@ -253,6 +253,6 @@ Please do not open public GitHub issues for security vulnerabilities. Review [SE
 
 ## Licence
 
-Licensed under the **[GNU Affero General Public License v3.0 or later](LICENSE)** ([ADR 0002](.claude/decisions/0002-project-licence.md)).
+Licensed under the **[GNU Affero General Public License v3.0 or later](LICENSE)** ([ADR 0002](docs/decisions/0002-project-licence.md)).
 
 Because Alexandryn is self-hosted software, the AGPL ensures that anyone offering modified versions over a network must share their source code with their users, preserving software freedom for all readers.

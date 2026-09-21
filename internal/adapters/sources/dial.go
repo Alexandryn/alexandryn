@@ -17,7 +17,7 @@ import (
 var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 
 // IsBlockedDialIP reports whether an outbound source request must never
-// reach ip (Constitution §4: a source base URL is attacker-chosen input).
+// reach ip (a source base URL is attacker-chosen input).
 //
 // Always blocked, no opt-out: link-local in its plain form (the
 // 169.254.169.254 cloud-metadata address and fe80::/10), carrier-grade

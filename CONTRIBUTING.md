@@ -1,13 +1,13 @@
 # Contributing to Alexandryn
 
 Thanks for looking. Before anything else, read
-[the constitution](.claude/constitution.md). It's short, and it explains why
+[the constitution](docs/constitution.md). It's short, and it explains why
 this project asks for things other projects don't.
 
 ## Local development
 
 Storage is PostgreSQL, run locally via the Supabase CLI ([ADR
-0004](.claude/decisions/0004-persistence-engine-postgresql.md)):
+0004](docs/decisions/0004-persistence-engine-postgresql.md)):
 
 ```
 npm install -g supabase   # once
@@ -51,22 +51,19 @@ account needed, no data leaves the machine.
 
 ## How work is organised
 
-Everything lives in `.claude/`, and it's meant to be read:
+The design documentation lives in `docs/`, and it's meant to be read:
 
-| Directory | What's in it |
+| Path | What's in it |
 |---|---|
+| `constitution.md` | The short list of rules the project is built on |
 | `roadmap/` | Phases in dependency order, each with exit criteria |
 | `specs/` | Feature specifications, each with a status |
 | `decisions/` | Architecture decision records, including open questions |
-| `test-plans/` | What gets tested, and at which layer |
-| `reviews/` | Spec and code review records |
-| `audits/` | Adversarial reviews and their findings |
-| `templates/` | Start here when creating any of the above |
 
 A phase moves through: discover, specify, review, plan tests, implement
 test-first, QA, security audit, document, close. Two points stop for a
-maintainer's approval — before each spec is drafted (its scope and key
-decisions, not its finished text), and after the audit.
+maintainer's approval: before each spec is drafted (its scope and key
+decisions, not its finished text), and after the security audit.
 
 ## Making a change
 
@@ -75,7 +72,7 @@ No spec needed.
 
 **Anything that changes behaviour** — open an issue first and describe the
 problem, not your solution. If it's substantial, it becomes a spec in
-`.claude/specs/` using [the template](.claude/templates/spec.md), and the spec
+`docs/specs/`, and the spec
 gets reviewed before code is written. This feels slow once and saves rework
 repeatedly.
 
@@ -92,7 +89,7 @@ An OPDS feed could point at 169.254.169.254 and turn the host into an
 SSRF proxy for the LAN. Resolve and check the target before connecting,
 and re-check on every redirect hop.
 
-Refs: .claude/specs/sources-ssrf.md
+Refs: docs/specs/sources-ssrf.md
 ```
 
 The body explains *why*. The diff already shows what.

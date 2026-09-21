@@ -47,7 +47,7 @@ func EnsureDataDir(ctx context.Context, stat StatFunc, run CommandRunner, initDB
 // checkDataDirPerms fails closed if the data directory is readable or
 // writable by group or other. PostgreSQL itself enforces 0700/0750; this
 // catches a directory whose mode was loosened after a previous run
-// before the instance is handed reading data (constitution §8).
+// before the instance is handed reading data.
 func checkDataDirPerms(stat StatFunc, dataDir string) error {
 	fi, err := stat(dataDir)
 	if err != nil {

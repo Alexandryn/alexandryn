@@ -3,7 +3,7 @@ import { cx } from '../../lib/cx'
 import { Button } from '../Button/Button'
 
 export interface ErrorStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
-  /** Plain-language sentence: what failed and what to do next (constitution §11). */
+  /** Plain-language sentence: what failed and what to do next. */
   title: string
   description?: string
   /** The API error's machine code, shown small and secondary. */

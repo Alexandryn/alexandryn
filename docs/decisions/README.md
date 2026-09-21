@@ -1,0 +1,106 @@
+# Architecture decision records
+
+A decision belongs here when it would be expensive to reverse, when it
+constrains other work, or when a future contributor would otherwise reasonably
+ask "why on earth is it like this?"
+
+Not every choice needs an ADR. Which HTTP library — probably not. Whether the
+domain layer may import the HTTP library — yes.
+
+**A decision meeting that bar gets its own ADR even when it's first made
+while drafting a spec, not only when drafting an ADR directly.** Two
+choices of the same weight as the backend's own ADR 0011–0014 —
+`frontend-shell-and-routing.md` FR-2 (TanStack Query as the data-fetching
+library, constraining every later frontend spec that fetches data) and
+`architecture-contracts.md` FR-4 (the API's path-based versioning scheme,
+constraining every endpoint-owning spec since) — were settled as spec FRs
+only, with no standalone ADR, found during the 2026-08-16/17 spec-set
+review. Both meet the criterion above (constrains later specs; a
+reviewer would reasonably ask "why is it like this"); neither is
+retroactively getting an ADR now, since retro-fitting one for an
+already-settled, working decision has less value than fixing the gap
+going forward — a spec's FR is where a decision meeting this bar is
+*applied*, and may cite an ADR, but does not substitute for filing one.
+When drafting or reviewing a spec, a decision inside it that independently
+meets this page's own criterion needs its own ADR, filed alongside the
+spec, not folded silently into the FR text.
+
+## Conventions
+
+- Filename: `NNNN-short-kebab-title.md`, numbered sequentially, never reused
+- Start from `../templates/adr.md`
+- Title is a statement, not a question: *"The host binds to loopback by
+  default"*, not *"Binding behaviour?"*
+- Status: `Proposed` → `Accepted` / `Rejected`, and later `Superseded` or
+  `Deprecated`
+- Superseding creates a new ADR and updates both records. The old one stays.
+- **Extending, not superseding, gets an in-place `## Addendum — <what
+  changed> (<date>)` section instead of a new ADR.** Use this when a later
+  decision adds to or extends an Accepted ADR's finding without
+  contradicting it (e.g. ADR 0007 adding a third process to what ADR
+  0005's two-process finding still correctly describes at the Electron↔Go
+  layer). If the *original* decision itself would need to change, that's
+  supersession — a new ADR, not an addendum. (ADR 0004 and ADR 0005 both
+  already used this pattern before it was written down here.)
+
+Record the options that lost. The next person will think of them too and
+deserves to know they were already weighed.
+
+## Index
+
+| # | Decision | Status |
+|---|---|---|
+| [0001](0001-record-architecture-decisions.md) | We record architecture decisions in this directory | Accepted |
+| [0002](0002-project-licence.md) | Project licence | Accepted — AGPL-3.0-or-later |
+| [0003](0003-design-canvas-split.md) | Design reference split into per-surface canvases (Desktop/Host, Web/Remote viewer, States, Design system) | Accepted |
+| [0004](0004-persistence-engine-postgresql.md) | Persistence engine is self-hosted PostgreSQL; Supabase is dev/test tooling only | Accepted |
+| [0005](0005-process-model.md) | Go server is a spawned child process, never embedded into one binary; prototype-backed | Accepted |
+| [0006](0006-docs-and-website-repos.md) | Documentation and the landing page live in separate repos (`docs`, `website`), created at phase 99 release | Accepted |
+| [0007](0007-postgres-provisioning.md) | Production PostgreSQL is bundled and managed by the Go server, never user-configured | Accepted |
+| [0008](0008-monorepo-layout.md) | Monorepo layout: Go module at root, two npm workspace packages, no build-orchestration tool | Accepted |
+| [0009](0009-progress-attachment.md) | Reading progress attaches to Work, Edition-scoped precise position as fallback-capable secondary | Accepted |
+| [0010](0010-bibliographic-identity-strategy.md) | Bibliographic identity is internal-ID-primary; external references optional, never required | Accepted |
+| [0011](0011-http-router-and-middleware.md) | HTTP routing uses the standard library's `ServeMux`; middleware is hand-rolled, no router framework | Accepted |
+| [0012](0012-postgres-driver.md) | PostgreSQL access uses `pgx` natively, not `database/sql` | Accepted |
+| [0013](0013-migration-tool.md) | Schema migrations use `goose`, embedded via `go:embed` | Accepted |
+| [0014](0014-job-queue-backend-postgresql.md) | Background job queue is PostgreSQL-backed, not a dedicated message broker | Accepted |
+| [0015](0015-container-topology.md) | A second deployment target ships the backend as a container, composed with PostgreSQL, alongside the Electron-hosted target | Accepted |
+| [0016](0016-test-plan-cadence.md) | Test plans are written per-phase, at RED-step time, not per-spec at approval time | Proposed |
+| [0017](0017-network-exposure-condition-gated.md) | Network exposure is gated on TLS and authentication being verifiably true, not on a phase number or deployment target | Accepted |
+| [0018](0018-go-lint-tool.md) | General Go static analysis uses `golangci-lint`; the import-boundary check stays a separate, interim script | Accepted |
+| [0019](0019-toml-library.md) | Config-file parsing uses `pelletier/go-toml/v2`, decoded into a `map[string]any` for the per-key lookup `internal/config` already uses | Accepted |
+| [0020](0020-graph-invariants-in-domain-services.md) | Invariants that depend on reading other records live in domain services holding domain-defined repository interfaces, never in value constructors | Accepted |
+| [0021](0021-transaction-contract-and-event-outbox.md) | Operations spanning repositories compose through a domain-declared `Transactor` carrying its handle in context; events are written to a transactional outbox | Accepted |
+| [0022](0022-pdf-metadata-extraction-library.md) | PDF metadata extraction uses `pdfcpu`, wrapped in bounded streams and panic recovery | Accepted |
+| [0023](0023-reader-rendering-engine.md) | The in-browser reader renders EPUB with `foliate-js`, pinned through npm; its insecure `blob:`-URL default is not used | Accepted |
+| [0024](0024-server-side-html-sanitization.md) | Served EPUB HTML/XHTML is sanitised server-side with `microcosm-cc/bluemonday`; CSS is scanned by a hand-written check | Accepted |
+| [0025](0025-jwt-session-mechanism.md) | Sessions are hand-rolled HS256 JWT access tokens (Bearer, `localStorage`) with DB-backed refresh-token rotation; passwords hashed with Argon2id | Accepted |
+| [0026](0026-multi-library-tenancy-model.md) | Multi-library tenancy model | Accepted |
+| [0027](0027-totp-mfa-implementation.md) | TOTP MFA implementation | Accepted |
+| [0028](0028-phase13-network-transport-and-pairing.md) | Phase 13 transport: bind mode derived from the resolved address + cert state (not a flag); ACME via `autocert` (no new module); app-origin CSP + security headers on every bind; CORS deny-by-default; no CSRF tokens under Bearer auth (`Origin` check on pairing routes); pairing as a thin bootstrap over phase-12 accounts with encrypted-at-rest codes and a distinct signing subkey per token purpose; authentication never disable-able; `rememberDeviceDays` the one operator-tunable token lifetime | Accepted |
+| [0029](0029-cross-device-identity-agreement.md) | Cross-device identity agreement: server-canonical Work ID is the sync key; per-device sync state (cursor + last-synced-at) extends `PairedDevice` rather than a separate model; pull-based polling transport | Proposed |
+| [0030](0030-expvar-metrics.md) | In-process metrics collection uses Go stdlib `expvar`; no new dependency, no external telemetry service | Accepted |
+| [0031](0031-activity-log-store.md) | Activity log store: single `system_events` table with JSONB payload and `event_kind` discriminator; application-level retention reaper seeded by `purge_at`; admin-role-only read access | Accepted |
+| [0032](0032-redaction-proof-test.md) | Redaction-proof CI test: `log/slog` capture via `internal/testutil/slogspy.go`, five violation-pattern categories, integration paths covering credential + auth + import + `system_events` payload, per-violation `t.Errorf` fail mode | Accepted |
+| [0033](0033-go-coverage-threshold.md) | Go unit-test coverage: CI enforces a non-regression floor (1-point tolerance below `scripts/coverage-baseline.txt`), not a fixed target; interim until the integration profile is merged in (audit 0016 #131) | Accepted |
+| [0034](0034-ci-supply-chain-posture.md) | CI workflow supply-chain posture: third-party actions SHA-pinned with Dependabot bumps, least-privilege `GITHUB_TOKEN` (`contents: read`), `gosec` at high/high in-CI, SHA-256 checksum on the cross-job server binary (audit 0016 #121/#123/#125/#205) | Accepted |
+| [0035](0035-csp-style-src-unsafe-inline-residual-risk.md) | Content-Security-Policy style-src 'unsafe-inline' residual risk: retained for Radix UI runtime dynamic styling without per-request template rendering; residual risk recorded (audit 0016 #191) | Accepted |
+
+
+## Open questions not yet ADRs
+
+Things known to need deciding, with the phase that will force the question:
+
+| Question | Forced by |
+|---|---|
+| ~~Frontend data-fetching and state approach~~ — resolved without an ADR, see `frontend-shell-and-routing.md` FR-2 (TanStack Query, v5, pinned major) | Phase 01 |
+| ~~Where the API contract is defined, and who owns it~~ — format fixed as OpenAPI (ADR 0006); ownership/versioning/design resolved without an ADR, see `architecture-contracts.md` FR-4 (path-based versioning, `/api/v1/...`) | Phase 01 |
+| ~~Whether RabbitMQ is warranted, and for exactly which work~~ — addressed by ADR 0014 (PostgreSQL-backed, not RabbitMQ) | Phase 09 |
+| ~~How the reader renders EPUB, and in what sandbox~~ — resolved by ADR 0023 (`foliate-js` rendering engine, pinned through npm; `<iframe sandbox="allow-same-origin">`, no `allow-scripts`; `blob:`-URL default not used) and ADR 0024 (server-side HTML sanitisation with `bluemonday`, hand-written CSS scan, `Content-Security-Policy: default-src 'self'; script-src 'none'...`), formalising `frontend-reader.md` FR-1 and `backend-reader-content.md` FR-6/FR-9 | Phase 11 |
+| Credential storage on the host | Phase 12 |
+| ~~Go test-coverage tool and threshold~~ — resolved by ADR 0033: CI enforces a non-regression floor via `scripts/check-coverage.sh`, not a fixed target; superseded when the integration profile is merged into the reported number | Phase 03 (deferred), Phase 16 |
+| ~~CSRF protection for state-changing requests, once sessions are cookie-based~~ — moot: phase 12 chose Bearer-token sessions (ADR 0025), not cookies, so there is no ambient credential to forge. ADR 0028 §5 records no CSRF token machinery, `Origin`/`Referer` validation on the unauthenticated pairing routes only, and the rationale | Phase 12/13 |
+| ~~Open-redirect protection for any post-authentication redirect target~~ — resolved in phase 12 (`backend-authentication.md` FR-9: `redirect`/`returnTo` must be a relative path starting with a single `/`) | Phase 12 |
+| ~~Transport security on the LAN~~ — resolved by ADR 0028: TLS mode derived from the resolved bind address + certificate/ACME state (never a flag), in-process TLS 1.2+/1.3 with a fixed AEAD cipher list for a public bind, ACME via `autocert` (no new module), fail-closed at bind. `backend-network-transport.md` implements it | Phase 13 |
+| ~~Non-loopback bind for the container-hosted target (ADR 0015)~~ — the *rule* is resolved: ADR 0017 replaces the phase-gate with a two-mode condition (in-process TLS on a public bind, or upstream TLS with the process bound private-only), both authentication-gated and fail-closed. `backend-configuration.md` FR-8 and `deployment-container-packaging.md` FR-6 are amended to match. What's still Phase 12/13's: actually building authentication and the certificate/reverse-proxy configuration surface the rule depends on | Phase 12/13 (implementation only — the rule itself is decided) |
+| ~~Which container registry the release image publishes to~~ — resolved by ADR 0036: GitHub Container Registry, chosen specifically because it needs no separate credential (uses CI's own `GITHUB_TOKEN`) | Phase 99 |

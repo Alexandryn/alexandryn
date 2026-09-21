@@ -33,8 +33,7 @@ type Credential struct {
 }
 
 // NewCredential validates and constructs a Credential. Both fields must
-// be non-empty, within length bounds, and free of control characters
-// (constitution §4).
+// be non-empty, within length bounds, and free of control characters.
 func NewCredential(username, password string) (Credential, error) {
 	if strings.TrimSpace(username) == "" {
 		return Credential{}, &domain.Error{Category: domain.InvalidInput, Message: "credential username must not be empty"}

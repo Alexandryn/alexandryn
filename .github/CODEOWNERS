@@ -2,9 +2,9 @@
 # rules rather than widening them.
 *                       @luannmoreira
 
-# The engineering memory is the project's constitution, roadmap and specs.
+# The project's constitution, roadmap, specs and decision records.
 # Changes here alter how everything else gets built.
-/.claude/               @luannmoreira
+/docs/                  @luannmoreira
 
 # Security policy, CI, and dependency manifests are the highest-leverage files
 # in the repository for an attacker. Treat edits accordingly.

@@ -9,8 +9,8 @@ one, because it stops the reviewer from looking.
 
 ## Related
 
-- Spec: <!-- .claude/specs/… or "none — see below" -->
-- Phase: <!-- .claude/roadmap/NN-… -->
+- Spec: <!-- docs/specs/… or "none — see below" -->
+- Phase: <!-- docs/roadmap/NN-… -->
 - Issue: <!-- #123 -->
 
 If there is no spec, say why this change doesn't need one. Typos, dependency

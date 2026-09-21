@@ -1,7 +1,6 @@
 // electron-builder afterPack hook: sets Electron's packaged-binary security
 // fuses and reads them back from the actual packaged binary to confirm
-// the flip took effect, rather than trusting the config that requested it
-// (phase 99's own release standard — see .claude/roadmap/99-release).
+// the flip took effect, rather than trusting the config that requested it.
 'use strict'
 
 const fs = require('node:fs')
@@ -14,7 +13,7 @@ const {
   FuseState,
 } = require('@electron/fuses')
 
-// Recommended posture (CLAUDE.md, phase 99): RunAsNode off,
+// Recommended posture: RunAsNode off,
 // EnableNodeCliInspectArguments off, EnableNodeOptionsEnvironmentVariable
 // off, EnableCookieEncryption on, OnlyLoadAppFromAsar on,
 // EnableEmbeddedAsarIntegrityValidation on (macOS/Windows only — the fuse

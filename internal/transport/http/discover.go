@@ -28,7 +28,7 @@ func DiscoverSearchHandler(client openlibrary.Client) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
 
-		// Constitution §4: line-1 validation of query parameters.
+		// Line-1 validation of query parameters.
 		q := strings.TrimSpace(r.URL.Query().Get("q"))
 		if q == "" {
 			WriteError(w, domain.InvalidInput, "q: search query must be non-empty", id)
@@ -85,7 +85,7 @@ func DiscoverWorkDetailHandler(client openlibrary.Client, cacheRepo postgres.Met
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
 
-		// Constitution §4: line-1 validation of path parameter.
+		// Line-1 validation of path parameter.
 		rawID := r.PathValue("openLibraryId")
 		openLibraryID := openlibrary.CleanKey(rawID)
 		if !openlibrary.IsValidWorkKey(openLibraryID) {
@@ -133,7 +133,7 @@ func DiscoverCoverHandler(client openlibrary.Client, cacheRepo postgres.CoverCac
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationIDFromContext(r.Context())
 
-		// Constitution §4: line-1 validation of path parameter.
+		// Line-1 validation of path parameter.
 		coverIDStr := r.PathValue("coverId")
 		coverID, err := strconv.ParseInt(coverIDStr, 10, 64)
 		if err != nil || coverID <= 0 {

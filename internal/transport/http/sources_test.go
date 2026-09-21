@@ -721,7 +721,7 @@ func TestSources_Logging_NoCredentialsOrSecrets(t *testing.T) {
 	}
 
 	logs := logBuf.String()
-	// Constitution §8: Never log full file paths from a user's home directory or secrets
+	// Never log full file paths from a user's home directory or secrets
 	if strings.Contains(logs, tempDir) {
 		t.Errorf("logs contained full basePath %q: %s", tempDir, logs)
 	}

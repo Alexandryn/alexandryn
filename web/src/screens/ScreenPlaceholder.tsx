@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 
 export interface ScreenPlaceholderProps {
   title: string
-  /** One plain sentence on what this screen will hold (constitution §11). */
+  /** One plain sentence on what this screen will hold. */
   note?: string
 }
 

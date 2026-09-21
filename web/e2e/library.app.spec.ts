@@ -113,7 +113,7 @@ test.describe('Library and Collections E2E Walkthrough', () => {
     await renameDialog.getByRole('button', { name: 'Cancel' }).click()
     await expect(renameDialog).toBeHidden()
 
-    // Check Delete button opens delete confirmation modal (Constitution §11)
+    // Check Delete button opens delete confirmation modal (specific confirmation copy)
     await page.getByRole('button', { name: 'Delete' }).click()
     const deleteDialog = page.getByRole('dialog', { name: 'Delete collection' })
     await expect(deleteDialog).toBeVisible()

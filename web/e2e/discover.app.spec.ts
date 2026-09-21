@@ -96,7 +96,7 @@ test.describe('Discover E2E Walkthrough', () => {
       page.getByText("This book couldn't be found on Open Library"),
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Back to Discover' })).toBeVisible()
-    // Constitution §11: 404 states must not show a retry button
+    // 404 states must not show a retry button
     await expect(page.getByRole('button', { name: /try again/i })).toBeHidden()
   })
 })

@@ -12,7 +12,7 @@ info:
 
 servers:
   - url: /
-    description: The Go server's own origin (loopback by default, constitution §6).
+    description: The Go server's own origin (loopback by default).
 
 # Path-based versioning. Health lives at the root, outside the versioned
 # surface, because it predates and is independent of it.
@@ -2931,7 +2931,7 @@ components:
           type: string
           description: >-
             Human-readable, specific, no apology, says what to do next
-            (constitution §11).
+            (specific, plain-language error copy).
           example: no such endpoint
         correlationId:
           type: string
