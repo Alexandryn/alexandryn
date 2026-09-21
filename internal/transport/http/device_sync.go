@@ -430,7 +430,7 @@ func SyncProgressHandler(
 		repTime := currentTime
 		if req.ReportedAt != nil {
 			t := req.ReportedAt.UTC()
-			// Constitution §4: validate external input bounds. Client timestamp must not be in
+			// Validate external input bounds. Client timestamp must not be in
 			// the future or unrealistically stale (> 30 days old). If out of bounds, clamp to server now.
 			if t.After(currentTime.Add(time.Minute)) || t.Before(currentTime.Add(-30*24*time.Hour)) {
 				repTime = currentTime

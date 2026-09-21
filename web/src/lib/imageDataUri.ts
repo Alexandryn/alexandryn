@@ -9,7 +9,7 @@ const ALLOWED_IMAGE_DATA_URI =
 
 // A cover thumbnail is tens of KB of encoded string; anything past ~1.5 MB
 // is treated as hostile and dropped for the generated fallback
-// (Constitution §4: a size limit on untrusted input, not only a shape check).
+// (a size limit on untrusted input, not only a shape check).
 const MAX_COVER_SRC_LENGTH = 1_500_000
 
 export function isAllowedImageDataUri(value: string): boolean {

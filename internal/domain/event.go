@@ -231,7 +231,7 @@ func NewEditionImported(aggregateID string, occurredAt time.Time) EditionImporte
 }
 
 // LibraryEntryAdded and LibraryEntryRemoved track book possession in a user's
-// library and are classified as sensitive under privacy policy (Constitution §8).
+// library and are classified as sensitive under the privacy policy.
 type LibraryEntryAdded struct {
 	baseEvent
 	sensitiveMarker
@@ -291,7 +291,7 @@ func NewCollectionMemberRemoved(aggregateID string, occurredAt time.Time) Collec
 
 // ReadingProgressUpdated, BookmarkCreated, and HighlightCreated track user reading
 // activity, progress, and annotations, strictly classified as sensitive under
-// privacy policy (Constitution §8).
+// the privacy policy.
 type ReadingProgressUpdated struct {
 	baseEvent
 	sensitiveMarker

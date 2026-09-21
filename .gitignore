@@ -44,7 +44,7 @@ bin/
 *.test
 *.out
 vendor/
-# ...except the deliberately vendored frontend library (foliate-js, ADR 0023).
+# ...except the deliberately vendored frontend library (foliate-js).
 !web/src/vendor/
 __debug_bin*
 electron/test-helpers/test-server/test-server
@@ -69,11 +69,11 @@ blob-report/
 
 # ---- Local runtime data ----------------------------------------------------
 # The host writes cached files here during dev. The library itself lives in
-# PostgreSQL (ADR 0004), not a file on disk.
+# PostgreSQL, not a file on disk.
 .data/
 
 # ---- Local PostgreSQL / Supabase dev tooling --------------------------------
-# `supabase init` (ADR 0004) writes its own supabase/.gitignore for
+# `supabase init` writes its own supabase/.gitignore for
 # .branches/.temp. config.toml and migrations/ are tracked on purpose.
 
 # ---- Editors and OS --------------------------------------------------------

@@ -124,7 +124,7 @@ describe('CollectionDetail Screen', () => {
     await user.click(deleteBtn)
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    // Constitution §11 specific delete confirmation copy
+    // Specific delete confirmation copy
     expect(
       screen.getByText('Delete "Victorian Classics"? The books in it will stay in your library.'),
     ).toBeInTheDocument()

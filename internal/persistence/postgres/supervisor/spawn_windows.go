@@ -10,10 +10,8 @@ import (
 )
 
 // Raw kernel32.dll syscalls rather than golang.org/x/sys/windows
-// (T25-D1, constitution §9) — one direct syscall surface, no dependency
-// to justify, matching this project's existing precedent
-// (.claude/decisions/0005-process-model-prototype/go-child-pdeathsig/main.go's
-// own "one direct syscall, no dependency to justify" stance for Linux).
+// — one direct syscall surface, no dependency to justify, matching the
+// direct-syscall approach the Linux child-lifetime handling takes.
 var (
 	modKernel32                  = syscall.NewLazyDLL("kernel32.dll")
 	procCreateJobObjectW         = modKernel32.NewProc("CreateJobObjectW")

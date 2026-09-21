@@ -18,7 +18,7 @@ import (
 //     what stops the server doing ACME work on an attacker's behalf.
 //   - Prompt = AcceptTOS: enabling ACME accepts the CA's Terms of Service
 //     on the operator's behalf. cmd/server logs the CA directory URL at
-//     startup so the operator knows what was agreed to (§11/§12).
+//     startup so the operator knows what was agreed to.
 //   - Cache is a DirCache at cacheDir; autocert creates it 0700 and the
 //     account/certificate keys inside are secrets on disk.
 func NewACMEManager(cfg *config.Config, cacheDir string) *autocert.Manager {

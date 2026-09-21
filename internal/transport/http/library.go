@@ -82,7 +82,7 @@ func LibraryHandler(repo domain.WorkRepository) http.Handler {
 			return
 		}
 
-		// Constitution §4: line-1 validation of all query parameters.
+		// Line-1 validation of all query parameters.
 		limitStr := r.URL.Query().Get("limit")
 		limit := 50
 		if limitStr != "" {
@@ -208,7 +208,7 @@ func WorkDetailHandler(repo domain.WorkRepository) http.Handler {
 			workID = strings.TrimPrefix(r.URL.Path, "/api/v1/works/")
 		}
 
-		// Constitution §4 shape validation:
+		// Shape validation:
 		if err := domain.ValidateBoundedText("id", workID, 100); err != nil {
 			WriteError(w, domain.InvalidInput, "id: not a valid work ID", id)
 			return

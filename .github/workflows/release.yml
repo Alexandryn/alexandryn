@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # ADR 0036: GHCR specifically because it needs no separate
+      # GHCR specifically because it needs no separate
       # credential — GITHUB_TOKEN already has packages:write above.
       # TAG/ACTOR come from the tag-push trigger itself (only a
       # maintainer with tag-push rights sets these, not PR/issue text

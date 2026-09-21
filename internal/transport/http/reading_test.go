@@ -740,7 +740,7 @@ func TestReadingExport_VersionedDocumentAndScopedNotFound(t *testing.T) {
 	}
 }
 
-// §8: no reading content (CFI, label, note, percentage, title) in logs —
+// No reading content (CFI, label, note, percentage, title) in logs —
 // only counts.
 func TestReadingExport_LogsCountsOnly(t *testing.T) {
 	api, exp := newReadingAPI()

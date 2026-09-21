@@ -30,7 +30,7 @@ type Config struct {
 	Logger         *slog.Logger
 	// AllowPrivateAddresses permits the outbound client to reach loopback
 	// and RFC 1918 / ULA addresses (SOURCE_ALLOW_PRIVATE_ADDRESSES). Off
-	// by default: a source base URL is attacker-chosen input (§4), so the
+	// by default: a source base URL is attacker-chosen input, so the
 	// dialer blocks non-public targets and defends DNS rebinding.
 	// Link-local, CGNAT, and multicast are blocked regardless.
 	AllowPrivateAddresses bool

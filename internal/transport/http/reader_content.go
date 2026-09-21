@@ -116,7 +116,7 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		if report.StrippedSomething() && logger != nil {
 			// Observability: the editionId and what kind of thing was
 			// stripped — never the stripped content, the path, or the
-			// surrounding document (constitution §8).
+			// surrounding document.
 			logger.InfoContext(ctx, "reader content sanitised",
 				"correlationId", correlationID,
 				"editionId", editionID,

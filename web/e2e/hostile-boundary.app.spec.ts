@@ -21,7 +21,7 @@ test.describe('Hostile Boundary & Malformed Inputs', () => {
 
     await expect(page.getByText("This book isn't in your library.")).toBeVisible()
     await expect(page.getByRole('button', { name: 'Back to Library' })).toBeVisible()
-    // Constitution §11: 404 error states must not show a retry button
+    // 404 error states must not show a retry button
     await expect(page.getByRole('button', { name: /try again/i })).toBeHidden()
   })
 
@@ -32,7 +32,7 @@ test.describe('Hostile Boundary & Malformed Inputs', () => {
 
     await expect(page.getByText("This collection doesn't exist.")).toBeVisible()
     await expect(page.getByRole('button', { name: 'Back to Collections' })).toBeVisible()
-    // Constitution §11: 404 error states must not show a retry button
+    // 404 error states must not show a retry button
     await expect(page.getByRole('button', { name: /try again/i })).toBeHidden()
   })
 

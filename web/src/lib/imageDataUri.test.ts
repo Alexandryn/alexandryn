@@ -43,7 +43,7 @@ describe('coverImageSrc', () => {
     expect(coverImageSrc('\n/9j/rawbytes')).toBe('data:image/jpeg;base64,/9j/rawbytes')
   })
 
-  it('drops an oversized value for the generated fallback (Constitution §4)', () => {
+  it('drops an oversized value for the generated fallback', () => {
     expect(coverImageSrc('A'.repeat(1_500_001))).toBeNull()
     expect(coverImageSrc(`data:image/png;base64,${'A'.repeat(1_500_000)}`)).toBeNull()
   })

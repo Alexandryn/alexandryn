@@ -164,8 +164,7 @@ func buildExportDoc(exportedAt time.Time, progress []exportProgressRow, marks []
 }
 
 // exportProgressRow / exportMarkRow decouple the handler from the
-// postgres-specific export row types (constitution §3 — normalise at the
-// boundary).
+// postgres-specific export row types (normalise at the boundary).
 type exportProgressRow struct {
 	WorkID         string
 	Percentage     float64

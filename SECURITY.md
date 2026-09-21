@@ -71,7 +71,7 @@ some things design.
 ## Our commitments
 
 - Security work happens continuously, not at the end. Substantial features undergo
-  adversarial security review, and findings are recorded in `.claude/audits/`.
+  adversarial security review before it is closed.
 - The host binds to loopback by default and will not serve the network without
   authentication.
 - We don't log what you read.

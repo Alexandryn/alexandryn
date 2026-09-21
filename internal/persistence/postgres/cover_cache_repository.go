@@ -129,7 +129,7 @@ func (r *FilesystemCoverCacheRepository) SaveCover(ctx context.Context, coverID 
 		return "", &domain.Error{Category: domain.InvalidInput, Message: "cover data is empty"}
 	}
 
-	// Constitution §4: shape check (magic-byte image format validation)
+	// Shape check (magic-byte image format validation)
 	if _, _, err := image.DecodeConfig(bytes.NewReader(data)); err != nil {
 		if r.logger != nil {
 			r.logger.Warn("Cover image failed format validation", slog.Int64("cover_id", coverID), slog.Any("error", err))

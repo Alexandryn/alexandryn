@@ -96,8 +96,8 @@ func TestPairingCode_DisplayAndRedaction(t *testing.T) {
 	if c.Display() != "ABCD-2345" {
 		t.Fatalf("Display() = %q, want ABCD-2345", c.Display())
 	}
-	// String() must not leak the code (constitution §8 — it is a
-	// short-lived credential-equivalent).
+	// String() must not leak the code: it is a short-lived
+	// credential-equivalent.
 	if strings.Contains(c.String(), "ABCD") || strings.Contains(c.String(), "2345") {
 		t.Fatalf("String() leaked the code: %q", c.String())
 	}
