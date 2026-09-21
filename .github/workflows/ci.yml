@@ -288,14 +288,31 @@ jobs:
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -quiet -severity high -confidence high ./...
 
       # Container build and healthcheck target validation.
+      # docker-compose.yml refuses to start without a database password, on
+      # purpose, and interpolates it for every subcommand, so `down` needs it
+      # too. This one exists only for this job's throwaway container.
       - name: Container-target test
         env:
           OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
+          POSTGRES_PASSWORD: ci-container-test-alexandryn-s3cret
         timeout-minutes: 5
         run: docker compose --profile bundled-db up --build --wait --wait-timeout 120
 
+      # The container test only says "unhealthy"; the backend's own log says why.
+      - name: Container-target test logs
+        if: failure()
+        env:
+          OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
+          POSTGRES_PASSWORD: ci-container-test-alexandryn-s3cret
+        run: |
+          docker compose --profile bundled-db ps -a
+          docker compose --profile bundled-db logs --no-color backend | tail -60
+
       - name: Container-target test teardown
         if: always()
+        env:
+          OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; container-target test)"
+          POSTGRES_PASSWORD: ci-container-test-alexandryn-s3cret
         run: docker compose --profile bundled-db down -v
 
   # Electron desktop host tests under virtual display server (xvfb).

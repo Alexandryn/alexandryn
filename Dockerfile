@@ -16,7 +16,14 @@ RUN CGO_ENABLED=0 go build -o /out/alexandryn-server ./cmd/server
 FROM alpine:3.22 AS runtime
 
 # Non-root runtime user created explicitly rather than relying on base image default.
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /home/app/.config/alexandryn \
+    && chown -R app:app /home/app/.config
+# /home/app/.config/alexandryn is created here, owned by app, because
+# docker-compose.yml mounts the app-data volume on it: Docker gives a new named
+# volume the ownership of the image's directory, and a directory the image does
+# not have makes a root-owned volume the app user cannot write its
+# credential key into (the server then crash-loops).
 COPY --from=build /out/alexandryn-server /usr/local/bin/alexandryn-server
 USER app
 
