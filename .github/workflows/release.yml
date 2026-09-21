@@ -1,8 +1,9 @@
 name: Release
 
-# Tag-triggered only: produces the release artifacts (container image,
-# desktop installers) phase 99's release process publishes. Never runs on
-# a plain push or pull request — see .github/workflows/ci.yml for the
+# Tag-triggered only: builds the container image and the desktop
+# installers, then publishes the installers and their checksums as a GitHub
+# release, so the download links on the website (releases/latest) work.
+# Never runs on a plain push or pull request — see .github/workflows/ci.yml for the
 # gate every change already goes through before a tag is ever cut.
 on:
   push:
@@ -123,3 +124,54 @@ jobs:
             electron/dist/*.exe
           if-no-files-found: error
           retention-days: 90
+
+  # Runs only when the image and all three installers built, so a release
+  # never goes out with a missing platform. It is the one job that can write
+  # to the repository, and it does nothing but attach files to the release.
+  publish:
+    name: Publish GitHub release
+    needs: [docker-image, installers]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download installers
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: installer-*
+          merge-multiple: true
+          path: release-files
+
+      # The API contract this release describes, so the docs site can sync
+      # its copy from the tag and a client author can fetch it with the build.
+      - name: Attach the API contract
+        run: cp api/openapi.yaml release-files/openapi.yaml
+
+      # Lets a downloader check a file against the release page. The list is
+      # only as trustworthy as the release itself, and says so in the docs.
+      - name: Write checksums
+        working-directory: release-files
+        run: sha256sum -- * > SHA256SUMS.txt
+
+      # A tag with a hyphen (v1.1.0-rc1) is a prerelease, so it never becomes
+      # releases/latest. TAG comes from the tag push, passed through env and
+      # never interpolated into the script.
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          bash scripts/release-notes.sh "$TAG" > release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-files/* --clobber
+            gh release edit "$TAG" --notes-file release-notes.md
+          elif [[ "$TAG" == *-* ]]; then
+            gh release create "$TAG" release-files/* --verify-tag --prerelease \
+              --title "Alexandryn $TAG" --notes-file release-notes.md
+          else
+            gh release create "$TAG" release-files/* --verify-tag \
+              --title "Alexandryn $TAG" --notes-file release-notes.md
+          fi

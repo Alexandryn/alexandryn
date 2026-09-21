@@ -229,6 +229,9 @@ jobs:
       - name: User-scoped-reading check
         run: bash scripts/check-user-scoped-reading.sh .
 
+      - name: Release notes self-test
+        run: bash scripts/release-notes_test.sh
+
       - name: Licence check self-test
         run: bash scripts/check-license_test.sh
 

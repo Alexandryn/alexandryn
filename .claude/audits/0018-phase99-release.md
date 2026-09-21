@@ -224,3 +224,40 @@ of this audit by re-running that test and by re-reading the current
 - **Application-layer authorization surface** (RBAC, tenant scoping,
   the reading API's user/library predicates) — last re-traced in audit
   0016; this phase didn't touch that code, so it wasn't re-walked here.
+
+## Addendum, 2026-09-21: the release now publishes itself
+
+After this audit, `release.yml` gained a `publish` job so the installers
+reach the GitHub Releases page that the website's download links point at.
+It is a change to the audited surface, so it is recorded here rather than
+left to a later reader to notice.
+
+What changed: one job, `contents: write`, `needs` both the image job and
+all three installer jobs. It downloads the installer artifacts from the same
+run, copies in `api/openapi.yaml`, writes `SHA256SUMS.txt`, takes the release
+notes from `CHANGELOG.md` through `scripts/release-notes.sh`, and runs
+`gh release create` (or, on a re-run, `upload --clobber`). The tag name
+reaches the shell through `env`, never interpolated, as with the GHCR login.
+
+Read, not run (CI is blocked). Findings, rated as they stand:
+
+- **Info.** `contents: write` is scoped to this job only; the workflow default
+  and the other three jobs stay `contents: read`. The job runs no third-party
+  action beyond `actions/checkout` and `actions/download-artifact`, both
+  already pinned by SHA elsewhere in this repo.
+- **Low.** The published files are whatever the installer jobs produced. A
+  compromised build step would now reach the release page rather than an
+  artifact only maintainers download. This is the same trust in the build
+  that the artifacts already carried; publishing widens who can be affected.
+  `SHA256SUMS.txt` detects corruption and a mismatched download, not a
+  compromised release: it is uploaded by the same job, so it proves nothing
+  the release page itself does not. The docs must not describe it as more.
+- **Low.** `gh release upload --clobber` on a re-run replaces assets on an
+  existing release. That is intended for recovering a failed run; it means a
+  tag re-push can overwrite published files, so tag protection on `v*` matters.
+- **Info.** A tag containing a hyphen publishes as a prerelease, which is not
+  `releases/latest`. A plain `vX.Y.Z` tag publishes as the latest release, so
+  the tag itself is the publish action and stays a maintainer-gated step.
+- **Unverified.** The job has not run. `scripts/release-notes.sh` has a fixture
+  test (`release-notes_test.sh`, run in CI); the `gh` calls do not.
+
