@@ -1,7 +1,7 @@
 {
   "name": "@alexandryn/desktop",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Alexandryn desktop host — Electron main process, preload, and the disk-loaded boot asset.",
   "license": "AGPL-3.0-or-later",
   "homepage": "https://github.com/Alexandryn/alexandryn",
