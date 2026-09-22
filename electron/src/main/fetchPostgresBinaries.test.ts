@@ -1,6 +1,6 @@
 // readZipEntry is the one pure, testable piece of fetch-postgres-binaries.mjs
 // (the rest is network + tar + filesystem side effects, exercised for real
-// by scripts/README.md's documented manual run, not here). These build real
+// by electron/README.md's documented manual run, not here). These build real
 // zip files byte-for-byte (stored and deflated entries, a second entry after
 // the target one, and a zip64-style central directory offset) so the parser
 // is proven against real zip structure, not a hand-wavy stand-in.

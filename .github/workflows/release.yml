@@ -105,6 +105,11 @@ jobs:
       - name: Build desktop bundle
         run: npm run -w @alexandryn/desktop build
 
+      # ADR 0007: bundles real postgres/initdb for Linux and Windows;
+      # no-ops on macOS (no spawn_darwin.go implementation to use them).
+      - name: Fetch bundled PostgreSQL binaries
+        run: npm run -w @alexandryn/desktop postgres:fetch
+
       # Sets and verifies Electron's packaged-binary fuses
       # (electron/scripts/afterPack.cjs) — a release blocker per phase 99,
       # not optional hardening. Unsigned: no code-signing certificate

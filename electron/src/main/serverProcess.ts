@@ -9,7 +9,6 @@ import { assignProcessToJobObject } from './jobObject'
 // but argument-array spawn is the correct default regardless: defense in
 // depth and no shell-interpretation risk, ever.
 
-
 const PORT_PATTERN = /\bPORT=(\d+)\b/
 
 /**
@@ -87,7 +86,6 @@ export function spawnServer(
     }
   })
 
-
   // Stderr: prefix and forward; no PORT scanning needed here.
   const stderr = createInterface({ input: child.stderr! })
   stderr.on('line', (line) => {
@@ -103,13 +101,8 @@ export function spawnServer(
   // caller (health poller) can surface a `Failed` state rather than
   // hanging indefinitely.
   child.once('exit', (code) => {
-    portReject(
-      new Error(
-        `Server process exited (code ${code ?? 'null'}) before announcing a port`,
-      ),
-    )
+    portReject(new Error(`Server process exited (code ${code ?? 'null'}) before announcing a port`))
   })
-
 
   return { child, portPromise }
 }

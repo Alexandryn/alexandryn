@@ -57,7 +57,8 @@ export function readZipEntry(zip, entryName) {
 
   let p = cdOffset
   for (let i = 0; i < cdCount; i++) {
-    if (zip.readUInt32LE(p) !== 0x02014b50) throw new Error(`corrupt central directory entry at ${p}`)
+    if (zip.readUInt32LE(p) !== 0x02014b50)
+      throw new Error(`corrupt central directory entry at ${p}`)
     const method = zip.readUInt16LE(p + 10)
     const compSize = zip.readUInt32LE(p + 20)
     const nameLen = zip.readUInt16LE(p + 28)
@@ -100,13 +101,17 @@ async function fetchWithRetry(url, attempts = 3) {
 async function stagePostgres(platform) {
   const target = TARGETS[platform]
   if (!target) {
-    console.log(`fetch-postgres-binaries: no bundled PostgreSQL for platform "${platform}" — skipping`)
+    console.log(
+      `fetch-postgres-binaries: no bundled PostgreSQL for platform "${platform}" — skipping`,
+    )
     return
   }
 
   const destDir = join(import.meta.dirname, '..', 'resources', 'postgres')
   if (existsSync(destDir)) {
-    console.log(`fetch-postgres-binaries: ${destDir} already exists — skipping (delete it to re-fetch)`)
+    console.log(
+      `fetch-postgres-binaries: ${destDir} already exists — skipping (delete it to re-fetch)`,
+    )
     return
   }
 

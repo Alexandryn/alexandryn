@@ -30,6 +30,10 @@ build/
 # above would otherwise also catch this.
 !electron/build/
 !electron/build/**
+# Bundled PostgreSQL (ADR 0007), staged by
+# electron/scripts/fetch-postgres-binaries.mjs before packaging — build
+# output, not a source-controlled input like electron/build/ above.
+electron/resources/postgres/
 out/
 .next/
 .vite/
