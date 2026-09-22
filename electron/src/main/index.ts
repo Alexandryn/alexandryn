@@ -10,6 +10,7 @@ import { setupWindowNavigation } from './navigation'
 
 import { WindowServingController } from './windowServing'
 import { runServerLifecycle } from './serverLifecycle'
+import { defaultOpenLibraryUserAgent } from './serverConfigDefaults'
 import { registerIpcHandlers } from './ipc'
 
 // Full lifecycle orchestration.
@@ -88,6 +89,9 @@ app.whenReady().then(async () => {
 
     try {
       await runServerLifecycle({
+        configValues: {
+          OPEN_LIBRARY_USER_AGENT: defaultOpenLibraryUserAgent(app.getVersion()),
+        },
         onChildSpawned: (child) => {
           serverChild = child
         },

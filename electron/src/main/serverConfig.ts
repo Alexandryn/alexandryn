@@ -46,7 +46,11 @@ export async function writeServerConfig(
 
   const lines = ['# Alexandryn server config — written by the desktop host, deleted once ready.']
   for (const [key, value] of Object.entries(values)) {
-    lines.push(`${key} = ${tomlString(value)}`)
+    // internal/config.Load looks up strings.ToLower(fieldKey) against this file's
+    // parsed keys (its own field names, and every one of its own tests, are
+    // lower_snake_case) — an upper-case key here would parse but never match,
+    // so the value would be silently ignored rather than reaching the server.
+    lines.push(`${key.toLowerCase()} = ${tomlString(value)}`)
   }
   await writeFile(path, lines.join('\n') + '\n', { mode: 0o600 })
 

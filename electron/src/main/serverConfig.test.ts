@@ -39,14 +39,21 @@ describe('writeServerConfig', () => {
     expect(dirname(a.path)).not.toBe(dirname(b.path))
   })
 
-  it('serialises the values as TOML the Go loader reads', async () => {
+  it('writes keys lower-cased, matching the Go loader — it looks up strings.ToLower(fieldKey) against the parsed TOML map, so an upper-case key here never matches', async () => {
     const { path } = await write({
       DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/db',
       LOG_LEVEL: 'debug',
     })
     const toml = await readFile(path, 'utf8')
-    expect(toml).toContain('DATABASE_URL = "postgres://u:p@127.0.0.1:5432/db"')
-    expect(toml).toContain('LOG_LEVEL = "debug"')
+    expect(toml).toContain('database_url = "postgres://u:p@127.0.0.1:5432/db"')
+    expect(toml).toContain('log_level = "debug"')
+    expect(toml).not.toMatch(/^[A-Z_]+ =/m)
+  })
+
+  it('lower-cases a mixed-case key the same way, so callers can keep passing the env-var-style name', async () => {
+    const { path } = await write({ Open_Library_User_Agent: 'x' })
+    const toml = await readFile(path, 'utf8')
+    expect(toml).toContain('open_library_user_agent = "x"')
   })
 
   it('an empty value set writes a valid (comment-only) file', async () => {
@@ -66,7 +73,7 @@ describe('writeServerConfig', () => {
   it('escapes a value containing a quote or backslash', async () => {
     const { path } = await write({ WEIRD: 'a"b\\c' })
     const toml = await readFile(path, 'utf8')
-    expect(toml).toContain('WEIRD = "a\\"b\\\\c"')
+    expect(toml).toContain('weird = "a\\"b\\\\c"')
   })
 })
 
