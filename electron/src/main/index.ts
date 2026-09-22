@@ -32,7 +32,6 @@ if (!acquireSingleInstanceLock()) {
   app.quit()
 }
 
-
 let triggerRetry: (() => void) | undefined
 
 // Register declared IPC handlers
@@ -48,7 +47,10 @@ const BOOT_HTML = join(import.meta.dirname, '../renderer/index.html')
 // Accessed by the before-quit shutdown handler.
 let serverChild: ChildProcess | undefined
 
-async function createWindow(): Promise<{ window: BrowserWindow; serving: WindowServingController }> {
+async function createWindow(): Promise<{
+  window: BrowserWindow
+  serving: WindowServingController
+}> {
   // No application menu bar on any platform
   Menu.setApplicationMenu(null)
 
@@ -128,12 +130,6 @@ app.whenReady().then(async () => {
 
   void startLifecycle()
 })
-
-
-
-
-
-
 
 // `before-quit` defers the default
 // quit until the Go server shutdown sequence completes (SIGTERM + SIGKILL).

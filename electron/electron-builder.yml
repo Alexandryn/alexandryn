@@ -52,6 +52,13 @@ mac:
 win:
   target: nsis
   icon: build/icon.png
+  # ADR 0007: a bundled PostgreSQL. Staged by
+  # npm run -w @alexandryn/desktop postgres:fetch (release.yml runs it before
+  # packaging) at resources/postgres, mirroring bin/'s ../bin convention above.
+  # Absent on macOS: cmd/server has no darwin spawn implementation yet.
+  extraResources:
+    - from: resources/postgres
+      to: postgres
 
 nsis:
   oneClick: false
@@ -64,3 +71,9 @@ linux:
   category: Office
   icon: build/icon.png
   synopsis: Self-hosted digital library
+  # ADR 0007: a bundled PostgreSQL. Staged by
+  # npm run -w @alexandryn/desktop postgres:fetch (release.yml runs it before
+  # packaging) at resources/postgres, mirroring bin/'s ../bin convention above.
+  extraResources:
+    - from: resources/postgres
+      to: postgres

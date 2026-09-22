@@ -114,15 +114,17 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
   // Attempt a single start: resolve → config → spawn → poll.
   // Returns the active child and port on success.
   // Throws on failure (binary missing, poll timeout).
-  async function attempt(): Promise<{ child: ChildProcess; port: number; config: ServerConfigHandle }> {
+  async function attempt(): Promise<{
+    child: ChildProcess
+    port: number
+    config: ServerConfigHandle
+  }> {
     const binaryPath = binaryPathResolver()
     // Pass Electron's PID for child-side orphan monitoring
     const config = await writeServerConfig({
       DESKTOP_PARENT_PID: String(process.pid),
       ...configValues,
     })
-
-
 
     let child: ChildProcess | undefined
     let port: number | undefined
@@ -188,9 +190,13 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     }
 
     if (signal !== undefined) {
-      signal.addEventListener('abort', () => {
-        cleanupAndResolve()
-      }, { once: true })
+      signal.addEventListener(
+        'abort',
+        () => {
+          cleanupAndResolve()
+        },
+        { once: true },
+      )
     }
 
     function scheduleRespawn(): void {
