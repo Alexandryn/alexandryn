@@ -16,6 +16,18 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
+// bundledDatabaseURL is the connection string for a freshly spawned, bundled
+// PostgreSQL instance: loopback only (PostgresArgs), the fixed
+// supervisor.BundledSuperuser role (EnsureDataDir), no password because
+// EnsureDataDir's 0700 data directory plus the loopback-only bind already
+// restrict who can even attempt this connection — the same reasoning
+// PostgresArgs' own comment gives for that bind. Targets the `postgres`
+// database, which initdb always creates alongside the superuser role, so
+// there is no separate CREATE DATABASE step to run.
+func bundledDatabaseURL(port int) string {
+	return fmt.Sprintf("postgres://%s@127.0.0.1:%d/postgres?sslmode=disable", supervisor.BundledSuperuser, port)
+}
+
 // spawnState tracks supervisor state across retry attempts within a single
 // run() invocation. The first call resolves the data directory, initializes it
 // if needed, selects a port, and spawns the PostgreSQL process. Subsequent
@@ -57,21 +69,45 @@ func productionSupervisorDeps() supervisorDeps {
 }
 
 // newSpawnPostgres returns a spawn function for postgres.SelectStartupPath,
-// closing over one spawnState for the lifetime of the returned closure.
-func newSpawnPostgres(deps supervisorDeps) func(ctx context.Context) error {
+// closing over one spawnState for the lifetime of the returned closure, and
+// that same state — so a caller can read back the port a successful spawn
+// chose once spawn(ctx) returns nil (state.started becomes true only then).
+func newSpawnPostgres(deps supervisorDeps) (func(ctx context.Context) error, *spawnState) {
 	state := &spawnState{}
 	return func(ctx context.Context) error {
 		return spawnPostgresOnce(ctx, state, deps)
-	}
+	}, state
 }
 
-// newObtainPostgres provides the Linux/Windows startup implementation:
-// spawn a bundled instance when DATABASE_URL is absent, or connect directly
-// when present, selected by postgres.SelectStartupPath.
+// obtainPostgresWithSpawn is newObtainPostgres's testable body: spawn a
+// bundled instance when DATABASE_URL is absent, or connect directly when
+// present (postgres.SelectStartupPath). On a successful spawn it also
+// points cfg.DatabaseURL at the instance spawn just started — without
+// this, nothing later in run()'s startup sequence (runMigrations, newPool)
+// has any way to find it, since SelectStartupPath's own contract only
+// promises that *something* reachable now exists, not where.
+func obtainPostgresWithSpawn(
+	ctx context.Context,
+	cfg *config.Config,
+	spawn func(ctx context.Context) error,
+	state *spawnState,
+	connect func(ctx context.Context) error,
+) error {
+	hadDatabaseURL := cfg.DatabaseURL.Reveal() != ""
+	if err := postgres.SelectStartupPath(ctx, cfg.DatabaseURL.Reveal(), spawn, connect); err != nil {
+		return err
+	}
+	if !hadDatabaseURL && state.started {
+		cfg.DatabaseURL = config.RedactedString(bundledDatabaseURL(state.port))
+	}
+	return nil
+}
+
+// newObtainPostgres provides the Linux/Windows startup implementation.
 func newObtainPostgres() func(ctx context.Context, cfg *config.Config) error {
-	spawn := newSpawnPostgres(productionSupervisorDeps())
+	spawn, state := newSpawnPostgres(productionSupervisorDeps())
 	return func(ctx context.Context, cfg *config.Config) error {
-		return postgres.SelectStartupPath(ctx, cfg.DatabaseURL.Reveal(), spawn, connectPostgres(cfg))
+		return obtainPostgresWithSpawn(ctx, cfg, spawn, state, connectPostgres(cfg))
 	}
 }
 
