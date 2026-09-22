@@ -65,6 +65,31 @@ func TestEnsureDataDir_RunsInitDBWhenNotInitialized(t *testing.T) {
 	}
 }
 
+// A fixed superuser name, not whatever OS user is running the desktop
+// app, so the connection string spawn.go builds afterward does not have
+// to guess it.
+func TestEnsureDataDir_InitializesWithTheFixedSuperuserName(t *testing.T) {
+	var ranWith []string
+	run := func(_ context.Context, name string, args ...string) error {
+		ranWith = append([]string{name}, args...)
+		return nil
+	}
+
+	if err := supervisor.EnsureDataDir(context.Background(), statDir("/data/pg", 0o700), run, "/usr/bin/initdb", "/data/pg"); err != nil {
+		t.Fatalf("EnsureDataDir: %v", err)
+	}
+
+	found := false
+	for i, a := range ranWith {
+		if a == "-U" && i+1 < len(ranWith) && ranWith[i+1] == supervisor.BundledSuperuser {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("initdb args %v don't include -U %s", ranWith, supervisor.BundledSuperuser)
+	}
+}
+
 // A directory that already has PG_VERSION is already initialized — a
 // retried call must not re-run initdb against it.
 func TestEnsureDataDir_SkipsInitDBWhenAlreadyInitialized(t *testing.T) {

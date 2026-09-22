@@ -19,6 +19,16 @@ type CommandRunner func(ctx context.Context, name string, args ...string) error
 // permission bits).
 type StatFunc func(name string) (os.FileInfo, error)
 
+// BundledSuperuser is the fixed superuser role name every bundled data
+// directory is initialized with (`initdb -U`). Fixed rather than the OS
+// username initdb would otherwise default to, so the resulting instance's
+// connection string does not depend on which account the desktop app
+// happens to run as. The `postgres` database initdb always creates
+// alongside it is the connection target — guaranteed to exist without an
+// extra CREATE DATABASE step (SelectStartupPath's spawn path has no other
+// connection to run one over, and nothing else refers to it by name).
+const BundledSuperuser = "postgres"
+
 // EnsureDataDir initializes dataDir via initDBPath if it isn't already a
 // PostgreSQL data directory — a no-op when PG_VERSION is
 // already present, so a retried call doesn't attempt to run initdb a second time against a
@@ -38,7 +48,7 @@ func EnsureDataDir(ctx context.Context, stat StatFunc, run CommandRunner, initDB
 		return checkDataDirPerms(stat, dataDir)
 	}
 
-	if err := run(ctx, initDBPath, "-D", dataDir); err != nil {
+	if err := run(ctx, initDBPath, "-D", dataDir, "-U", BundledSuperuser); err != nil {
 		return err
 	}
 	return checkDataDirPerms(stat, dataDir)
