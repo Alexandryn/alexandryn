@@ -43,6 +43,12 @@ export interface LifecycleOptions {
   /** Config values passed to writeServerConfig. */
   configValues?: Record<string, string>
   /**
+   * Environment for the spawned server. Defaults to `process.env`. The one
+   * production use is putting a bundled PostgreSQL's bin directory first on
+   * `PATH` (postgresBinaries.ts).
+   */
+  env?: NodeJS.ProcessEnv
+  /**
    * Override the binary path resolver. Defaults to `resolveServerBinaryPath()`
    * (production). Tests inject the test binary path directly to avoid
    * needing a mocked `app.isPackaged`.
@@ -91,6 +97,7 @@ export interface LifecycleOptions {
 export async function runServerLifecycle(options: LifecycleOptions): Promise<void> {
   const {
     configValues = {},
+    env = process.env,
     binaryPathResolver = resolveServerBinaryPath,
     extraArgs = [],
     backoffDelaysMs = [1000, 4000, 9000],
@@ -121,7 +128,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     let port: number | undefined
 
     try {
-      const spawned = spawnServer(binaryPath, config.path, extraArgs)
+      const spawned = spawnServer(binaryPath, config.path, extraArgs, env)
       child = spawned.child
       activeChild = child
       onChildSpawned?.(child)

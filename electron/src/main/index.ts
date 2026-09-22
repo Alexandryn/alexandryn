@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import type { ChildProcess } from 'node:child_process'
 import { app, BrowserWindow, Menu } from 'electron'
 import { acquireSingleInstanceLock } from './singleInstance'
@@ -11,6 +11,7 @@ import { setupWindowNavigation } from './navigation'
 import { WindowServingController } from './windowServing'
 import { runServerLifecycle } from './serverLifecycle'
 import { defaultOpenLibraryUserAgent } from './serverConfigDefaults'
+import { resolvePostgresBinDir, pathWithPostgresBinFirst } from './postgresBinaries'
 import { registerIpcHandlers } from './ipc'
 
 // Full lifecycle orchestration.
@@ -88,10 +89,23 @@ app.whenReady().then(async () => {
     isRunning = true
 
     try {
+      // ADR 0007: put a bundled PostgreSQL's bin directory first on the
+      // spawned server's PATH, so cmd/server/spawn.go's plain PATH lookup
+      // (internal/persistence/postgres/supervisor.LocateBinaries) finds it
+      // ahead of anything the system happens to have installed. Nothing
+      // bundled (every dev environment, and any platform this build didn't
+      // stage binaries for) means an unmodified environment — the server
+      // falls back to a system-installed postgres, exactly as before.
+      const pgBinDir = resolvePostgresBinDir()
+      const env = pgBinDir
+        ? { ...process.env, PATH: pathWithPostgresBinFirst(pgBinDir, process.env.PATH, delimiter) }
+        : undefined
+
       await runServerLifecycle({
         configValues: {
           OPEN_LIBRARY_USER_AGENT: defaultOpenLibraryUserAgent(app.getVersion()),
         },
+        env,
         onChildSpawned: (child) => {
           serverChild = child
         },
