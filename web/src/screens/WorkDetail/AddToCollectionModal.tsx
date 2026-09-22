@@ -75,7 +75,7 @@ export function AddToCollectionModal({
 
     setModalState({ type: 'creating_and_adding' })
 
-    let newCollection: CollectionDetail | null = null
+    let newCollection: CollectionDetail
 
     // Step 1: Create collection
     try {

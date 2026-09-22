@@ -114,7 +114,7 @@ function eventToItem(ev: SystemEvent, id: string): ActivityItem {
   const sourceName = p.source_name || p.source || (p.source_id ? `Source ${p.source_id}` : 'Local')
   const format = (p.format || p.file_format || 'EPUB').toUpperCase()
 
-  let status: ActivityItem['status'] = 'queued'
+  let status: ActivityItem['status']
   if (ev.event_kind === 'job.running' || ev.event_kind === 'import.started') {
     status = 'active'
   } else if (ev.event_kind === 'job.failed' || ev.event_kind === 'job.dead_letter') {
