@@ -5,6 +5,29 @@ All notable changes to Alexandryn are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] - 2026-09-22
+
+### Fixed
+
+- The desktop app could not start at all. `OPEN_LIBRARY_USER_AGENT` is a
+  required server setting meant for an operator's `.env`; the desktop app has
+  no screen to collect it, so the bundled server exited at the config step on
+  every launch. It now gets a default the desktop host supplies itself.
+- Even with that fixed, the value never reached the server: the config file
+  the desktop host writes used upper-case keys, but the loader only matches
+  lower-case ones. No config-file value has ever reached the server from the
+  desktop app this way, including the orphan-prevention setting that ties the
+  bundled server's lifetime to the desktop window's.
+- The desktop app's bundled PostgreSQL — described in the self-hosting
+  guide's design, but never actually wired up — now really is bundled and
+  used. Real `postgres`/`initdb` binaries are staged into the installer;
+  `initdb` is given a fixed superuser name instead of the OS username; and a
+  successful start now tells the rest of startup where the database is
+  (previously it stayed unset, so migrations failed as the very next step).
+  Without a system PostgreSQL install and with no database configured, the
+  desktop app now reaches a fully working library, verified against the
+  built installer.
+
 ## [1.0.2] - 2026-09-22
 
 ### Fixed
