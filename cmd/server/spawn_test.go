@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/Alexandryn/alexandryn/internal/config"
-	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
+	"github.com/Alexandryn/alexandryn/internal/persistence/postgres/supervisor"
 )
 
 // uninitDataDirStat is a stat fake for a data directory that has not been
@@ -114,6 +114,60 @@ func TestSpawnPostgresOnce_SecondCallReusesStateAndOnlyWaitsForConnection(t *tes
 	}
 }
 
+// Without this, the app never becomes usable after a successful spawn:
+// SelectStartupPath returning nil only means the raw TCP dial succeeded
+// (spawnPostgresOnce's own readiness check) — nothing else in run()'s
+// startup sequence (runMigrations, newPool) has any way to find the
+// instance it just started unless cfg.DatabaseURL now points at it.
+func TestObtainPostgres_SetsDatabaseURLOnSuccessfulSpawn(t *testing.T) {
+	spawnDeps := supervisorDeps{
+		userConfigDir:  func() (string, error) { return t.TempDir(), nil },
+		lookup:         func(file string) (string, error) { return "/usr/bin/" + file, nil },
+		stat:           uninitDataDirStat,
+		runCommand:     func(context.Context, string, ...string) error { return nil },
+		selectPort:     func() (int, error) { return 54329, nil },
+		spawnChild:     func(*exec.Cmd) error { return nil },
+		dial:           func(context.Context, string, string) (net.Conn, error) { return fakeConn{}, nil },
+		attemptTimeout: 5 * time.Second,
+	}
+	spawn, state := newSpawnPostgres(spawnDeps)
+
+	cfg := &config.Config{}
+	err := obtainPostgresWithSpawn(context.Background(), cfg, spawn, state, connectPostgres(cfg))
+	if err != nil {
+		t.Fatalf("obtainPostgresWithSpawn: %v", err)
+	}
+
+	got := cfg.DatabaseURL.Reveal()
+	want := "postgres://" + supervisor.BundledSuperuser + "@127.0.0.1:54329/postgres?sslmode=disable"
+	if got != want {
+		t.Fatalf("cfg.DatabaseURL = %q, want %q", got, want)
+	}
+}
+
+// A caller that already configured DATABASE_URL (the Docker/container
+// target, or a desktop user's own "Advanced" override — not exercised by
+// any real flow yet, but SelectStartupPath's own contract) must never
+// have it silently overwritten by a spawn that never even ran.
+func TestObtainPostgres_LeavesAConfiguredDatabaseURLAlone(t *testing.T) {
+	spawn, state := newSpawnPostgres(supervisorDeps{
+		spawnChild: func(*exec.Cmd) error {
+			t.Fatal("spawn must not run when DatabaseURL is already configured")
+			return nil
+		},
+	})
+
+	cfg := &config.Config{DatabaseURL: "postgres://elsewhere/db"}
+	connect := func(context.Context) error { return nil } // stands in for connectPostgres against a real DB
+	err := obtainPostgresWithSpawn(context.Background(), cfg, spawn, state, connect)
+	if err != nil {
+		t.Fatalf("obtainPostgresWithSpawn: %v", err)
+	}
+	if cfg.DatabaseURL.Reveal() != "postgres://elsewhere/db" {
+		t.Fatalf("cfg.DatabaseURL = %q, want unchanged", cfg.DatabaseURL.Reveal())
+	}
+}
+
 // Tests spawn failure driven through run(), verifying that supervisor
 // errors cleanly propagate through startup error handling.
 func TestRun_ProductionSpawnFailure(t *testing.T) {
@@ -145,9 +199,9 @@ func TestRun_ProductionSpawnFailure(t *testing.T) {
 		},
 		attemptTimeout: 5 * time.Second,
 	}
-	spawn := newSpawnPostgres(spawnDeps)
+	spawn, state := newSpawnPostgres(spawnDeps)
 	deps.obtainPostgres = func(ctx context.Context, cfg *config.Config) error {
-		return postgres.SelectStartupPath(ctx, cfg.DatabaseURL.Reveal(), spawn, connectPostgres(cfg))
+		return obtainPostgresWithSpawn(ctx, cfg, spawn, state, connectPostgres(cfg))
 	}
 
 	code := run(context.Background(), deps)
