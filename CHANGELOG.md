@@ -5,6 +5,23 @@ All notable changes to Alexandryn are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.4] - 2026-09-22
+
+### Fixed
+
+- Every deployment — Docker and desktop alike, every version through
+  1.0.3 — served a placeholder page at its web root instead of the real
+  application. `//go:embed` had targeted a small committed stand-in file
+  since the static-file handler was first written, and the step meant to
+  point it at the real build before shipping was never actually wired
+  into the build. Opening the app or the container's published port
+  showed "Alexandryn — placeholder build." with no working UI behind it.
+  The real frontend is now copied into that embed target as part of
+  every build that produces a binary meant to serve users (`docker
+  build`, and each platform's installer build), and CI now runs the
+  built binary and checks what it actually serves, so this class of bug
+  fails a build instead of shipping.
+
 ## [1.0.3] - 2026-09-22
 
 ### Fixed

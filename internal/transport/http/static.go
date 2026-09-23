@@ -13,7 +13,13 @@ var placeholderWebDist embed.FS
 
 // webDistFS is placeholderWebDist rooted at the placeholder directory
 // itself, so "index.html" is directly accessible — the same shape the
-// real web/dist build's fs.FS will have.
+// real web/dist build's fs.FS will have. The //go:embed directive
+// itself never changes: scripts/embed-web-dist.sh copies the real
+// web/dist build over this directory before every `go build` meant to
+// produce a binary that actually serves users (Dockerfile, ci.yml's
+// backend job, release.yml's per-platform legs) — //go:embed patterns
+// cannot contain ".." elements, so this package cannot embed
+// web/dist (at the module root) directly.
 var webDistFS, webDistFSErr = fs.Sub(placeholderWebDist, "webdist/placeholder")
 
 // StaticHandler serves fsys — the embedded web/dist build, or a fixture
@@ -47,9 +53,11 @@ func StaticHandler(fsys fs.FS) http.Handler {
 	})
 }
 
-// DefaultStaticHandler serves the embedded placeholder web/dist.
-// cmd/server registers this as the router's catch-all for everything
-// that isn't /api/v1/... or /healthz/readyz.
+// DefaultStaticHandler serves the embedded web/dist — the real build in
+// any binary built via scripts/embed-web-dist.sh, the committed
+// placeholder otherwise (e.g. a plain `go build ./...` in a Go-only
+// checkout). cmd/server registers this as the router's catch-all for
+// everything that isn't /api/v1/... or /healthz/readyz.
 func DefaultStaticHandler() http.Handler {
 	if webDistFSErr != nil {
 		// Can't actually happen: webdist/placeholder is a compile-time

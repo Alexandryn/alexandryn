@@ -94,6 +94,14 @@ jobs:
       - name: Build web
         run: npm run -w web build
 
+      # Embeds the real frontend into the binary "Build server binary"
+      # produces below — without this, //go:embed keeps the committed
+      # placeholder and the server never serves the real app (the bug
+      # releases 1.0.0 through 1.0.3 shipped with; see CHANGELOG.md 1.0.4).
+      - name: Embed real web build
+        run: bash scripts/embed-web-dist.sh
+        shell: bash
+
       # No cross-compilation: each matrix leg builds the Go binary on its
       # own native runner, matching electron/src/main/serverBinary.ts's
       # per-platform naming (`.exe` on Windows only) and
