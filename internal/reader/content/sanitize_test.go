@@ -282,3 +282,41 @@ func TestSanitizeHTML_LeadingWhitespaceCannotSmuggleProtocolRelative(t *testing.
 		}
 	}
 }
+
+// Real-world cover markup the conversion must handle: Calibre's
+// multi-line form, Sigil's ../Images path, uppercase tags, a data: cover,
+// and accessibility-polished covers whose <svg> also carries a <title>,
+// <desc>, or comment — the <title> becoming the image's alt text.
+func TestSanitizeHTML_SVGCoverVariants(t *testing.T) {
+	cases := []struct{ name, svg, want string }{
+		{"calibre multi-line", `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+    version="1.1" width="100%" height="100%" viewBox="0 0 1200 1800" preserveAspectRatio="none">
+    <image width="1200" height="1800"
+        xlink:href="cover.jpeg"/>
+</svg>`, `<img src="cover.jpeg" alt=""/>`},
+		{"sigil path", `<svg><image xlink:href="../Images/cover.jpg"/></svg>`, `<img src="../Images/cover.jpg" alt=""/>`},
+		{"uppercase", `<SVG><IMAGE XLINK:HREF="c.jpg"/></SVG>`, `<img src="c.jpg" alt=""/>`},
+		{"data cover", `<svg><image href="data:image/png;base64,iVBORw0KGgo="/></svg>`, `<img src="data:image/png;base64,iVBORw0KGgo=" alt=""/>`},
+		{"title as alt", `<svg><title>Cover: Alice &amp; the Queen</title><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt="Cover: Alice &amp; the Queen"/>`},
+		{"desc and comment", `<svg><!-- cover --><desc>The front cover</desc><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt=""/>`},
+		{"href beats xlink:href", `<svg><image xlink:href="old.jpg" href="new.jpg"/></svg>`, `<img src="new.jpg" alt=""/>`},
+		{"href inside another attribute ignored", `<svg><image title=' href="evil.jpg"' xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt=""/>`},
+		{"ampersand in path", `<svg><image href="a&amp;b.jpg"/></svg>`, `<img src="a&amp;b.jpg" alt=""/>`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, _ := content.SanitizeHTML([]byte(`<html><body>` + c.svg + `</body></html>`))
+			if !strings.Contains(string(out), c.want) {
+				t.Fatalf("want %s in\n%s", c.want, out)
+			}
+		})
+	}
+}
+
+// A converted cover is not "stripped SVG"; one that is dropped still is.
+func TestSanitizeHTML_SVGStrippedCountsOnlyDropped(t *testing.T) {
+	_, rep := content.SanitizeHTML([]byte(`<html><body><svg><image href="c.jpg"/></svg><svg><circle r="1"/></svg></body></html>`))
+	if rep.SVGStripped != 1 {
+		t.Fatalf("SVGStripped = %d, want 1", rep.SVGStripped)
+	}
+}
