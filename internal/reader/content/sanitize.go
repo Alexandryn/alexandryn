@@ -5,10 +5,12 @@ package content
 
 import (
 	"bytes"
+	"html"
 	"regexp"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
+	xhtml "golang.org/x/net/html"
 )
 
 // SanitizeReport counts what a pass removed, for observability logging:
@@ -193,45 +195,76 @@ var reSVGBlock = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
 var reSVGSelfClose = regexp.MustCompile(`(?is)<svg[^>]*/>`)
 
 var (
-	reSVGParts    = regexp.MustCompile(`(?is)^<svg[^>]*>(.*)</svg>$`)
-	reSVGImage    = regexp.MustCompile(`(?is)<image\b[^>]*>(?:\s*</image>)?`)
-	reSVGImageRef = regexp.MustCompile(`(?is)\s(?:xlink:)?href\s*=\s*(?:"([^"<>]*)"|'([^'"<>]*)')`)
+	reSVGParts   = regexp.MustCompile(`(?is)^<svg[^>]*>(.*)</svg>$`)
+	reSVGImage   = regexp.MustCompile(`(?is)<image\b[^>]*>(?:\s*</image>)?`)
+	reSVGTitle   = regexp.MustCompile(`(?is)<title\b[^>]*>(.*?)</title>`)
+	reSVGDesc    = regexp.MustCompile(`(?is)<desc\b[^>]*>.*?</desc>`)
+	reSVGComment = regexp.MustCompile(`(?s)<!--.*?-->`)
+	reAnyTag     = regexp.MustCompile(`(?s)<[^>]*>`)
 )
 
 // svgImagesToImg rewrites an inline <svg> whose only content is a single
-// <image> into a plain <img> of the same reference, before stripSVG drops
-// every remaining <svg>. EPUB cover pages (Project Gutenberg, Calibre)
-// wrap the cover this way, so stripping the SVG left them blank. The <img>
-// is produced only for a relative or data: reference (the policy's own
-// img src rule, which still runs on it); an SVG holding anything else, or
-// pointing anywhere else, is left for stripSVG.
+// <image> (beside an optional <title>, <desc>, or comments) into a plain
+// <img> of the same reference, before stripSVG drops every remaining
+// <svg>. EPUB cover pages (Project Gutenberg, Calibre) wrap the cover
+// this way, so stripping the SVG left them blank. The <img> is produced
+// only for a relative or data: reference (the policy's own img src rule,
+// which still runs on it); an SVG holding anything else, or pointing
+// anywhere else, is left for stripSVG. The SVG's <title>, if any, becomes
+// the alt text.
 func svgImagesToImg(raw []byte) []byte {
 	return reSVGBlock.ReplaceAllFunc(raw, func(block []byte) []byte {
 		parts := reSVGParts.FindSubmatch(block)
 		if parts == nil {
 			return block
 		}
-		images := reSVGImage.FindAllIndex(parts[1], -1)
+		inner := reSVGComment.ReplaceAll(parts[1], nil)
+		inner = reSVGDesc.ReplaceAll(inner, nil)
+		var alt string
+		if m := reSVGTitle.FindSubmatch(inner); m != nil {
+			alt = strings.Join(strings.Fields(html.UnescapeString(string(reAnyTag.ReplaceAll(m[1], nil)))), " ")
+		}
+		inner = reSVGTitle.ReplaceAll(inner, nil)
+
+		images := reSVGImage.FindAllIndex(inner, -1)
 		if len(images) != 1 {
 			return block
 		}
-		rest := append(append([]byte{}, parts[1][:images[0][0]]...), parts[1][images[0][1]:]...)
+		img := inner[images[0][0]:images[0][1]]
+		rest := append(append([]byte{}, inner[:images[0][0]]...), inner[images[0][1]:]...)
 		if len(bytes.TrimSpace(rest)) != 0 {
 			return block
 		}
-		ref := reSVGImageRef.FindSubmatch(parts[1][images[0][0]:images[0][1]])
-		if ref == nil {
+		src, ok := svgImageRef(img)
+		if !ok || strings.ContainsAny(src, `"'<>`) || !reRelativeOrData.MatchString(src) {
 			return block
 		}
-		src := ref[1]
-		if len(src) == 0 {
-			src = ref[2]
-		}
-		if !reRelativeOrData.Match(src) {
-			return block
-		}
-		return []byte(`<img src="` + string(src) + `" alt=""/>`)
+		return []byte(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(alt) + `"/>`)
 	})
+}
+
+// svgImageRef reads an <image> tag's reference with a real tokenizer, so
+// an href= inside another attribute's value is never mistaken for one.
+// SVG 2's href wins over the legacy xlink:href, as it does in browsers.
+func svgImageRef(tag []byte) (string, bool) {
+	z := xhtml.NewTokenizer(bytes.NewReader(tag))
+	if tt := z.Next(); tt != xhtml.StartTagToken && tt != xhtml.SelfClosingTagToken {
+		return "", false
+	}
+	var href, xlinkHref string
+	var haveHref, haveXlink bool
+	for _, a := range z.Token().Attr {
+		switch {
+		case a.Namespace == "" && a.Key == "href" && !haveHref:
+			href, haveHref = a.Val, true
+		case a.Key == "xlink:href" && !haveXlink:
+			xlinkHref, haveXlink = a.Val, true
+		}
+	}
+	if haveHref {
+		return href, true
+	}
+	return xlinkHref, haveXlink
 }
 
 func stripSVG(raw []byte) []byte {
