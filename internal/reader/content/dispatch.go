@@ -73,10 +73,11 @@ func ReadEntry(f *zip.File) ([]byte, error) {
 
 // Classify decides how an entry is served based on its sniffed content
 // rather than path extension alone. HTML/XHTML -> KindHTML;
-// text/css -> KindCSS; non-SVG images or fonts -> KindBinary served with
-// that MIME type. Standalone image/svg+xml and any unrecognised or
-// unexpected types (such as executables) are refused with
-// InvalidInput.
+// text/css -> KindCSS; the EPUB container/package/EPUB2-TOC XML files
+// foliate-js parses to locate the spine -> KindBinary served as XML;
+// non-SVG images or fonts -> KindBinary served with that MIME type.
+// Standalone image/svg+xml and any unrecognised or unexpected types
+// (such as executables) are refused with InvalidInput.
 func Classify(entryName string, data []byte) (Kind, string, error) {
 	sniff := http.DetectContentType(data)
 	base := strings.ToLower(strings.TrimSpace(strings.SplitN(sniff, ";", 2)[0]))
@@ -91,6 +92,13 @@ func Classify(entryName string, data []byte) (Kind, string, error) {
 		return KindHTML, "application/xhtml+xml; charset=utf-8", nil
 	case ext == ".css" && strings.HasPrefix(base, "text/"):
 		return KindCSS, "text/css; charset=utf-8", nil
+	// META-INF/container.xml, the OPF package document, and (for EPUB2
+	// books) the NCX table of contents — every one of these foliate-js
+	// itself requests, by path, before it can locate the spine at all.
+	// Served as-is: XML has no script execution vector in a fetch (never
+	// rendered as a document), so this needs no sanitizer, unlike KindHTML.
+	case base == "text/xml" || base == "application/xml" || ext == ".xml" || ext == ".opf" || ext == ".ncx":
+		return KindBinary, "application/xml; charset=utf-8", nil
 	case base == "image/svg+xml" || ext == ".svg":
 		return 0, "", &domain.Error{Category: domain.InvalidInput, Message: "SVG resources are not served"}
 	case strings.HasPrefix(base, "image/"):
