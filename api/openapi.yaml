@@ -1509,6 +1509,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+              example: { code: unauthorized, message: "missing or invalid authorization token", correlationId: 00000000-0000-0000-0000-000000000000 }
         '404':
           description: Edition not in the active library.
           content:
@@ -1520,6 +1521,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+              example: { code: unavailable, message: "the reader is not ready yet", correlationId: 00000000-0000-0000-0000-000000000000 }
 
   /api/v1/reading/works/{workId}/progress:
     get:
