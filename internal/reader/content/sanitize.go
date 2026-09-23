@@ -132,11 +132,54 @@ func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	stripped = stripSVG(stripped)
 
 	cleaned := htmlPolicy().SanitizeBytes(stripped)
+	cleaned = restoreXHTMLRoot(cleaned)
 
 	if css.Len() > 0 {
-		cleaned = append([]byte("<style>"+css.String()+"</style>\n"), cleaned...)
+		cleaned = insertStyle(cleaned, []byte("<style>"+css.String()+"</style>\n"))
 	}
 	return cleaned, rep
+}
+
+const xhtmlNamespace = "http://www.w3.org/1999/xhtml"
+
+var (
+	reHTMLOpen = regexp.MustCompile(`(?i)<html\b`)
+	reHeadOpen = regexp.MustCompile(`(?i)<head\b[^>]*>`)
+	reRootOpen = regexp.MustCompile(`(?i)<html\b[^>]*>`)
+)
+
+// restoreXHTMLRoot puts the XHTML namespace back on the root <html>. The
+// policy strips every xmlns attribute (a book must not pick its own root
+// namespace), but the endpoint serves chapters as application/xhtml+xml,
+// where a root outside the XHTML namespace makes every element generic
+// XML — no block layout, no heading or paragraph styling.
+func restoreXHTMLRoot(doc []byte) []byte {
+	loc := reHTMLOpen.FindIndex(doc)
+	if loc == nil {
+		return doc
+	}
+	out := make([]byte, 0, len(doc)+len(xhtmlNamespace)+9)
+	out = append(out, doc[:loc[1]]...)
+	out = append(out, ` xmlns="`+xhtmlNamespace+`"`...)
+	return append(out, doc[loc[1]:]...)
+}
+
+// insertStyle places the sanitised <style> block inside the document —
+// in <head>, else just inside <html> — since anything outside the root
+// element is an XML parse error. A fragment with no root gets it
+// prepended.
+func insertStyle(doc, style []byte) []byte {
+	loc := reHeadOpen.FindIndex(doc)
+	if loc == nil {
+		loc = reRootOpen.FindIndex(doc)
+	}
+	if loc == nil {
+		return append(style, doc...)
+	}
+	out := make([]byte, 0, len(doc)+len(style))
+	out = append(out, doc[:loc[1]]...)
+	out = append(out, style...)
+	return append(out, doc[loc[1]:]...)
 }
 
 var reSVGBlock = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)

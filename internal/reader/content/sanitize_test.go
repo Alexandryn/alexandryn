@@ -1,6 +1,9 @@
 package content_test
 
 import (
+	"bytes"
+	"encoding/xml"
+	"io"
 	"strings"
 	"testing"
 
@@ -163,5 +166,50 @@ func TestSanitizeHTML_StripsDataURIOnAnchor(t *testing.T) {
 	}
 	if !strings.Contains(s, `src="data:image/png;base64,AAAA"`) {
 		t.Fatalf("data: URI on <img> should have been preserved: %q", s)
+	}
+}
+
+// The content endpoint serves sanitised chapters as application/xhtml+xml,
+// so the output must stay a well-formed XML document whose root is in the
+// XHTML namespace: without the namespace the browser renders <p>/<h2> as
+// unstyled generic XML (one run-on block of text), and a <style> block
+// outside the root is a second root element — an XML parse error.
+func TestSanitizeHTML_StaysWellFormedXHTML(t *testing.T) {
+	in := []byte(`<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
+<head><meta charset="utf-8"/><title>Ch</title><style>p{text-indent:1em}</style></head>
+<body><h2><a id="c2"/>CHAPTER II.<br/>The Pool</h2><p epub:type="z3998:fiction">“Curiouser”&#160;said Alice</p></body>
+</html>`)
+	out, _ := content.SanitizeHTML(in)
+
+	dec := xml.NewDecoder(bytes.NewReader(out))
+	var root *xml.StartElement
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("sanitised output is not well-formed XML: %v\n%s", err, out)
+		}
+		if se, ok := tok.(xml.StartElement); ok && root == nil {
+			root = &se
+		}
+	}
+	if root == nil || root.Name.Local != "html" || root.Name.Space != "http://www.w3.org/1999/xhtml" {
+		t.Fatalf("root = %+v, want html in the XHTML namespace\n%s", root, out)
+	}
+	if !strings.Contains(string(out), "text-indent:1em") {
+		t.Fatalf("sanitised <style> was lost: %s", out)
+	}
+}
+
+// A book cannot choose its own root namespace: whatever xmlns it declares
+// is replaced by the XHTML one.
+func TestSanitizeHTML_ForcesXHTMLNamespace(t *testing.T) {
+	out, _ := content.SanitizeHTML([]byte(`<html xmlns="http://www.w3.org/2000/svg"><body><p>t</p></body></html>`))
+	s := string(out)
+	if strings.Contains(s, "2000/svg") || strings.Count(s, "xmlns=") != 1 || !strings.Contains(s, `<html xmlns="http://www.w3.org/1999/xhtml"`) {
+		t.Fatalf("root namespace not forced to XHTML: %s", s)
 	}
 }
