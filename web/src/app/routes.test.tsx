@@ -58,14 +58,26 @@ describe('route table', () => {
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
   })
 
-  it('/read/:workId/:editionId resolves to the Reader screen', async () => {
-    renderRoute('/read/book-1/ed-1')
-    // The real reader mounts here (no content mock in this suite, so it
-    // settles on its error state) rather than a placeholder.
-    expect(
-      await screen.findByText(/opening book|could not be opened/i),
-    ).toBeInTheDocument()
-  })
+  it(
+    '/read/:workId/:editionId resolves to the Reader screen',
+    async () => {
+      renderRoute('/read/book-1/ed-1')
+      // The real reader mounts here (no content mock in this suite, so it
+      // settles on its error state) rather than a placeholder. Reader is
+      // lazy-loaded (lazyScreens.ts) with the heaviest dependency graph
+      // of any route here (EPUB parsing) — on a CPU-constrained runner,
+      // Vitest's worker pool transforming this chunk's modules for the
+      // first time can occasionally take longer than the suite's default
+      // 5s test budget, well before "Opening book" (rendered
+      // synchronously once the module loads) ever gets a chance to
+      // appear — not a slow assertion, a slow import. Generous timeout
+      // here only; the default stays put for every other test.
+      expect(
+        await screen.findByText(/opening book|could not be opened/i, {}, { timeout: 20000 }),
+      ).toBeInTheDocument()
+    },
+    25000,
+  )
 
   it('/book/:id resolves to WorkDetail screen', async () => {
     server.use(
