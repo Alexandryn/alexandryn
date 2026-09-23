@@ -111,6 +111,27 @@ enforce the rest.
     existence oracle. This is part of the phase-13 close gate; the
     shipped handler does an ownership check with no library or membership
     scoping.
+  - **Amended 2026-09-23 — how the iframe authenticates.** The reader's
+    sandboxed `<iframe src>`, and every image and stylesheet its chapter
+    loads by relative URL, is a plain browser fetch that cannot carry an
+    `Authorization` header or `X-Library-Id`, so a Bearer-only endpoint
+    refused every chapter. The caller MAY instead present the `alx_rc`
+    reader-content grant cookie, issued by
+    `POST /api/v1/library/editions/:editionId/reader/session`
+    (Bearer-authenticated; the edition must be owned in the active
+    library). The grant is an HS256 token on its own HKDF subkey
+    (`reader-content-grant-v1`) carrying user, library, and edition,
+    valid 15 minutes; the cookie is `HttpOnly`, `SameSite=Strict`,
+    `Secure` when the request arrived over TLS (directly or via a trusted
+    proxy), and its `Path` is this edition's `reader/content/` route. It
+    is honoured only on `GET`/`HEAD` of that route, only for the edition
+    it names, and only when no `Authorization` header is present; the
+    library it names becomes the active library for the ownership check
+    above, which still runs on every request. The grant never appears in
+    a URL, a response body, or a log line. Accepted residual risks: a
+    grant outlives logout by up to 15 minutes, and cookies are not
+    port-isolated, so another service on the same host could replay one
+    it is sent.
   `*path` is validated against `..`-shaped or
   absolute-path segments before ever being used to look up a zip entry
   (`InvalidInput` otherwise) — the same zip-slip discipline
