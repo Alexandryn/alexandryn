@@ -62,8 +62,9 @@ describe('route table', () => {
     '/read/:workId/:editionId resolves to the Reader screen',
     async () => {
       renderRoute('/read/book-1/ed-1')
-      // The real reader mounts here (no content mock in this suite, so it
-      // settles on its error state) rather than a placeholder. Reader is
+      // The real reader mounts here rather than a placeholder: with the
+      // shared mock handlers (content + reader session) it opens the book
+      // and frames the first chapter, so wait for that frame. Reader is
       // lazy-loaded (lazyScreens.ts) with the heaviest dependency graph
       // of any route here (EPUB parsing) — on a CPU-constrained runner,
       // Vitest's worker pool transforming this chunk's modules for the
@@ -73,7 +74,7 @@ describe('route table', () => {
       // appear — not a slow assertion, a slow import. Generous timeout
       // here only; the default stays put for every other test.
       expect(
-        await screen.findByText(/opening book|could not be opened/i, {}, { timeout: 20000 }),
+        await screen.findByTitle(/reading area/i, {}, { timeout: 20000 }),
       ).toBeInTheDocument()
     },
     25000,
