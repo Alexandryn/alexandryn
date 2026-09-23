@@ -204,6 +204,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	mux.Handle("GET /api/v1/import/candidates/{id}/cover", ingestAuth(transporthttp.ImportCandidateCoverHandler(candRepo)))
 
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, logger))
+	mux.Handle("POST /api/v1/library/editions/{editionId}/reader/session", transporthttp.ReaderSessionHandler(poolRef, time.Now))
 
 	syncMW := transporthttp.LazySyncMiddleware(poolRef)
 

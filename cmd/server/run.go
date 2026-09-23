@@ -501,6 +501,15 @@ func run(ctx context.Context, deps runDeps) int {
 		return 1
 	}
 
+	readerGrantSubkey, err := cryptoSvc.DeriveSubkey("reader-content-grant-v1")
+	if err != nil {
+		logger.Error("failed to derive reader content grant subkey", "error", err.Error())
+		if pool != nil {
+			pool.Close()
+		}
+		return 1
+	}
+
 	poolRef.SetSourceCrypto(transporthttp.SourceCrypto{
 		Encryptor: cryptoSvc,
 		Codec:     sources.NewCursorCodec(cursorSubkey),
@@ -573,6 +582,7 @@ func run(ctx context.Context, deps runDeps) int {
 				EnrolmentGrantJTIs: repos.enrolmentGrantJTIs,
 				MFATicketJTIs:      repos.mfaTicketJTIs,
 				EnrolmentSigner:    enrolmentSigner,
+				ReaderGrants:       auth.NewReaderContentGrantSigner(readerGrantSubkey, "alexandryn"),
 				Logger:             logger,
 			})
 		}

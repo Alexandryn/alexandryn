@@ -1437,6 +1437,15 @@ paths:
     get:
       operationId: getReaderContent
       summary: Serve one sanitised resource from inside an owned Edition's EPUB
+      description: >-
+        Authenticated by a Bearer token, or — for the reader's sandboxed
+        iframe and the images and stylesheets its chapter loads, which
+        cannot send an Authorization header — by the reader-content grant
+        cookie that POST .../reader/session sets. The cookie is honoured
+        only on this route and only for the edition it was issued for.
+      security:
+        - bearerAuth: []
+        - readerContentCookie: []
       parameters:
         - name: editionId
           in: path
@@ -1474,6 +1483,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               example: { code: unavailable, message: "this book's source isn't reachable right now", correlationId: 00000000-0000-0000-0000-000000000000 }
+
+  /api/v1/library/editions/{editionId}/reader/session:
+    post:
+      operationId: createReaderSession
+      summary: Issue the reader-content grant cookie for an owned Edition
+      description: >-
+        Sets an HttpOnly, SameSite=Strict cookie scoped to this edition's
+        reader/content/ path, valid for 15 minutes. The reader calls this
+        before loading a chapter and again before the grant expires.
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Grant issued.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: alx_rc grant cookie, Path=/api/v1/library/editions/{editionId}/reader/content/.
+        '401':
+          description: Missing or invalid Bearer token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Edition not in the active library.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: not_found, message: "no such edition in your library", correlationId: 00000000-0000-0000-0000-000000000000 }
+        '503':
+          description: The reader is not ready yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /api/v1/reading/works/{workId}/progress:
     get:
@@ -2742,6 +2788,10 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    readerContentCookie:
+      type: apiKey
+      in: cookie
+      name: alx_rc
 
   schemas:
     BootstrapCapabilities:

@@ -39,6 +39,9 @@ function contentHandlers(chapterBody = CHAPTER1_XHTML) {
 
 function readingApiHandlers(progress: unknown = null) {
   return [
+    http.post('*/api/v1/library/editions/:editionId/reader/session', () =>
+      new HttpResponse(null, { status: 204 }),
+    ),
     http.get('*/api/v1/reading/works/:workId/progress', () => HttpResponse.json({ progress })),
     http.post('*/api/v1/reading/works/:workId/progress', () =>
       HttpResponse.json({ progress, outcome: 'advanced' }),
@@ -91,6 +94,33 @@ describe('Reader', () => {
     // Sandbox is exactly allow-same-origin — never allow-scripts.
     expect(frame.getAttribute('sandbox')).toBe('allow-same-origin')
     expect(frame.getAttribute('sandbox')).not.toContain('allow-scripts')
+  })
+
+  it('issues the content grant before pointing the iframe at the chapter', async () => {
+    const issued: string[] = []
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', ({ params }) => {
+        issued.push(String(params.editionId))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    renderReader()
+
+    const frame = await screen.findByTitle(/reading area/i)
+    expect(issued).toEqual(['e1'])
+    expect(frame.getAttribute('src')).toMatch(/\/editions\/e1\/reader\/content\/OEBPS\/chapter1\.xhtml$/)
+  })
+
+  it('shows an error instead of a blank frame when the content grant is refused', async () => {
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', () =>
+        HttpResponse.json({ code: 'not_found', message: 'no such edition in your library' }, { status: 404 }),
+      ),
+    )
+    renderReader()
+
+    expect(await screen.findByText('This book could not be opened.')).toBeInTheDocument()
+    expect(screen.queryByTitle(/reading area/i)).not.toBeInTheDocument()
   })
 
   it('keeps the sandbox script-free after a theme change', async () => {

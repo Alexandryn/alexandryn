@@ -244,7 +244,7 @@ func LazyAuthMiddleware(ref *PoolRef) Middleware {
 				return
 			}
 
-			AuthMiddleware(api.Signer)(next).ServeHTTP(w, r)
+			AuthMiddlewareWithReaderGrants(api.Signer, api.ReaderGrants)(next).ServeHTTP(w, r)
 		})
 	}
 }

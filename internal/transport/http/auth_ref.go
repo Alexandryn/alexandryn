@@ -33,7 +33,10 @@ type AuthAPI struct {
 	EnrolmentGrantJTIs domain.EnrolmentGrantJTIRepository
 	MFATicketJTIs      domain.MFATicketJTIRepository
 	EnrolmentSigner    *auth.EnrolmentGrantSigner
-	Logger             *slog.Logger
+	// ReaderGrants mints and verifies the reader-content grant cookie;
+	// nil disables it (the reader then cannot load chapter content).
+	ReaderGrants *auth.ReaderContentGrantSigner
+	Logger       *slog.Logger
 }
 
 func (r *PoolRef) SetAuthAPI(a AuthAPI) {

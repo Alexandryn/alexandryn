@@ -110,6 +110,39 @@ export const readingKeys = {
   bookmarks: (editionId: string) => ['reading', 'bookmarks', editionId] as const,
   highlights: (editionId: string) => ['reading', 'highlights', editionId] as const,
   preferences: ['reading', 'preferences'] as const,
+  contentSession: (editionId: string) => ['reading', 'contentSession', editionId] as const,
+}
+
+// --- content session ---------------------------------------------------
+
+/** How often the reader re-issues its content grant (the grant lives 15 min). */
+export const CONTENT_SESSION_REFRESH_MS = 10 * 60_000
+
+/**
+ * Keeps the reader-content grant cookie fresh for one Edition. The
+ * sandboxed <iframe> — and every image and stylesheet its chapter loads —
+ * is a plain browser fetch that cannot carry the Bearer token, so the
+ * server issues a short-lived HttpOnly cookie scoped to exactly this
+ * edition's content route. Re-issued every 10 minutes while the reader is
+ * open, and on refocus once stale (a sleeping tab may have missed a tick).
+ */
+export function useReaderContentSession(editionId: string) {
+  return useQuery({
+    queryKey: readingKeys.contentSession(editionId),
+    queryFn: async ({ signal }) => {
+      await postJson<void>(
+        `/api/v1/library/editions/${encodeURIComponent(editionId)}/reader/session`,
+        undefined,
+        {},
+        { signal },
+      )
+      return Date.now()
+    },
+    enabled: editionId !== '',
+    staleTime: CONTENT_SESSION_REFRESH_MS,
+    refetchInterval: CONTENT_SESSION_REFRESH_MS,
+    refetchIntervalInBackground: true,
+  })
 }
 
 // --- progress -------------------------------------------------------
