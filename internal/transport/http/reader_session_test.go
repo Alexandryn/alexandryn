@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -17,9 +18,10 @@ import (
 
 const ownedContentPath = "/api/v1/library/editions/edition-owned/reader/content/OEBPS/c1.xhtml"
 
-// readerSessionServer wires the session and content routes behind the
-// real auth middleware, the way cmd/server does: a Bearer token is
-// accepted anywhere, the grant cookie only where the middleware allows.
+// readerSessionServer wires the session and content routes behind
+// LazyAuthMiddleware reading the AuthAPI off the PoolRef — the production
+// path — so a regression in that wiring fails here too: a Bearer token
+// is accepted anywhere, the grant cookie only where the middleware allows.
 func readerSessionServer(t *testing.T, grants *auth.ReaderContentGrantSigner, now func() time.Time) http.Handler {
 	t.Helper()
 	poolRef := &transporthttp.PoolRef{}
@@ -36,14 +38,15 @@ func readerSessionServer(t *testing.T, grants *auth.ReaderContentGrantSigner, no
 			"edition-other": domain.DefaultLibraryID,
 		}},
 	})
-	poolRef.SetAuthAPI(transporthttp.AuthAPI{ReaderGrants: grants})
-
-	signer := &dummyTokenSigner{claims: &auth.Claims{
-		Subject:   "u-1",
-		Libraries: []domain.LibraryID{domain.DefaultLibraryID},
-		Type:      auth.TokenTypeAccess,
-		ExpiresAt: time.Now().Add(time.Hour).Unix(),
-	}}
+	poolRef.SetAuthAPI(transporthttp.AuthAPI{
+		Signer: &dummyTokenSigner{claims: &auth.Claims{
+			Subject:   "u-1",
+			Libraries: []domain.LibraryID{domain.DefaultLibraryID},
+			Type:      auth.TokenTypeAccess,
+			ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		}},
+		ReaderGrants: grants,
+	})
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/library/editions/{editionId}/reader/content/{path...}", transporthttp.ReaderContentHandler(poolRef, nil))
@@ -53,14 +56,22 @@ func readerSessionServer(t *testing.T, grants *auth.ReaderContentGrantSigner, no
 	}))
 	return transporthttp.Chain(mux,
 		transporthttp.Recovery(nil, func() string { return "test" }),
-		transporthttp.AuthMiddlewareWithReaderGrants(signer, grants),
+		transporthttp.LazyAuthMiddleware(poolRef),
 	)
 }
 
 func issueGrantCookie(t *testing.T, srv http.Handler, editionID string) *http.Cookie {
 	t.Helper()
+	return issueGrantCookieWith(t, srv, editionID, nil)
+}
+
+func issueGrantCookieWith(t *testing.T, srv http.Handler, editionID string, prep func(*http.Request)) *http.Cookie {
+	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/library/editions/"+editionID+"/reader/session", nil)
 	req.Header.Set("Authorization", "Bearer access")
+	if prep != nil {
+		prep(req)
+	}
 	rr := httptest.NewRecorder()
 	srv.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNoContent {
@@ -214,4 +225,45 @@ func TestReaderContent_GrantCookieRejections(t *testing.T) {
 			t.Fatalf("status = %d, want 401", rr.Code)
 		}
 	})
+}
+
+func TestReaderSession_SecureCookie(t *testing.T) {
+	srv := readerSessionServer(t, auth.NewReaderContentGrantSigner([]byte("k"), "alexandryn"), time.Now)
+	fromProxy := func(r *http.Request) {
+		r.RemoteAddr = "10.0.0.5:4000"
+		r.Header.Set("X-Forwarded-Proto", "https")
+	}
+
+	t.Run("plain http", func(t *testing.T) {
+		if c := issueGrantCookie(t, srv, "edition-owned"); c.Secure {
+			t.Fatal("Secure set on a plain-http request")
+		}
+	})
+
+	t.Run("X-Forwarded-Proto from an untrusted peer is ignored", func(t *testing.T) {
+		transporthttp.SetTrustedProxyCIDRs(nil)
+		if c := issueGrantCookieWith(t, srv, "edition-owned", fromProxy); c.Secure {
+			t.Fatal("Secure trusted a client-supplied X-Forwarded-Proto")
+		}
+	})
+
+	t.Run("TLS terminated by a trusted proxy", func(t *testing.T) {
+		transporthttp.SetTrustedProxyCIDRs([]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+		t.Cleanup(func() { transporthttp.SetTrustedProxyCIDRs(nil) })
+		if c := issueGrantCookieWith(t, srv, "edition-owned", fromProxy); !c.Secure {
+			t.Fatal("Secure not set behind a trusted TLS-terminating proxy")
+		}
+	})
+}
+
+// An encoded slash makes the middleware (decoded path) and the mux
+// ({editionId} from the escaped path) see different editions; the content
+// handler refuses such an edition ID outright.
+func TestReaderContent_EncodedSlashEditionRefused(t *testing.T) {
+	srv := readerSessionServer(t, auth.NewReaderContentGrantSigner([]byte("k"), "alexandryn"), time.Now)
+	c := issueGrantCookie(t, srv, "edition-owned")
+	rr := getWithCookie(srv, http.MethodGet, "/api/v1/library/editions/edition-owned%2Freader%2Fcontent%2Fx/reader/content/OEBPS/c1.xhtml", c)
+	if rr.Code == http.StatusOK {
+		t.Fatalf("encoded-slash edition served: %d", rr.Code)
+	}
 }

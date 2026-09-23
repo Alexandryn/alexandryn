@@ -17,6 +17,7 @@ import {
   useReadingProgress,
   useReportProgress,
   useSavePreferences,
+  CONTENT_GRANT_SAFE_MS,
   DEFAULT_READING_PREFERENCES,
   type ReadingPreferences,
 } from '../../data/reading'
@@ -245,6 +246,31 @@ export function Reader() {
     progressQuery.data,
   ])
 
+  // The chapter URL the iframe should show, and the one it does show. A
+  // grant older than CONTENT_GRANT_SAFE_MS may already have expired (timers
+  // lag the cookie's wall-clock lifetime across a system suspend), so a
+  // chapter change then waits for a fresh grant rather than loading a 401.
+  const wantedSrc =
+    currentSection && contentSession.data !== undefined
+      ? contentUrl(editionId, currentSection.id)
+      : undefined
+  const [frameSrc, setFrameSrc] = useState<string | undefined>(undefined)
+  const { dataUpdatedAt: grantIssuedAt, refetch: reissueGrant } = contentSession
+  useEffect(() => {
+    if (wantedSrc === undefined || wantedSrc === frameSrc) return
+    let cancelled = false
+    const grant =
+      Date.now() - grantIssuedAt < CONTENT_GRANT_SAFE_MS
+        ? Promise.resolve({ isError: false })
+        : reissueGrant()
+    void grant.then((result) => {
+      if (!cancelled && !result.isError) setFrameSrc(wantedSrc)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [wantedSrc, frameSrc, grantIssuedAt, reissueGrant])
+
   // Re-apply typography whenever preferences change without reloading.
   useEffect(() => {
     applyPreferences(iframeRef.current?.contentDocument)
@@ -373,11 +399,7 @@ export function Reader() {
         className="reader-content-frame"
         title={`${bookQuery.data?.title ?? 'Book'} — reading area`}
         sandbox="allow-same-origin"
-        src={
-          currentSection && contentSession.data !== undefined
-            ? contentUrl(editionId, currentSection.id)
-            : undefined
-        }
+        src={frameSrc}
         onLoad={handleIframeLoad}
       />
 

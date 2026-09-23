@@ -98,17 +98,65 @@ describe('Reader', () => {
 
   it('issues the content grant before pointing the iframe at the chapter', async () => {
     const issued: string[] = []
+    let grant!: () => void
+    const granted = new Promise<void>((resolve) => (grant = resolve))
     server.use(
-      http.post('*/api/v1/library/editions/:editionId/reader/session', ({ params }) => {
+      http.post('*/api/v1/library/editions/:editionId/reader/session', async ({ params }) => {
         issued.push(String(params.editionId))
+        await granted
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const loaded: string[] = []
+    const onResponse = ({ request }: { request: Request }) => loaded.push(request.url)
+    server.events.on('response:mocked', onResponse)
+    renderReader()
+
+    // The book's structure finishes loading, but no chapter is framed
+    // while the grant request is still open.
+    try {
+      await waitFor(() => expect(loaded.some((u) => u.endsWith('OEBPS/nav.xhtml'))).toBe(true))
+    } finally {
+      server.events.removeListener('response:mocked', onResponse)
+    }
+    await new Promise((r) => setTimeout(r, 100))
+    expect(issued).toEqual(['e1'])
+    expect(screen.queryByTitle(/reading area/i)?.getAttribute('src') ?? null).toBeNull()
+
+    grant()
+    const frame = await screen.findByTitle(/reading area/i)
+    await waitFor(() =>
+      expect(frame.getAttribute('src')).toMatch(
+        /\/editions\/e1\/reader\/content\/OEBPS\/chapter1\.xhtml$/,
+      ),
+    )
+  })
+
+  it('re-issues a stale grant before loading the next chapter', async () => {
+    let issued = 0
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', () => {
+        issued++
         return new HttpResponse(null, { status: 204 })
       }),
     )
     renderReader()
-
+    const user = userEvent.setup()
     const frame = await screen.findByTitle(/reading area/i)
-    expect(issued).toEqual(['e1'])
-    expect(frame.getAttribute('src')).toMatch(/\/editions\/e1\/reader\/content\/OEBPS\/chapter1\.xhtml$/)
+    await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/))
+    expect(issued).toBe(1)
+
+    // A laptop slept past the grant's lifetime: wall-clock time jumped,
+    // the refresh timer did not fire.
+    const realNow = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(realNow + 13 * 60_000)
+    try {
+      await user.click(screen.getByRole('button', { name: 'Next chapter' }))
+      await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter2\.xhtml$/))
+      expect(issued).toBe(2)
+    } finally {
+      clock.mockRestore()
+    }
   })
 
   it('shows an error instead of a blank frame when the content grant is refused', async () => {
