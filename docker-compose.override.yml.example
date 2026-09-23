@@ -19,7 +19,18 @@
 # Only once TLS is in place should the host-side address below change
 # from 127.0.0.1 to your LAN interface (or be removed, if a reverse
 # proxy is what's actually exposed).
+#
+# If you do change it: also uncomment CORS_ALLOWED_ORIGINS below, set to
+# that same address. The server auto-allows the origin matching its own
+# BIND_ADDRESS (172.28.0.10 inside this Compose network — see
+# docker-compose.yml), but a browser reaching it through this published
+# port uses the host-side address instead, which the server has no way
+# to know on its own. Without this, every request from a browser gets
+# rejected with "request origin is not allowed" — including account
+# creation on first run.
 services:
   backend:
     ports:
       - "127.0.0.1:8080:8080"
+    # environment:
+    #   - CORS_ALLOWED_ORIGINS=http://192.168.1.50:8080
