@@ -10,7 +10,7 @@ COPY . .
 # so `npm ci` runs at /src and the web build is invoked with `-w web`.
 # nodejs/npm are installed only inside this conditional so a Go-only
 # checkout never pays for them.
-RUN if [ -d web ]; then apk add --no-cache nodejs npm && npm ci && npm run -w web build; fi
+RUN if [ -d web ]; then apk add --no-cache bash nodejs npm && npm ci && npm run -w web build && bash scripts/embed-web-dist.sh; fi
 RUN CGO_ENABLED=0 go build -o /out/alexandryn-server ./cmd/server
 
 FROM alpine:3.22 AS runtime

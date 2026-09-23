@@ -168,6 +168,13 @@ jobs:
           name: web-dist
           path: web/dist
 
+      # Embeds the real frontend into the binaries this job builds below —
+      # without this, //go:embed keeps the committed placeholder and the
+      # server never serves the real app (this is the bug releases 1.0.0
+      # through 1.0.3 shipped with; see CHANGELOG.md 1.0.4).
+      - name: Embed real web build
+        run: bash scripts/embed-web-dist.sh
+
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -182,6 +189,45 @@ jobs:
           CGO_ENABLED=0 go build -o bin/alexandryn-server ./cmd/server
           # Record checksum to verify the desktop job executes the exact artifact built here.
           ( cd bin && sha256sum alexandryn-server > alexandryn-server.sha256 )
+
+      # Regression guard for the 1.0.0–1.0.3 bug: actually run the binary
+      # just built and assert it serves the real frontend at "/", not the
+      # committed placeholder — a passing build/test suite never caught
+      # that bug because nothing exercised this path end to end.
+      - name: Smoke test - server serves the real frontend, not the placeholder
+        env:
+          OPEN_LIBRARY_USER_AGENT: "Alexandryn-CI/1.0 (+https://github.com/Alexandryn/alexandryn; static-handler smoke test)"
+          DATABASE_URL: postgres://postgres:ci-test-pg-alexandryn-s3cret@localhost:5432/alexandryn_test?sslmode=disable
+        run: |
+          ./bin/alexandryn-server --config /dev/null > server.out 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          port=""
+          for i in $(seq 1 20); do
+            port="$(grep -o 'PORT=[0-9]*' server.out | head -1 | cut -d= -f2)"
+            [ -n "$port" ] && break
+            sleep 0.5
+          done
+          if [ -z "$port" ]; then
+            echo "smoke test: server never announced a port" >&2
+            cat server.out >&2
+            exit 1
+          fi
+          body="$(curl -sf "http://127.0.0.1:$port/" 2>/dev/null)" || true
+          if [ -z "${body:-}" ]; then
+            echo "smoke test: server never answered on /" >&2
+            exit 1
+          fi
+          if grep -q 'placeholder build' <<<"$body"; then
+            echo "smoke test: server served the placeholder instead of the real frontend" >&2
+            exit 1
+          fi
+          if ! grep -q 'id="root"' <<<"$body"; then
+            echo "smoke test: served page doesn't look like the real web/dist build" >&2
+            echo "$body" >&2
+            exit 1
+          fi
+          echo "smoke test: real frontend served correctly"
 
       # Consumed only by this same run's desktop job, within minutes —
       # see the web/dist upload above for why this is 1 day, not the
