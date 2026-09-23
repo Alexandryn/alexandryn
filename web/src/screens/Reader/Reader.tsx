@@ -12,6 +12,7 @@ import {
   useCreateBookmark,
   useCreateHighlight,
   useHighlights,
+  useReaderContentSession,
   useReadingPreferences,
   useReadingProgress,
   useReportProgress,
@@ -55,6 +56,9 @@ export function Reader() {
     retry: false,
   })
 
+  // The iframe authenticates by a grant cookie this issues; its src is
+  // withheld until the first grant lands.
+  const contentSession = useReaderContentSession(editionId)
   const progressQuery = useReadingProgress(workId)
   const preferencesQuery = useReadingPreferences()
   const bookmarksQuery = useBookmarks(editionId)
@@ -267,7 +271,7 @@ export function Reader() {
   if (editionId === '' || workId === '') {
     return <ErrorState title="This reader link is incomplete." />
   }
-  if (bookQuery.isPending) {
+  if (bookQuery.isPending || contentSession.isPending) {
     return (
       <div className="flex h-full items-center justify-center" role="status">
         <h1 className="sr-only">Opening book</h1>
@@ -275,8 +279,9 @@ export function Reader() {
       </div>
     )
   }
-  if (bookQuery.isError || sections.length === 0) {
-    const status = (bookQuery.error as { status?: number } | undefined)?.status
+  const sessionFailed = contentSession.isError && contentSession.data === undefined
+  if (bookQuery.isError || sections.length === 0 || sessionFailed) {
+    const status = ((bookQuery.error ?? contentSession.error) as { status?: number } | null)?.status
     return (
       <ErrorState
         title={
@@ -284,7 +289,10 @@ export function Reader() {
             ? "This book's source isn't reachable right now."
             : 'This book could not be opened.'
         }
-        onRetry={() => void bookQuery.refetch()}
+        onRetry={() => {
+          if (bookQuery.isError) void bookQuery.refetch()
+          if (sessionFailed) void contentSession.refetch()
+        }}
       />
     )
   }
@@ -365,7 +373,11 @@ export function Reader() {
         className="reader-content-frame"
         title={`${bookQuery.data?.title ?? 'Book'} — reading area`}
         sandbox="allow-same-origin"
-        src={currentSection ? contentUrl(editionId, currentSection.id) : undefined}
+        src={
+          currentSection && contentSession.data !== undefined
+            ? contentUrl(editionId, currentSection.id)
+            : undefined
+        }
         onLoad={handleIframeLoad}
       />
 

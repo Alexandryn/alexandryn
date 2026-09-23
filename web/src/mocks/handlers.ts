@@ -157,6 +157,12 @@ export const handlers = [
     HttpResponse.json(generatedFixtures.rejectImportCandidate['200']),
   ),
 
+  // Reader content grant: the real server sets an HttpOnly cookie; the mock
+  // only needs to succeed so the reader points its iframe at the content.
+  http.post('*/api/v1/library/editions/:editionId/reader/session', () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
   // Reader content endpoint: served by path suffix, independent of editionId,
   // so any e2e/dev navigation to /read/:workId/:editionId using the same
   // reader.fixtures.ts content (Reader.test.tsx's own contentHandlers() mirrors this)

@@ -97,6 +97,15 @@ func IsPublicPath(path string) bool {
 
 // AuthMiddleware validates JWT Bearer tokens on all protected routes.
 func AuthMiddleware(signer auth.TokenSigner) Middleware {
+	return AuthMiddlewareWithReaderGrants(signer, nil)
+}
+
+// AuthMiddlewareWithReaderGrants is AuthMiddleware that additionally
+// accepts a reader-content grant cookie — and only on a GET/HEAD of the
+// reader content route, only for the edition the grant names, and only
+// when the request carries no Authorization header. A nil grants signer
+// disables the cookie path entirely.
+func AuthMiddlewareWithReaderGrants(signer auth.TokenSigner, grants *auth.ReaderContentGrantSigner) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			corrID := CorrelationIDFromContext(r.Context())
@@ -107,6 +116,12 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 			}
 
 			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" && grants != nil {
+				if ctx, ok := readerContentGrantContext(r, grants); ok {
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 				WriteError(w, domain.Unauthorized, "missing or invalid authorization token", corrID)
 				return
@@ -156,6 +171,52 @@ func AuthMiddleware(signer auth.TokenSigner) Middleware {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// readerContentGrantContext authenticates a reader-content request by
+// its grant cookie: the sandboxed reader <iframe> — and every image and
+// stylesheet its chapter loads by relative URL — is a plain browser fetch
+// that cannot carry an Authorization header. The grant is honoured only on
+// GET/HEAD of /api/v1/library/editions/{editionId}/reader/content/…, only
+// when its edition matches the path's, and it authenticates a user with
+// exactly the one library the grant names and no role. Any mismatch
+// returns false and the caller falls through to the Bearer check (a 401).
+func readerContentGrantContext(r *http.Request, grants *auth.ReaderContentGrantSigner) (context.Context, bool) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return nil, false
+	}
+	editionID, ok := readerContentEditionFromPath(r.URL.Path)
+	if !ok {
+		return nil, false
+	}
+	cookie, err := r.Cookie(ReaderContentCookieName)
+	if err != nil || cookie.Value == "" {
+		return nil, false
+	}
+	claims, err := grants.Verify(cookie.Value, time.Now())
+	if err != nil || claims.EditionID != editionID {
+		return nil, false
+	}
+	ctx := WithUser(r.Context(), &AuthenticatedUser{
+		UserID:    claims.Subject,
+		Libraries: []domain.LibraryID{claims.LibraryID},
+	})
+	return WithActiveLibrary(ctx, claims.LibraryID), true
+}
+
+// readerContentEditionFromPath extracts {editionId} from a
+// /api/v1/library/editions/{editionId}/reader/content/{path...} request
+// path, reporting false for any other path.
+func readerContentEditionFromPath(path string) (domain.EditionID, bool) {
+	rest, ok := strings.CutPrefix(path, readerEditionsPrefix)
+	if !ok {
+		return "", false
+	}
+	id, tail, ok := strings.Cut(rest, "/")
+	if !ok || id == "" || !strings.HasPrefix(tail, "reader/content/") {
+		return "", false
+	}
+	return domain.EditionID(id), true
 }
 
 // RequireRole ensures the authenticated user has at least one of the allowed roles.

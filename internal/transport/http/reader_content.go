@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/Alexandryn/alexandryn/internal/auth"
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 )
@@ -137,6 +139,77 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		w.Header().Set("Cache-Control", "private, max-age=300")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
+	})
+}
+
+// ReaderContentCookieName is the cookie that carries a reader-content
+// grant (auth.TokenTypeReaderContent) to the content route.
+const ReaderContentCookieName = "alx_rc"
+
+// readerEditionsPrefix is the path prefix shared by the reader content
+// route and the grant cookie's Path.
+const readerEditionsPrefix = "/api/v1/library/editions/"
+
+// readerContentCookiePath scopes a grant cookie to one edition's content
+// route, so the browser never sends it anywhere else.
+func readerContentCookiePath(editionID domain.EditionID) string {
+	return readerEditionsPrefix + string(editionID) + "/reader/content/"
+}
+
+// ReaderSessionHandler issues the reader-content grant cookie for one
+// owned Edition: POST /api/v1/library/editions/{editionId}/reader/session.
+// The reader calls it (Bearer-authenticated, like every other API call)
+// before pointing its <iframe> at the content route, and again before the
+// grant expires. The grant never appears in a URL, a response body, or a
+// log line: it is an HttpOnly, SameSite=Strict cookie whose Path is that
+// edition's content route alone.
+func ReaderSessionHandler(poolRef *PoolRef, now func() time.Time) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		correlationID := CorrelationIDFromContext(r.Context())
+
+		editionID := domain.EditionID(r.PathValue("editionId"))
+		if editionID == "" || strings.Contains(string(editionID), "/") {
+			WriteError(w, domain.InvalidInput, "editionId is required", correlationID)
+			return
+		}
+		user := UserFromContext(r.Context())
+		if user == nil {
+			WriteError(w, domain.Unauthorized, "authentication is required", correlationID)
+			return
+		}
+		authAPI, ok := poolRef.GetAuthAPI()
+		if !ok || authAPI.ReaderGrants == nil {
+			WriteError(w, domain.Unavailable, "the reader is not ready yet", correlationID)
+			return
+		}
+		deps, ready := poolRef.GetReadingAPI()
+		if !ready {
+			WriteError(w, domain.Unavailable, "the reader is not ready yet", correlationID)
+			return
+		}
+		libraryID := ActiveLibraryFromContext(r.Context())
+		if !assertEditionInLibrary(deps, r, w, editionID, libraryID, correlationID) {
+			return
+		}
+
+		token, expiresAt, err := authAPI.ReaderGrants.Sign(user.UserID, libraryID, editionID, now())
+		if err != nil {
+			WriteError(w, domain.Internal, "unexpected error", correlationID)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     ReaderContentCookieName,
+			Value:    token,
+			Path:     readerContentCookiePath(editionID),
+			Expires:  expiresAt,
+			MaxAge:   int(auth.ReaderContentGrantTTL / time.Second),
+			HttpOnly: true,
+			Secure:   r.TLS != nil,
+			SameSite: http.SameSiteStrictMode,
+		})
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 

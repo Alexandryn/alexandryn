@@ -81,6 +81,7 @@ func TestSpecLoadsAndIsValid(t *testing.T) {
 		"/api/v1/import/candidates/{id}/cover",
 		// Reader content, reading API, export.
 		"/api/v1/library/editions/{editionId}/reader/content/{path}",
+		"/api/v1/library/editions/{editionId}/reader/session",
 		"/api/v1/reading/works/{workId}/progress",
 		"/api/v1/reading/editions/{editionId}/bookmarks",
 		"/api/v1/reading/bookmarks/{bookmarkId}",
