@@ -48,4 +48,22 @@ func TestClassify(t *testing.T) {
 	if k, ct, err := content.Classify("fonts/f.woff2", []byte("wOF2\x00\x01\x00\x00")); err != nil || k != content.KindBinary || ct != "font/woff2" {
 		t.Fatalf("woff2: kind=%v ct=%q err=%v", k, ct, err)
 	}
+	// The three EPUB structural XML files foliate-js fetches by path to
+	// locate the spine — container.xml, the OPF package document, and
+	// (EPUB2) the NCX table of contents — must all be servable, or no
+	// real book can ever open. Regression coverage for the bug where
+	// every one of these was refused with "this resource type cannot be
+	// served", discovered by opening a real EPUB against a real server.
+	xmlCases := []string{
+		"META-INF/container.xml",
+		"OEBPS/content.opf",
+		"OEBPS/toc.ncx",
+	}
+	xmlBytes := []byte(`<?xml version="1.0" encoding="UTF-8"?><root/>`)
+	for _, name := range xmlCases {
+		k, ct, err := content.Classify(name, xmlBytes)
+		if err != nil || k != content.KindBinary || ct != "application/xml; charset=utf-8" {
+			t.Fatalf("%s: kind=%v ct=%q err=%v", name, k, ct, err)
+		}
+	}
 }
