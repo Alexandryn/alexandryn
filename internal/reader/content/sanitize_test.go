@@ -260,3 +260,25 @@ func TestSanitizeHTML_SVGImageConversionStaysStrict(t *testing.T) {
 		})
 	}
 }
+
+// bluemonday matches href/src against the untrimmed value but writes the
+// trimmed one, and browsers also drop leading C0 controls, tabs, and
+// newlines from a URL — so " //host", "\t//host", "\n//host" or
+// "\x01//host" passed the relative-only check and came out as a
+// protocol-relative reference to another host.
+func TestSanitizeHTML_LeadingWhitespaceCannotSmuggleProtocolRelative(t *testing.T) {
+	for _, lead := range []string{" ", "  ", "\t", "\n", "&#10;", "&#9;", "\x01", "\x1f"} {
+		for _, doc := range []string{
+			`<a href="` + lead + `//evil.example/">x</a>`,
+			`<img src="` + lead + `//evil.example/x.png"/>`,
+			`<link rel="stylesheet" href="` + lead + `//evil.example/x.css"/>`,
+			`<a href="` + lead + `/\evil.example/">x</a>`,
+			`<img src="/` + lead + `/evil.example/x.png"/>`,
+		} {
+			out, _ := content.SanitizeHTML([]byte(`<html><body>` + doc + `</body></html>`))
+			if strings.Contains(string(out), "evil.example") {
+				t.Errorf("%q survived as %s", doc, out)
+			}
+		}
+	}
+}

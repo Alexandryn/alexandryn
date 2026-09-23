@@ -45,11 +45,17 @@ var (
 
 	// A value bluemonday may keep on href/src: a data: URI, or a
 	// relative reference that does not begin with "//" (protocol-relative).
-	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:[^/:]|/[^/])[^:]*|#\S*)$`)
+	// Neither of the first two characters may be whitespace, a control
+	// character, or a backslash: bluemonday tests the untrimmed value but
+	// writes the trimmed one, browsers drop leading C0 controls and any
+	// tab/newline from a URL, and treat "\" as "/" — so " //host",
+	// "\x01//host", "/\t/host", and "/\host" all become "//host".
+	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:[^/:\\\x00-\x20]|/[^/\\\x00-\x20])[^:]*|#\S*)$`)
 
 	// A relative-only reference that does not begin with "//" and rejects data: schemes.
 	// Used on <a href> so that books cannot embed data:text/html anchors to prevent UI-redress.
-	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:[^/:]|/[^/])[^:]*|#\S*)$`)
+	// Same leading-character rule as reRelativeOrData.
+	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:[^/:\\\x00-\x20]|/[^/\\\x00-\x20])[^:]*|#\S*)$`)
 )
 
 // htmlContentElements is the allowlist for EPUB XHTML content — the
