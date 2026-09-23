@@ -115,7 +115,6 @@ func htmlPolicy() *bluemonday.Policy {
 func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	var rep SanitizeReport
 	rep.ScriptsStripped = len(reScriptTag.FindAll(raw, -1)) + len(reEventAttr.FindAll(raw, -1))
-	rep.SVGStripped = len(reSVGOpen.FindAll(raw, -1))
 	rep.StyleAttrsStripped = len(reStyleAttr.FindAll(raw, -1))
 	rep.ExternalRefsStripped = len(reExternalHREF.FindAll(raw, -1))
 
@@ -129,6 +128,8 @@ func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 		css.WriteByte('\n')
 	}
 	stripped := reStyleBlock.ReplaceAll(raw, nil)
+	stripped = svgImagesToImg(stripped)
+	rep.SVGStripped = len(reSVGOpen.FindAll(stripped, -1))
 	stripped = stripSVG(stripped)
 
 	cleaned := htmlPolicy().SanitizeBytes(stripped)
@@ -184,6 +185,48 @@ func insertStyle(doc, style []byte) []byte {
 
 var reSVGBlock = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
 var reSVGSelfClose = regexp.MustCompile(`(?is)<svg[^>]*/>`)
+
+var (
+	reSVGParts    = regexp.MustCompile(`(?is)^<svg[^>]*>(.*)</svg>$`)
+	reSVGImage    = regexp.MustCompile(`(?is)<image\b[^>]*>(?:\s*</image>)?`)
+	reSVGImageRef = regexp.MustCompile(`(?is)\s(?:xlink:)?href\s*=\s*(?:"([^"<>]*)"|'([^'"<>]*)')`)
+)
+
+// svgImagesToImg rewrites an inline <svg> whose only content is a single
+// <image> into a plain <img> of the same reference, before stripSVG drops
+// every remaining <svg>. EPUB cover pages (Project Gutenberg, Calibre)
+// wrap the cover this way, so stripping the SVG left them blank. The <img>
+// is produced only for a relative or data: reference (the policy's own
+// img src rule, which still runs on it); an SVG holding anything else, or
+// pointing anywhere else, is left for stripSVG.
+func svgImagesToImg(raw []byte) []byte {
+	return reSVGBlock.ReplaceAllFunc(raw, func(block []byte) []byte {
+		parts := reSVGParts.FindSubmatch(block)
+		if parts == nil {
+			return block
+		}
+		images := reSVGImage.FindAllIndex(parts[1], -1)
+		if len(images) != 1 {
+			return block
+		}
+		rest := append(append([]byte{}, parts[1][:images[0][0]]...), parts[1][images[0][1]:]...)
+		if len(bytes.TrimSpace(rest)) != 0 {
+			return block
+		}
+		ref := reSVGImageRef.FindSubmatch(parts[1][images[0][0]:images[0][1]])
+		if ref == nil {
+			return block
+		}
+		src := ref[1]
+		if len(src) == 0 {
+			src = ref[2]
+		}
+		if !reRelativeOrData.Match(src) {
+			return block
+		}
+		return []byte(`<img src="` + string(src) + `" alt=""/>`)
+	})
+}
 
 func stripSVG(raw []byte) []byte {
 	out := reSVGBlock.ReplaceAll(raw, nil)
