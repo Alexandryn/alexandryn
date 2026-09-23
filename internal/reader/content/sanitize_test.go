@@ -213,3 +213,50 @@ func TestSanitizeHTML_ForcesXHTMLNamespace(t *testing.T) {
 		t.Fatalf("root namespace not forced to XHTML: %s", s)
 	}
 }
+
+// EPUB cover pages (Project Gutenberg, Calibre) wrap the cover in an
+// inline <svg> holding one <image>. Inline SVG is stripped wholesale, which
+// left every such cover page blank; a lone <image> becomes a plain <img>.
+func TestSanitizeHTML_SVGWrappedImageBecomesImg(t *testing.T) {
+	cases := map[string]string{
+		"xlink:href": `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 800 1104"><image width="800" height="1104" xlink:href="images/cover.jpg"/></svg>`,
+		"href":       `<svg viewBox="0 0 1 1"><image href='images/cover.jpg'></image></svg>`,
+	}
+	for name, svg := range cases {
+		t.Run(name, func(t *testing.T) {
+			out, rep := content.SanitizeHTML([]byte(`<html><body><div class="cover">` + svg + `</div></body></html>`))
+			s := string(out)
+			if !strings.Contains(s, `<img src="images/cover.jpg" alt=""/>`) {
+				t.Fatalf("cover image not kept as <img>: %s", s)
+			}
+			if strings.Contains(strings.ToLower(s), "<svg") || strings.Contains(s, "<image") {
+				t.Fatalf("svg survived: %s", s)
+			}
+			if rep.SVGStripped != 0 {
+				t.Errorf("SVGStripped = %d, want 0 for a converted cover", rep.SVGStripped)
+			}
+		})
+	}
+}
+
+// The conversion never widens what an <img> may load: the policy's
+// relative-or-data src check still applies, and an SVG with anything
+// besides one image is stripped as before.
+func TestSanitizeHTML_SVGImageConversionStaysStrict(t *testing.T) {
+	cases := map[string]string{
+		"external href":   `<svg><image xlink:href="https://tracker.example/p.gif"/></svg>`,
+		"protocol-rel":    `<svg><image href="//tracker.example/p.gif"/></svg>`,
+		"two images":      `<svg><image href="a.jpg"/><image href="b.jpg"/></svg>`,
+		"image plus text": `<svg><image href="a.jpg"/><text>hi</text></svg>`,
+		"quote breakout":  `<svg><image href='a.jpg" onerror="x()'/></svg>`,
+	}
+	for name, svg := range cases {
+		t.Run(name, func(t *testing.T) {
+			out, _ := content.SanitizeHTML([]byte(`<html><body>` + svg + `</body></html>`))
+			s := string(out)
+			if strings.Contains(s, "<img") || strings.Contains(s, "tracker") || strings.Contains(s, "onerror") {
+				t.Fatalf("unsafe or ambiguous svg converted: %s", s)
+			}
+		})
+	}
+}
