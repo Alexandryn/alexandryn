@@ -119,12 +119,22 @@ export const readingKeys = {
 export const CONTENT_SESSION_REFRESH_MS = 10 * 60_000
 
 /**
+ * The oldest grant the reader trusts to still be alive before loading a
+ * chapter. Past this it re-issues first: timers lag wall-clock time across
+ * a system suspend, so the refresh interval alone cannot promise a live
+ * cookie.
+ */
+export const CONTENT_GRANT_SAFE_MS = 12 * 60_000
+
+/**
  * Keeps the reader-content grant cookie fresh for one Edition. The
  * sandboxed <iframe> — and every image and stylesheet its chapter loads —
  * is a plain browser fetch that cannot carry the Bearer token, so the
  * server issues a short-lived HttpOnly cookie scoped to exactly this
  * edition's content route. Re-issued every 10 minutes while the reader is
- * open, and on refocus once stale (a sleeping tab may have missed a tick).
+ * open, and on refocus or reconnect once stale; the reader also re-issues
+ * before a chapter change when the grant is older than
+ * CONTENT_GRANT_SAFE_MS.
  */
 export function useReaderContentSession(editionId: string) {
   return useQuery({
@@ -142,6 +152,8 @@ export function useReaderContentSession(editionId: string) {
     staleTime: CONTENT_SESSION_REFRESH_MS,
     refetchInterval: CONTENT_SESSION_REFRESH_MS,
     refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
 }
 

@@ -45,6 +45,25 @@ func clientIP(r *http.Request) string {
 	return rateLimitKey(addr)
 }
 
+// requestIsHTTPS reports whether the client reached this server over
+// TLS: either this process terminated it, or a configured trusted proxy
+// did and said so in X-Forwarded-Proto. A client-supplied
+// X-Forwarded-Proto from anywhere else is ignored.
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	addr, err := netip.ParseAddr(hostOnly(r.RemoteAddr))
+	if err != nil {
+		return false
+	}
+	prefixes := trustedProxyCIDRs.Load()
+	if prefixes == nil || !addrInAny(addr, *prefixes) {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
+}
+
 // hostOnly strips a trailing :port from a host:port string, tolerating
 // bare hosts and bracketed IPv6 literals.
 func hostOnly(remoteAddr string) string {

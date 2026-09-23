@@ -43,7 +43,10 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		}
 
 		editionID := r.PathValue("editionId")
-		if editionID == "" {
+		// An encoded slash can make {editionId} span what the auth
+		// middleware's grant-cookie check parsed as several segments;
+		// refusing it keeps both reading the same edition.
+		if editionID == "" || strings.Contains(editionID, "/") {
 			WriteError(w, domain.InvalidInput, "editionId is required", correlationID)
 			return
 		}
@@ -205,7 +208,7 @@ func ReaderSessionHandler(poolRef *PoolRef, now func() time.Time) http.Handler {
 			Expires:  expiresAt,
 			MaxAge:   int(auth.ReaderContentGrantTTL / time.Second),
 			HttpOnly: true,
-			Secure:   r.TLS != nil,
+			Secure:   requestIsHTTPS(r),
 			SameSite: http.SameSiteStrictMode,
 		})
 		w.Header().Set("Cache-Control", "no-store")
