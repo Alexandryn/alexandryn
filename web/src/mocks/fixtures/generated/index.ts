@@ -625,6 +625,23 @@ export const generatedFixtures = {
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
   },
+  createReaderSession: {
+    '401': {
+      code: 'unauthorized',
+      message: 'missing or invalid authorization token',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '404': {
+      code: 'not_found',
+      message: 'no such edition in your library',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '503': {
+      code: 'unavailable',
+      message: 'the reader is not ready yet',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+  },
   getReadingProgress: {
     '200': {
       progress: null,
