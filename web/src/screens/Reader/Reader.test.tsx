@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -169,6 +169,70 @@ describe('Reader', () => {
 
     expect(await screen.findByText('This book could not be opened.')).toBeInTheDocument()
     expect(screen.queryByTitle(/reading area/i)).not.toBeInTheDocument()
+  })
+
+  it('says so and offers a retry when a stale grant cannot be re-issued', async () => {
+    let fail = false
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', () =>
+        fail
+          ? HttpResponse.json({ code: 'unavailable' }, { status: 503 })
+          : new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    renderReader()
+    const user = userEvent.setup()
+    const frame = await screen.findByTitle(/reading area/i)
+    await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/))
+
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 13 * 60_000)
+    try {
+      fail = true
+      await user.click(screen.getByRole('button', { name: 'Next chapter' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t be loaded/i)
+      expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/)
+
+      fail = false
+      await user.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter2\.xhtml$/))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  it('measures position against the chapter the frame holds, not the one being opened', async () => {
+    let release!: () => void
+    let hold = false
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', async () => {
+        if (hold) await new Promise<void>((r) => (release = r))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    renderReader()
+    const user = userEvent.setup()
+    const frame = (await screen.findByTitle(/reading area/i)) as HTMLIFrameElement
+    await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/))
+    // jsdom leaves the frame's document empty; give it a root to measure.
+    const frameDoc = frame.contentDocument!
+    if (!frameDoc.documentElement) frameDoc.appendChild(frameDoc.createElement('html'))
+    fireEvent.load(frame)
+    const progress = () => screen.getByRole('progressbar').getAttribute('aria-valuenow')
+    const atChapterOne = progress()
+
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 13 * 60_000)
+    try {
+      hold = true
+      await user.click(screen.getByRole('button', { name: 'Next chapter' }))
+      // The grant is being re-issued; the frame still holds chapter 1.
+      expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/)
+      frame.contentWindow!.dispatchEvent(new Event('scroll'))
+      await waitFor(() => expect(progress()).toBe(atChapterOne))
+    } finally {
+      release?.()
+      clock.mockRestore()
+    }
   })
 
   it('keeps the sandbox script-free after a theme change', async () => {

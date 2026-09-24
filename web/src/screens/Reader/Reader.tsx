@@ -21,6 +21,7 @@ import {
   DEFAULT_READING_PREFERENCES,
   type ReadingPreferences,
 } from '../../data/reading'
+import type { EpubSection } from '../../vendor/foliate/epub'
 import { contentUrl, flattenToc, loadEpub, sectionIndexForHref } from './epubBook'
 import {
   positionCfi,
@@ -34,6 +35,7 @@ import { useDebouncedCallback } from './useDebouncedCallback'
 import './reader.css'
 
 const PREFERENCE_DEBOUNCE_MS = 500
+const NO_SECTIONS: EpubSection[] = []
 const POSITION_DEBOUNCE_MS = 3000
 
 type Panel = 'toc' | 'marks' | 'settings' | null
@@ -86,10 +88,18 @@ export function Reader() {
   // restore fires whether or not restoreTarget changed sectionIndex.
   const scrollRestoreDone = useRef(false)
   const [loadedSection, setLoadedSection] = useState<number | null>(null)
+  // The chapter the iframe was actually pointed at, and its spine index.
+  // It trails sectionIndex while a stale grant is re-issued, so anything
+  // measured inside the frame (position, selection) keys off this, never
+  // off the chapter the chrome has already moved to.
+  const [frame, setFrame] = useState<{ src: string; index: number } | null>(null)
+  const frameSrc = frame?.src
+  const [grantFailed, setGrantFailed] = useState(false)
 
   const preferences = preferencesQuery.data?.preferences ?? DEFAULT_READING_PREFERENCES
-  const sections = bookQuery.data?.sections ?? []
+  const sections = bookQuery.data?.sections ?? NO_SECTIONS
   const currentSection = sections[sectionIndex]
+  const loadedSec = loadedSection !== null ? sections[loadedSection] : undefined
   const observedEpoch = progressQuery.data?.progress?.epoch ?? 0
 
   const toc = useMemo(
@@ -109,9 +119,9 @@ export function Reader() {
   }
 
   const reportPosition = useDebouncedCallback(() => {
-    if (!currentSection) return
+    if (!loadedSec) return
     const doc = iframeRef.current?.contentDocument ?? null
-    const cfi = positionCfi(currentSection, doc)
+    const cfi = positionCfi(loadedSec, doc)
     void report.mutate({
       percentage: ratio,
       observedEpoch,
@@ -147,6 +157,9 @@ export function Reader() {
         `max-width:${maxWidth};margin:0 auto;padding:2rem 1.25rem 6rem;`,
         `}`,
         `img{max-width:100%;height:auto}`,
+        // A cover the sanitiser converted from an SVG wrapper: fit it to
+        // the page (inside the body's vertical padding), as its viewBox did.
+        `img.alx-svg-cover{display:block;margin:0 auto;width:auto;max-height:calc(100vh - 8rem)}`,
       ].join('')
     },
     [preferences],
@@ -158,32 +171,37 @@ export function Reader() {
   // stable useCallback) read current data without re-subscribing. Synced
   // in a layout effect: after DOM mutation, before paint, and well before
   // the async iframe `load` event or any user interaction with the frame.
-  const sectionIndexRef = useRef(sectionIndex)
   const sectionsLengthRef = useRef(sections.length)
-  const currentSectionRef = useRef(currentSection)
+  const frameIndexRef = useRef<number | null>(null)
+  const frameSectionRef = useRef<typeof currentSection>(undefined)
   useLayoutEffect(() => {
-    sectionIndexRef.current = sectionIndex
     sectionsLengthRef.current = sections.length
-    currentSectionRef.current = currentSection
-  }, [sectionIndex, sections.length, currentSection])
+    frameIndexRef.current = frame?.index ?? null
+    frameSectionRef.current = frame ? sections[frame.index] : undefined
+  }, [sections, frame])
 
   const handleIframeLoad = useCallback(() => {
     cleanupIframeListenersRef.current?.()
     const win = iframeRef.current?.contentWindow
     const doc = iframeRef.current?.contentDocument
-    if (!win || !doc) return
+    // The section this document is — fixed for the listeners below, so a
+    // later chapter change cannot re-key measurements of this document.
+    const frameIndex = frameIndexRef.current
+    const frameSection = frameSectionRef.current
+    if (!win || !doc || frameIndex === null) return
     applyPreferences(doc)
 
     // Every load opens at the top; the one-shot intra-chapter restore is
     // applied by the effect below once this section's document is in.
     restoreScroll(win, 0)
-    setLoadedSection(sectionIndexRef.current)
+    setLoadedSection(frameIndex)
 
     const onScroll = () => {
       const el = doc.scrollingElement ?? doc.documentElement
+      if (!el) return
       const denom = el.scrollHeight - el.clientHeight
       const fraction = denom > 0 ? el.scrollTop / denom : 0
-      setRatio(progressRatio(sectionIndexRef.current, sectionsLengthRef.current, fraction))
+      setRatio(progressRatio(frameIndex, sectionsLengthRef.current, fraction))
       reportPosition()
     }
     win.addEventListener('scroll', onScroll, { passive: true })
@@ -195,9 +213,8 @@ export function Reader() {
         return
       }
       try {
-        const sec = currentSectionRef.current
-        if (sec) {
-          setSelectionRange(selectionCfis(sec, doc, sel.getRangeAt(0)))
+        if (frameSection) {
+          setSelectionRange(selectionCfis(frameSection, doc, sel.getRangeAt(0)))
         }
       } catch {
         setSelectionRange(null)
@@ -214,7 +231,7 @@ export function Reader() {
       }
     }
 
-    setRatio(progressRatio(sectionIndexRef.current, sectionsLengthRef.current, 0))
+    setRatio(progressRatio(frameIndex, sectionsLengthRef.current, 0))
   }, [applyPreferences, reportPosition])
 
   useEffect(() => {
@@ -254,7 +271,6 @@ export function Reader() {
     currentSection && contentSession.data !== undefined
       ? contentUrl(editionId, currentSection.id)
       : undefined
-  const [frameSrc, setFrameSrc] = useState<string | undefined>(undefined)
   const { dataUpdatedAt: grantIssuedAt, refetch: reissueGrant } = contentSession
   useEffect(() => {
     if (wantedSrc === undefined || wantedSrc === frameSrc) return
@@ -264,12 +280,24 @@ export function Reader() {
         ? Promise.resolve({ isError: false })
         : reissueGrant()
     void grant.then((result) => {
-      if (!cancelled && !result.isError) setFrameSrc(wantedSrc)
+      if (cancelled) return
+      // A failed re-issue leaves the previous chapter framed and says so,
+      // rather than silently showing chapter N under chapter N+1's title.
+      setGrantFailed(result.isError)
+      if (!result.isError) setFrame({ src: wantedSrc, index: sectionIndex })
     })
     return () => {
       cancelled = true
     }
-  }, [wantedSrc, frameSrc, grantIssuedAt, reissueGrant])
+  }, [wantedSrc, frameSrc, sectionIndex, grantIssuedAt, reissueGrant])
+
+  // On success grantIssuedAt moves, and the effect above frames the chapter.
+  const retryGrant = () => {
+    setGrantFailed(false)
+    void reissueGrant().then((result) => {
+      if (result.isError) setGrantFailed(true)
+    })
+  }
 
   // Re-apply typography whenever preferences change without reloading.
   useEffect(() => {
@@ -279,12 +307,12 @@ export function Reader() {
   const finalReportRef = useRef<() => void>(() => {})
   useEffect(() => {
     finalReportRef.current = () => {
-      if (!currentSection) return
+      if (!loadedSec) return
       const doc = iframeRef.current?.contentDocument ?? null
       report.mutate({
         percentage: ratio,
         observedEpoch,
-        precisePosition: { editionId, cfi: positionCfi(currentSection, doc) },
+        precisePosition: { editionId, cfi: positionCfi(loadedSec, doc) },
       })
     }
   })
@@ -392,6 +420,15 @@ export function Reader() {
         >
           Show controls
         </button>
+      )}
+
+      {grantFailed && (
+        <div className="reader-footer" role="alert">
+          <span className="text-sm">This chapter couldn’t be loaded.</span>
+          <button type="button" className={cx('text-sm', FOCUS_RING)} onClick={retryGrant}>
+            Try again
+          </button>
+        </div>
       )}
 
       <iframe
