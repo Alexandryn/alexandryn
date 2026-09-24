@@ -23,6 +23,7 @@ import {
 } from '../../data/reading'
 import type { EpubSection } from '../../vendor/foliate/epub'
 import { contentUrl, flattenToc, loadEpub, sectionIndexForHref } from './epubBook'
+import { applyReaderCss } from './readerCss'
 import {
   positionCfi,
   progressRatio,
@@ -135,20 +136,14 @@ export function Reader() {
 
   const applyPreferences = useCallback(
     (doc: Document | null | undefined) => {
-      if (!doc?.head) return
-      let styleEl = doc.getElementById('alexandryn-reader-style') as HTMLStyleElement | null
-      if (!styleEl) {
-        styleEl = doc.createElement('style')
-        styleEl.id = 'alexandryn-reader-style'
-        doc.head.appendChild(styleEl)
-      }
+      if (!doc) return
       const maxWidth =
         preferences.columnWidth === 'narrow'
           ? '34rem'
           : preferences.columnWidth === 'wide'
             ? '52rem'
             : '42rem'
-      styleEl.textContent = [
+      const css = [
         `html{color-scheme:${preferences.theme === 'dark' ? 'dark' : 'light'}}`,
         `body{`,
         `font-family:${preferences.font === 'serif' ? 'Georgia, serif' : 'system-ui, sans-serif'};`,
@@ -161,6 +156,7 @@ export function Reader() {
         // the page (inside the body's vertical padding), as its viewBox did.
         `img.alx-svg-cover{display:block;margin:0 auto;width:auto;max-height:calc(100vh - 8rem)}`,
       ].join('')
+      applyReaderCss(doc, css)
     },
     [preferences],
   )
