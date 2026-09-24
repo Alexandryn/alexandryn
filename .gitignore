@@ -95,3 +95,6 @@ Thumbs.db
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# ---- AI Agent Skills --------------------------------------------------------
+.skills.json
