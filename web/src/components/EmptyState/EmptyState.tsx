@@ -1,26 +1,34 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { Button } from '../Button/Button'
+import { AlexMascot, type MascotMood } from '../Mascot'
 import { cx } from '../../lib/cx'
 
 export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   title: string
   description?: string
   icon?: ReactNode
+  mascotMood?: MascotMood
   action?: { label: string; onClick: () => void }
 }
 
-/** Composed from an icon slot, a StatusPill-adjacent message, and an optional Button — no interaction logic of its own. */
+/** Composed from an icon or mascot illustration, a message, and an optional Button. */
 export function EmptyState({
   title,
   description,
   icon,
+  mascotMood,
   action,
   className,
   ...rest
 }: EmptyStateProps) {
   return (
     <div className={cx('flex flex-col items-center text-center gap-xs p-3xl', className)} {...rest}>
-      {icon && (
+      {mascotMood && (
+        <div aria-hidden="true" className="mb-2xs">
+          <AlexMascot mood={mascotMood} size="md" />
+        </div>
+      )}
+      {!mascotMood && icon && (
         <div aria-hidden="true" className="text-text-3 text-4xl">
           {icon}
         </div>

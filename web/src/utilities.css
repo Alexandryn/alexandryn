@@ -26,3 +26,57 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 68px;
 }
+
+/* Alex the Cat Mascot Palette */
+:root {
+  --mascot-navy: #001e60;
+  --mascot-gold: #f6b700;
+  --mascot-tan: #baa891;
+  --mascot-parchment: #dbcdb9;
+  --mascot-brown: #664a33;
+}
+
+.mascot-navy {
+  fill: var(--mascot-navy);
+}
+.mascot-gold {
+  fill: var(--mascot-gold);
+}
+.mascot-tan {
+  fill: var(--mascot-tan);
+}
+.mascot-parchment {
+  fill: var(--mascot-parchment);
+}
+.mascot-brown {
+  fill: var(--mascot-brown);
+}
+.mascot-white {
+  fill: var(--color-surface, #ffffff);
+}
+
+/* Tactile book elevation and spine depth */
+.book-spine-crease {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(0, 0, 0, 0.08) 3%,
+    rgba(255, 255, 255, 0.12) 6%,
+    transparent 12%
+  );
+}
+
+.book-shadow {
+  box-shadow:
+    0 1px 2px rgba(24, 22, 20, 0.06),
+    0 4px 12px -2px rgba(24, 22, 20, 0.12),
+    -1px 0 2px rgba(24, 22, 20, 0.08);
+}
+
+.book-shadow-hover {
+  box-shadow:
+    0 4px 8px rgba(24, 22, 20, 0.08),
+    0 16px 24px -6px rgba(24, 22, 20, 0.2),
+    -2px 0 4px rgba(24, 22, 20, 0.12);
+}
+
