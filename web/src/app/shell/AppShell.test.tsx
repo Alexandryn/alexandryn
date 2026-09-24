@@ -53,6 +53,25 @@ describe('AppShell', () => {
     expect(router.state.location.search).toBe('?q=tolstoy')
   })
 
+  it('focuses global search on shortcut key press (Cmd+K and /)', async () => {
+    const router = routerAt('/library')
+    render(<RouterProvider router={router} />)
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'Search library, authors, subjects, ISBN',
+    })
+    expect(searchInput).not.toHaveFocus()
+
+    await userEvent.keyboard('/')
+    expect(searchInput).toHaveFocus()
+
+    searchInput.blur()
+    expect(searchInput).not.toHaveFocus()
+
+    await userEvent.keyboard('{Meta>}k{/Meta}')
+    expect(searchInput).toHaveFocus()
+  })
+
   it('marks the active route in the sidebar', () => {
     render(<RouterProvider router={routerAt('/discover')} />)
     expect(screen.getByRole('link', { name: 'Discover' })).toHaveAttribute('aria-current', 'page')

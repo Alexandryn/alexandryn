@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrentUser, logout } from '../../data/auth'
 import { cx } from '../../lib/cx'
@@ -15,6 +15,33 @@ export function Titlebar() {
   const navigate = useNavigate()
   const user = getCurrentUser()
   const [searchQuery, setSearchQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        inputRef.current?.focus()
+        inputRef.current?.select()
+        return
+      }
+
+      if (
+        e.key === '/' &&
+        !(
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target as HTMLElement)?.isContentEditable
+        )
+      ) {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -47,16 +74,23 @@ export function Titlebar() {
             <SearchIcon className="absolute left-md size-4 text-text-3 pointer-events-none" />
             <input
               id="global-search-input"
+              ref={inputRef}
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search library, authors, subjects, ISBN"
               className={cx(
-                'flex flex-1 items-center h-3xl w-full pl-3xl pr-md',
-                'rounded-2xs border border-border bg-surface-2 text-sm text-text placeholder:text-text-3',
+                'flex flex-1 items-center h-3xl w-full pl-3xl pr-3xl',
+                'rounded-2xs border border-border bg-surface-2 text-sm text-text placeholder:text-text-3 transition-colors focus:bg-surface',
                 FOCUS_RING,
               )}
             />
+            <kbd
+              aria-hidden="true"
+              className="pointer-events-none absolute right-sm hidden sm:inline-flex items-center gap-4xs rounded-4xs border border-border bg-surface px-3xs py-4xs font-mono text-3xs text-text-3 font-medium select-none shadow-2xs"
+            >
+              ⌘K
+            </kbd>
           </div>
         </form>
       </div>
