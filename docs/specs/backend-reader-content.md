@@ -222,6 +222,20 @@ enforce the rest.
   sanitised-and-served (FR-6's note) — named explicitly as a real
   feature loss (an EPUB cover in `.svg` form won't render), flagged in
   Open questions, not silently accepted as a security hole instead.
+  - **Amended 2026-09-24 — structural XML.** foliate-js fetches
+    `META-INF/container.xml`, the OPF package document, and (EPUB 2)
+    the NCX by path before it can find the spine, so XML is a fourth
+    route, checked **after** the SVG and HTML cases (the sniffer labels
+    every `<?xml`-prefixed file `text/xml`, SVGs and XHTML chapters
+    included) and only for a text sniff — an `.xml`/`.opf`/`.ncx`
+    extension never makes a binary servable. The whole document is
+    parsed: an XHTML root is a content document and goes to FR-6; any
+    SVG, MathML, XSLT, or nested XHTML element, an `xml-stylesheet`
+    instruction, or XML that does not parse → `400 InvalidInput`;
+    anything else is served as-is as `application/xml` with no charset
+    parameter (the file's own encoding declaration governs) and a CSP
+    `sandbox` directive, so opening one directly yields an inert
+    document.
 - **FR-6** HTML/XHTML sanitisation via `bluemonday`
   (`microcosm-cc/bluemonday`, justified under constitution §9 below):
   a policy built from `bluemonday.UGCPolicy()`'s baseline (already
@@ -254,6 +268,28 @@ enforce the rest.
   routed through FR-7's own CSS sanitisation** before being allowed to
   remain — it is CSS, not HTML, and gets CSS's own rule, not a
   separate one.
+  - **Amended 2026-09-24 — output shape, covers, and review fixes.**
+    Chapters are served as `application/xhtml+xml`, so the output MUST
+    be a well-formed XHTML document: the root carries the fixed XHTML
+    namespace and the `epub` prefix (the policy strips every `xmlns` a
+    book supplies), and the sanitised `<style>` sits inside `<head>`.
+    `<style>` text is lifted by a tokenizer pre-pass (the same
+    `x/net/html` tokenizer `bluemonday` uses) and re-emitted
+    **HTML-escaped**, CDATA wrappers dropped, so markup smuggled inside
+    a `<style>` can only ever be CSS text. `epub:type` is kept (tokens
+    only): foliate-js locates an EPUB 3 book's contents by
+    `nav[epub:type~=toc]`. **One SVG shape is kept as an image:** an
+    `<svg>` that only wraps a single `<image>` — the EPUB cover-page
+    idiom, optionally inside `<g>` beside `<title>`/`<desc>`/
+    `<metadata>`/comments, `svg:`-prefixed or not — becomes
+    `<img src=… alt=<title> class="alx-svg-cover">`, only for a
+    relative or `data:` reference, and still passes the policy; every
+    other `<svg>` is dropped as above. A relative `href`/`src` MUST NOT
+    begin with, nor follow a leading `/` with, whitespace (ASCII or
+    Unicode), a control character, or `\`: the policy tests the
+    untrimmed value but emits the trimmed one, and browsers drop or
+    normalise those characters, which would turn e.g. `"\u00a0//host"`
+    into a protocol-relative reference.
 - **FR-7** CSS sanitisation (applied to both standalone `text/css`
   resources, FR-5, and `<style>` block contents, FR-6) strips any
   `url(...)` or `@import` value that has **any URL scheme other than
