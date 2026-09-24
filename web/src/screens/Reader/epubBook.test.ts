@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contentUrl, flattenToc, sectionIndexForHref } from './epubBook'
+import { contentUrl, flattenToc, sectionIndexForContentPath, sectionIndexForHref } from './epubBook'
 import type { EpubSection, EpubTocItem } from '../../vendor/foliate/epub'
 
 describe('epubBook', () => {
@@ -82,5 +82,39 @@ describe('epubBook', () => {
       expect(sectionIndexForHref(mockSections, 'missing.xhtml')).toBe(-1)
       expect(sectionIndexForHref(mockSections, '')).toBe(-1)
     })
+  })
+})
+
+describe('sectionIndexForContentPath', () => {
+  const sections = [
+    { id: 'OEBPS/ch 1.xhtml' },
+    { id: "OEBPS/Alice's ch2.xhtml" },
+  ] as unknown as EpubSection[]
+
+  it('maps the path a book link navigated the frame to back to its section', () => {
+    expect(
+      sectionIndexForContentPath(sections, 'ed-1', contentUrl('ed-1', 'OEBPS/ch 1.xhtml')),
+    ).toBe(0)
+    // The browser leaves the apostrophe unescaped; contentUrl escapes it.
+    expect(
+      sectionIndexForContentPath(
+        sections,
+        'ed-1',
+        "/api/v1/library/editions/ed-1/reader/content/OEBPS/Alice's%20ch2.xhtml",
+      ),
+    ).toBe(1)
+  })
+
+  it('is -1 for a document outside the spine or another edition', () => {
+    expect(
+      sectionIndexForContentPath(
+        sections,
+        'ed-1',
+        '/api/v1/library/editions/ed-1/reader/content/OEBPS/notes.xhtml',
+      ),
+    ).toBe(-1)
+    expect(
+      sectionIndexForContentPath(sections, 'ed-1', contentUrl('ed-2', 'OEBPS/ch 1.xhtml')),
+    ).toBe(-1)
   })
 })

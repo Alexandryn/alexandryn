@@ -22,7 +22,13 @@ import {
   type ReadingPreferences,
 } from '../../data/reading'
 import type { EpubSection } from '../../vendor/foliate/epub'
-import { contentUrl, flattenToc, loadEpub, sectionIndexForHref } from './epubBook'
+import {
+  contentUrl,
+  flattenToc,
+  loadEpub,
+  sectionIndexForContentPath,
+  sectionIndexForHref,
+} from './epubBook'
 import { applyReaderCss } from './readerCss'
 import {
   positionCfi,
@@ -89,11 +95,13 @@ export function Reader() {
   // restore fires whether or not restoreTarget changed sectionIndex.
   const scrollRestoreDone = useRef(false)
   const [loadedSection, setLoadedSection] = useState<number | null>(null)
-  // The chapter the iframe was actually pointed at, and its spine index.
-  // It trails sectionIndex while a stale grant is re-issued, so anything
-  // measured inside the frame (position, selection) keys off this, never
-  // off the chapter the chrome has already moved to.
-  const [frame, setFrame] = useState<{ src: string; index: number } | null>(null)
+  // What the iframe holds: `src` is the attribute last set on it, `want`
+  // the chapter URL it satisfies, `index` that chapter's spine index. It
+  // trails sectionIndex while a stale grant is re-issued, and a link in
+  // the book can move the frame on its own, so anything measured inside
+  // the frame (position, selection) keys off this, never off the chapter
+  // the chrome has moved to.
+  const [frame, setFrame] = useState<{ src: string; want: string; index: number } | null>(null)
   const frameSrc = frame?.src
   const [grantFailed, setGrantFailed] = useState(false)
 
@@ -168,24 +176,50 @@ export function Reader() {
   // in a layout effect: after DOM mutation, before paint, and well before
   // the async iframe `load` event or any user interaction with the frame.
   const sectionsLengthRef = useRef(sections.length)
+  const sectionsRef = useRef(sections)
   const frameIndexRef = useRef<number | null>(null)
-  const frameSectionRef = useRef<typeof currentSection>(undefined)
   useLayoutEffect(() => {
     sectionsLengthRef.current = sections.length
+    sectionsRef.current = sections
     frameIndexRef.current = frame?.index ?? null
-    frameSectionRef.current = frame ? sections[frame.index] : undefined
   }, [sections, frame])
 
   const handleIframeLoad = useCallback(() => {
     cleanupIframeListenersRef.current?.()
     const win = iframeRef.current?.contentWindow
     const doc = iframeRef.current?.contentDocument
-    // The section this document is — fixed for the listeners below, so a
-    // later chapter change cannot re-key measurements of this document.
-    const frameIndex = frameIndexRef.current
-    const frameSection = frameSectionRef.current
-    if (!win || !doc || frameIndex === null) return
+    if (!win || !doc) return
     applyPreferences(doc)
+
+    // The section this document is — fixed for the listeners below, so a
+    // later chapter change cannot re-key measurements of this document. A
+    // link in the book may have navigated the frame itself: read back
+    // where it is, follow it with the chrome if it is another spine
+    // section, and measure nothing in a document that is not one.
+    let frameIndex = frameIndexRef.current
+    let path: string | null = null
+    try {
+      path = win.location.pathname
+    } catch {
+      // Not readable (not same-origin): leave the frame's own record.
+    }
+    if (path?.startsWith('/api/')) {
+      const sections = sectionsRef.current
+      const idx = sectionIndexForContentPath(sections, editionId, path)
+      if (idx !== frameIndex) {
+        frameIndex = idx === -1 ? null : idx
+        if (idx !== -1) {
+          const want = contentUrl(editionId, sections[idx]!.id)
+          setFrame((f) => (f ? { ...f, want, index: idx } : f))
+          setSectionIndex(idx)
+        }
+      }
+    }
+    if (frameIndex === null) {
+      setLoadedSection(null)
+      return
+    }
+    const frameSection = sectionsRef.current[frameIndex]
 
     // Every load opens at the top; the one-shot intra-chapter restore is
     // applied by the effect below once this section's document is in.
@@ -228,7 +262,7 @@ export function Reader() {
     }
 
     setRatio(progressRatio(frameIndex, sectionsLengthRef.current, 0))
-  }, [applyPreferences, reportPosition])
+  }, [applyPreferences, reportPosition, editionId])
 
   useEffect(() => {
     return () => {
@@ -268,8 +302,9 @@ export function Reader() {
       ? contentUrl(editionId, currentSection.id)
       : undefined
   const { dataUpdatedAt: grantIssuedAt, refetch: reissueGrant } = contentSession
+  const frameWant = frame?.want
   useEffect(() => {
-    if (wantedSrc === undefined || wantedSrc === frameSrc) return
+    if (wantedSrc === undefined || wantedSrc === frameWant) return
     let cancelled = false
     const grant =
       Date.now() - grantIssuedAt < CONTENT_GRANT_SAFE_MS
@@ -280,12 +315,17 @@ export function Reader() {
       // A failed re-issue leaves the previous chapter framed and says so,
       // rather than silently showing chapter N under chapter N+1's title.
       setGrantFailed(result.isError)
-      if (!result.isError) setFrame({ src: wantedSrc, index: sectionIndex })
+      if (result.isError) return
+      // The frame may still carry this very src attribute after a book
+      // link moved it elsewhere; React will not re-set an unchanged
+      // attribute, so navigate it directly.
+      if (wantedSrc === frameSrc && iframeRef.current) iframeRef.current.src = wantedSrc
+      setFrame({ src: wantedSrc, want: wantedSrc, index: sectionIndex })
     })
     return () => {
       cancelled = true
     }
-  }, [wantedSrc, frameSrc, sectionIndex, grantIssuedAt, reissueGrant])
+  }, [wantedSrc, frameWant, frameSrc, sectionIndex, grantIssuedAt, reissueGrant])
 
   // On success grantIssuedAt moves, and the effect above frames the chapter.
   const retryGrant = () => {
@@ -420,7 +460,7 @@ export function Reader() {
         </button>
       )}
 
-      {grantFailed && (
+      {grantFailed && wantedSrc !== frameWant && (
         <div className="reader-footer" role="alert">
           <span className="text-sm">This chapter couldn’t be loaded.</span>
           <button type="button" className={cx('text-sm', FOCUS_RING)} onClick={retryGrant}>
