@@ -7,9 +7,12 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html/charset"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
@@ -134,12 +137,19 @@ const (
 // classifyXML decides how an XML entry is served. It is served raw, so it
 // must be structural data only: a document whose root is XHTML is a
 // content document and goes through the HTML sanitiser instead; any SVG,
-// MathML, XSLT, or nested XHTML element, an xml-stylesheet instruction,
-// or XML that does not parse is refused. The content type carries no
-// charset, so the file's own encoding declaration governs.
+// MathML, XSLT, or nested XHTML element, an xml-stylesheet instruction, a
+// DTD internal subset (whose attribute defaults, e.g. a #FIXED xmlns, a
+// browser applies but encoding/xml never sees), or XML that does not
+// parse is refused. It is served transcoded to UTF-8 (NormalizeXML), and
+// labelled so.
 func classifyXML(data []byte) (Kind, string, error) {
-	dec := xml.NewDecoder(bytes.NewReader(data))
-	dec.CharsetReader = charset.NewReaderLabel
+	norm, err := NormalizeXML(data)
+	if err != nil {
+		return 0, "", err
+	}
+	dec := xml.NewDecoder(bytes.NewReader(norm))
+	// Already UTF-8: a leftover encoding="…" declaration must not decode it again.
+	dec.CharsetReader = func(_ string, r io.Reader) (io.Reader, error) { return r, nil }
 	root := true
 	for {
 		tok, err := dec.Token()
@@ -150,6 +160,10 @@ func classifyXML(data []byte) (Kind, string, error) {
 			return 0, "", errUnservable
 		}
 		switch t := tok.(type) {
+		case xml.Directive:
+			if bytes.ContainsRune(t, '[') {
+				return 0, "", errUnservable
+			}
 		case xml.ProcInst:
 			if t.Target == "xml-stylesheet" {
 				return 0, "", errUnservable
@@ -172,7 +186,36 @@ func classifyXML(data []byte) (Kind, string, error) {
 	if root {
 		return 0, "", errUnservable
 	}
-	return KindXML, "application/xml", nil
+	return KindXML, "application/xml; charset=utf-8", nil
+}
+
+var reXMLEncoding = regexp.MustCompile(`^\s*<\?xml[^>]*?\sencoding\s*=\s*["']([A-Za-z0-9._:-]+)["']`)
+
+// NormalizeXML returns an XML entry transcoded to UTF-8. EPUB allows
+// UTF-16 (with a BOM) and legacy encodings for its XML, but foliate-js
+// reads these files with fetch().text(), which always decodes UTF-8, so
+// they are served as UTF-8 whatever their declaration says.
+func NormalizeXML(data []byte) ([]byte, error) {
+	var r io.Reader
+	switch {
+	case bytes.HasPrefix(data, []byte{0xFF, 0xFE}), bytes.HasPrefix(data, []byte{0xFE, 0xFF}):
+		r = transform.NewReader(bytes.NewReader(data), unicode.UTF16(unicode.BigEndian, unicode.ExpectBOM).NewDecoder())
+	default:
+		m := reXMLEncoding.FindSubmatch(data)
+		if m == nil || strings.EqualFold(string(m[1]), "utf-8") {
+			return data, nil
+		}
+		cr, err := charset.NewReaderLabel(string(m[1]), bytes.NewReader(data))
+		if err != nil {
+			return nil, errUnservable
+		}
+		r = cr
+	}
+	out, err := io.ReadAll(r)
+	if err != nil {
+		return nil, errUnservable
+	}
+	return out, nil
 }
 
 func isFontType(base, ext string) bool {

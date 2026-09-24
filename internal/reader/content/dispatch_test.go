@@ -63,7 +63,7 @@ func TestClassify(t *testing.T) {
 	xmlBytes := []byte(`<?xml version="1.0" encoding="UTF-8"?><root/>`)
 	for _, name := range xmlCases {
 		k, ct, err := content.Classify(name, xmlBytes)
-		if err != nil || k != content.KindXML || ct != "application/xml" {
+		if err != nil || k != content.KindXML || ct != "application/xml; charset=utf-8" {
 			t.Fatalf("%s: kind=%v ct=%q err=%v", name, k, ct, err)
 		}
 	}
@@ -80,7 +80,7 @@ func TestClassify_StructuralXML(t *testing.T) {
 	}
 	for name, body := range cases {
 		k, ct, err := content.Classify(name, []byte(body))
-		if err != nil || k != content.KindXML || ct != "application/xml" {
+		if err != nil || k != content.KindXML || ct != "application/xml; charset=utf-8" {
 			t.Errorf("%s: kind=%v ct=%q err=%v", name, k, ct, err)
 		}
 	}
@@ -127,6 +127,42 @@ func TestClassify_BinaryWithXMLExtensionRefused(t *testing.T) {
 			if k, ct, err := content.Classify(name, body); domain.CategoryOf(err) != domain.InvalidInput {
 				t.Errorf("%s %q: served as kind=%v ct=%q", name, body[:2], k, ct)
 			}
+		}
+	}
+}
+
+// A DTD internal subset can give elements a default xmlns that
+// encoding/xml never sees but a browser applies, smuggling SVG or XHTML
+// past the namespace check. XML with an internal subset is refused; an
+// external DOCTYPE (EPUB 2 NCX/OPF) is fine.
+func TestClassify_XMLInternalSubsetRefused(t *testing.T) {
+	smuggled := `<!DOCTYPE r [<!ATTLIST svg xmlns CDATA #FIXED "http://www.w3.org/2000/svg">]><r><svg><a href="x"><rect width="100" height="100"/></a></svg></r>`
+	if k, ct, err := content.Classify("OEBPS/x.xml", []byte(smuggled)); domain.CategoryOf(err) != domain.InvalidInput {
+		t.Fatalf("internal subset served as kind=%v ct=%q", k, ct)
+	}
+	ncx := `<?xml version="1.0"?><!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd"><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/"/>`
+	if k, _, err := content.Classify("OEBPS/toc.ncx", []byte(ncx)); err != nil || k != content.KindXML {
+		t.Fatalf("external-DOCTYPE NCX: kind=%v err=%v", k, err)
+	}
+}
+
+// EPUB allows UTF-16 and legacy encodings for its XML. foliate-js reads
+// them with fetch().text(), which always decodes UTF-8, so the endpoint
+// serves them transcoded to UTF-8 and labelled so.
+func TestNormalizeXML_TranscodesToUTF8(t *testing.T) {
+	utf16le := []byte{0xFF, 0xFE}
+	for _, r := range `<?xml version="1.0" encoding="UTF-16"?><package xmlns="http://www.idpf.org/2007/opf"><title>Café</title></package>` {
+		utf16le = append(utf16le, byte(r), byte(r>>8))
+	}
+	latin1 := []byte("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\"><text>Caf\xe9</text></ncx>")
+	for name, in := range map[string][]byte{"OEBPS/content.opf": utf16le, "OEBPS/toc.ncx": latin1} {
+		k, ct, err := content.Classify(name, in)
+		if err != nil || k != content.KindXML || ct != "application/xml; charset=utf-8" {
+			t.Fatalf("%s: kind=%v ct=%q err=%v", name, k, ct, err)
+		}
+		out, err := content.NormalizeXML(in)
+		if err != nil || !strings.Contains(string(out), "Café") {
+			t.Fatalf("%s: not transcoded to UTF-8: err=%v %q", name, err, out)
 		}
 	}
 }

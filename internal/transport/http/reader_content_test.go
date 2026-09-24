@@ -231,8 +231,8 @@ func TestReaderContent_StructuralXML(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("container.xml status = %d", rr.Code)
 	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/xml" {
-		t.Errorf("Content-Type = %q, want application/xml with no charset", ct)
+	if ct := rr.Header().Get("Content-Type"); ct != "application/xml; charset=utf-8" {
+		t.Errorf("Content-Type = %q, want UTF-8 XML", ct)
 	}
 	if csp := rr.Header().Get("Content-Security-Policy"); !strings.HasSuffix(csp, "; sandbox") {
 		t.Errorf("CSP = %q, want a sandbox directive", csp)
@@ -242,5 +242,26 @@ func TestReaderContent_StructuralXML(t *testing.T) {
 	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/OEBPS/evil.xml", nil))
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("xml with nested XHTML status = %d, want 400", rr.Code)
+	}
+}
+
+// The chapter's sanitised <style> block is allowed by hash in the
+// response CSP; a chapter without one gets the plain policy.
+func TestReaderContent_StyleHashInCSP(t *testing.T) {
+	srv := contentServer(t, map[string]string{
+		"OEBPS/styled.xhtml": `<html xmlns="http://www.w3.org/1999/xhtml"><head><style>h1{text-align:center}</style></head><body><h1>x</h1></body></html>`,
+		"OEBPS/plain.xhtml":  `<html xmlns="http://www.w3.org/1999/xhtml"><body><p>x</p></body></html>`,
+	})
+	_, rep := content.SanitizeHTML([]byte(`<html xmlns="http://www.w3.org/1999/xhtml"><head><style>h1{text-align:center}</style></head><body><h1>x</h1></body></html>`))
+
+	rr := httptest.NewRecorder()
+	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/OEBPS/styled.xhtml", nil))
+	if csp := rr.Header().Get("Content-Security-Policy"); !strings.HasSuffix(csp, "; style-src 'self' '"+rep.StyleHash+"'") {
+		t.Errorf("styled chapter CSP = %q, want style-src with %s", csp, rep.StyleHash)
+	}
+	rr = httptest.NewRecorder()
+	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/OEBPS/plain.xhtml", nil))
+	if csp := rr.Header().Get("Content-Security-Policy"); strings.Contains(csp, "style-src") {
+		t.Errorf("plain chapter CSP = %q, want no style-src", csp)
 	}
 }
