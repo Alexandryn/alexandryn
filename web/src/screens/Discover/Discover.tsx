@@ -161,6 +161,7 @@ export function Discover() {
       <div>
         {!qParam ? (
           <EmptyState
+            mascotMood="reading"
             title="Search Open Library"
             description="Search millions of books by title, author, or subject to discover your next read."
           />
@@ -181,6 +182,7 @@ export function Discover() {
           />
         ) : items.length === 0 ? (
           <EmptyState
+            mascotMood="searching"
             title="No results found"
             description={`No books matched "${qParam}". Try another search term.`}
           />

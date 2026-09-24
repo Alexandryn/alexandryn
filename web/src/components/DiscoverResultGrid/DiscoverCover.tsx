@@ -34,10 +34,11 @@ export function DiscoverCover({
   return (
     <div
       className={cx(
-        'relative aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 shadow-sm group-hover:shadow-md transition-shadow',
+        'relative aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1',
         className,
       )}
     >
+      <div className="absolute inset-y-0 left-0 w-3 book-spine-crease pointer-events-none z-10" />
       {coverUrl && !hasError ? (
         <img
           src={coverUrl}

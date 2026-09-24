@@ -10,6 +10,7 @@ import { ApiError } from '../../data/http'
 import { useWork } from '../../data/library'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { ChevronLeftIcon } from '../../components/Icon'
 import { AddToCollectionModal } from './AddToCollectionModal'
 
 /**
@@ -37,6 +38,7 @@ export function WorkDetail() {
       return (
         <div className="p-3xl">
           <EmptyState
+            mascotMood="searching"
             title="This book isn't in your library."
             description="We couldn't find a book matching that identifier."
             action={{
@@ -75,23 +77,24 @@ export function WorkDetail() {
         <Link
           to="/library"
           className={cx(
-            'inline-flex items-center gap-2xs text-sm font-medium text-text-2 hover:text-text rounded-2xs',
+            'inline-flex items-center gap-2xs text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
             FOCUS_RING,
           )}
         >
-          ← Back to Library
+          <ChevronLeftIcon className="size-4 shrink-0" />
+          <span>Back to Library</span>
         </Link>
       </div>
 
       {/* Main Metadata Section */}
       <div className="flex flex-col sm:flex-row gap-xl items-start">
-        <div className="w-40 sm:w-48 shrink-0 aspect-[2/3] overflow-hidden rounded-xs bg-surface-3 shadow-md">
+        <div className="relative w-40 sm:w-48 shrink-0 aspect-[2/3] overflow-hidden rounded-xs bg-surface-3 book-shadow">
+          <div className="absolute inset-y-0 left-0 w-3.5 book-spine-crease pointer-events-none z-10" />
           <GeneratedCover
             identifier={work.id}
             title={work.title}
             author={coverAuthor}
           />
-
         </div>
 
         <div className="flex flex-col gap-sm flex-1 min-w-0">
