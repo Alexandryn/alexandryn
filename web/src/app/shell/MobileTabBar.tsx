@@ -2,6 +2,27 @@ import { NavLink } from 'react-router-dom'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { TAB_ITEMS } from './navItems'
+import {
+  BookOpenIcon,
+  CompassIcon,
+  FolderIcon,
+  SettingsIcon,
+} from '../../components/Icon'
+
+function getTabIcon(to: string) {
+  switch (to) {
+    case '/library':
+      return <BookOpenIcon className="size-4 shrink-0" />
+    case '/discover':
+      return <CompassIcon className="size-4 shrink-0" />
+    case '/collections':
+      return <FolderIcon className="size-4 shrink-0" />
+    case '/more':
+      return <SettingsIcon className="size-4 shrink-0" />
+    default:
+      return null
+  }
+}
 
 /**
  * Replaces the sidebar below the reflow breakpoint, matching the Mobile
@@ -19,13 +40,14 @@ export function MobileTabBar() {
               className={({ isActive }) =>
                 cx(
                   // min-h-11 (44px): 44x44 touch-target minimum — py-sm alone measured 33px tall
-                  'flex flex-col items-center justify-center gap-4xs py-sm min-h-11 text-3xs font-ui',
-                  isActive ? 'text-accent font-medium' : 'text-text-3',
+                  'flex flex-col items-center justify-center gap-4xs py-sm min-h-11 text-3xs font-ui transition-colors',
+                  isActive ? 'text-accent font-medium' : 'text-text-3 hover:text-text-2',
                   FOCUS_RING,
                 )
               }
             >
-              {item.label}
+              {getTabIcon(item.to)}
+              <span>{item.label}</span>
             </NavLink>
           </li>
         ))}

@@ -5,12 +5,42 @@ import { useActivityBadge } from '../../data/activity'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { NAV_ITEMS } from './navItems'
+import {
+  BookOpenIcon,
+  CompassIcon,
+  DatabaseIcon,
+  FolderIcon,
+  ActivityIcon,
+  ImportIcon,
+  SettingsIcon,
+} from '../../components/Icon'
 
 const LINK_BASE = cx(
-  'flex items-center h-3xl px-md rounded-2xs text-2xl font-ui',
+  'group flex items-center gap-sm h-3xl px-md rounded-2xs text-2xl font-ui transition-colors',
   'text-text-2 hover:text-text hover:bg-surface-3',
   FOCUS_RING,
 )
+
+function getNavIcon(to: string) {
+  switch (to) {
+    case '/library':
+      return <BookOpenIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/discover':
+      return <CompassIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/sources':
+      return <DatabaseIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/collections':
+      return <FolderIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/activity':
+      return <ActivityIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/import':
+      return <ImportIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    case '/settings':
+      return <SettingsIcon className="size-4 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+    default:
+      return null
+  }
+}
 
 function ActivityBadge() {
   const { hasActiveOrFailed } = useActivityBadge()
@@ -46,9 +76,10 @@ export function Sidebar() {
             <NavLink
               to={item.to}
               className={({ isActive }) =>
-                cx(LINK_BASE, isActive && 'bg-surface-3 text-text font-medium')
+                cx(LINK_BASE, isActive && 'bg-surface-3 text-text font-medium border-l-2 border-accent')
               }
             >
+              {getNavIcon(item.to)}
               <span className="flex-1">{item.label}</span>
               {item.to === '/activity' && hasQueryClient && <ActivityBadge />}
             </NavLink>
