@@ -626,9 +626,19 @@ export const generatedFixtures = {
     },
   },
   createReaderSession: {
+    '400': {
+      code: 'invalid_input',
+      message: 'editionId is required',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
     '401': {
       code: 'unauthorized',
       message: 'missing or invalid authorization token',
+      correlationId: '00000000-0000-0000-0000-000000000000',
+    },
+    '403': {
+      code: 'Forbidden',
+      message: 'you are not a member of that library',
       correlationId: '00000000-0000-0000-0000-000000000000',
     },
     '404': {
