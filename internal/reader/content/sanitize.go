@@ -5,6 +5,8 @@ package content
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"html"
 	"regexp"
 	"strings"
@@ -21,6 +23,12 @@ type SanitizeReport struct {
 	ExternalRefsStripped int
 	SVGStripped          int
 	StyleAttrsStripped   int
+
+	// StyleHash is the CSP source ("sha256-…") for the document's one
+	// sanitised <style> element, empty when there is none. Not a stripping
+	// count: the content CSP has no 'unsafe-inline', so the response must
+	// name this hash for the book's own inline CSS to apply.
+	StyleHash string
 }
 
 func (r SanitizeReport) StrippedSomething() bool {
@@ -148,10 +156,15 @@ func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	if len(pre.css) > 0 {
 		safe, cssRep := SanitizeCSS(pre.css)
 		rep.ExternalRefsStripped += cssRep.ExternalRefsStripped
+		// The XML parser normalises line ends in text, so the hash is taken
+		// over the text exactly as the browser will see it.
+		text := strings.ReplaceAll(strings.ReplaceAll(string(safe), "\r\n", "\n"), "\r", "\n")
 		// Escaped as text: the lifted CSS never reaches the HTML policy,
 		// so any markup smuggled inside a <style> must not come back as
 		// markup. The XML parser decodes the entities back into the CSS.
-		style = []byte("<style>" + html.EscapeString(string(safe)) + "</style>\n")
+		style = []byte("<style>" + html.EscapeString(text) + "</style>\n")
+		sum := sha256.Sum256([]byte(text))
+		rep.StyleHash = "sha256-" + base64.StdEncoding.EncodeToString(sum[:])
 	}
 
 	return finishXHTML(htmlPolicy().SanitizeBytes(pre.out), style), rep
@@ -176,18 +189,24 @@ var (
 // its own namespaces), so the root gets the fixed XHTML namespace and the
 // epub prefix back; and the sanitised <style> goes inside <head>, else
 // inside <html>, since anything outside the root is an XML parse error.
-// A fragment with no root gets the style prepended. The policy escapes
-// every "<" in text, so each match below is a real tag.
+// A fragment with no root is wrapped in one, since a bare fragment is
+// neither a single-rooted document nor in the XHTML namespace. The policy
+// escapes every "<" in text, so each match below is a real tag.
 func finishXHTML(doc, style []byte) []byte {
+	ns := ` xmlns="` + xhtmlNamespace + `" xmlns:epub="` + epubNamespace + `"`
 	root := reRootOpen.FindIndex(doc)
 	if root == nil {
-		return append(style, doc...)
+		out := make([]byte, 0, len(doc)+len(ns)+len(style)+48)
+		out = append(out, "<html"+ns+"><head>"...)
+		out = append(out, style...)
+		out = append(out, "</head><body>"...)
+		out = append(out, doc...)
+		return append(out, "</body></html>"...)
 	}
 	at := root[1]
 	if head := reHeadOpen.FindIndex(doc[root[1]:]); head != nil {
 		at = root[1] + head[1]
 	}
-	ns := ` xmlns="` + xhtmlNamespace + `" xmlns:epub="` + epubNamespace + `"`
 	out := make([]byte, 0, len(doc)+len(ns)+len(style))
 	out = append(out, doc[:root[0]+len("<html")]...)
 	out = append(out, ns...)
@@ -209,12 +228,20 @@ type prepassResult struct {
 // wrapper around one image — the EPUB cover-page idiom — becomes a plain
 // <img> (see svgCover). Everything else is copied through untouched.
 func prepass(raw []byte) prepassResult {
+	res := prepassFrom(raw, true)
+	res.css = stripCDATAMarkers(res.css)
+	return res
+}
+
+// prepassFrom is prepass's loop. With captureSVG false (the replay of an
+// unclosed <svg>'s contents) <svg> tags are dropped where they stand
+// rather than buffered, so a replay never replays again.
+func prepassFrom(raw []byte, captureSVG bool) prepassResult {
 	var res prepassResult
 	out := make([]byte, 0, len(raw))
 	z := xhtml.NewTokenizer(bytes.NewReader(raw))
 
 	var svg *svgCover // non-nil while inside an <svg>
-	var svgStart int  // len(out) before the open <svg>, for an unclosed one
 	var svgRaw []byte // raw bytes after the open <svg>, for an unclosed one
 	inStyle := false
 
@@ -223,14 +250,19 @@ func prepass(raw []byte) prepassResult {
 		if tt == xhtml.ErrorToken {
 			break
 		}
-		// Raw first: TagName consumes the tag (and lowercases it in
-		// place), after which only TagAttr can still read its attributes.
-		tok := append([]byte(nil), z.Raw()...)
+		// Copy the raw token out first, optimistically into the output:
+		// TagName lowercases the buffer in place and consumes the tag,
+		// after which only TagAttr can still read its attributes. A token
+		// that is not passed through is taken back off the end.
+		mark := len(out)
+		out = append(out, z.Raw()...)
 		name, hasAttr := z.TagName()
 		tag := svgLocal(string(name))
 
 		if svg != nil {
-			svgRaw = append(svgRaw, tok...)
+			svgRaw = append(svgRaw, out[mark:]...)
+			tok := out[mark:]
+			out = out[:mark]
 			if svg.feed(tt, tag, hasAttr, z, tok) {
 				if img := svg.img(); img != nil {
 					out = append(out, img...)
@@ -248,28 +280,35 @@ func prepass(raw []byte) prepassResult {
 				inStyle = false
 				res.css = append(res.css, '\n')
 			} else if tt == xhtml.TextToken {
-				res.css = append(res.css, tok...)
+				res.css = append(res.css, out[mark:]...)
 			}
+			out = out[:mark]
 		case string(name) == "style" && tt == xhtml.StartTagToken:
 			inStyle = true
+			out = out[:mark]
 		case string(name) == "style" && (tt == xhtml.SelfClosingTagToken || tt == xhtml.EndTagToken):
-		case tag == "svg" && tt == xhtml.SelfClosingTagToken:
-			res.svgStripped++
+			out = out[:mark]
+		case tag == "svg" && (tt == xhtml.SelfClosingTagToken || tt == xhtml.EndTagToken || !captureSVG):
+			if tt != xhtml.EndTagToken {
+				res.svgStripped++
+			}
+			out = out[:mark]
 		case tag == "svg" && tt == xhtml.StartTagToken:
-			svg, svgStart = &svgCover{depth: 1}, len(out)
-		default:
-			out = append(out, tok...)
+			svg = &svgCover{depth: 1}
+			out = out[:mark]
 		}
 	}
 	if svg != nil {
-		// An <svg> never closed: drop only its open tag and let the policy
-		// strip whatever followed, rather than swallow the rest of the
-		// chapter.
+		// An <svg> never closed: drop only its open tag and process what
+		// followed as if it were not there — text and <style> alike —
+		// rather than swallow the rest of the chapter.
 		res.svgStripped++
-		out = append(out[:svgStart], svgRaw...)
+		rest := prepassFrom(svgRaw, false)
+		out = append(out, rest.out...)
+		res.css = append(res.css, rest.css...)
+		res.svgStripped += rest.svgStripped
 	}
 	res.out = out
-	res.css = stripCDATAMarkers(res.css)
 	return res
 }
 

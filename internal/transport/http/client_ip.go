@@ -62,7 +62,11 @@ func requestIsHTTPS(r *http.Request) bool {
 		return false
 	}
 	// Chained proxies append: "https, http" means the client-facing hop was
-	// TLS, so only the first (client-most) entry counts.
+	// TLS, so only the first (client-most) entry counts. That entry may be
+	// client-supplied when a trusted proxy appends rather than overwrites,
+	// but it only decides the Secure flag on the cookie set in the response
+	// to that same client: a client lying here can only mislabel its own
+	// cookie, never anyone else's.
 	first, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
 	return strings.EqualFold(strings.TrimSpace(first), "https")
 }

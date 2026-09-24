@@ -2,7 +2,10 @@ package content_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/xml"
+	"html"
 	"io"
 	"strings"
 	"testing"
@@ -446,5 +449,47 @@ func assertWellFormedXHTML(t *testing.T, out []byte) {
 		if err != nil {
 			t.Fatalf("not well-formed XML: %v\n%s", err, out)
 		}
+	}
+}
+
+// A chapter with no <html> root still has to be a namespaced XHTML
+// document: epub:type needs its prefix bound, and a bare fragment is not
+// rendered as XHTML at all.
+func TestSanitizeHTML_RootlessFragmentBecomesDocument(t *testing.T) {
+	out, _ := content.SanitizeHTML([]byte(`<style>p{color:red}</style><p epub:type="footnote">frag</p><p>two</p>`))
+	assertWellFormedXHTML(t, out)
+	s := string(out)
+	if !strings.HasPrefix(s, `<html xmlns="http://www.w3.org/1999/xhtml"`) || !strings.Contains(s, "frag") || !strings.Contains(s, "p{color:red}") {
+		t.Fatalf("fragment not wrapped as an XHTML document: %s", s)
+	}
+}
+
+// An unclosed <svg> drops only its own tags; what follows it — text and
+// <style> blocks alike — is processed as if the svg were not there.
+func TestSanitizeHTML_UnclosedSVGKeepsLaterStyle(t *testing.T) {
+	out, rep := content.SanitizeHTML([]byte(`<html><head></head><body><svg>unclosed<style>p{color:red}</style><p>after</p></body></html>`))
+	s := string(out)
+	if !strings.Contains(s, "after") || !strings.Contains(s, "p{color:red}") {
+		t.Fatalf("content after an unclosed svg lost: %s", s)
+	}
+	if rep.SVGStripped != 1 {
+		t.Errorf("SVGStripped = %d, want 1", rep.SVGStripped)
+	}
+}
+
+// The content CSP has no 'unsafe-inline', so the one sanitised <style>
+// block applies only if the response names its hash; SanitizeHTML
+// reports it.
+func TestSanitizeHTML_ReportsStyleHash(t *testing.T) {
+	out, rep := content.SanitizeHTML([]byte(`<html><head><style>h1{text-align:center}</style></head><body/></html>`))
+	start := strings.Index(string(out), "<style>") + len("<style>")
+	end := strings.Index(string(out), "</style>")
+	text := html.UnescapeString(string(out[start:end]))
+	sum := sha256.Sum256([]byte(text))
+	if want := "sha256-" + base64.StdEncoding.EncodeToString(sum[:]); rep.StyleHash != want {
+		t.Fatalf("StyleHash = %q, want %q (hash of the style element's text)", rep.StyleHash, want)
+	}
+	if _, rep := content.SanitizeHTML([]byte(`<p>no style</p>`)); rep.StyleHash != "" {
+		t.Fatalf("StyleHash = %q for a chapter with no style", rep.StyleHash)
 	}
 }

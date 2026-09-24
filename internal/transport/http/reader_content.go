@@ -122,10 +122,19 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		switch kind {
 		case content.KindHTML:
 			body, report = content.SanitizeHTML(data)
+			if report.StyleHash != "" {
+				// The book's own (sanitised) <style> block: allowed by
+				// hash, since the policy has no 'unsafe-inline'.
+				csp = readerContentCSP + "; style-src 'self' '" + report.StyleHash + "'"
+			}
 		case content.KindCSS:
 			body, report = content.SanitizeCSS(data)
 		case content.KindXML:
-			body = data
+			body, err = content.NormalizeXML(data)
+			if err != nil {
+				writeDomainError(w, err, correlationID)
+				return
+			}
 			csp = readerContentXMLCSP
 		default:
 			body = data
