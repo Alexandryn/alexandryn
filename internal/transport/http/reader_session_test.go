@@ -247,6 +247,18 @@ func TestReaderSession_SecureCookie(t *testing.T) {
 		}
 	})
 
+	t.Run("chained proxies: first entry is the client-facing hop", func(t *testing.T) {
+		transporthttp.SetTrustedProxyCIDRs([]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+		t.Cleanup(func() { transporthttp.SetTrustedProxyCIDRs(nil) })
+		chained := func(r *http.Request) {
+			r.RemoteAddr = "10.0.0.5:4000"
+			r.Header.Set("X-Forwarded-Proto", "https, http")
+		}
+		if c := issueGrantCookieWith(t, srv, "edition-owned", chained); !c.Secure {
+			t.Fatal("Secure not set for X-Forwarded-Proto: https, http")
+		}
+	})
+
 	t.Run("TLS terminated by a trusted proxy", func(t *testing.T) {
 		transporthttp.SetTrustedProxyCIDRs([]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
 		t.Cleanup(func() { transporthttp.SetTrustedProxyCIDRs(nil) })

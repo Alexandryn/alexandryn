@@ -61,7 +61,10 @@ func requestIsHTTPS(r *http.Request) bool {
 	if prefixes == nil || !addrInAny(addr, *prefixes) {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
+	// Chained proxies append: "https, http" means the client-facing hop was
+	// TLS, so only the first (client-most) entry counts.
+	first, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+	return strings.EqualFold(strings.TrimSpace(first), "https")
 }
 
 // hostOnly strips a trailing :port from a host:port string, tolerating

@@ -1504,12 +1504,24 @@ paths:
             Set-Cookie:
               schema: { type: string }
               description: alx_rc grant cookie, Path=/api/v1/library/editions/{editionId}/reader/content/.
+        '400':
+          description: Malformed editionId.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: invalid_input, message: "editionId is required", correlationId: 00000000-0000-0000-0000-000000000000 }
         '401':
           description: Missing or invalid Bearer token.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               example: { code: unauthorized, message: "missing or invalid authorization token", correlationId: 00000000-0000-0000-0000-000000000000 }
+        '403':
+          description: X-Library-Id names a library the token does not grant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: Forbidden, message: "you are not a member of that library", correlationId: 00000000-0000-0000-0000-000000000000 }
         '404':
           description: Edition not in the active library.
           content:
