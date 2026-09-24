@@ -27,15 +27,23 @@ func (r SanitizeReport) StrippedSomething() bool {
 	return r.ScriptsStripped+r.ExternalRefsStripped+r.SVGStripped+r.StyleAttrsStripped > 0
 }
 
+// refLead and refSecond are the character classes a relative reference's
+// first character, and the character after a leading "/", must fall in:
+// no "/", ":" (first only), "\\", C0 control, space, DEL, U+0085, or any
+// Unicode space separator — everything strings.TrimSpace or a browser's
+// URL parser would silently drop.
+const (
+	refLead   = `[^/:\\\x00-\x20\x7f\x{85}\p{Z}]`
+	refSecond = `[^/\\\x00-\x20\x7f\x{85}\p{Z}]`
+)
+
 var (
 	// Pre-pass detectors — bluemonday removes disallowed constructs
 	// silently, so the counts come from scanning the input, not diffing
 	// the output. The policy itself is what actually enforces removal.
 	reScriptTag    = regexp.MustCompile(`(?is)<script[\s>]`)
 	reEventAttr    = regexp.MustCompile(`(?is)\son[a-z]+\s*=`)
-	reSVGOpen      = regexp.MustCompile(`(?is)<svg[\s>]`)
 	reStyleAttr    = regexp.MustCompile(`(?is)\sstyle\s*=`)
-	reStyleBlock   = regexp.MustCompile(`(?is)<style[^>]*>(.*?)</style>`)
 	reExternalHREF = regexp.MustCompile(`(?is)\b(?:href|src)\s*=\s*["']?\s*(?:[a-z][a-z0-9+.-]*:)?//`)
 
 	// CSS: a url(...) token or an @import target. RE2 has no
@@ -47,17 +55,18 @@ var (
 
 	// A value bluemonday may keep on href/src: a data: URI, or a
 	// relative reference that does not begin with "//" (protocol-relative).
-	// Neither of the first two characters may be whitespace, a control
-	// character, or a backslash: bluemonday tests the untrimmed value but
-	// writes the trimmed one, browsers drop leading C0 controls and any
-	// tab/newline from a URL, and treat "\" as "/" — so " //host",
-	// "\x01//host", "/\t/host", and "/\host" all become "//host".
-	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:[^/:\\\x00-\x20]|/[^/\\\x00-\x20])[^:]*|#\S*)$`)
+	// Neither of the first two characters may be whitespace (ASCII or
+	// Unicode), a control character, or a backslash: bluemonday tests the
+	// untrimmed value but writes the strings.TrimSpace'd one, browsers
+	// drop leading C0 controls and any tab/newline from a URL, and treat
+	// "\" as "/" — so " //host", "\u00a0//host", "\x01//host",
+	// "/\t/host", and "/\host" would all become "//host".
+	reRelativeOrData = regexp.MustCompile(`(?is)^(?:data:\S+|(?:` + refLead + `|/` + refSecond + `)[^:]*|#\S*)$`)
 
 	// A relative-only reference that does not begin with "//" and rejects data: schemes.
 	// Used on <a href> so that books cannot embed data:text/html anchors to prevent UI-redress.
 	// Same leading-character rule as reRelativeOrData.
-	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:[^/:\\\x00-\x20]|/[^/\\\x00-\x20])[^:]*|#\S*)$`)
+	reRelativeOnly = regexp.MustCompile(`(?is)^(?:(?:` + refLead + `|/` + refSecond + `)[^:]*|#\S*)$`)
 )
 
 // htmlContentElements is the allowlist for EPUB XHTML content — the
@@ -95,6 +104,10 @@ func htmlPolicy() *bluemonday.Policy {
 	p.AllowElements(htmlContentElements...)
 
 	p.AllowAttrs("id", "class", "lang", "dir", "title").Globally()
+	// EPUB 3 structural semantics: foliate-js finds the table of contents,
+	// page list, and landmarks by nav[epub:type~=toc] and friends. Tokens
+	// only; the epub prefix is declared on the root by finishXHTML.
+	p.AllowAttrs("epub:type").Matching(regexp.MustCompile(`^[A-Za-z0-9:_ \-]*$`)).Globally()
 	// A relative path only on <a> (data: href on <a> is disallowed).
 	// Rejects protocol-relative //host references and data: URIs.
 	p.AllowAttrs("href").Matching(reRelativeOnly).OnElements("a")
@@ -117,160 +130,267 @@ func htmlPolicy() *bluemonday.Policy {
 	return p
 }
 
-// SanitizeHTML strips scripts, event handlers, inline <svg>, style
-// attributes, external-fetch elements, and any non-relative, non-data:
-// href/src attributes; routes <style> block text through SanitizeCSS.
+// SanitizeHTML strips scripts, event handlers, inline <svg> (keeping an
+// SVG-wrapped cover image as a plain <img>), style attributes,
+// external-fetch elements, and any non-relative, non-data: href/src
+// attributes; routes <style> block text through SanitizeCSS. The result is
+// a well-formed XHTML document for the application/xhtml+xml response.
 func SanitizeHTML(raw []byte) ([]byte, SanitizeReport) {
 	var rep SanitizeReport
 	rep.ScriptsStripped = len(reScriptTag.FindAll(raw, -1)) + len(reEventAttr.FindAll(raw, -1))
 	rep.StyleAttrsStripped = len(reStyleAttr.FindAll(raw, -1))
 	rep.ExternalRefsStripped = len(reExternalHREF.FindAll(raw, -1))
 
-	// Lift every <style> block's CSS out and run it through SanitizeCSS,
-	// then drop inline <svg> wholesale, before the HTML policy runs.
-	var css strings.Builder
-	for _, m := range reStyleBlock.FindAllSubmatch(raw, -1) {
-		safe, cssRep := SanitizeCSS(m[1])
+	pre := prepass(raw)
+	rep.SVGStripped = pre.svgStripped
+
+	var style []byte
+	if len(pre.css) > 0 {
+		safe, cssRep := SanitizeCSS(pre.css)
 		rep.ExternalRefsStripped += cssRep.ExternalRefsStripped
-		css.Write(safe)
-		css.WriteByte('\n')
+		// Escaped as text: the lifted CSS never reaches the HTML policy,
+		// so any markup smuggled inside a <style> must not come back as
+		// markup. The XML parser decodes the entities back into the CSS.
+		style = []byte("<style>" + html.EscapeString(string(safe)) + "</style>\n")
 	}
-	stripped := reStyleBlock.ReplaceAll(raw, nil)
-	stripped = svgImagesToImg(stripped)
-	rep.SVGStripped = len(reSVGOpen.FindAll(stripped, -1))
-	stripped = stripSVG(stripped)
 
-	cleaned := htmlPolicy().SanitizeBytes(stripped)
-	cleaned = restoreXHTMLRoot(cleaned)
-
-	if css.Len() > 0 {
-		cleaned = insertStyle(cleaned, []byte("<style>"+css.String()+"</style>\n"))
-	}
-	return cleaned, rep
+	return finishXHTML(htmlPolicy().SanitizeBytes(pre.out), style), rep
 }
 
-const xhtmlNamespace = "http://www.w3.org/1999/xhtml"
+const (
+	xhtmlNamespace = "http://www.w3.org/1999/xhtml"
+	epubNamespace  = "http://www.idpf.org/2007/ops"
 
-var (
-	reHTMLOpen = regexp.MustCompile(`(?i)<html\b`)
-	reHeadOpen = regexp.MustCompile(`(?i)<head\b[^>]*>`)
-	reRootOpen = regexp.MustCompile(`(?i)<html\b[^>]*>`)
+	// svgCoverClass marks an <img> converted from an SVG-wrapped cover, so
+	// the reader can fit it to the page the way the SVG's viewBox did.
+	svgCoverClass = "alx-svg-cover"
 )
 
-// restoreXHTMLRoot puts the XHTML namespace back on the root <html>. The
-// policy strips every xmlns attribute (a book must not pick its own root
-// namespace), but the endpoint serves chapters as application/xhtml+xml,
-// where a root outside the XHTML namespace makes every element generic
-// XML — no block layout, no heading or paragraph styling.
-func restoreXHTMLRoot(doc []byte) []byte {
-	loc := reHTMLOpen.FindIndex(doc)
-	if loc == nil {
-		return doc
-	}
-	out := make([]byte, 0, len(doc)+len(xhtmlNamespace)+9)
-	out = append(out, doc[:loc[1]]...)
-	out = append(out, ` xmlns="`+xhtmlNamespace+`"`...)
-	return append(out, doc[loc[1]:]...)
-}
+var (
+	reRootOpen = regexp.MustCompile(`(?i)<html\b[^>]*>`)
+	reHeadOpen = regexp.MustCompile(`(?i)<head\b[^>]*>`)
+)
 
-// insertStyle places the sanitised <style> block inside the document —
-// in <head>, else just inside <html> — since anything outside the root
-// element is an XML parse error. A fragment with no root gets it
-// prepended.
-func insertStyle(doc, style []byte) []byte {
-	loc := reHeadOpen.FindIndex(doc)
-	if loc == nil {
-		loc = reRootOpen.FindIndex(doc)
-	}
-	if loc == nil {
+// finishXHTML makes the policy's output a document the browser renders
+// as XHTML. The policy strips every xmlns attribute (a book must not pick
+// its own namespaces), so the root gets the fixed XHTML namespace and the
+// epub prefix back; and the sanitised <style> goes inside <head>, else
+// inside <html>, since anything outside the root is an XML parse error.
+// A fragment with no root gets the style prepended. The policy escapes
+// every "<" in text, so each match below is a real tag.
+func finishXHTML(doc, style []byte) []byte {
+	root := reRootOpen.FindIndex(doc)
+	if root == nil {
 		return append(style, doc...)
 	}
-	out := make([]byte, 0, len(doc)+len(style))
-	out = append(out, doc[:loc[1]]...)
-	out = append(out, style...)
-	return append(out, doc[loc[1]:]...)
-}
-
-var reSVGBlock = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
-var reSVGSelfClose = regexp.MustCompile(`(?is)<svg[^>]*/>`)
-
-var (
-	reSVGParts   = regexp.MustCompile(`(?is)^<svg[^>]*>(.*)</svg>$`)
-	reSVGImage   = regexp.MustCompile(`(?is)<image\b[^>]*>(?:\s*</image>)?`)
-	reSVGTitle   = regexp.MustCompile(`(?is)<title\b[^>]*>(.*?)</title>`)
-	reSVGDesc    = regexp.MustCompile(`(?is)<desc\b[^>]*>.*?</desc>`)
-	reSVGComment = regexp.MustCompile(`(?s)<!--.*?-->`)
-	reAnyTag     = regexp.MustCompile(`(?s)<[^>]*>`)
-)
-
-// svgImagesToImg rewrites an inline <svg> whose only content is a single
-// <image> (beside an optional <title>, <desc>, or comments) into a plain
-// <img> of the same reference, before stripSVG drops every remaining
-// <svg>. EPUB cover pages (Project Gutenberg, Calibre) wrap the cover
-// this way, so stripping the SVG left them blank. The <img> is produced
-// only for a relative or data: reference (the policy's own img src rule,
-// which still runs on it); an SVG holding anything else, or pointing
-// anywhere else, is left for stripSVG. The SVG's <title>, if any, becomes
-// the alt text.
-func svgImagesToImg(raw []byte) []byte {
-	return reSVGBlock.ReplaceAllFunc(raw, func(block []byte) []byte {
-		parts := reSVGParts.FindSubmatch(block)
-		if parts == nil {
-			return block
-		}
-		inner := reSVGComment.ReplaceAll(parts[1], nil)
-		inner = reSVGDesc.ReplaceAll(inner, nil)
-		var alt string
-		if m := reSVGTitle.FindSubmatch(inner); m != nil {
-			alt = strings.Join(strings.Fields(html.UnescapeString(string(reAnyTag.ReplaceAll(m[1], nil)))), " ")
-		}
-		inner = reSVGTitle.ReplaceAll(inner, nil)
-
-		images := reSVGImage.FindAllIndex(inner, -1)
-		if len(images) != 1 {
-			return block
-		}
-		img := inner[images[0][0]:images[0][1]]
-		rest := append(append([]byte{}, inner[:images[0][0]]...), inner[images[0][1]:]...)
-		if len(bytes.TrimSpace(rest)) != 0 {
-			return block
-		}
-		src, ok := svgImageRef(img)
-		if !ok || strings.ContainsAny(src, `"'<>`) || !reRelativeOrData.MatchString(src) {
-			return block
-		}
-		return []byte(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(alt) + `"/>`)
-	})
-}
-
-// svgImageRef reads an <image> tag's reference with a real tokenizer, so
-// an href= inside another attribute's value is never mistaken for one.
-// SVG 2's href wins over the legacy xlink:href, as it does in browsers.
-func svgImageRef(tag []byte) (string, bool) {
-	z := xhtml.NewTokenizer(bytes.NewReader(tag))
-	if tt := z.Next(); tt != xhtml.StartTagToken && tt != xhtml.SelfClosingTagToken {
-		return "", false
+	at := root[1]
+	if head := reHeadOpen.FindIndex(doc[root[1]:]); head != nil {
+		at = root[1] + head[1]
 	}
-	var href, xlinkHref string
-	var haveHref, haveXlink bool
-	for _, a := range z.Token().Attr {
+	ns := ` xmlns="` + xhtmlNamespace + `" xmlns:epub="` + epubNamespace + `"`
+	out := make([]byte, 0, len(doc)+len(ns)+len(style))
+	out = append(out, doc[:root[0]+len("<html")]...)
+	out = append(out, ns...)
+	out = append(out, doc[root[0]+len("<html"):at]...)
+	out = append(out, style...)
+	return append(out, doc[at:]...)
+}
+
+type prepassResult struct {
+	out         []byte
+	css         []byte
+	svgStripped int
+}
+
+// prepass runs before the HTML policy, over the same tokenizer the policy
+// itself uses, so both agree on what is a tag, an attribute value, or
+// raw text. It lifts every <style> block's text out (for SanitizeCSS)
+// and removes every inline <svg>, except that an SVG which is only a
+// wrapper around one image — the EPUB cover-page idiom — becomes a plain
+// <img> (see svgCover). Everything else is copied through untouched.
+func prepass(raw []byte) prepassResult {
+	var res prepassResult
+	out := make([]byte, 0, len(raw))
+	z := xhtml.NewTokenizer(bytes.NewReader(raw))
+
+	var svg *svgCover // non-nil while inside an <svg>
+	var svgStart int  // len(out) before the open <svg>, for an unclosed one
+	var svgRaw []byte // raw bytes after the open <svg>, for an unclosed one
+	inStyle := false
+
+	for {
+		tt := z.Next()
+		if tt == xhtml.ErrorToken {
+			break
+		}
+		// Raw first: TagName consumes the tag (and lowercases it in
+		// place), after which only TagAttr can still read its attributes.
+		tok := append([]byte(nil), z.Raw()...)
+		name, hasAttr := z.TagName()
+		tag := svgLocal(string(name))
+
+		if svg != nil {
+			svgRaw = append(svgRaw, tok...)
+			if svg.feed(tt, tag, hasAttr, z, tok) {
+				if img := svg.img(); img != nil {
+					out = append(out, img...)
+				} else {
+					res.svgStripped++
+				}
+				svg, svgRaw = nil, nil
+			}
+			continue
+		}
+
 		switch {
-		case a.Namespace == "" && a.Key == "href" && !haveHref:
-			href, haveHref = a.Val, true
+		case inStyle:
+			if tt == xhtml.EndTagToken && string(name) == "style" {
+				inStyle = false
+				res.css = append(res.css, '\n')
+			} else if tt == xhtml.TextToken {
+				res.css = append(res.css, tok...)
+			}
+		case string(name) == "style" && tt == xhtml.StartTagToken:
+			inStyle = true
+		case string(name) == "style" && (tt == xhtml.SelfClosingTagToken || tt == xhtml.EndTagToken):
+		case tag == "svg" && tt == xhtml.SelfClosingTagToken:
+			res.svgStripped++
+		case tag == "svg" && tt == xhtml.StartTagToken:
+			svg, svgStart = &svgCover{depth: 1}, len(out)
+		default:
+			out = append(out, tok...)
+		}
+	}
+	if svg != nil {
+		// An <svg> never closed: drop only its open tag and let the policy
+		// strip whatever followed, rather than swallow the rest of the
+		// chapter.
+		res.svgStripped++
+		out = append(out[:svgStart], svgRaw...)
+	}
+	res.out = out
+	res.css = stripCDATAMarkers(res.css)
+	return res
+}
+
+// svgLocal drops an "svg:" prefix, so namespace-prefixed SVG
+// (<svg:svg>, <svg:image>, common in older Adobe-exported EPUBs) is read
+// the same as the unprefixed form.
+func svgLocal(name string) string {
+	return strings.TrimPrefix(name, "svg:")
+}
+
+// svgCover accumulates one <svg> element and decides whether it is a
+// cover wrapper: exactly one <image>, optionally inside <g> groups, beside
+// optional <title>, <desc>, <metadata>, comments, and whitespace. Any
+// other element, nested <svg>, or text makes it ordinary SVG, which is
+// dropped.
+type svgCover struct {
+	depth    int    // open <svg> elements
+	skip     string // inside <desc>/<metadata>/<title>: its tag name
+	skipN    int    // nesting of skip
+	images   int
+	attrs    []xhtml.Attribute
+	title    strings.Builder
+	notCover bool
+}
+
+// feed consumes one token inside the <svg> and reports whether the
+// outermost </svg> has just closed.
+func (c *svgCover) feed(tt xhtml.TokenType, tag string, hasAttr bool, z *xhtml.Tokenizer, raw []byte) bool {
+	if c.skip != "" {
+		switch {
+		case tt == xhtml.StartTagToken && tag == c.skip:
+			c.skipN++
+		case tt == xhtml.EndTagToken && tag == c.skip:
+			c.skipN--
+			if c.skipN == 0 {
+				c.skip = ""
+			}
+		case tt == xhtml.TextToken && c.skip == "title" && c.skipN == 1:
+			c.title.Write(z.Text())
+		}
+		return false
+	}
+	switch tt {
+	case xhtml.StartTagToken, xhtml.SelfClosingTagToken:
+		switch tag {
+		case "svg":
+			c.notCover = true
+			if tt == xhtml.StartTagToken {
+				c.depth++
+			}
+		case "image":
+			c.images++
+			for c.images == 1 && hasAttr {
+				var k, v []byte
+				k, v, hasAttr = z.TagAttr()
+				c.attrs = append(c.attrs, xhtml.Attribute{Key: string(k), Val: string(v)})
+			}
+		case "g":
+		case "title", "desc", "metadata":
+			if tt == xhtml.StartTagToken {
+				c.skip, c.skipN = tag, 1
+			}
+		default:
+			c.notCover = true
+		}
+	case xhtml.EndTagToken:
+		if tag == "svg" {
+			c.depth--
+			return c.depth == 0
+		}
+	case xhtml.TextToken:
+		if len(bytes.TrimSpace(raw)) != 0 {
+			c.notCover = true
+		}
+	}
+	return false
+}
+
+// img returns the <img> replacing a cover wrapper, or nil when the SVG
+// is not one or its reference is not a relative or data: one (the
+// policy's own img src rule, which still runs on the result). Spaces are
+// percent-encoded, as a browser would; the SVG's <title> becomes the alt.
+func (c *svgCover) img() []byte {
+	if c.notCover || c.images != 1 {
+		return nil
+	}
+	src, ok := svgImageRef(c.attrs)
+	if !ok || strings.ContainsAny(src, `"<>`) {
+		return nil
+	}
+	src = strings.ReplaceAll(src, " ", "%20")
+	if !reRelativeOrData.MatchString(src) {
+		return nil
+	}
+	alt := strings.Join(strings.Fields(string(stripCDATAMarkers([]byte(c.title.String())))), " ")
+	return []byte(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(alt) +
+		`" class="` + svgCoverClass + `"/>`)
+}
+
+// svgImageRef picks an <image>'s reference. SVG 2's href wins over the
+// legacy xlink:href, as it does in browsers.
+func svgImageRef(attrs []xhtml.Attribute) (string, bool) {
+	var xlinkHref string
+	var haveXlink bool
+	for _, a := range attrs {
+		switch {
+		case a.Key == "href":
+			return a.Val, true
 		case a.Key == "xlink:href" && !haveXlink:
 			xlinkHref, haveXlink = a.Val, true
 		}
 	}
-	if haveHref {
-		return href, true
-	}
 	return xlinkHref, haveXlink
 }
 
-func stripSVG(raw []byte) []byte {
-	out := reSVGBlock.ReplaceAll(raw, nil)
-	out = reSVGSelfClose.ReplaceAll(out, nil)
-	return out
+// stripCDATAMarkers removes "<![CDATA[" and "]]>" wrappers, which XHTML
+// books put around <style> text and SVG titles and which carry no
+// content of their own.
+func stripCDATAMarkers(b []byte) []byte {
+	b = bytes.ReplaceAll(b, []byte("<![CDATA["), nil)
+	return bytes.ReplaceAll(b, []byte("]]>"), nil)
 }
 
 // SanitizeCSS strips any url()/@import target whose URL has a scheme
