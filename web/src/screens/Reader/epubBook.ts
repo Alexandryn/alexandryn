@@ -93,3 +93,26 @@ export function sectionIndexForHref(sections: EpubSection[], href: string): numb
     return sPath === path || sPath.endsWith('/' + path) || path.endsWith('/' + sPath)
   })
 }
+
+function safeDecode(path: string): string {
+  try {
+    return decodeURIComponent(path)
+  } catch {
+    return path
+  }
+}
+
+/**
+ * The spine index of the section a content-endpoint path serves, or -1.
+ * A link inside a chapter can navigate the reader's frame on its own, so
+ * the reader reads back which section the frame actually holds. Compared
+ * decoded: the browser and contentUrl may percent-encode differently.
+ */
+export function sectionIndexForContentPath(
+  sections: EpubSection[],
+  editionId: string,
+  pathname: string,
+): number {
+  const target = safeDecode(pathname)
+  return sections.findIndex((s) => safeDecode(contentUrl(editionId, s.id)) === target)
+}

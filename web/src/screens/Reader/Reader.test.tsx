@@ -201,6 +201,33 @@ describe('Reader', () => {
     }
   })
 
+  it('drops the failure alert when the reader returns to the chapter still framed', async () => {
+    let fail = false
+    server.use(
+      http.post('*/api/v1/library/editions/:editionId/reader/session', () =>
+        fail
+          ? HttpResponse.json({ code: 'unavailable' }, { status: 503 })
+          : new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    renderReader()
+    const user = userEvent.setup()
+    const frame = await screen.findByTitle(/reading area/i)
+    await waitFor(() => expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/))
+
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 13 * 60_000)
+    try {
+      fail = true
+      await user.click(screen.getByRole('button', { name: 'Next chapter' }))
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Previous chapter' }))
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+      expect(frame.getAttribute('src')).toMatch(/chapter1\.xhtml$/)
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
   it('measures position against the chapter the frame holds, not the one being opened', async () => {
     let release!: () => void
     let hold = false
