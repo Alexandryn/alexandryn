@@ -226,7 +226,7 @@ func TestSanitizeHTML_SVGWrappedImageBecomesImg(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			out, rep := content.SanitizeHTML([]byte(`<html><body><div class="cover">` + svg + `</div></body></html>`))
 			s := string(out)
-			if !strings.Contains(s, `<img src="images/cover.jpg" alt=""/>`) {
+			if !strings.Contains(s, `<img src="images/cover.jpg" alt="" class="alx-svg-cover"/>`) {
 				t.Fatalf("cover image not kept as <img>: %s", s)
 			}
 			if strings.Contains(strings.ToLower(s), "<svg") || strings.Contains(s, "<image") {
@@ -293,15 +293,15 @@ func TestSanitizeHTML_SVGCoverVariants(t *testing.T) {
     version="1.1" width="100%" height="100%" viewBox="0 0 1200 1800" preserveAspectRatio="none">
     <image width="1200" height="1800"
         xlink:href="cover.jpeg"/>
-</svg>`, `<img src="cover.jpeg" alt=""/>`},
-		{"sigil path", `<svg><image xlink:href="../Images/cover.jpg"/></svg>`, `<img src="../Images/cover.jpg" alt=""/>`},
-		{"uppercase", `<SVG><IMAGE XLINK:HREF="c.jpg"/></SVG>`, `<img src="c.jpg" alt=""/>`},
-		{"data cover", `<svg><image href="data:image/png;base64,iVBORw0KGgo="/></svg>`, `<img src="data:image/png;base64,iVBORw0KGgo=" alt=""/>`},
-		{"title as alt", `<svg><title>Cover: Alice &amp; the Queen</title><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt="Cover: Alice &amp; the Queen"/>`},
-		{"desc and comment", `<svg><!-- cover --><desc>The front cover</desc><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt=""/>`},
-		{"href beats xlink:href", `<svg><image xlink:href="old.jpg" href="new.jpg"/></svg>`, `<img src="new.jpg" alt=""/>`},
-		{"href inside another attribute ignored", `<svg><image title=' href="evil.jpg"' xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt=""/>`},
-		{"ampersand in path", `<svg><image href="a&amp;b.jpg"/></svg>`, `<img src="a&amp;b.jpg" alt=""/>`},
+</svg>`, `<img src="cover.jpeg" alt="" class="alx-svg-cover"/>`},
+		{"sigil path", `<svg><image xlink:href="../Images/cover.jpg"/></svg>`, `<img src="../Images/cover.jpg" alt="" class="alx-svg-cover"/>`},
+		{"uppercase", `<SVG><IMAGE XLINK:HREF="c.jpg"/></SVG>`, `<img src="c.jpg" alt="" class="alx-svg-cover"/>`},
+		{"data cover", `<svg><image href="data:image/png;base64,iVBORw0KGgo="/></svg>`, `<img src="data:image/png;base64,iVBORw0KGgo=" alt="" class="alx-svg-cover"/>`},
+		{"title as alt", `<svg><title>Cover: Alice &amp; the Queen</title><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt="Cover: Alice &amp; the Queen" class="alx-svg-cover"/>`},
+		{"desc and comment", `<svg><!-- cover --><desc>The front cover</desc><image xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt="" class="alx-svg-cover"/>`},
+		{"href beats xlink:href", `<svg><image xlink:href="old.jpg" href="new.jpg"/></svg>`, `<img src="new.jpg" alt="" class="alx-svg-cover"/>`},
+		{"href inside another attribute ignored", `<svg><image title=' href="evil.jpg"' xlink:href="c.jpg"/></svg>`, `<img src="c.jpg" alt="" class="alx-svg-cover"/>`},
+		{"ampersand in path", `<svg><image href="a&amp;b.jpg"/></svg>`, `<img src="a&amp;b.jpg" alt="" class="alx-svg-cover"/>`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -318,5 +318,133 @@ func TestSanitizeHTML_SVGStrippedCountsOnlyDropped(t *testing.T) {
 	_, rep := content.SanitizeHTML([]byte(`<html><body><svg><image href="c.jpg"/></svg><svg><circle r="1"/></svg></body></html>`))
 	if rep.SVGStripped != 1 {
 		t.Fatalf("SVGStripped = %d, want 1", rep.SVGStripped)
+	}
+}
+
+// Cover markup the regex-based conversion missed, and the context errors
+// it made: found by review, each confirmed against the old code.
+func TestSanitizeHTML_SVGCoverContext(t *testing.T) {
+	const cover = `class="alx-svg-cover"/>`
+	cases := []struct{ name, in, want, notWant string }{
+		{"self-closing svg does not swallow the chapter",
+			`<svg/><p>keep</p><svg><image href="c.jpg"/></svg>`, `<img src="c.jpg" alt="" ` + cover, ""},
+		{"self-closing svg keeps following text",
+			`<svg/><p>keep</p><svg><image href="c.jpg"/></svg>`, `<p>keep</p>`, ""},
+		{"svg in an attribute value is text, not markup",
+			`<p title="<svg><image href='x class=evil id=pwn '/></svg>">t</p>`, `<p title=`, `id="pwn"`},
+		{"prefixed svg:svg cover",
+			`<svg:svg xmlns:svg="http://www.w3.org/2000/svg"><svg:image xlink:href="cover.jpg"/></svg:svg>`, `<img src="cover.jpg" alt="" ` + cover, ""},
+		{"cover wrapped in a group",
+			`<svg viewBox="0 0 1 1"><g><image href="cover.jpg"/></g></svg>`, `<img src="cover.jpg" alt="" ` + cover, ""},
+		{"metadata sibling",
+			`<svg><metadata><rdf:RDF><x>y</x></rdf:RDF></metadata><image href="cover.jpg"/></svg>`, `<img src="cover.jpg" alt="" ` + cover, ""},
+		{"space in file name",
+			`<svg><image href="my cover.jpg"/></svg>`, `<img src="my%20cover.jpg" alt="" ` + cover, ""},
+		{"apostrophe in file name",
+			`<svg><image href="Alice's cover.jpg"/></svg>`, `<img src="Alice&#39;s%20cover.jpg" alt="" ` + cover, ""},
+		{"CDATA title keeps its text",
+			`<svg><title><![CDATA[Alice]]></title><image href="c.jpg"/></svg>`, `alt="Alice"`, ""},
+		{"unclosed svg does not swallow the chapter",
+			`<svg><image href="c.jpg"/><p>keep</p>`, `keep`, "<img"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, _ := content.SanitizeHTML([]byte(`<html><body>` + c.in + `</body></html>`))
+			s := string(out)
+			if !strings.Contains(s, c.want) {
+				t.Errorf("want %s in\n%s", c.want, s)
+			}
+			if c.notWant != "" && strings.Contains(s, c.notWant) {
+				t.Errorf("unwanted %s in\n%s", c.notWant, s)
+			}
+			assertWellFormedXHTML(t, out)
+		})
+	}
+}
+
+// Markup inside a <style> block never reaches the HTML policy, so it must
+// come back as CSS text, not as live elements.
+func TestSanitizeHTML_StyleBlockCannotInjectMarkup(t *testing.T) {
+	in := `<html><head><style>style{display:block} <a href="https://evil.example/" style="position:fixed;inset:0">Continue</a> p{color:red}</style></head><body><p>t</p></body></html>`
+	out, _ := content.SanitizeHTML([]byte(in))
+	assertWellFormedXHTML(t, out)
+	dec := xml.NewDecoder(bytes.NewReader(out))
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if se, ok := tok.(xml.StartElement); ok && se.Name.Local == "a" {
+			t.Fatalf("an <a> element survived from inside <style>:\n%s", out)
+		}
+	}
+	if !strings.Contains(string(out), "p{color:red}") {
+		t.Fatalf("legitimate CSS lost: %s", out)
+	}
+}
+
+// XHTML books wrap <style> text in CDATA; the markers are dropped, not
+// escaped into the CSS.
+func TestSanitizeHTML_StyleCDATAUnwrapped(t *testing.T) {
+	out, _ := content.SanitizeHTML([]byte(`<html><head><style>/*<![CDATA[*/p{color:red}/*]]>*/</style></head><body/></html>`))
+	if strings.Contains(string(out), "CDATA") || !strings.Contains(string(out), "p{color:red}") {
+		t.Fatalf("CDATA not unwrapped: %s", out)
+	}
+}
+
+// foliate-js finds an EPUB 3 book's table of contents by
+// nav[epub:type~=toc] in the epub namespace; without epub:type and the
+// prefix declaration the contents list is empty.
+func TestSanitizeHTML_KeepsEPUBType(t *testing.T) {
+	in := `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc" id="toc"><ol><li><a href="c1.xhtml">One</a></li></ol></nav></body></html>`
+	out, _ := content.SanitizeHTML([]byte(in))
+	assertWellFormedXHTML(t, out)
+	dec := xml.NewDecoder(bytes.NewReader(out))
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if se, ok := tok.(xml.StartElement); ok && se.Name.Local == "nav" {
+			for _, a := range se.Attr {
+				if a.Name.Space == "http://www.idpf.org/2007/ops" && a.Name.Local == "type" && a.Value == "toc" {
+					return
+				}
+			}
+			t.Fatalf("nav lost epub:type in the epub namespace: %+v\n%s", se.Attr, out)
+		}
+	}
+	t.Fatalf("nav element missing:\n%s", out)
+}
+
+// bluemonday trims Unicode whitespace too, so a leading U+00A0, U+3000,
+// or U+0085 must not smuggle a protocol-relative reference either.
+func TestSanitizeHTML_UnicodeWhitespaceCannotSmuggleProtocolRelative(t *testing.T) {
+	for _, lead := range []string{"\u00a0", "\u3000", "\u0085", "\u2000", "\u2028", "\u202f", "\x7f"} {
+		for _, doc := range []string{
+			`<a href="` + lead + `//evil.example/">x</a>`,
+			`<img src="` + lead + `//evil.example/x.png"/>`,
+			`<a href="/` + lead + `/evil.example/">x</a>`,
+			`<svg><image href="` + lead + `//evil.example/c.jpg"/></svg>`,
+		} {
+			out, _ := content.SanitizeHTML([]byte(`<html><body>` + doc + `</body></html>`))
+			if strings.Contains(string(out), "//evil.example") {
+				t.Errorf("%q survived as %s", doc, out)
+			}
+		}
+	}
+}
+
+func assertWellFormedXHTML(t *testing.T, out []byte) {
+	t.Helper()
+	dec := xml.NewDecoder(bytes.NewReader(out))
+	for {
+		_, err := dec.Token()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			t.Fatalf("not well-formed XML: %v\n%s", err, out)
+		}
 	}
 }
