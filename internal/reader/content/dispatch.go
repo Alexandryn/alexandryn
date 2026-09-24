@@ -2,10 +2,14 @@ package content
 
 import (
 	"archive/zip"
+	"bytes"
+	"encoding/xml"
 	"io"
 	"net/http"
 	"path"
 	"strings"
+
+	"golang.org/x/net/html/charset"
 
 	"github.com/Alexandryn/alexandryn/internal/domain"
 	"github.com/Alexandryn/alexandryn/internal/importer/extract"
@@ -18,6 +22,7 @@ const (
 	KindHTML   Kind = iota // route through SanitizeHTML
 	KindCSS                // route through SanitizeCSS
 	KindBinary             // image/font — serve as-is, still size-capped
+	KindXML                // structural EPUB XML — served as-is, never renderable markup
 )
 
 // ValidateResourcePath rejects an untrusted resource path before it is
@@ -73,11 +78,12 @@ func ReadEntry(f *zip.File) ([]byte, error) {
 
 // Classify decides how an entry is served based on its sniffed content
 // rather than path extension alone. HTML/XHTML -> KindHTML;
-// text/css -> KindCSS; the EPUB container/package/EPUB2-TOC XML files
-// foliate-js parses to locate the spine -> KindBinary served as XML;
-// non-SVG images or fonts -> KindBinary served with that MIME type.
-// Standalone image/svg+xml and any unrecognised or unexpected types
-// (such as executables) are refused with InvalidInput.
+// text/css -> KindCSS; standalone image/svg+xml is refused; XML text
+// (the container, package, and NCX files foliate-js parses to locate the
+// spine) -> KindXML, but only after classifyXML proves it holds nothing a
+// browser would render as a live document; non-SVG images or fonts ->
+// KindBinary served with that MIME type. Anything unrecognised or
+// unexpected (such as executables) is refused with InvalidInput.
 func Classify(entryName string, data []byte) (Kind, string, error) {
 	sniff := http.DetectContentType(data)
 	base := strings.ToLower(strings.TrimSpace(strings.SplitN(sniff, ";", 2)[0]))
@@ -89,25 +95,84 @@ func Classify(entryName string, data []byte) (Kind, string, error) {
 
 	switch {
 	case base == "text/html" || ext == ".xhtml" || ext == ".html" || ext == ".htm":
-		return KindHTML, "application/xhtml+xml; charset=utf-8", nil
+		return KindHTML, htmlContentType, nil
 	case ext == ".css" && strings.HasPrefix(base, "text/"):
 		return KindCSS, "text/css; charset=utf-8", nil
-	// META-INF/container.xml, the OPF package document, and (for EPUB2
-	// books) the NCX table of contents — every one of these foliate-js
-	// itself requests, by path, before it can locate the spine at all.
-	// Served as-is: XML has no script execution vector in a fetch (never
-	// rendered as a document), so this needs no sanitizer, unlike KindHTML.
-	case base == "text/xml" || base == "application/xml" || ext == ".xml" || ext == ".opf" || ext == ".ncx":
-		return KindBinary, "application/xml; charset=utf-8", nil
 	case base == "image/svg+xml" || ext == ".svg":
-		return 0, "", &domain.Error{Category: domain.InvalidInput, Message: "SVG resources are not served"}
+		return 0, "", errSVGRefused
+	// Checked after the SVG and HTML cases: DetectContentType reports any
+	// file opening with "<?xml" — most SVGs and many XHTML chapters — as
+	// text/xml.
+	case base == "text/xml" || base == "application/xml" ||
+		((ext == ".xml" || ext == ".opf" || ext == ".ncx") && strings.HasPrefix(base, "text/")):
+		return classifyXML(data)
 	case strings.HasPrefix(base, "image/"):
 		return KindBinary, base, nil
 	case isFontType(base, ext):
 		return KindBinary, fontMIME(ext, base), nil
 	default:
-		return 0, "", &domain.Error{Category: domain.InvalidInput, Message: "this resource type cannot be served"}
+		return 0, "", errUnservable
 	}
+}
+
+const htmlContentType = "application/xhtml+xml; charset=utf-8"
+
+var (
+	errSVGRefused = &domain.Error{Category: domain.InvalidInput, Message: "SVG resources are not served"}
+	errUnservable = &domain.Error{Category: domain.InvalidInput, Message: "this resource type cannot be served"}
+)
+
+// Namespaces whose elements a browser renders as a live document (links,
+// forms, overlays, transforms) when the XML is opened directly or framed.
+const (
+	nsXHTML  = "http://www.w3.org/1999/xhtml"
+	nsSVG    = "http://www.w3.org/2000/svg"
+	nsMathML = "http://www.w3.org/1998/Math/MathML"
+	nsXSLT   = "http://www.w3.org/1999/XSL/Transform"
+)
+
+// classifyXML decides how an XML entry is served. It is served raw, so it
+// must be structural data only: a document whose root is XHTML is a
+// content document and goes through the HTML sanitiser instead; any SVG,
+// MathML, XSLT, or nested XHTML element, an xml-stylesheet instruction,
+// or XML that does not parse is refused. The content type carries no
+// charset, so the file's own encoding declaration governs.
+func classifyXML(data []byte) (Kind, string, error) {
+	dec := xml.NewDecoder(bytes.NewReader(data))
+	dec.CharsetReader = charset.NewReaderLabel
+	root := true
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, "", errUnservable
+		}
+		switch t := tok.(type) {
+		case xml.ProcInst:
+			if t.Target == "xml-stylesheet" {
+				return 0, "", errUnservable
+			}
+		case xml.StartElement:
+			switch t.Name.Space {
+			case nsXHTML:
+				if root {
+					return KindHTML, htmlContentType, nil
+				}
+				return 0, "", errUnservable
+			case nsSVG:
+				return 0, "", errSVGRefused
+			case nsMathML, nsXSLT:
+				return 0, "", errUnservable
+			}
+			root = false
+		}
+	}
+	if root {
+		return 0, "", errUnservable
+	}
+	return KindXML, "application/xml", nil
 }
 
 func isFontType(base, ext string) bool {
