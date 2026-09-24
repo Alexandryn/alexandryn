@@ -244,6 +244,7 @@ export function Library() {
         ) : allWorks.length === 0 ? (
           hasActiveFilters ? (
             <EmptyState
+              mascotMood="searching"
               title="No books match your search"
               description="Try adjusting your keywords or clearing your filters."
               action={{
@@ -253,6 +254,7 @@ export function Library() {
             />
           ) : (
             <EmptyState
+              mascotMood="sleeping"
               title="Your library is waiting."
               description="Discover a book, connect a source, or import your existing collection."
             />

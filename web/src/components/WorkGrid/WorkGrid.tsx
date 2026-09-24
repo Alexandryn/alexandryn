@@ -118,7 +118,8 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                   )}
                 >
                   <div className="flex items-center gap-md min-w-0">
-                    <div className="w-8 shrink-0 aspect-[2/3] overflow-hidden rounded-3xs bg-surface-3">
+                    <div className="relative w-8 shrink-0 aspect-[2/3] overflow-hidden rounded-3xs bg-surface-3 book-shadow">
+                      <div className="absolute inset-y-0 left-0 w-1.5 book-spine-crease pointer-events-none z-10" />
                       {coverFor(index) ? (
                         <GeneratedCover
                           identifier={work.id}
@@ -193,7 +194,8 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                   FOCUS_RING,
                 )}
               >
-                <div className="aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 shadow-sm group-hover:shadow-md transition-shadow">
+                <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1">
+                  <div className="absolute inset-y-0 left-0 w-3 book-spine-crease pointer-events-none z-10" />
                   {coverFor(index) ? (
                     <GeneratedCover
                       identifier={work.id}

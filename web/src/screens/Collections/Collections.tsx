@@ -10,6 +10,7 @@ import { useCollections, useCreateCollection, type CollectionSummary } from '../
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { FolderIcon, ChevronRightIcon } from '../../components/Icon'
 
 /**
  * Collections index screen at /collections.
@@ -98,6 +99,7 @@ export function Collections() {
           />
         ) : collections.length === 0 ? (
           <EmptyState
+            mascotMood="sleeping"
             title="No collections yet"
             description="Create a collection to organize your library into custom reading lists."
             action={{
@@ -117,10 +119,10 @@ export function Collections() {
                 )}
               >
                 <div className="flex flex-col gap-xs">
-                  <div className="flex items-center gap-xs">
-                    <span className="text-xl" aria-hidden="true">
-                      📁
-                    </span>
+                  <div className="flex items-center gap-sm">
+                    <div className="size-9 rounded-md bg-accent-soft text-accent flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <FolderIcon className="size-5" />
+                    </div>
                     <h2 className="text-lg font-medium text-text group-hover:text-primary truncate">
                       {c.name}
                     </h2>
@@ -131,7 +133,10 @@ export function Collections() {
                   <span className="text-xs text-text-2 font-ui">
                     {c.workCount} {c.workCount === 1 ? 'book' : 'books'}
                   </span>
-                  <span className="text-xs text-text-3 group-hover:text-text-2">View →</span>
+                  <div className="flex items-center gap-4xs text-xs text-text-3 group-hover:text-text group-hover:translate-x-0.5 transition-all">
+                    <span>View</span>
+                    <ChevronRightIcon className="size-3.5" />
+                  </div>
                 </div>
               </Link>
             ))}
