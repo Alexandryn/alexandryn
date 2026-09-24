@@ -122,6 +122,27 @@ dependency.
 **Neutral** — the HTML/CSS split means two code paths for "clean this
 content," documented in the spec so it is not mistaken for an oversight.
 
+**Amendment (2026-09-24).** Live-testing a real EPUB and reviewing the
+fixes that followed refined the decision without reversing it:
+
+- The allowlist still denies inline SVG, with one narrow exception: an
+  `<svg>` that only wraps a single `<image>` (the EPUB cover-page idiom)
+  becomes a plain `<img>` of a relative or `data:` reference, which the
+  policy then checks like any other image. No SVG markup survives. This
+  recovers SVG-wrapped cover pages; standalone `.svg` stays refused.
+- `<style>` text is lifted by a pre-pass over the same `x/net/html`
+  tokenizer `bluemonday` uses, and re-emitted HTML-escaped, so the CSS
+  path can never carry markup past the HTML policy.
+- The EPUB structural XML files foliate-js must fetch (container, OPF,
+  NCX) are a fourth route that is served, not sanitised: only after
+  parsing proves they contain no XHTML, SVG, MathML, or XSLT content, and
+  under a CSP `sandbox`. This does not reopen the `blob:`/client-side
+  path; the files are data, not documents.
+- Accepted residual risk: a malicious book can make blind same-origin
+  requests for another open book's assets via relative URLs under that
+  book's grant cookie. Nothing can be read back (no scripts, `default-src
+  'self'`), so the requests are inert.
+
 ## Reversal cost
 
 Low. The policy is a self-contained object built in one place; replacing
