@@ -335,11 +335,13 @@ export function Reader() {
   }
   const sessionFailed = contentSession.isError && contentSession.data === undefined
   if (bookQuery.isError || sections.length === 0 || sessionFailed) {
-    const status = ((bookQuery.error ?? contentSession.error) as { status?: number } | null)?.status
+    // Only the book's own 503 means its source is unreachable; a 503 from
+    // the grant endpoint means the reader itself is still starting.
+    const bookStatus = (bookQuery.error as { status?: number } | null)?.status
     return (
       <ErrorState
         title={
-          status === 503
+          bookStatus === 503
             ? "This book's source isn't reachable right now."
             : 'This book could not be opened.'
         }
