@@ -27,6 +27,15 @@ const readerContentPerRequestTimeout = 30 * time.Second
 // same-origin framing.
 const readerContentCSP = "default-src 'self'; script-src 'none'; object-src 'none'; frame-ancestors 'self'"
 
+// readerContentXMLCSP adds a CSP sandbox for the structural XML files
+// (container, OPF, NCX): they are served unsanitised, and although
+// Classify refuses any XML holding renderable markup, a browser opening
+// one directly gets an opaque-origin, script-free, form-free document
+// regardless. foliate-js fetches them as data, which the sandbox does not
+// affect. (Chapters cannot take this directive: the reader must reach
+// into their same-origin document.)
+const readerContentXMLCSP = readerContentCSP + "; sandbox"
+
 // ReaderContentHandler serves one sanitised entry from inside an owned
 // Edition's EPUB: GET /api/v1/library/editions/{editionId}/reader/content/{path...}.
 // The content cache is constructed once
@@ -109,11 +118,15 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 
 		var body []byte
 		var report content.SanitizeReport
+		csp := readerContentCSP
 		switch kind {
 		case content.KindHTML:
 			body, report = content.SanitizeHTML(data)
 		case content.KindCSS:
 			body, report = content.SanitizeCSS(data)
+		case content.KindXML:
+			body = data
+			csp = readerContentXMLCSP
 		default:
 			body = data
 		}
@@ -133,7 +146,7 @@ func ReaderContentHandler(poolRef *PoolRef, logger *slog.Logger) http.Handler {
 		}
 
 		w.Header().Set("Content-Type", contentType)
-		w.Header().Set("Content-Security-Policy", readerContentCSP)
+		w.Header().Set("Content-Security-Policy", csp)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		// Override the app-document middleware's X-Frame-Options: DENY —
 		// this content is framed same-origin by the reader UI's sandboxed

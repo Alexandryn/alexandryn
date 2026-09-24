@@ -216,3 +216,31 @@ func TestReaderContent_CSSSanitised(t *testing.T) {
 		t.Fatalf("external url survived: %q", rr.Body.String())
 	}
 }
+
+// foliate-js fetches the container, OPF, and NCX by path; they are served
+// raw as XML with a CSP sandbox and no forced charset. An XML entry that
+// hides renderable markup is refused instead.
+func TestReaderContent_StructuralXML(t *testing.T) {
+	srv := contentServer(t, map[string]string{
+		"META-INF/container.xml": `<?xml version="1.0"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"/>`,
+		"OEBPS/evil.xml":         `<?xml version="1.0"?><root><a xmlns="http://www.w3.org/1999/xhtml" href="https://evil.example/">x</a></root>`,
+	})
+
+	rr := httptest.NewRecorder()
+	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/META-INF/container.xml", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("container.xml status = %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/xml" {
+		t.Errorf("Content-Type = %q, want application/xml with no charset", ct)
+	}
+	if csp := rr.Header().Get("Content-Security-Policy"); !strings.HasSuffix(csp, "; sandbox") {
+		t.Errorf("CSP = %q, want a sandbox directive", csp)
+	}
+
+	rr = httptest.NewRecorder()
+	srv.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/library/editions/edition-owned/reader/content/OEBPS/evil.xml", nil))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("xml with nested XHTML status = %d, want 400", rr.Code)
+	}
+}
