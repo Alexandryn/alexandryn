@@ -3,6 +3,14 @@ import { Link, useParams } from 'react-router-dom'
 
 import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { Spinner } from '../../components/Spinner/Spinner'
+import {
+  BookmarkIcon,
+  BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MaximizeIcon,
+} from '../../components/Icon'
+import { AlexMascot } from '../../components/Mascot'
 import { useQuery } from '@tanstack/react-query'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -411,38 +419,50 @@ export function Reader() {
     >
       {chromeVisible && (
         <div className="reader-bar">
-          <Link to={`/book/${workId}`} className={cx('text-sm opacity-70', FOCUS_RING)}>
-            ← Library
+          <Link
+            to={`/book/${workId}`}
+            aria-label="← Library"
+            className={cx(
+              'inline-flex items-center gap-1.5 text-sm opacity-70 hover:opacity-100 transition-opacity',
+              FOCUS_RING,
+            )}
+          >
+            <ChevronLeftIcon className="size-4" aria-hidden="true" />
+            <span>Library</span>
           </Link>
-          <div className="min-w-0 flex-1 truncate text-center text-sm opacity-70">
+          <div className="min-w-0 flex-1 truncate text-center text-sm font-serif font-medium opacity-80">
             {bookQuery.data?.title}
           </div>
-          <div className="flex flex-none gap-2xs">
+          <div className="flex flex-none items-center gap-2xs">
             <ToolButton
               active={panel === 'toc'}
               onClick={() => setPanel(panel === 'toc' ? null : 'toc')}
             >
-              Contents
+              <BookOpenIcon className="size-3.5" aria-hidden="true" />
+              <span>Contents</span>
             </ToolButton>
             <ToolButton
               active={panel === 'settings'}
               onClick={() => setPanel(panel === 'settings' ? null : 'settings')}
               label="Reading settings"
             >
-              Aa
+              <span className="font-serif font-semibold text-xs tracking-tight" aria-hidden="true">
+                Aa
+              </span>
             </ToolButton>
             <ToolButton
               active={panel === 'marks'}
               onClick={() => setPanel(panel === 'marks' ? null : 'marks')}
             >
-              Marks
+              <BookmarkIcon className="size-3.5" aria-hidden="true" />
+              <span>Marks</span>
             </ToolButton>
             <ToolButton
               active={false}
               onClick={() => setChromeVisible(false)}
               label="Hide reading controls"
             >
-              ⤢
+              <MaximizeIcon className="size-3.5" aria-hidden="true" />
             </ToolButton>
           </div>
         </div>
@@ -650,7 +670,10 @@ export function Reader() {
 
           <button
             type="button"
-            className={cx('mt-md w-full rounded-lg border p-sm text-sm', FOCUS_RING)}
+            className={cx(
+              'mt-md inline-flex w-full items-center justify-center gap-xs rounded-lg border p-sm text-sm font-medium transition-colors hover:bg-surface-2',
+              FOCUS_RING,
+            )}
             onClick={() => {
               const doc = iframeRef.current?.contentDocument ?? null
               if (currentSection) {
@@ -658,29 +681,42 @@ export function Reader() {
               }
             }}
           >
-            Bookmark this page
+            <BookmarkIcon className="size-4" aria-hidden="true" />
+            <span>Bookmark this page</span>
           </button>
 
           <ul className="mt-md flex flex-col gap-sm">
             {bookmarksQuery.data?.bookmarks.map((b) => (
               <li key={b.id} className="rounded-lg border p-sm text-sm">
-                <span className="font-mono text-2xs uppercase tracking-1 opacity-60">Bookmark</span>
+                <div className="flex items-center gap-xs">
+                  <BookmarkIcon className="size-3.5 text-brand-primary" aria-hidden="true" />
+                  <span className="font-mono text-2xs uppercase tracking-1 opacity-70">
+                    Bookmark
+                  </span>
+                </div>
                 <p className="mt-4xs">{b.label || 'Untitled bookmark'}</p>
               </li>
             ))}
             {highlightsQuery.data?.highlights.map((h) => (
               <li key={h.id} className="rounded-lg border p-sm text-sm">
-                <span className="font-mono text-2xs uppercase tracking-1 opacity-60">
-                  Highlight
-                </span>
+                <div className="flex items-center gap-xs">
+                  <span className="size-2 rounded-full bg-amber-500" aria-hidden="true" />
+                  <span className="font-mono text-2xs uppercase tracking-1 opacity-70">
+                    Highlight
+                  </span>
+                </div>
                 {h.note && <p className="mt-4xs opacity-80">{h.note}</p>}
               </li>
             ))}
             {(bookmarksQuery.data?.bookmarks.length ?? 0) === 0 &&
               (highlightsQuery.data?.highlights.length ?? 0) === 0 && (
-                <li className="rounded-lg border border-dashed p-md text-sm opacity-70">
-                  Nothing marked yet. Select a passage to highlight it, or bookmark this page. Marks
-                  are stored with the library, not in this browser.
+                <li className="rounded-lg border border-dashed p-md text-center text-sm opacity-70">
+                  <AlexMascot mood="reading" size="sm" className="mx-auto mb-xs opacity-75" />
+                  <p className="font-medium text-xs">Nothing marked yet</p>
+                  <p className="mt-4xs text-2xs opacity-80">
+                    Select a passage to highlight it, or bookmark this page. Marks are stored with
+                    the library, not in this browser.
+                  </p>
                 </li>
               )}
           </ul>
@@ -690,12 +726,15 @@ export function Reader() {
       <div className="reader-footer">
         <button
           type="button"
-          className={cx('text-sm opacity-70', FOCUS_RING)}
+          className={cx(
+            'inline-flex items-center justify-center size-7 rounded-md text-sm opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity',
+            FOCUS_RING,
+          )}
           onClick={() => goToSection(sectionIndex - 1)}
           disabled={sectionIndex === 0}
           aria-label="Previous chapter"
         >
-          ‹
+          <ChevronLeftIcon className="size-4" aria-hidden="true" />
         </button>
         <div className="reader-progress-track">
           <div
@@ -708,15 +747,29 @@ export function Reader() {
             aria-label="Reading progress"
           />
         </div>
-        <span className="flex-none font-mono text-2xs opacity-60">{Math.round(ratio * 100)}%</span>
+        <div className="flex-none flex items-center gap-1 font-mono text-2xs opacity-70">
+          <span>{Math.round(ratio * 100)}%</span>
+          {Math.round(ratio * 100) === 100 && (
+            <span
+              className="inline-flex items-center text-xs animate-bounce"
+              title="Book completed!"
+              aria-label="Book completed"
+            >
+              🎉
+            </span>
+          )}
+        </div>
         <button
           type="button"
-          className={cx('text-sm opacity-70', FOCUS_RING)}
+          className={cx(
+            'inline-flex items-center justify-center size-7 rounded-md text-sm opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity',
+            FOCUS_RING,
+          )}
           onClick={() => goToSection(sectionIndex + 1)}
           disabled={sectionIndex === sections.length - 1}
           aria-label="Next chapter"
         >
-          ›
+          <ChevronRightIcon className="size-4" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -740,7 +793,11 @@ function ToolButton({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className={cx('h-8 rounded-md border px-sm text-xs', active && 'bg-surface-2', FOCUS_RING)}
+      className={cx(
+        'inline-flex items-center gap-xs h-8 rounded-md border px-sm text-xs font-medium transition-colors hover:bg-surface-2',
+        active && 'bg-surface-2',
+        FOCUS_RING,
+      )}
     >
       {children}
     </button>
