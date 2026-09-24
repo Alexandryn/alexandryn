@@ -132,7 +132,7 @@ export const CONTENT_GRANT_SAFE_MS = 12 * 60_000
  * is a plain browser fetch that cannot carry the Bearer token, so the
  * server issues a short-lived HttpOnly cookie scoped to exactly this
  * edition's content route. Re-issued every 10 minutes while the reader is
- * open, and on refocus or reconnect once stale; the reader also re-issues
+ * visible, and on refocus or reconnect once stale; the reader also re-issues
  * before a chapter change when the grant is older than
  * CONTENT_GRANT_SAFE_MS.
  */
@@ -151,7 +151,10 @@ export function useReaderContentSession(editionId: string) {
     enabled: editionId !== '',
     staleTime: CONTENT_SESSION_REFRESH_MS,
     refetchInterval: CONTENT_SESSION_REFRESH_MS,
-    refetchIntervalInBackground: true,
+    // Hidden tabs do not re-mint: a forgotten reader tab would otherwise
+    // hold a live grant indefinitely. Refocus and the pre-chapter
+    // freshness check re-issue when the reader is used again.
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   })
