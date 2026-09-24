@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { AlexAvatar } from '../../components/Mascot'
 import { setupAdmin } from '../../data/auth'
 
 export function SetupScreen() {
@@ -47,6 +48,7 @@ export function SetupScreen() {
       {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
       <div className="w-full max-w-[28rem] bg-surface p-xl rounded-lg border border-border shadow-lg">
         <div className="mb-lg text-center">
+          <AlexAvatar size="lg" className="mx-auto mb-md" />
           <h1 className="text-2xl font-serif font-bold text-text mb-xs">Welcome to Alexandryn</h1>
           <p className="text-sm text-text-3">
             Create the master administrator account to initialize your library.
