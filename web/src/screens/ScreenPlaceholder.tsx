@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { AlexAvatar } from '../components/Mascot'
 
 export interface ScreenPlaceholderProps {
   title: string
@@ -15,6 +16,7 @@ export interface ScreenPlaceholderProps {
 export function ScreenPlaceholder({ title, note }: ScreenPlaceholderProps) {
   return (
     <div className="p-3xl">
+      <AlexAvatar size="md" className="mb-md opacity-75" />
       <h1 className="text-3xl font-medium tracking-1">{title}</h1>
       {note ? <p className="mt-xs text-lg text-text-2">{note}</p> : null}
     </div>
