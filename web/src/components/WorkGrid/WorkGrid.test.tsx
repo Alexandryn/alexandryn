@@ -29,6 +29,12 @@ class FakeIO {
       this as unknown as IntersectionObserver,
     )
   }
+  fireEntries(entries: { target: Element; isIntersecting: boolean }[]) {
+    this.cb(
+      entries.map((e) => ({ target: e.target, isIntersecting: e.isIntersecting } as IntersectionObserverEntry)),
+      this as unknown as IntersectionObserver,
+    )
+  }
 }
 
 function makeMockWorks(count: number): WorkSummary[] {
@@ -154,6 +160,76 @@ describe('WorkGrid', () => {
       const firstItem = container.querySelector('.grid')?.firstElementChild
       expect(firstItem?.querySelector('[data-testid="virtual-cover-placeholder"]')).not.toBeNull()
       expect(container.querySelector('[data-sentinel="top"]')).not.toBeNull()
+    })
+
+    it('prevents deadlock when both top and bottom sentinels intersect simultaneously', () => {
+      vi.stubGlobal('IntersectionObserver', FakeIO)
+      const { container } = render(
+        <MemoryRouter>
+          <WorkGrid works={makeMockWorks(300)} view="grid" />
+        </MemoryRouter>,
+      )
+
+      const io = FakeIO.instances.at(-1)!
+      // Advance by one step so both top and bottom sentinels exist
+      const initialBottom = container.querySelector('[data-sentinel="bottom"]')!
+      act(() => io.fire(initialBottom))
+
+      const top = container.querySelector('[data-sentinel="top"]')!
+      const bottom = container.querySelector('[data-sentinel="bottom"]')!
+      expect(top).not.toBeNull()
+      expect(bottom).not.toBeNull()
+
+      // Fire both simultaneously while scrollY indicates downward scrolling
+      Object.defineProperty(window, 'scrollY', { value: 500, writable: true })
+      act(() => {
+        io.fireEntries([
+          { target: top, isIntersecting: true },
+          { target: bottom, isIntersecting: true },
+        ])
+      })
+
+      // Downward direction was respected without deadlock
+      expect(container.querySelector('a[href="/book/work-1"]')).toBeNull()
+    })
+
+    it('recovers window position on scroll jump', () => {
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(0)
+        return 1
+      })
+      const { container } = render(
+        <MemoryRouter>
+          <WorkGrid works={makeMockWorks(300)} view="grid" />
+        </MemoryRouter>,
+      )
+
+      // Initially at top (work-1 mounted, work-200 not mounted)
+      expect(container.querySelector('a[href="/book/work-1"]')).not.toBeNull()
+      expect(container.querySelector('a[href="/book/work-200"]')).toBeNull()
+
+      // Mock bounding client rect for container simulating scrolled to 60%
+      const rootDiv = container.firstElementChild as HTMLElement
+      vi.spyOn(rootDiv, 'getBoundingClientRect').mockReturnValue({
+        top: -6000,
+        bottom: 4000,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 10000,
+        x: 0,
+        y: -6000,
+        toJSON: () => {},
+      })
+      Object.defineProperty(window, 'innerHeight', { value: 800, writable: true })
+
+      act(() => {
+        window.dispatchEvent(new Event('scroll'))
+      })
+
+      // Window jumped to around 60% (~item 180), so work-1 is unmounted and work-200 is mounted
+      expect(container.querySelector('a[href="/book/work-1"]')).toBeNull()
+      expect(container.querySelector('a[href="/book/work-200"]')).not.toBeNull()
     })
   })
 })
