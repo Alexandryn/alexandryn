@@ -84,6 +84,42 @@ describe('WorkGrid', () => {
     expect(placeholders.length).toBe(120 - 40)
   })
 
+  it('skips mounting link and metadata for items outside the sliding window in grid view', () => {
+    const works = makeMockWorks(120)
+    const { container } = render(
+      <MemoryRouter>
+        <WorkGrid works={works} view="grid" />
+      </MemoryRouter>,
+    )
+
+    // Items within window are fully mounted (links and titles present)
+    expect(container.querySelector('a[href="/book/work-1"]')).not.toBeNull()
+    expect(container.querySelector('a[href="/book/work-40"]')).not.toBeNull()
+
+    // Items outside window do not mount link or text
+    expect(container.querySelector('a[href="/book/work-41"]')).toBeNull()
+    expect(container.querySelector('a[href="/book/work-120"]')).toBeNull()
+    expect(screen.queryByText('Book Title 120')).toBeNull()
+  })
+
+  it('skips mounting link and metadata for items outside the sliding window in list view', () => {
+    const works = makeMockWorks(120)
+    const { container } = render(
+      <MemoryRouter>
+        <WorkGrid works={works} view="list" />
+      </MemoryRouter>,
+    )
+
+    // Items within window are fully mounted
+    expect(container.querySelector('a[href="/book/work-1"]')).not.toBeNull()
+    expect(container.querySelector('a[href="/book/work-40"]')).not.toBeNull()
+
+    // Items outside window do not mount link or text
+    expect(container.querySelector('a[href="/book/work-41"]')).toBeNull()
+    expect(container.querySelector('a[href="/book/work-120"]')).toBeNull()
+    expect(screen.queryByText('Book Title 120')).toBeNull()
+  })
+
   describe('sliding window', () => {
     afterEach(() => {
       FakeIO.instances = []

@@ -29,12 +29,13 @@ function formatCoverAuthor(authors?: string[]): string | undefined {
  * Shared component for rendering a list of works as a responsive grid of
  * covers or a detailed list.
  *
- * Above 100 items only the covers inside a sliding window of WINDOW_SIZE
- * are mounted; the rest render an aspect-ratio placeholder so the scroll
- * height is unchanged. The window slides both ways off two sentinels, so
- * a cover scrolled well out of view is unmounted again
- * — the number of live cover components stays bounded no matter how far
- * the user scrolls.
+ * Above 100 items only the cards inside a sliding window of WINDOW_SIZE
+ * are mounted (including link, cover, and metadata); the rest render a
+ * lightweight aspect-ratio placeholder so the scroll height and grid layout
+ * are unchanged without mounting linear wrapper DOM or link trees. The window
+ * slides both ways off two sentinels, so items scrolled well out of view are
+ * unmounted again — keeping both live cover and wrapper DOM nodes bounded no
+ * matter how far the user scrolls.
  */
 export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
   const isVirtualized = works.length > VIRTUALIZATION_THRESHOLD
@@ -72,7 +73,8 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
     return () => observer.disconnect()
   }, [isVirtualized, maxStart, clampedStart, windowEnd])
 
-  const coverFor = (index: number) => !isVirtualized || (index >= clampedStart && index < windowEnd)
+  const isItemMounted = (index: number) =>
+    !isVirtualized || (index >= clampedStart && index < windowEnd)
 
   const sentinelKind = (index: number): 'top' | 'bottom' | undefined => {
     if (!isVirtualized) return undefined
@@ -89,20 +91,29 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
   const sentinelRef = (kind: 'top' | 'bottom' | undefined) =>
     kind === 'top' ? setTopSentinel : kind === 'bottom' ? setBottomSentinel : undefined
 
-  const coverPlaceholder = (
-    <div
-      data-testid="virtual-cover-placeholder"
-      className="size-full bg-surface-3"
-      aria-hidden="true"
-    />
-  )
-
   if (view === 'list') {
     return (
       <div className={cx('flex flex-col gap-xs', className)} {...rest}>
         <ul className="flex flex-col gap-xs">
           {works.map((work, index) => {
             const sentinel = sentinelKind(index)
+            if (!isItemMounted(index)) {
+              return (
+                <li
+                  key={work.id}
+                  ref={sentinel ? sentinelRef(sentinel) : undefined}
+                  data-sentinel={sentinel}
+                  className="cv-auto-list"
+                  aria-hidden="true"
+                >
+                  <div
+                    data-testid="virtual-cover-placeholder"
+                    className="h-16 w-full rounded-xs bg-surface-2/40"
+                  />
+                </li>
+              )
+            }
+
             return (
               <li
                 key={work.id}
@@ -120,15 +131,12 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                   <div className="flex items-center gap-md min-w-0">
                     <div className="relative w-8 shrink-0 aspect-[2/3] overflow-hidden rounded-3xs bg-surface-3 book-shadow">
                       <div className="absolute inset-y-0 left-0 w-1.5 book-spine-crease pointer-events-none z-10" />
-                      {coverFor(index) ? (
-                        <GeneratedCover
-                          identifier={work.id}
-                          title={work.title}
-                          author={formatCoverAuthor(work.authors)}
-                        />
-                      ) : (
-                        coverPlaceholder
-                      )}
+                      <GeneratedCover
+                        identifier={work.id}
+                        title={work.title}
+                        author={formatCoverAuthor(work.authors)}
+                      />
+                    </div>
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-baseline gap-xs">
@@ -180,6 +188,23 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
       <div className="grid grid-cols-2 gap-md sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {works.map((work, index) => {
           const sentinel = sentinelKind(index)
+          if (!isItemMounted(index)) {
+            return (
+              <div
+                key={work.id}
+                ref={sentinel ? sentinelRef(sentinel) : undefined}
+                data-sentinel={sentinel}
+                className="cv-auto"
+                aria-hidden="true"
+              >
+                <div
+                  data-testid="virtual-cover-placeholder"
+                  className="aspect-[2/3] w-full rounded-xs bg-surface-3"
+                />
+              </div>
+            )
+          }
+
           return (
             <div
               key={work.id}
@@ -196,15 +221,11 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
               >
                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1">
                   <div className="absolute inset-y-0 left-0 w-3 book-spine-crease pointer-events-none z-10" />
-                  {coverFor(index) ? (
-                    <GeneratedCover
-                      identifier={work.id}
-                      title={work.title}
-                      author={formatCoverAuthor(work.authors)}
-                    />
-                  ) : (
-                    coverPlaceholder
-                  )}
+                  <GeneratedCover
+                    identifier={work.id}
+                    title={work.title}
+                    author={formatCoverAuthor(work.authors)}
+                  />
                 </div>
 
                 <div className="mt-xs flex flex-col">
