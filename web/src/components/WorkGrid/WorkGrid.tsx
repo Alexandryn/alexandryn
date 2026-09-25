@@ -29,13 +29,12 @@ function formatCoverAuthor(authors?: string[]): string | undefined {
  * Shared component for rendering a list of works as a responsive grid of
  * covers or a detailed list.
  *
- * Above 100 items only the cards inside a sliding window of WINDOW_SIZE
- * are mounted (including link, cover, and metadata); the rest render a
- * lightweight aspect-ratio placeholder so the scroll height and grid layout
- * are unchanged without mounting linear wrapper DOM or link trees. The window
- * slides both ways off two sentinels, so items scrolled well out of view are
- * unmounted again — keeping both live cover and wrapper DOM nodes bounded no
- * matter how far the user scrolls.
+ * Above 100 items, cards inside a sliding window of WINDOW_SIZE are fully
+ * mounted (including Link, GeneratedCover, and metadata subtrees); off-screen
+ * items render lightweight placeholders that match card geometry to prevent
+ * layout shift while avoiding linear DOM tree depth and React fiber cost.
+ * The window slides off two IntersectionObserver sentinels for smooth scrolling,
+ * and recovers via scroll tracking when the user jumps or drags the scrollbar.
  */
 export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
   const isVirtualized = works.length > VIRTUALIZATION_THRESHOLD
@@ -47,22 +46,44 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
     ? Math.min(works.length, clampedStart + WINDOW_SIZE)
     : works.length
 
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const topSentinelRef = useRef<HTMLElement | null>(null)
   const bottomSentinelRef = useRef<HTMLElement | null>(null)
+  const lastScrollY = useRef(0)
 
+  // Smooth sentinel-driven sliding window
   useEffect(() => {
     if (!isVirtualized) return
     if (typeof IntersectionObserver === 'undefined') return
 
     const observer = new IntersectionObserver(
       (entries) => {
+        let bottomHit = false
+        let topHit = false
         for (const entry of entries) {
           if (!entry.isIntersecting) continue
-          if (entry.target === bottomSentinelRef.current) {
+          if (entry.target === bottomSentinelRef.current) bottomHit = true
+          if (entry.target === topSentinelRef.current) topHit = true
+        }
+
+        if (bottomHit && topHit) {
+          // Deadlock guard: on huge viewports or zoom-out where both sentinels are visible,
+          // only advance in the direction of active scroll; do not oscillate or cancel out.
+          const scrollY = typeof window !== 'undefined' ? window.scrollY : 0
+          const scrollingDown = scrollY > lastScrollY.current
+          const scrollingUp = scrollY < lastScrollY.current
+          lastScrollY.current = scrollY
+          if (scrollingDown) {
             setWindowStart((s) => Math.min(maxStart, s + BATCH_SIZE))
-          } else if (entry.target === topSentinelRef.current) {
+          } else if (scrollingUp) {
             setWindowStart((s) => Math.max(0, s - BATCH_SIZE))
           }
+        } else if (bottomHit) {
+          if (typeof window !== 'undefined') lastScrollY.current = window.scrollY
+          setWindowStart((s) => Math.min(maxStart, s + BATCH_SIZE))
+        } else if (topHit) {
+          if (typeof window !== 'undefined') lastScrollY.current = window.scrollY
+          setWindowStart((s) => Math.max(0, s - BATCH_SIZE))
         }
       },
       { rootMargin: `${SENTINEL_ROOT_MARGIN_PX}px` },
@@ -72,6 +93,47 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
     if (bottomSentinelRef.current) observer.observe(bottomSentinelRef.current)
     return () => observer.disconnect()
   }, [isVirtualized, maxStart, clampedStart, windowEnd])
+
+  // Scrollbar drag & large jump recovery
+  useEffect(() => {
+    if (!isVirtualized) return
+    if (typeof window === 'undefined') return
+
+    let rafId: number | null = null
+    const handleScroll = () => {
+      if (rafId !== null) return
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null
+        const el = rootRef.current
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const viewportHeight = window.innerHeight || 1
+        if (rect.height <= 0) return
+
+        const scrolled = Math.max(0, -rect.top)
+        const scrollable = Math.max(1, rect.height - viewportHeight)
+        const ratio = Math.min(1, Math.max(0, scrolled / scrollable))
+
+        const centerIndex = Math.floor(ratio * (works.length - 1))
+        const targetStart = Math.max(0, Math.min(maxStart, Math.round(centerIndex - WINDOW_SIZE / 2)))
+
+        // If the window has jumped outside the sliding window (e.g. scrollbar drag),
+        // resync windowStart to keep visible cards mounted.
+        setWindowStart((curr) => {
+          if (Math.abs(curr - targetStart) > WINDOW_SIZE) {
+            return targetStart
+          }
+          return curr
+        })
+      })
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (rafId !== null) window.cancelAnimationFrame(rafId)
+    }
+  }, [isVirtualized, maxStart, works.length])
 
   const isItemMounted = (index: number) =>
     !isVirtualized || (index >= clampedStart && index < windowEnd)
@@ -88,12 +150,15 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
   const setBottomSentinel = useCallback((el: HTMLElement | null) => {
     bottomSentinelRef.current = el
   }, [])
-  const sentinelRef = (kind: 'top' | 'bottom' | undefined) =>
-    kind === 'top' ? setTopSentinel : kind === 'bottom' ? setBottomSentinel : undefined
+  const sentinelRef = useCallback(
+    (kind: 'top' | 'bottom' | undefined) =>
+      kind === 'top' ? setTopSentinel : kind === 'bottom' ? setBottomSentinel : undefined,
+    [setTopSentinel, setBottomSentinel],
+  )
 
   if (view === 'list') {
     return (
-      <div className={cx('flex flex-col gap-xs', className)} {...rest}>
+      <div ref={rootRef} className={cx('flex flex-col gap-xs', className)} {...rest}>
         <ul className="flex flex-col gap-xs">
           {works.map((work, index) => {
             const sentinel = sentinelKind(index)
@@ -136,7 +201,6 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                         title={work.title}
                         author={formatCoverAuthor(work.authors)}
                       />
-                    </div>
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-baseline gap-xs">
@@ -184,7 +248,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
   }
 
   return (
-    <div className={cx('flex flex-col gap-md', className)} {...rest}>
+    <div ref={rootRef} className={cx('flex flex-col gap-md', className)} {...rest}>
       <div className="grid grid-cols-2 gap-md sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {works.map((work, index) => {
           const sentinel = sentinelKind(index)
@@ -197,10 +261,16 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 className="cv-auto"
                 aria-hidden="true"
               >
-                <div
-                  data-testid="virtual-cover-placeholder"
-                  className="aspect-[2/3] w-full rounded-xs bg-surface-3"
-                />
+                <div className="flex flex-col rounded-xs p-xs">
+                  <div
+                    data-testid="virtual-cover-placeholder"
+                    className="aspect-[2/3] w-full rounded-xs bg-surface-3"
+                  />
+                  <div className="mt-xs flex flex-col gap-4xs" aria-hidden="true">
+                    <div className="h-4 w-3/4 rounded-3xs bg-surface-2/40" />
+                    <div className="h-3 w-1/2 rounded-3xs bg-surface-2/30" />
+                  </div>
+                </div>
               </div>
             )
           }
