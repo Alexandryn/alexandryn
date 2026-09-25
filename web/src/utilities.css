@@ -27,6 +27,25 @@
   contain-intrinsic-size: auto 68px;
 }
 
+/* Typography Scale Modernization:
+ * Ensures all text scales meet readable, accessible desktop & mobile baselines.
+ * Replaces micro-extracted font sizes with standard, legible typographic values.
+ */
+:root {
+  --text-5xs: 0.625rem;
+  --text-4xs: 0.6875rem;
+  --text-3xs: 0.75rem;
+  --text-2xs: 0.8125rem;
+  --text-xs: 0.875rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+}
+
 /* Alex the Cat Mascot Palette */
 :root {
   --mascot-navy: #001e60;
