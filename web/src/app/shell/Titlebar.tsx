@@ -36,6 +36,7 @@ export function Titlebar() {
       ) {
         e.preventDefault()
         inputRef.current?.focus()
+        inputRef.current?.select()
       }
     }
 
