@@ -92,7 +92,7 @@ export function SourceDetail() {
           )}
         >
           <ChevronLeftIcon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>← All sources</span>
+          <span>All sources</span>
         </Link>
 
         <div className="flex flex-wrap items-center justify-between gap-md mt-xs">
