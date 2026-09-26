@@ -11,6 +11,7 @@ import { useDeleteSource, useHealthCheckSource, useSources, type Source } from '
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { FolderIcon, GlobeIcon } from '../../components/Icon'
 
 /**
  * Sources index screen at /sources.
@@ -96,12 +97,13 @@ export function Sources() {
                   className="flex flex-col justify-between rounded-lg border border-border bg-surface p-lg shadow-sm transition-all hover:border-text-3"
                 >
                   <div className="flex flex-col gap-md">
-                    {/* Header line: icon + label */}
                     <div className="flex items-start justify-between gap-sm">
                       <div className="flex items-center gap-xs">
-                        <span className="text-xl" aria-hidden="true">
-                          {isLocal ? '📁' : '🌐'}
-                        </span>
+                        {isLocal ? (
+                          <FolderIcon className="size-5 text-text-2 shrink-0" aria-hidden="true" />
+                        ) : (
+                          <GlobeIcon className="size-5 text-text-2 shrink-0" aria-hidden="true" />
+                        )}
                         <div>
                           <h2 className="text-base font-medium text-text">{src.label}</h2>
                           <span className="text-3xs font-ui uppercase tracking-wide text-text-3">

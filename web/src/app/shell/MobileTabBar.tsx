@@ -41,7 +41,7 @@ export function MobileTabBar() {
                 cx(
                   // min-h-11 (44px): 44x44 touch-target minimum — py-sm alone measured 33px tall
                   'flex flex-col items-center justify-center gap-4xs py-sm min-h-11 text-3xs font-ui transition-colors',
-                  isActive ? 'text-accent font-medium' : 'text-text-3 hover:text-text-2',
+                  isActive ? 'text-text font-semibold' : 'text-text-3 hover:text-text',
                   FOCUS_RING,
                 )
               }

@@ -53,8 +53,8 @@ export function DevicesSettings() {
       />
 
       <div>
-        <h1 className="text-lg font-semibold text-text mb-xs">Devices</h1>
-        <p className="text-xs text-text-2 max-w-[42rem]"> {/* --spacing-2xl collision */}
+        <h1 className="text-2xl font-ui font-medium text-text">Devices</h1>
+        <p className="text-sm text-text-2 mt-4xs max-w-[42rem]"> {/* --spacing-2xl collision */}
           Devices paired with this library. Revoking a device prevents it from syncing reading progress and annotations.
         </p>
       </div>
