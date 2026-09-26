@@ -46,13 +46,13 @@
   --text-4xl: 2.25rem;
 }
 
-/* Alex the Cat Mascot Palette - Monochrome Editorial Bookplate Engraving */
+/* Alex the Cat Mascot Palette */
 :root {
-  --mascot-navy: var(--color-text, #1a1917);
-  --mascot-gold: var(--color-text-2, #6e6b66);
-  --mascot-tan: var(--color-border, #e7e4de);
-  --mascot-parchment: var(--color-surface-3, #f1efeb);
-  --mascot-brown: var(--color-text-2, #6e6b66);
+  --mascot-navy: #001e60;
+  --mascot-gold: #f6b700;
+  --mascot-tan: #baa891;
+  --mascot-parchment: #dbcdb9;
+  --mascot-brown: #664a33;
 }
 
 .mascot-navy {

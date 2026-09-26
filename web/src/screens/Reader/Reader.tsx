@@ -10,6 +10,7 @@ import {
   ChevronRightIcon,
   MaximizeIcon,
 } from '../../components/Icon'
+import { AlexMascot } from '../../components/Mascot'
 import { useQuery } from '@tanstack/react-query'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -710,7 +711,7 @@ export function Reader() {
             {(bookmarksQuery.data?.bookmarks.length ?? 0) === 0 &&
               (highlightsQuery.data?.highlights.length ?? 0) === 0 && (
                 <li className="rounded-lg border border-dashed p-md text-center text-sm opacity-70">
-                  <BookmarkIcon className="size-6 text-text-3 mx-auto mb-xs" aria-hidden="true" />
+                  <AlexMascot mood="reading" size="sm" className="mx-auto mb-xs" />
                   <p className="font-medium text-xs">Nothing marked yet</p>
                   <p className="mt-4xs text-2xs opacity-80">
                     Select a passage to highlight it, or bookmark this page. Marks are stored with
