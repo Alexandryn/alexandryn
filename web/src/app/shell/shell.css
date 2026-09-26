@@ -8,4 +8,53 @@
  *   container in the Electron canvas). */
 :root {
   --shell-sidebar-width: 246px;
+  --shell-titlebar-height: 46px;
+  --shell-search-width: 440px;
+  --shell-search-height: 28px;
+}
+
+.shell-window-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  border: 1px solid var(--color-border-2);
+}
+
+.shell-badge-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+}
+
+.shell-hosting-pill {
+  height: 26px;
+  border-radius: 20px;
+}
+
+.sidebar-book-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background-color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.sidebar-book-icon-inner {
+  width: 9px;
+  height: 11px;
+  border-left: 2px solid var(--color-background);
+  border-right: 2px solid var(--color-background);
+}
+
+.sidebar-item-sm {
+  height: 30px;
+}
+
+.sidebar-item-md {
+  height: 32px;
 }
