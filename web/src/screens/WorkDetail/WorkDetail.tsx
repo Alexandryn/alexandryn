@@ -403,8 +403,8 @@ export function WorkDetail() {
 
               {/* Available from your sources section */}
               {ownedCount > 0 && (
-                <div className="mt-md">
-                  <div className="flex items-baseline gap-xs mb-sm">
+                <div className="book-sources-section">
+                  <div className="book-sources-header">
                     <span className="book-subjects-heading mb-0">
                       AVAILABLE FROM YOUR SOURCES
                     </span>
@@ -454,9 +454,9 @@ export function WorkDetail() {
                       )
                     })}
                   </div>
-                  <p className="text-xs text-text-3 mt-xs leading-relaxed max-w-xl">
+                  <div className="book-sources-disclaimer">
                     Alexandryn indexes what your connected sources make available. Metadata comes from Open Library; files come from your sources.
-                  </p>
+                  </div>
                 </div>
               )}
             </div>
