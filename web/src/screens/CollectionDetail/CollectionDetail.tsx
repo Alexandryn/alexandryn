@@ -11,6 +11,7 @@ import { useCollection, useDeleteCollection, useRenameCollection } from '../../d
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { FolderIcon, ChevronLeftIcon } from '../../components/Icon'
 
 /**
  * Collection detail screen at /collections/:id and /collection/:id.
@@ -138,11 +139,12 @@ export function CollectionDetail() {
         <Link
           to="/collections"
           className={cx(
-            'inline-flex items-center gap-2xs text-sm font-medium text-text-2 hover:text-text rounded-2xs',
+            'inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
             FOCUS_RING,
           )}
         >
-          ← Back to Collections
+          <ChevronLeftIcon className="size-4" aria-hidden="true" />
+          <span>Collections</span>
         </Link>
       </div>
 
@@ -150,9 +152,7 @@ export function CollectionDetail() {
       <div className="flex flex-wrap items-center justify-between gap-md border-b border-border/50 pb-lg">
         <div className="flex flex-col gap-4xs">
           <div className="flex items-center gap-sm">
-            <span className="text-2xl" aria-hidden="true">
-              📁
-            </span>
+            <FolderIcon className="size-6 text-text-2 shrink-0" aria-hidden="true" />
             <h1 className="text-3xl font-medium tracking-1 text-text">{collection.name}</h1>
           </div>
           <p className="text-sm text-text-2">
