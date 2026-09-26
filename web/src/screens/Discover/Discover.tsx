@@ -4,7 +4,6 @@ import { Button } from '../../components/Button/Button'
 import { DiscoverResultGrid } from '../../components/DiscoverResultGrid'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { ErrorState } from '../../components/ErrorState/ErrorState'
-import { Input } from '../../components/Input/Input'
 import { Spinner } from '../../components/Spinner/Spinner'
 import { useDiscoverSearch } from '../../data/discover'
 import { ApiError } from '../../data/http'
@@ -145,15 +144,46 @@ export function Discover() {
           </p>
         </div>
 
-        {/* Search Input */}
-        {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}
-        <div className="w-full max-w-[28rem]">
-          <Input
-            label="Search Open Library"
+        {/* Prototype Discover Search Bar */}
+        <div className="flex items-center gap-md px-md rounded-2xs border border-border bg-surface shadow-xs discover-search-bar w-full">
+          <div className="size-3 rounded-full border border-text-3 shrink-0" aria-hidden="true" />
+          <input
+            aria-label="Search Open Library"
             placeholder="Search titles, authors..."
             value={searchInputValue}
             onChange={handleSearchChange}
+            className="flex-1 bg-transparent border-none p-0 text-xl text-text placeholder:text-text-3 focus:outline-none"
           />
+          {total > 0 && qParam ? (
+            <span className="font-mono text-3xs text-text-3 uppercase tracking-wider shrink-0">
+              {total.toLocaleString()} WORKS
+            </span>
+          ) : null}
+          {searchInputValue ? (
+            <>
+              <div className="w-px h-4 bg-border shrink-0" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInputValue('')
+                  startTransition(() => {
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev)
+                        next.delete('q')
+                        next.delete('offset')
+                        return next
+                      },
+                      { replace: true },
+                    )
+                  })
+                }}
+                className="text-xs text-text-3 hover:text-text cursor-pointer shrink-0"
+              >
+                Clear
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 

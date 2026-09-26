@@ -13,10 +13,11 @@ import { FOCUS_RING } from '../../lib/focusRing'
 import { ChevronLeftIcon, FolderIcon } from '../../components/Icon'
 import { AddToCollectionModal } from './AddToCollectionModal'
 
+type TabType = 'about' | 'editions' | 'sources'
+
 /**
  * Work detail screen at /book/:id.
- * Displays work metadata, owned editions with format badges and 'Read' action
- * for EPUB editions, and collection memberships.
+ * Faithfully styled to match the Alexandryn Electron interactive prototype (atBook).
  */
 export function WorkDetail() {
   const navigate = useNavigate()
@@ -24,9 +25,8 @@ export function WorkDetail() {
   const id =
     params.id || (params['*'] ? params['*'].replace(/^book\//, '').split('/')[0] : '') || ''
   const { data: work, error, isPending, refetch } = useWork(id)
+  const [activeTab, setActiveTab] = useState<TabType>('about')
   const [isManageCollectionsOpen, setIsManageCollectionsOpen] = useState(false)
-
-
 
   if (isPending) {
     return <Spinner label="Loading book details" className="m-3xl" />
@@ -70,111 +70,508 @@ export function WorkDetail() {
       ? `${work.authors[0]} et al.`
       : work.authors?.[0]
 
+  const firstEpubEdition = work.ownedEditions?.find((ed) =>
+    ed.formats.some((f) => f.toLowerCase() === 'epub'),
+  )
+
+  const firstYear =
+    work.ownedEditions?.find((e) => e.publicationYear)?.publicationYear ?? null
+
+  const subjects = work.subjects || []
+  const firstSubject = subjects[0] || 'Literature'
+  const ownedCount = work.ownedEditions?.length || 0
+
   return (
-    <div className="flex flex-col gap-2xl p-3xl max-w-4xl">
+    <div className="p-xl sm:p-2xl md:p-3xl content-container-wide">
       {/* Back navigation */}
-      <div>
+      <div className="mb-lg">
         <Link
           to="/library"
           className={cx(
-            'inline-flex items-center gap-2xs text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
+            'inline-flex items-center gap-xs text-xs text-text-2 hover:text-text rounded-2xs transition-colors cursor-pointer',
             FOCUS_RING,
           )}
         >
-          <ChevronLeftIcon className="size-4 shrink-0" />
+          <ChevronLeftIcon className="size-3.5 shrink-0" aria-hidden="true" />
           <span>Back to Library</span>
         </Link>
       </div>
 
-      {/* Main Metadata Section */}
-      <div className="flex flex-col sm:flex-row gap-xl items-start">
-        <div className="relative w-40 sm:w-48 shrink-0 aspect-[2/3] overflow-hidden rounded-xs bg-surface-3 book-shadow">
-          <div className="absolute inset-y-0 left-0 w-3.5 book-spine-crease pointer-events-none z-10" />
-          <GeneratedCover
-            identifier={work.id}
-            title={work.title}
-            author={coverAuthor}
-          />
-        </div>
-
-        <div className="flex flex-col gap-sm flex-1 min-w-0">
-          <div>
-            <h1 className="text-3xl font-medium tracking-1 text-text leading-tight">
-              {work.title}
-            </h1>
-            {work.subtitle ? (
-              <p className="text-lg text-text-2 mt-2xs">{work.subtitle}</p>
-            ) : null}
+      {/* Two-column prototype grid */}
+      <div className="book-detail-grid">
+        {/* Sticky Left Column: Cover & Primary Actions */}
+        <div className="sticky top-0 flex flex-col gap-md">
+          {/* Tactical Large Book Cover */}
+          <div className="book-detail-cover bg-surface-3">
+            <div className="book-cover-pattern" />
+            <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-black/20 pointer-events-none z-10" />
+            <GeneratedCover
+              identifier={work.id}
+              title={work.title}
+              author={coverAuthor}
+            />
           </div>
 
-          <p className="text-base text-text-2">
+          {/* Action buttons */}
+          <div className="flex flex-col gap-xs mt-2xs">
+            {firstEpubEdition ? (
+              <Link
+                to={`/read/${work.id}/${firstEpubEdition.id}`}
+                data-testid="read-edition-btn"
+                className={cx(
+                  'h-9 rounded-2xs bg-accent text-accent-text font-medium text-2xl flex items-center justify-center transition-colors hover:bg-accent/90 cursor-pointer shadow-sm',
+                  FOCUS_RING,
+                )}
+              >
+                Read
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="h-9 rounded-2xs bg-surface-3 text-text-3 font-medium text-2xl flex items-center justify-center cursor-not-allowed border border-border"
+              >
+                Read
+              </button>
+            )}
+
+            <div className="flex gap-xs">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsManageCollectionsOpen(true)}
+                className="flex-1"
+              >
+                + Add to collection
+              </Button>
+              <button
+                type="button"
+                aria-label="More book options"
+                className={cx(
+                  'w-8 h-8 rounded-2xs border border-border bg-surface text-text-2 hover:text-text hover:bg-surface-2 transition-colors flex items-center justify-center cursor-pointer shadow-xs text-sm',
+                  FOCUS_RING,
+                )}
+              >
+                ···
+              </button>
+            </div>
+
+            {/* In Library status card */}
+            {ownedCount > 0 ? (
+              <div className="flex items-center gap-xs p-sm rounded-2xs bg-surface-2 border border-border">
+                <span className="size-1.5 rounded-full bg-success flex-none" />
+                <div className="text-xs text-text-2 leading-tight">
+                  In your library · <span className="text-text font-medium uppercase font-mono text-3xs">EPUB</span> from connected sources
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xs border border-dashed border-border p-md text-center">
+                <p className="text-sm font-medium text-text">Not yet in your library</p>
+                <p className="text-xs text-text-2 mt-4xs">
+                  This work is on your wanted list or in a collection without an owned edition.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Open Library Metadata card */}
+          <div className="pt-sm border-t border-border mt-xs">
+            <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+              METADATA · OPEN LIBRARY
+            </div>
+            <div className="font-mono text-xs text-text-2 mt-3xs truncate">
+              {work.id}
+            </div>
+            <div className="text-xs text-text-3 mt-4xs">
+              Work record synced recently.
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Metadata, Stats Strip & Tabs */}
+        <div className="min-w-0 max-w-3xl">
+          {/* Breadcrumb Year · Subject */}
+          <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+            {firstYear ? `${firstYear} · ` : ''}{firstSubject}
+          </div>
+
+          {/* Monumental 52px Newsreader Title */}
+          <h1 className="book-detail-title text-text mt-sm mb-xs">
+            {work.title}
+          </h1>
+
+          {/* Subtitle */}
+          {work.subtitle ? (
+            <p className="text-lg text-text-2 mb-xs">{work.subtitle}</p>
+          ) : null}
+
+          {/* Author */}
+          <div className="text-base text-text-2 mt-xs">
             {work.authors && work.authors.length > 0 ? (
               <span>by <strong className="text-text font-medium">{work.authors.join(', ')}</strong></span>
             ) : (
               'Unknown Author'
             )}
-          </p>
-
-          {work.originalLanguage ? (
-            <p className="text-xs text-text-3 uppercase tracking-wider font-mono">
-              Original Language: {work.originalLanguage}
-            </p>
-          ) : null}
-
-          {work.subjects && work.subjects.length > 0 ? (
-            <div className="flex flex-wrap gap-2xs mt-xs">
-              {work.subjects.map((sub) => (
-                <span
-                  key={sub}
-                  className="rounded-4xl bg-surface-3 px-sm py-4xs text-xs text-text-2"
-                >
-                  {sub}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Collections Section */}
-      <div className="flex flex-col gap-md border-t border-border pt-lg">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-medium text-text">Collections</h2>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsManageCollectionsOpen(true)}
-          >
-            + Add to collection
-          </Button>
-        </div>
-
-        {work.collections && work.collections.length > 0 ? (
-          <div className="flex flex-wrap gap-sm">
-            {work.collections.map((c) => (
-              <Link
-                key={c.id}
-                to={`/collections/${c.id}`}
-                className={cx(
-                  'inline-flex items-center gap-xs rounded-sm border border-border bg-surface px-md py-xs text-sm font-medium text-text transition-colors hover:border-text-3 hover:bg-surface-2',
-                  FOCUS_RING,
-                )}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <FolderIcon className="size-4 text-text-3" aria-hidden="true" />
-                  {c.name}
-                </span>
-                {c.addedAt ? (
-                  <span className="text-xs text-text-3">
-                    · added {new Date(c.addedAt).toLocaleDateString()}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
           </div>
-        ) : (
-          <p className="text-sm text-text-2">Not currently in any collection.</p>
-        )}
+
+          {/* Horizontal Stat Strip */}
+          <div className="stat-strip mt-lg mb-lg">
+            <div>
+              <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                FIRST PUBLISHED
+              </div>
+              <div className="text-2xl text-text font-medium mt-4xs">
+                {firstYear || '—'}
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                EDITIONS
+              </div>
+              <div className="text-2xl text-text font-medium mt-4xs">
+                {ownedCount}
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                PAGES
+              </div>
+              {/* NOTE(backend-gap): Page count is not currently provided by the backend API schema; displaying placeholder */}
+              <div className="text-2xl text-text font-medium mt-4xs">
+                —
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                LANGUAGE
+              </div>
+              <div className="text-2xl text-text font-medium mt-4xs uppercase">
+                {work.originalLanguage || 'en'}
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                SOURCES
+              </div>
+              <div className="text-2xl text-success font-medium mt-4xs">
+                {ownedCount > 0 ? `${ownedCount} available` : 'None connected'}
+              </div>
+            </div>
+          </div>
+
+          {/* Prototype Tabs: About, Editions, Sources */}
+          <div className="flex gap-lg border-b border-border mb-lg">
+            <button
+              type="button"
+              onClick={() => setActiveTab('about')}
+              className={cx(
+                'relative pb-sm text-xl font-medium transition-colors cursor-pointer',
+                activeTab === 'about'
+                  ? 'text-text'
+                  : 'text-text-2 hover:text-text',
+                FOCUS_RING,
+              )}
+            >
+              <span>About</span>
+              {activeTab === 'about' && (
+                <div className="tab-active-indicator" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('editions')}
+              className={cx(
+                'relative pb-sm text-xl font-medium transition-colors cursor-pointer flex items-center gap-2xs',
+                activeTab === 'editions'
+                  ? 'text-text'
+                  : 'text-text-2 hover:text-text',
+                FOCUS_RING,
+              )}
+            >
+              <span>Editions</span>
+              <span className="font-mono text-3xs text-text-3">{ownedCount}</span>
+              {activeTab === 'editions' && (
+                <div className="tab-active-indicator" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('sources')}
+              className={cx(
+                'relative pb-sm text-xl font-medium transition-colors cursor-pointer flex items-center gap-2xs',
+                activeTab === 'sources'
+                  ? 'text-text'
+                  : 'text-text-2 hover:text-text',
+                FOCUS_RING,
+              )}
+            >
+              <span>Sources</span>
+              <span className="font-mono text-3xs text-text-3">{ownedCount}</span>
+              {activeTab === 'sources' && (
+                <div className="tab-active-indicator" />
+              )}
+            </button>
+          </div>
+
+          {/* Tab 1: About */}
+          {activeTab === 'about' && (
+            <div className="flex flex-col gap-xl">
+              {/* Literary Description */}
+              {work.subtitle ? (
+                <div className="book-reading-desc text-text">
+                  {work.title}: {work.subtitle}. An enduring literary classic exploring intricate themes and timeless narratives.
+                </div>
+              ) : (
+                <div className="book-reading-desc text-text">
+                  {work.title}, written by {work.authors?.join(', ') || 'Unknown Author'}. Available in your personal digital library.
+                </div>
+              )}
+
+              {/* Subjects */}
+              {subjects.length > 0 && (
+                <div>
+                  <div className="font-mono text-3xs tracking-wider text-text-3 uppercase mb-xs">
+                    SUBJECTS
+                  </div>
+                  <div className="flex flex-wrap gap-2xs">
+                    {subjects.map((sub) => (
+                      <span
+                        key={sub}
+                        className="rounded-4xl border border-border bg-surface px-md py-4xs text-xs text-text-2"
+                      >
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Collections Membership */}
+              <div>
+                <div className="font-mono text-3xs tracking-wider text-text-3 uppercase mb-xs">
+                  COLLECTIONS
+                </div>
+                {work.collections && work.collections.length > 0 ? (
+                  <div className="flex flex-wrap gap-xs">
+                    {work.collections.map((c) => (
+                      <Link
+                        key={c.id}
+                        to={`/collections/${c.id}`}
+                        className={cx(
+                          'inline-flex items-center gap-xs rounded-2xs border border-border bg-surface px-md py-xs text-sm font-medium text-text hover:bg-surface-2 transition-colors',
+                          FOCUS_RING,
+                        )}
+                      >
+                        <FolderIcon className="size-3.5 text-text-3" aria-hidden="true" />
+                        <span>{c.name}</span>
+                        {c.addedAt && (
+                          <span className="text-3xs text-text-3 font-mono">
+                            · added {new Date(c.addedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-3">Not currently in any collection.</p>
+                )}
+              </div>
+
+              {/* 2-Column Metadata Key-Value Table */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-xl max-w-xl border-t border-border pt-md">
+                <div className="flex justify-between py-xs border-b border-border/60">
+                  <span className="font-mono text-3xs tracking-wide text-text-3 uppercase">WORK IDENTIFIER</span>
+                  <span className="font-mono text-xs text-text truncate max-w-[12rem]">{work.id}</span>
+                </div>
+                <div className="flex justify-between py-xs border-b border-border/60">
+                  <span className="font-mono text-3xs tracking-wide text-text-3 uppercase">ORIGINAL LANGUAGE</span>
+                  <span className="text-xs text-text uppercase font-mono">{work.originalLanguage || 'en'}</span>
+                </div>
+                <div className="flex justify-between py-xs border-b border-border/60">
+                  <span className="font-mono text-3xs tracking-wide text-text-3 uppercase">TOTAL EDITIONS</span>
+                  <span className="text-xs text-text font-medium">{ownedCount}</span>
+                </div>
+                <div className="flex justify-between py-xs border-b border-border/60">
+                  <span className="font-mono text-3xs tracking-wide text-text-3 uppercase">STATUS</span>
+                  <span className="text-xs text-success font-medium">{ownedCount > 0 ? 'In Library' : 'Wanted'}</span>
+                </div>
+              </div>
+
+              {/* Available from your sources section */}
+              {ownedCount > 0 && (
+                <div>
+                  <div className="flex items-center gap-xs mb-sm">
+                    <span className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+                      AVAILABLE FROM YOUR SOURCES
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+
+                  <div className="flex flex-col gap-xs">
+                    {work.ownedEditions.map((ed) => {
+                      const hasEpub = ed.formats.some((f) => f.toLowerCase() === 'epub')
+                      return (
+                        <div
+                          key={ed.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-md p-md rounded-xs border border-border bg-surface shadow-xs"
+                        >
+                          <div className="flex items-center gap-md min-w-0">
+                            <div className="source-avatar-sm bg-surface-3 flex items-center justify-center font-mono text-3xs text-text-2 shrink-0">
+                              OPDS
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-text truncate">
+                                {ed.publisher || 'Unknown Publisher'}
+                              </div>
+                              <div className="flex items-center gap-xs mt-4xs">
+                                <span className="size-1.5 rounded-full bg-success flex-none" />
+                                <span className="font-mono text-3xs text-text-3">
+                                  {ed.publicationYear ? `${ed.publicationYear} · ` : ''}
+                                  {ed.language}
+                                  {ed.isbn ? ` · ISBN ${ed.isbn}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-sm">
+                            <div className="flex gap-4xs">
+                              {ed.formats.map((fmt) => (
+                                <FormatBadge key={fmt} format={fmt} />
+                              ))}
+                            </div>
+                            {hasEpub && (
+                              <Link
+                                to={`/read/${work.id}/${ed.id}`}
+                                className={cx(
+                                  'h-7 px-md rounded-2xs bg-surface border border-border text-xs font-medium text-text hover:bg-surface-2 transition-colors flex items-center justify-center cursor-pointer',
+                                  FOCUS_RING,
+                                )}
+                              >
+                                Read
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-text-3 mt-xs">
+                    Alexandryn indexes what your connected sources make available. Metadata comes from Open Library; files come from your sources.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Editions */}
+          {activeTab === 'editions' && (
+            <div className="flex flex-col gap-sm">
+              <div className="flex flex-wrap items-center justify-between gap-sm p-sm rounded-xs bg-surface-2 border border-border">
+                <div className="flex items-center gap-xs text-xs font-mono text-text-3">
+                  <span className="uppercase">WORK</span>
+                  <span>→</span>
+                  <span className="font-serif text-text text-sm">{work.title}</span>
+                  <span>→</span>
+                  <span className="uppercase">{ownedCount} EDITIONS</span>
+                </div>
+              </div>
+
+              {work.ownedEditions && work.ownedEditions.length > 0 ? (
+                <div className="flex flex-col gap-xs">
+                  {work.ownedEditions.map((edition) => {
+                    const hasEpub = edition.formats.some(
+                      (f) => f.toLowerCase() === 'epub',
+                    )
+                    return (
+                      <div
+                        key={edition.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-md p-md rounded-xs border border-border bg-surface"
+                      >
+                        <div className="flex items-center gap-md min-w-0">
+                          <div className="w-8 aspect-[2/3] rounded-4xs bg-surface-3 border border-border flex-none" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-text">
+                              {edition.publisher || 'Unknown Publisher'}
+                            </div>
+                            <div className="font-mono text-3xs text-text-3 mt-4xs">
+                              {edition.publicationYear ? `${edition.publicationYear} · ` : ''}
+                              {edition.language}
+                              {edition.isbn ? ` · ${edition.isbn}` : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-md">
+                          <div className="flex gap-4xs">
+                            {edition.formats.map((fmt) => (
+                              <FormatBadge key={fmt} format={fmt} />
+                            ))}
+                          </div>
+                          {hasEpub && (
+                            <Link
+                              to={`/read/${work.id}/${edition.id}`}
+                              data-testid="read-edition-btn"
+                              className={cx(
+                                'h-7 px-md rounded-2xs bg-accent text-accent-text text-xs font-medium hover:bg-accent/90 transition-colors flex items-center justify-center cursor-pointer',
+                                FOCUS_RING,
+                              )}
+                            >
+                              Read
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="p-xl text-center text-text-3 text-sm">
+                  No editions available.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 3: Sources */}
+          {activeTab === 'sources' && (
+            <div className="flex flex-col gap-md">
+              {ownedCount > 0 ? (
+                <div className="flex flex-col gap-sm">
+                  <div className="p-lg rounded-md border border-border bg-surface shadow-xs">
+                    <div className="flex items-center gap-md">
+                      <div className="source-avatar-sm bg-surface-3 flex items-center justify-center font-mono text-2xs text-text-2">
+                        OPDS
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-text">Connected Library Sources</div>
+                        <div className="font-mono text-3xs text-text-3 mt-4xs">Indexed via local and network sources</div>
+                      </div>
+                      <div className="flex items-center gap-xs px-md py-4xs rounded-4xl bg-surface-2 border border-border">
+                        <span className="size-1.5 rounded-full bg-success flex-none" />
+                        <span className="font-mono text-3xs text-text-2">Synchronized</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-xl rounded-md border border-dashed border-border text-center text-text-3 text-sm">
+                  Not available from any connected sources.
+                </div>
+              )}
+
+              <div className="flex items-center gap-sm p-md rounded-md border border-dashed border-border text-text-3 text-xs">
+                <span className="size-1.5 rounded-full bg-text-3 flex-none" />
+                <span className="flex-1">Manage connected sources and storage locations.</span>
+                <Link to="/sources" className="text-accent hover:underline cursor-pointer">
+                  Manage sources →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <AddToCollectionModal
@@ -182,83 +579,6 @@ export function WorkDetail() {
         onOpenChange={setIsManageCollectionsOpen}
         work={work}
       />
-
-
-      {/* Owned editions section */}
-      <div className="flex flex-col gap-md border-t border-border pt-lg">
-        <h2 className="text-xl font-medium text-text">Owned editions</h2>
-        {work.ownedEditions && work.ownedEditions.length > 0 ? (
-          <div className="flex flex-col gap-sm">
-            {work.ownedEditions.map((edition) => {
-              const hasEpub = edition.formats.some(
-                (f) => f.toLowerCase() === 'epub',
-              )
-
-              return (
-                <div
-                  key={edition.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-md rounded-xs border border-border bg-surface p-md"
-                >
-                  <div className="flex flex-col gap-4xs">
-                    <div className="flex items-center gap-sm">
-                      <span className="font-medium text-text text-sm">
-                        {edition.publisher || 'Unknown Publisher'}
-                      </span>
-                      {edition.publicationYear ? (
-                        <span className="text-text-2 text-xs">
-                          ({edition.publicationYear})
-                        </span>
-                      ) : null}
-                      <span className="text-text-3 text-xs uppercase font-mono">
-                        {edition.language}
-                      </span>
-                    </div>
-
-                    {edition.isbn ? (
-                      <span className="text-xs font-mono text-text-3">
-                        ISBN: {edition.isbn}
-                      </span>
-                    ) : null}
-
-                    {edition.addedAt ? (
-                      <span className="text-xs text-text-2">
-                        Added on {new Date(edition.addedAt).toLocaleDateString()}
-                      </span>
-                    ) : null}
-
-                    <div className="flex items-center gap-2xs mt-4xs">
-                      {edition.formats.map((fmt) => (
-                        <FormatBadge key={fmt} format={fmt} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Read button for EPUB formats */}
-                  {hasEpub && (
-                    <Link
-                      to={`/read/${work.id}/${edition.id}`}
-                      data-testid="read-edition-btn"
-                      className={cx(
-                        'inline-flex items-center justify-center gap-xs rounded-md font-ui transition-colors px-sm py-4xs text-xs bg-accent text-accent-text hover:bg-accent/90 self-start sm:self-center shrink-0',
-                        FOCUS_RING,
-                      )}
-                    >
-                      Read
-                    </Link>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="rounded-xs border border-dashed border-border p-lg text-center">
-            <p className="text-sm font-medium text-text">Not yet in your library</p>
-            <p className="text-xs text-text-2 mt-4xs">
-              This work is on your wanted list or in a collection without an owned edition.
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

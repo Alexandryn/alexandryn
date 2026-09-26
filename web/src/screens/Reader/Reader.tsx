@@ -736,6 +736,9 @@ export function Reader() {
         >
           <ChevronLeftIcon className="size-4" aria-hidden="true" />
         </button>
+        <div className="font-mono text-3xs opacity-70 shrink-0 uppercase tracking-wider hidden sm:block">
+          Chapter {sectionIndex + 1} of {Math.max(1, sections.length)}
+        </div>
         <div className="reader-progress-track">
           <div
             className="reader-progress-fill"
