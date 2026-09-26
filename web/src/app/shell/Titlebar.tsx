@@ -4,7 +4,8 @@ import { getCurrentUser, logout } from '../../data/auth'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { LibrarySwitcher } from '../../screens/Libraries/LibrarySwitcher'
-import { BookOpenIcon, SearchIcon } from '../../components/Icon'
+import { AlexAvatar } from '../../components/Mascot'
+import { SearchIcon } from '../../components/Icon'
 
 /**
  * The persistent top bar: the wordmark with Alex the Cat avatar, library switcher, and global search.
@@ -62,7 +63,7 @@ export function Titlebar() {
     <header className="flex items-center justify-between gap-lg border-b border-border bg-surface px-lg py-md">
       <div className="flex items-center gap-lg flex-1">
         <div className="flex items-center gap-xs select-none">
-          <BookOpenIcon className="size-5 text-text shrink-0" aria-hidden="true" />
+          <AlexAvatar size="sm" />
           <span className="font-ui font-semibold text-sm tracking-wider text-text">ALEXANDRYN</span>
         </div>
         <LibrarySwitcher />
