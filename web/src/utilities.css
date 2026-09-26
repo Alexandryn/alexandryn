@@ -205,6 +205,28 @@
   align-items: start;
 }
 
+@media (max-width: 768px) {
+  .book-detail-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl, 20px);
+  }
+}
+
+.book-detail-sidebar {
+  position: sticky;
+  top: 0;
+}
+
+@media (max-width: 768px) {
+  .book-detail-sidebar {
+    position: static;
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
 .book-detail-cover {
   position: relative;
   aspect-ratio: 2 / 3;
@@ -215,9 +237,9 @@
 
 .book-detail-title {
   font-family: var(--font-reading, Newsreader, Georgia, serif);
-  font-size: 52px;
+  font-size: clamp(2rem, 5vw + 1rem, 3.25rem); /* 32px to 52px */
   font-weight: 400;
-  line-height: 1.04;
+  line-height: 1.08;
   letter-spacing: -0.025em;
 }
 
@@ -238,7 +260,8 @@
 
 .stat-strip {
   display: flex;
-  gap: 26px;
+  flex-wrap: wrap;
+  gap: clamp(14px, 2.5vw, 26px);
   padding: 16px 0;
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -246,7 +269,7 @@
 
 .source-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 14px;
 }
 
@@ -268,10 +291,10 @@
 
 .collection-detail-title {
   font-family: var(--font-reading, Newsreader, Georgia, serif);
-  font-size: 42px;
+  font-size: clamp(1.75rem, 4vw + 1rem, 2.625rem); /* 28px to 42px */
   font-weight: 400;
   letter-spacing: -0.025em;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .discover-search-bar {

@@ -81,6 +81,38 @@ export function WorkDetail() {
   const firstSubject = subjects[0] || 'Literature'
   const ownedCount = work.ownedEditions?.length || 0
 
+  const TABS: { id: TabType; label: string; count?: number }[] = [
+    { id: 'about', label: 'About' },
+    { id: 'editions', label: 'Editions', count: ownedCount },
+    { id: 'sources', label: 'Sources', count: ownedCount },
+  ]
+
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentTab: TabType) => {
+    const currentIndex = TABS.findIndex((t) => t.id === currentTab)
+    let nextIndex = currentIndex
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      nextIndex = (currentIndex + 1) % TABS.length
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      nextIndex = (currentIndex - 1 + TABS.length) % TABS.length
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      nextIndex = 0
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      nextIndex = TABS.length - 1
+    }
+
+    if (nextIndex !== currentIndex) {
+      const nextTab = TABS[nextIndex].id
+      setActiveTab(nextTab)
+      const tabEl = document.getElementById(`tab-${nextTab}`)
+      tabEl?.focus()
+    }
+  }
+
   return (
     <div className="p-xl sm:p-2xl md:p-3xl content-container-wide">
       {/* Back navigation */}
@@ -100,7 +132,7 @@ export function WorkDetail() {
       {/* Two-column prototype grid */}
       <div className="book-detail-grid">
         {/* Sticky Left Column: Cover & Primary Actions */}
-        <div className="sticky top-0 flex flex-col gap-md">
+        <div className="book-detail-sidebar flex flex-col gap-md">
           {/* Tactical Large Book Cover */}
           <div className="book-detail-cover bg-surface-3">
             <div className="book-cover-pattern" />
@@ -119,7 +151,7 @@ export function WorkDetail() {
                 to={`/read/${work.id}/${firstEpubEdition.id}`}
                 data-testid="read-edition-btn"
                 className={cx(
-                  'h-9 rounded-2xs bg-accent text-accent-text font-medium text-2xl flex items-center justify-center transition-colors hover:bg-accent/90 cursor-pointer shadow-sm',
+                  'h-10 sm:h-9 min-h-10 sm:min-h-9 rounded-2xs bg-accent text-accent-text font-medium text-2xl flex items-center justify-center transition-colors hover:bg-accent/90 cursor-pointer shadow-sm',
                   FOCUS_RING,
                 )}
               >
@@ -129,7 +161,7 @@ export function WorkDetail() {
               <button
                 type="button"
                 disabled
-                className="h-9 rounded-2xs bg-surface-3 text-text-3 font-medium text-2xl flex items-center justify-center cursor-not-allowed border border-border"
+                className="h-10 sm:h-9 min-h-10 sm:min-h-9 rounded-2xs bg-surface-3 text-text-3 font-medium text-2xl flex items-center justify-center cursor-not-allowed border border-border"
               >
                 Read
               </button>
@@ -260,64 +292,49 @@ export function WorkDetail() {
           </div>
 
           {/* Prototype Tabs: About, Editions, Sources */}
-          <div className="flex gap-lg border-b border-border mb-lg">
-            <button
-              type="button"
-              onClick={() => setActiveTab('about')}
-              className={cx(
-                'relative pb-sm text-xl font-medium transition-colors cursor-pointer',
-                activeTab === 'about'
-                  ? 'text-text'
-                  : 'text-text-2 hover:text-text',
-                FOCUS_RING,
-              )}
-            >
-              <span>About</span>
-              {activeTab === 'about' && (
-                <div className="tab-active-indicator" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('editions')}
-              className={cx(
-                'relative pb-sm text-xl font-medium transition-colors cursor-pointer flex items-center gap-2xs',
-                activeTab === 'editions'
-                  ? 'text-text'
-                  : 'text-text-2 hover:text-text',
-                FOCUS_RING,
-              )}
-            >
-              <span>Editions</span>
-              <span className="font-mono text-3xs text-text-3">{ownedCount}</span>
-              {activeTab === 'editions' && (
-                <div className="tab-active-indicator" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('sources')}
-              className={cx(
-                'relative pb-sm text-xl font-medium transition-colors cursor-pointer flex items-center gap-2xs',
-                activeTab === 'sources'
-                  ? 'text-text'
-                  : 'text-text-2 hover:text-text',
-                FOCUS_RING,
-              )}
-            >
-              <span>Sources</span>
-              <span className="font-mono text-3xs text-text-3">{ownedCount}</span>
-              {activeTab === 'sources' && (
-                <div className="tab-active-indicator" />
-              )}
-            </button>
+          <div
+            role="tablist"
+            aria-label="Book detail sections"
+            className="flex gap-lg border-b border-border mb-lg"
+          >
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  id={`tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`tabpanel-${tab.id}`}
+                  tabIndex={isActive ? 0 : -1}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
+                  className={cx(
+                    'relative pb-sm text-xl font-medium transition-colors cursor-pointer flex items-center gap-2xs outline-none',
+                    isActive ? 'text-text' : 'text-text-2 hover:text-text',
+                    FOCUS_RING,
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className="font-mono text-3xs text-text-3">{tab.count}</span>
+                  )}
+                  {isActive && <div className="tab-active-indicator" />}
+                </button>
+              )
+            })}
           </div>
 
           {/* Tab 1: About */}
           {activeTab === 'about' && (
-            <div className="flex flex-col gap-xl">
+            <div
+              role="tabpanel"
+              id="tabpanel-about"
+              aria-labelledby="tab-about"
+              tabIndex={0}
+              className="flex flex-col gap-xl outline-none"
+            >
               {/* Literary Description */}
               {work.subtitle ? (
                 <div className="book-reading-desc text-text">
@@ -468,7 +485,13 @@ export function WorkDetail() {
 
           {/* Tab 2: Editions */}
           {activeTab === 'editions' && (
-            <div className="flex flex-col gap-sm">
+            <div
+              role="tabpanel"
+              id="tabpanel-editions"
+              aria-labelledby="tab-editions"
+              tabIndex={0}
+              className="flex flex-col gap-sm outline-none"
+            >
               <div className="flex flex-wrap items-center justify-between gap-sm p-sm rounded-xs bg-surface-2 border border-border">
                 <div className="flex items-center gap-xs text-xs font-mono text-text-3">
                   <span className="uppercase">WORK</span>
@@ -537,7 +560,13 @@ export function WorkDetail() {
 
           {/* Tab 3: Sources */}
           {activeTab === 'sources' && (
-            <div className="flex flex-col gap-md">
+            <div
+              role="tabpanel"
+              id="tabpanel-sources"
+              aria-labelledby="tab-sources"
+              tabIndex={0}
+              className="flex flex-col gap-md outline-none"
+            >
               {ownedCount > 0 ? (
                 <div className="flex flex-col gap-sm">
                   <div className="p-lg rounded-md border border-border bg-surface shadow-xs">

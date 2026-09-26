@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../../mocks/node'
@@ -133,5 +134,45 @@ describe('WorkDetail Screen', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-500')
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  })
+
+  it('supports WAI-ARIA accessible tab switching and keyboard arrow navigation', async () => {
+    server.use(
+      http.get('*/api/v1/works/:id', () => HttpResponse.json(mockDetail)),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<WorkDetail />, {
+      routerEntries: ['/book/01JXXXXXXXXXXXXXXXXXXXXXXX'],
+    })
+
+    await screen.findByRole('heading', { name: 'Middlemarch', level: 1 })
+
+    const tablist = screen.getByRole('tablist', { name: 'Book detail sections' })
+    expect(tablist).toBeInTheDocument()
+
+    const aboutTab = screen.getByRole('tab', { name: /About/i })
+    const editionsTab = screen.getByRole('tab', { name: /Editions/i })
+    const sourcesTab = screen.getByRole('tab', { name: /Sources/i })
+
+    expect(aboutTab).toHaveAttribute('aria-selected', 'true')
+    expect(editionsTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel', { name: 'About' })).toBeInTheDocument()
+
+    // Click Editions tab
+    await user.click(editionsTab)
+    expect(editionsTab).toHaveAttribute('aria-selected', 'true')
+    expect(aboutTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel', { name: /Editions/i })).toBeInTheDocument()
+
+    // Arrow navigation: press ArrowRight on Editions tab -> moves to Sources tab
+    editionsTab.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(sourcesTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: /Sources/i })).toBeInTheDocument()
+
+    // Arrow navigation: press ArrowLeft on Sources tab -> moves back to Editions
+    await user.keyboard('{ArrowLeft}')
+    expect(editionsTab).toHaveAttribute('aria-selected', 'true')
   })
 })

@@ -144,7 +144,7 @@ export function CollectionDetail() {
           )}
         >
           <ChevronLeftIcon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>← Collections</span>
+          <span>Back to Collections</span>
         </Link>
       </div>
 
@@ -183,18 +183,23 @@ export function CollectionDetail() {
           >
             Delete
           </Button>
-          <div className="ml-md border-l border-border pl-md flex items-center gap-xs">
+          <div
+            role="group"
+            aria-label="View layout"
+            className="ml-md border-l border-border pl-md flex items-center gap-xs"
+          >
             <button
               type="button"
               onClick={() => setView('grid')}
               className={cx(
-                'rounded-xs px-xs py-4xs text-xs font-ui transition-colors',
+                'rounded-xs px-xs py-4xs text-xs font-ui transition-colors cursor-pointer',
                 view === 'grid'
                   ? 'bg-surface-3 text-text font-medium'
                   : 'text-text-2 hover:text-text',
                 FOCUS_RING,
               )}
               aria-label="Grid view"
+              aria-pressed={view === 'grid'}
             >
               Grid
             </button>
@@ -202,13 +207,14 @@ export function CollectionDetail() {
               type="button"
               onClick={() => setView('list')}
               className={cx(
-                'rounded-xs px-xs py-4xs text-xs font-ui transition-colors',
+                'rounded-xs px-xs py-4xs text-xs font-ui transition-colors cursor-pointer',
                 view === 'list'
                   ? 'bg-surface-3 text-text font-medium'
                   : 'text-text-2 hover:text-text',
                 FOCUS_RING,
               )}
               aria-label="List view"
+              aria-pressed={view === 'list'}
             >
               List
             </button>
