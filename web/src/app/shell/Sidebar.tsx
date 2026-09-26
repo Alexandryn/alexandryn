@@ -72,7 +72,7 @@ export function Sidebar() {
           <div className="sidebar-book-icon-inner" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xl font-medium tracking-4 text-text leading-tight truncate">
+          <div className="text-xl font-semibold tracking-4 text-text leading-tight truncate">
             Home Library
           </div>
           <div className="font-mono text-3xs text-text-3 tracking-5 truncate">
@@ -96,9 +96,9 @@ export function Sidebar() {
                 className={({ isActive }) =>
                   cx(
                     'group relative flex items-center gap-md px-md rounded-2xs font-ui transition-all cursor-pointer',
-                    isSecondary ? 'sidebar-item-sm text-xl' : 'sidebar-item-md text-2xl font-medium',
+                    isSecondary ? 'sidebar-item-sm text-xl font-normal' : 'sidebar-item-md text-2xl font-semibold',
                     isActive
-                      ? 'bg-surface border border-border shadow-sm text-text font-medium'
+                      ? 'bg-surface border border-border shadow-sm text-text'
                       : 'text-text-2 hover:text-text hover:bg-surface-3/40',
                     FOCUS_RING,
                   )
@@ -107,7 +107,7 @@ export function Sidebar() {
                 {({ isActive }) => (
                   <>
                     {getNavIcon(item.to, isActive)}
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className={cx('flex-1 truncate', !isSecondary && 'font-semibold')}>{item.label}</span>
                     {item.count && (
                       <span aria-hidden="true" className="font-mono text-3xs text-text-3">
                         {item.count}
