@@ -16,27 +16,32 @@ import {
 } from '../../components/Icon'
 
 const LINK_BASE = cx(
-  'group flex items-center gap-3 h-10 px-3 rounded-md text-sm font-medium font-ui transition-colors',
-  'text-text-2 hover:text-text hover:bg-surface-3',
+  'group flex items-center gap-3.5 h-11 px-3.5 rounded-md text-base font-medium font-ui transition-colors',
+  'text-text-2 hover:text-text hover:bg-surface-2',
   FOCUS_RING,
 )
 
-function getNavIcon(to: string) {
+function getNavIcon(to: string, isActive: boolean) {
+  const iconClass = cx(
+    'size-5 shrink-0 transition-colors',
+    isActive ? 'text-text' : 'text-text-3 group-hover:text-text',
+  )
+
   switch (to) {
     case '/library':
-      return <BookOpenIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <BookOpenIcon className={iconClass} />
     case '/discover':
-      return <CompassIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <CompassIcon className={iconClass} />
     case '/sources':
-      return <DatabaseIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <DatabaseIcon className={iconClass} />
     case '/collections':
-      return <FolderIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <FolderIcon className={iconClass} />
     case '/activity':
-      return <ActivityIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <ActivityIcon className={iconClass} />
     case '/import':
-      return <ImportIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <ImportIcon className={iconClass} />
     case '/settings':
-      return <SettingsIcon className="size-5 shrink-0 text-text-3 group-hover:text-text transition-colors" />
+      return <SettingsIcon className={iconClass} />
     default:
       return null
   }
@@ -49,7 +54,7 @@ function ActivityBadge() {
     <span
       role="status"
       aria-label="Activity — action required"
-      className="w-2 h-2 rounded-full bg-[var(--warm)] flex-none"
+      className="size-2 rounded-full bg-text-2 flex-none"
     />
   )
 }
@@ -67,7 +72,7 @@ export function Sidebar() {
       aria-label="Primary"
       className="w-[var(--shell-sidebar-width)] shrink-0 border-r border-border bg-surface px-md py-lg"
     >
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-1.5">
         {NAV_ITEMS.map((item) => (
           <li
             key={item.to}
@@ -78,13 +83,17 @@ export function Sidebar() {
               className={({ isActive }) =>
                 cx(
                   LINK_BASE,
-                  isActive && 'bg-surface-3 text-text font-semibold shadow-2xs border-l-2 border-accent',
+                  isActive && 'bg-surface-3 text-text font-semibold shadow-2xs',
                 )
               }
             >
-              {getNavIcon(item.to)}
-              <span className="flex-1 text-sm font-medium">{item.label}</span>
-              {item.to === '/activity' && hasQueryClient && <ActivityBadge />}
+              {({ isActive }) => (
+                <>
+                  {getNavIcon(item.to, isActive)}
+                  <span className="flex-1 text-base font-medium">{item.label}</span>
+                  {item.to === '/activity' && hasQueryClient && <ActivityBadge />}
+                </>
+              )}
             </NavLink>
           </li>
         ))}

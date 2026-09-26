@@ -10,7 +10,7 @@ import { ApiError } from '../../data/http'
 import { useWork } from '../../data/library'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { ChevronLeftIcon } from '../../components/Icon'
+import { ChevronLeftIcon, FolderIcon } from '../../components/Icon'
 import { AddToCollectionModal } from './AddToCollectionModal'
 
 /**
@@ -160,7 +160,10 @@ export function WorkDetail() {
                   FOCUS_RING,
                 )}
               >
-                <span>📁 {c.name}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <FolderIcon className="size-4 text-text-3" aria-hidden="true" />
+                  {c.name}
+                </span>
                 {c.addedAt ? (
                   <span className="text-xs text-text-3">
                     · added {new Date(c.addedAt).toLocaleDateString()}

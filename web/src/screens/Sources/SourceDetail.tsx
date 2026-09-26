@@ -11,6 +11,7 @@ import { useHealthCheckSource, useSource, useSourceCandidates } from '../../data
 import { ApiError } from '../../data/http'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { cx } from '../../lib/cx'
+import { FolderIcon, GlobeIcon, ChevronLeftIcon } from '../../components/Icon'
 
 /**
  * SourceDetail / Browse view at /sources/:id.
@@ -86,19 +87,22 @@ export function SourceDetail() {
         <Link
           to="/sources"
           className={cx(
-            'self-start text-xs font-medium text-text-2 hover:text-text rounded py-4xs',
+            'inline-flex items-center gap-1.5 self-start text-xs font-medium text-text-2 hover:text-text rounded py-4xs transition-colors',
             FOCUS_RING,
           )}
         >
-          ← All sources
+          <ChevronLeftIcon className="size-3.5" aria-hidden="true" />
+          <span>All sources</span>
         </Link>
 
         <div className="flex flex-wrap items-center justify-between gap-md">
           <div>
             <div className="flex items-center gap-xs">
-              <span className="text-2xl" aria-hidden="true">
-                {isLocal ? '📁' : '🌐'}
-              </span>
+              {isLocal ? (
+                <FolderIcon className="size-6 text-text-2 shrink-0" aria-hidden="true" />
+              ) : (
+                <GlobeIcon className="size-6 text-text-2 shrink-0" aria-hidden="true" />
+              )}
               <h1 className="text-3xl font-medium tracking-1 text-text">{source.label}</h1>
             </div>
             <p className="text-xs font-mono text-text-3 mt-4xs">{configDisplay}</p>

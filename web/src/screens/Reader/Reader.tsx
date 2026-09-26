@@ -10,7 +10,6 @@ import {
   ChevronRightIcon,
   MaximizeIcon,
 } from '../../components/Icon'
-import { AlexMascot } from '../../components/Mascot'
 import { useQuery } from '@tanstack/react-query'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -689,7 +688,7 @@ export function Reader() {
             {bookmarksQuery.data?.bookmarks.map((b) => (
               <li key={b.id} className="rounded-lg border p-sm text-sm">
                 <div className="flex items-center gap-xs">
-                  <BookmarkIcon className="size-3.5 text-brand-primary" aria-hidden="true" />
+                  <BookmarkIcon className="size-3.5 text-text" aria-hidden="true" />
                   <span className="font-mono text-2xs uppercase tracking-1 opacity-70">
                     Bookmark
                   </span>
@@ -700,7 +699,7 @@ export function Reader() {
             {highlightsQuery.data?.highlights.map((h) => (
               <li key={h.id} className="rounded-lg border p-sm text-sm">
                 <div className="flex items-center gap-xs">
-                  <span className="size-2 rounded-full bg-amber-500" aria-hidden="true" />
+                  <span className="size-2 rounded-full bg-text-2" aria-hidden="true" />
                   <span className="font-mono text-2xs uppercase tracking-1 opacity-70">
                     Highlight
                   </span>
@@ -711,7 +710,7 @@ export function Reader() {
             {(bookmarksQuery.data?.bookmarks.length ?? 0) === 0 &&
               (highlightsQuery.data?.highlights.length ?? 0) === 0 && (
                 <li className="rounded-lg border border-dashed p-md text-center text-sm opacity-70">
-                  <AlexMascot mood="reading" size="sm" className="mx-auto mb-xs opacity-75" />
+                  <BookmarkIcon className="size-6 text-text-3 mx-auto mb-xs" aria-hidden="true" />
                   <p className="font-medium text-xs">Nothing marked yet</p>
                   <p className="mt-4xs text-2xs opacity-80">
                     Select a passage to highlight it, or bookmark this page. Marks are stored with
@@ -751,11 +750,11 @@ export function Reader() {
           <span>{Math.round(ratio * 100)}%</span>
           {Math.round(ratio * 100) === 100 && (
             <span
-              className="inline-flex items-center text-xs animate-bounce"
+              className="inline-flex items-center text-3xs font-mono uppercase tracking-wide border border-border px-1 py-0.5 rounded text-text select-none"
               title="Book completed!"
               aria-label="Book completed"
             >
-              🎉
+              Done
             </span>
           )}
         </div>

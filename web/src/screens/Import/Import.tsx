@@ -7,6 +7,7 @@ import { FormatBadge } from '../../components/FormatBadge/FormatBadge'
 import { GeneratedCover } from '../../components/GeneratedCover/GeneratedCover'
 import { Modal } from '../../components/Modal'
 import { Spinner } from '../../components/Spinner/Spinner'
+import { BookOpenIcon } from '../../components/Icon'
 import {
   type ImportCandidate,
   type MatchCandidate,
@@ -279,8 +280,8 @@ function CandidateCard({
                         className="size-8 rounded-2xs object-cover shrink-0"
                       />
                     ) : (
-                      <div className="size-8 rounded-2xs bg-surface-3 shrink-0 flex items-center justify-center text-xs">
-                        📖
+                      <div className="size-8 rounded-2xs bg-surface-3 shrink-0 flex items-center justify-center">
+                        <BookOpenIcon className="size-4 text-text-3" aria-hidden="true" />
                       </div>
                     )}
                     <div className="flex flex-col min-w-0">

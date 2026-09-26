@@ -38,7 +38,7 @@ export function ActivityScreen() {
     <div className="p-[30px_clamp(20px,2.6vw,40px)_80px] max-w-[68.75rem] w-full">
       {/* Header */}
       <h1 className="m-0 text-[1.6875rem] font-medium tracking-1 text-text">Activity</h1>
-      <div className="text-2xl text-text-2 mt-1.5 mb-6">
+      <div className="text-sm text-text-2 mt-1.5 mb-6">
         What Alexandryn is fetching from your sources, and what you have been reading.
       </div>
 
@@ -225,7 +225,7 @@ function ActiveRow({ item, onCancel }: { item: ActivityItem; onCancel: () => voi
       </div>
 
       <div className="w-[16.25rem] flex-[1_1_200px] min-w-0">
-        <div className="text-2xl font-medium truncate text-text">{item.title}</div>
+        <div className="text-sm font-medium truncate text-text">{item.title}</div>
         <div className="text-xs text-text-3 truncate mt-0.75">
           {item.author || 'Unknown author'}
         </div>
@@ -273,7 +273,7 @@ function QueuedRow({ item, onCancel }: { item: ActivityItem; onCancel: () => voi
         {(item.format || 'EPB').slice(0, 3)}
       </div>
 
-      <div className="flex-[0_1_260px] min-w-0 text-xl truncate text-text">{item.title}</div>
+      <div className="flex-[0_1_260px] min-w-0 text-sm truncate text-text">{item.title}</div>
 
       <div className="flex-[0_1_170px] min-w-0 font-mono text-2xs text-text-3 truncate">
         {item.sourceName}
@@ -305,7 +305,7 @@ function FailedRow({ item, onRetry }: { item: ActivityItem; onRetry: () => void 
         {(item.format || 'EPB').slice(0, 3)}
       </div>
 
-      <div className="flex-[0_1_260px] min-w-0 text-2xl font-medium truncate text-text">
+      <div className="flex-[0_1_260px] min-w-0 text-sm font-medium truncate text-text">
         {item.title}
       </div>
 
@@ -315,7 +315,7 @@ function FailedRow({ item, onRetry }: { item: ActivityItem; onRetry: () => void 
 
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <div className="w-1.25 h-1.25 rounded-full bg-error flex-none" />
-        <div className="text-lg text-error truncate">{item.errorMessage || 'Operation failed'}</div>
+        <div className="text-xs text-error truncate">{item.errorMessage || 'Operation failed'}</div>
       </div>
 
       <Link
@@ -350,7 +350,7 @@ function CompletedRow({ item }: { item: ActivityItem }) {
         {(item.format || 'EPB').slice(0, 3)}
       </div>
 
-      <div className="flex-[0_1_260px] min-w-0 text-xl truncate text-text">{item.title}</div>
+      <div className="flex-[0_1_260px] min-w-0 text-sm truncate text-text">{item.title}</div>
 
       <div className="flex-[0_1_170px] min-w-0 font-mono text-2xs text-text-3 truncate">
         {item.sourceName}
@@ -362,7 +362,7 @@ function CompletedRow({ item }: { item: ActivityItem }) {
 
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <div className="w-1.25 h-1.25 rounded-full bg-success flex-none" />
-        <div className="text-lg text-text-2 truncate">Added to library</div>
+        <div className="text-xs text-text-2 truncate">Added to library</div>
       </div>
 
       <Link

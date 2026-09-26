@@ -120,10 +120,10 @@ export function Collections() {
               >
                 <div className="flex flex-col gap-xs">
                   <div className="flex items-center gap-sm">
-                    <div className="size-9 rounded-md bg-accent-soft text-accent flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="size-9 rounded-md bg-surface-2 border border-border text-text-2 flex items-center justify-center shrink-0 group-hover:border-text-3 group-hover:text-text transition-colors">
                       <FolderIcon className="size-5" />
                     </div>
-                    <h2 className="text-lg font-medium text-text group-hover:text-primary truncate">
+                    <h2 className="text-lg font-medium text-text truncate">
                       {c.name}
                     </h2>
                   </div>

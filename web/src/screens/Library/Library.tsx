@@ -188,8 +188,8 @@ export function Library() {
         <h1 className="text-3xl font-medium tracking-1 text-text">Library</h1>
 
         {/* Controls Bar: Search, Filters, Sort, View Toggle */}
-        <div className="flex flex-wrap items-center justify-between gap-md">
-          <div className="flex flex-wrap items-center gap-md flex-1 min-w-64">
+        <div className="flex flex-wrap items-end justify-between gap-md">
+          <div className="flex flex-wrap items-end gap-md flex-1 min-w-64">
             {/* max-w-[20rem] not max-w-xs: --spacing-xs collides with Tailwind's max-w-xs key */}
             <div className="w-full max-w-[20rem]">
               <Input

@@ -46,7 +46,7 @@ export function DiscoverResultGrid({ results, className, ...rest }: DiscoverResu
               />
 
               <div className="mt-xs flex flex-col">
-                <span className="font-medium text-sm text-text line-clamp-2 leading-snug group-hover:text-primary">
+                <span className="font-medium text-sm text-text line-clamp-2 leading-snug">
                   {item.title}
                 </span>
                 <span className="text-xs text-text-2 line-clamp-1 mt-4xs">

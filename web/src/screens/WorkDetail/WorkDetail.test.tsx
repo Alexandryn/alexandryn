@@ -55,7 +55,7 @@ describe('WorkDetail Screen', () => {
     expect(screen.getByText('A Study of Provincial Life')).toBeInTheDocument()
     expect(screen.getByText('George Eliot', { selector: 'strong' })).toBeInTheDocument()
     expect(screen.getByText('Victorian Literature')).toBeInTheDocument()
-    expect(screen.getByText('📁 Victorian Classics')).toBeInTheDocument()
+    expect(screen.getByText('Victorian Classics')).toBeInTheDocument()
     expect(screen.getByText('Penguin Classics')).toBeInTheDocument()
     expect(screen.getByText('Oxford World Classics')).toBeInTheDocument()
   })

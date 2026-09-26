@@ -8,6 +8,7 @@ import { useDiscoverWork } from '../../data/discover'
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
+import { ChevronLeftIcon } from '../../components/Icon'
 
 /**
  * Open Library work detail screen at /discover/works/:openLibraryId.
@@ -81,11 +82,12 @@ export function DiscoverWorkDetail() {
         <Link
           to="/discover"
           className={cx(
-            'inline-flex items-center gap-2xs text-sm font-medium text-text-2 hover:text-text rounded-2xs',
+            'inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
             FOCUS_RING,
           )}
         >
-          ← Back to Discover
+          <ChevronLeftIcon className="size-4" aria-hidden="true" />
+          <span>Discover</span>
         </Link>
       </div>
 

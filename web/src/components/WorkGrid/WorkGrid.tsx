@@ -132,7 +132,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-baseline gap-xs">
-                        <span className="font-medium text-text text-sm truncate group-hover:text-primary">
+                        <span className="font-medium text-text text-sm truncate">
                           {work.title}
                         </span>
                         {work.subtitle ? (
@@ -208,7 +208,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 </div>
 
                 <div className="mt-xs flex flex-col">
-                  <span className="font-medium text-sm text-text line-clamp-2 leading-snug group-hover:text-primary">
+                  <span className="font-medium text-sm text-text line-clamp-2 leading-snug">
                     {work.title}
                   </span>
                   <span className="text-xs text-text-2 line-clamp-1 mt-4xs">

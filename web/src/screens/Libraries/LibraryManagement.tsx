@@ -90,7 +90,7 @@ export function LibraryManagement() {
     <div className="p-lg max-w-5xl mx-auto flex flex-col gap-xl">
       <div className="flex justify-between items-center border-b border-border pb-md">
         <div>
-          <h1 className="text-2xl font-serif font-bold text-text">Library namespaces</h1>
+          <h1 className="text-2xl font-ui font-medium text-text">Library namespaces</h1>
           <p className="text-sm text-text-3">Manage library partitions, ingestion permissions, and access memberships.</p>
         </div>
         <Button onClick={() => setIsCreatingLib(!isCreatingLib)}>

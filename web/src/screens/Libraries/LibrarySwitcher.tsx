@@ -3,6 +3,8 @@ import { useContext, useEffect, useMemo } from 'react'
 import { getActiveLibraryId, setActiveLibraryId } from '../../data/auth'
 import { switchActiveLibrary } from '../../data/activeLibrary'
 import { fetchLibraries, type Library } from '../../data/libraries'
+import { cx } from '../../lib/cx'
+import { FOCUS_RING } from '../../lib/focusRing'
 
 export function LibrarySwitcher() {
   const client = useContext(QueryClientContext)
@@ -46,7 +48,10 @@ function LibrarySwitcherInner() {
         id="library-switcher"
         value={activeId}
         onChange={handleSelect}
-        className="px-sm py-xs bg-surface border border-border rounded text-text focus:outline-none focus:border-accent cursor-pointer"
+        className={cx(
+          'h-9 px-sm py-xs bg-surface-2 hover:bg-surface border border-border rounded-xs text-sm font-medium text-text transition-colors cursor-pointer',
+          FOCUS_RING,
+        )}
       >
         {libraries.map((l: Library) => (
           <option key={l.id} value={l.id}>
