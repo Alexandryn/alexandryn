@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getCurrentUser, logout } from '../../data/auth'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { LibrarySwitcher } from '../../screens/Libraries/LibrarySwitcher'
 import { AlexAvatar } from '../../components/Mascot'
 import { SearchIcon } from '../../components/Icon'
 
 /**
- * The persistent top bar: the wordmark with Alex the Cat avatar, library switcher, and global search.
+ * The persistent top bar: the wordmark with Alex the Cat avatar and global search.
  * A real <header> landmark.
  */
 export function Titlebar() {
@@ -60,35 +59,56 @@ export function Titlebar() {
   }
 
   return (
-    <header className="flex items-center justify-between gap-lg border-b border-border bg-surface px-lg py-md">
-      <div className="flex items-center gap-lg flex-1">
-        <div className="flex items-center gap-xs select-none">
-          <AlexAvatar size="sm" />
-          <span className="font-ui font-semibold text-sm tracking-wider text-text">ALEXANDRYN</span>
-        </div>
-        <LibrarySwitcher />
-        <form role="search" onSubmit={handleSearch} className="flex flex-1 max-w-[28rem]">
+    <header className="flex h-[var(--shell-titlebar-height)] flex-none items-center gap-2xl border-b border-border bg-background px-xl select-none">
+      {/* Prototype Window Controls */}
+      <div className="hidden sm:flex items-center gap-xs pr-1" aria-hidden="true">
+        <div className="shell-window-dot" />
+        <div className="shell-window-dot" />
+        <div className="shell-window-dot" />
+      </div>
+
+      {/* Wordmark with colored Alex the Cat Mascot */}
+      <Link
+        to="/library"
+        className={cx(
+          'flex items-center gap-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xs',
+        )}
+      >
+        <AlexAvatar size="sm" />
+        <span className="font-mono text-2xs uppercase tracking-11 text-text-2">
+          ALEXANDRYN
+        </span>
+      </Link>
+
+      {/* Centered Global Search Input */}
+      <div className="flex flex-1 justify-center">
+        <form
+          role="search"
+          onSubmit={handleSearch}
+          className="w-full max-w-[var(--shell-search-width)]"
+        >
           <label htmlFor="global-search-input" className="sr-only">
             Search library, authors, subjects, ISBN
           </label>
-          <div className="relative flex flex-1 items-center">
-            <SearchIcon className="absolute left-3 size-4 text-text-3 pointer-events-none" />
+          <div
+            className={cx(
+              'group relative flex h-[var(--shell-search-height)] items-center rounded-2xs border border-border bg-surface px-md transition-colors',
+              'focus-within:border-accent shadow-sm',
+            )}
+          >
+            <SearchIcon className="size-3.5 text-text-3 pointer-events-none shrink-0 mr-2" />
             <input
               id="global-search-input"
               ref={inputRef}
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search library, authors, subjects, ISBN"
-              className={cx(
-                'flex flex-1 items-center h-9 w-full pl-9 pr-12',
-                'rounded-xs border border-border bg-surface-2 text-sm text-text placeholder:text-text-3 transition-colors focus:bg-surface',
-                FOCUS_RING,
-              )}
+              placeholder="Search library, authors, subjects, ISBN…"
+              className="flex-1 bg-transparent border-none p-0 text-lg text-text placeholder:text-text-3 focus:outline-none"
             />
             <kbd
               aria-hidden="true"
-              className="pointer-events-none absolute right-2.5 hidden sm:inline-flex items-center gap-1 rounded-4xs border border-border bg-surface px-1.5 py-0.5 font-mono text-3xs text-text-3 font-medium select-none shadow-2xs"
+              className="pointer-events-none hidden sm:inline-flex items-center rounded-4xs border border-border bg-surface px-1.5 py-0.5 font-mono text-3xs text-text-3 font-medium select-none"
             >
               ⌘K
             </kbd>
@@ -96,20 +116,42 @@ export function Titlebar() {
         </form>
       </div>
 
-      {user && (
-        <div className="flex items-center gap-md text-sm text-text-2">
-          <span className="font-medium text-text">{user.username}</span>
-          <button
-            onClick={handleLogout}
-            className={cx(
-              'rounded-3xs border border-border px-sm py-2xs text-xs text-text-2 hover:text-text hover:bg-surface-3 transition-colors cursor-pointer',
-              FOCUS_RING,
-            )}
-          >
-            Sign Out
-          </button>
-        </div>
-      )}
+      {/* Right Controls: Hosting pill & Profile / Auth */}
+      <div className="flex items-center gap-md">
+        <Link
+          to="/network"
+          className={cx(
+            'hidden lg:flex items-center gap-2xs shell-hosting-pill px-md border border-border bg-surface text-text-2 hover:text-text transition-colors cursor-pointer',
+            FOCUS_RING,
+          )}
+          title="Network hosting status"
+        >
+          <span className="size-1.5 rounded-full bg-success flex-none" />
+          <span className="font-mono text-2xs uppercase tracking-7">
+            HOSTING · 2 DEVICES
+          </span>
+        </Link>
+
+        {user && (
+          <div className="flex items-center gap-xs">
+            <div
+              title={user.username}
+              className="shell-badge-circle bg-surface-3 flex items-center justify-center font-ui text-2xs font-medium text-text-2 uppercase select-none"
+            >
+              {user.username.slice(0, 2)}
+            </div>
+            <button
+              onClick={handleLogout}
+              className={cx(
+                'rounded-3xs border border-border bg-surface px-sm py-2xs text-xs text-text-2 hover:text-text hover:bg-surface-2 transition-colors cursor-pointer',
+                FOCUS_RING,
+              )}
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   )
 }

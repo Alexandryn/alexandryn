@@ -99,8 +99,24 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
 
   if (view === 'list') {
     return (
-      <div className={cx('flex flex-col gap-xs', className)} {...rest}>
-        <ul className="flex flex-col gap-xs">
+      <div
+        className={cx(
+          'flex flex-col rounded-xl border border-border bg-surface overflow-hidden shadow-sm',
+          className,
+        )}
+        {...rest}
+      >
+        {/* Prototype List Table Header */}
+        <div className="hidden sm:grid work-list-grid px-2xl py-sm border-b border-border bg-surface-2 font-mono text-4xs tracking-8 text-text-3 select-none">
+          <div />
+          <div>TITLE</div>
+          <div>AUTHOR</div>
+          <div>YEAR</div>
+          <div>COLLECTION</div>
+          <div className="text-right">STATUS</div>
+        </div>
+
+        <ul className="flex flex-col divide-y divide-border-2">
           {works.map((work, index) => {
             const sentinel = sentinelKind(index)
             return (
@@ -113,57 +129,68 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 <Link
                   to={`/book/${work.id}`}
                   className={cx(
-                    'group flex items-center justify-between gap-md rounded-xs border border-border bg-surface p-sm transition-colors hover:border-text-3 hover:bg-surface-2',
+                    'group work-list-grid px-2xl py-sm transition-colors hover:bg-surface-2',
                     FOCUS_RING,
                   )}
                 >
-                  <div className="flex items-center gap-md min-w-0">
-                    <div className="relative w-8 shrink-0 aspect-[2/3] overflow-hidden rounded-3xs bg-surface-3 book-shadow">
-                      <div className="absolute inset-y-0 left-0 w-1.5 book-spine-crease pointer-events-none z-10" />
-                      {coverFor(index) ? (
-                        <GeneratedCover
-                          identifier={work.id}
-                          title={work.title}
-                          author={formatCoverAuthor(work.authors)}
-                        />
-                      ) : (
-                        coverPlaceholder
-                      )}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-baseline gap-xs">
-                        <span className="font-medium text-text text-sm truncate">
-                          {work.title}
-                        </span>
-                        {work.subtitle ? (
-                          <span className="text-text-2 text-xs truncate">{work.subtitle}</span>
-                        ) : null}
-                      </div>
-                      <span className="text-text-2 text-xs truncate">
-                        {work.authors && work.authors.length > 0
-                          ? work.authors.join(', ')
-                          : 'Unknown Author'}
+                  <div className="relative work-cover-thumb shrink-0 overflow-hidden rounded-4xs bg-surface-3 book-shadow">
+                    <div className="absolute inset-y-0 left-0 w-1 book-spine-crease pointer-events-none z-10" />
+                    {coverFor(index) ? (
+                      <GeneratedCover
+                        identifier={work.id}
+                        title={work.title}
+                        author={formatCoverAuthor(work.authors)}
+                      />
+                    ) : (
+                      coverPlaceholder
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-baseline gap-xs">
+                      <span className="font-reading font-medium text-text text-base truncate tracking-4">
+                        {work.title}
                       </span>
+                      {work.subtitle ? (
+                        <span className="text-text-2 text-xs truncate">{work.subtitle}</span>
+                      ) : null}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-sm shrink-0">
-                    {work.collections && work.collections.length > 0 && (
-                      <div className="hidden sm:flex items-center gap-4xs">
-                        {work.collections.map((c) => (
-                          <span
-                            key={c.id}
-                            className="rounded-3xs bg-surface-3 px-2xs py-4xs text-3xs text-text-2"
-                          >
-                            {c.name}
-                          </span>
-                        ))}
-                      </div>
+                  <div className="text-text-2 text-lg truncate">
+                    {work.authors && work.authors.length > 0
+                      ? work.authors.join(', ')
+                      : 'Unknown Author'}
+                  </div>
+
+                  <div className="font-mono text-xs text-text-3">
+                    {work.addedAt ? new Date(work.addedAt).getFullYear() : '—'}
+                  </div>
+
+                  <div className="flex items-center gap-4xs truncate">
+                    {work.collections && work.collections.length > 0 ? (
+                      work.collections.map((c) => (
+                        <span
+                          key={c.id}
+                          className="rounded-3xs bg-surface-3 px-2xs py-4xs text-3xs text-text-2 truncate"
+                        >
+                          {c.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-3xs text-text-3">—</span>
                     )}
-                    {!work.isOwned && (
+                  </div>
+
+                  <div className="flex items-center sm:justify-end gap-xs text-right">
+                    {!work.isOwned ? (
                       <span className="rounded-3xs border border-border-2 px-2xs py-4xs text-3xs font-mono text-text-2 uppercase">
                         Wanted
                       </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 font-mono text-3xs text-text-3">
+                        <span className="size-1.5 rounded-full bg-success flex-none" />
+                        <span>In library</span>
+                      </div>
                     )}
                   </div>
                 </Link>
@@ -177,7 +204,7 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
 
   return (
     <div className={cx('flex flex-col gap-md', className)} {...rest}>
-      <div className="grid grid-cols-2 gap-md sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-x-2xl gap-y-xl sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {works.map((work, index) => {
           const sentinel = sentinelKind(index)
           return (
@@ -194,8 +221,8 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                   FOCUS_RING,
                 )}
               >
-                <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1">
-                  <div className="absolute inset-y-0 left-0 w-3 book-spine-crease pointer-events-none z-10" />
+                <div className="relative aspect-[2/3] w-full overflow-hidden rounded-4xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1">
+                  <div className="absolute inset-y-0 left-0 w-2.5 book-spine-crease pointer-events-none z-10" />
                   {coverFor(index) ? (
                     <GeneratedCover
                       identifier={work.id}
@@ -208,10 +235,10 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 </div>
 
                 <div className="mt-xs flex flex-col">
-                  <span className="font-medium text-sm text-text line-clamp-2 leading-snug">
+                  <span className="font-reading font-medium text-sm text-text line-clamp-2 leading-snug tracking-4">
                     {work.title}
                   </span>
-                  <span className="text-xs text-text-2 line-clamp-1 mt-4xs">
+                  <span className="text-xs text-text-3 line-clamp-1 mt-4xs">
                     {work.authors && work.authors.length > 0
                       ? work.authors.join(', ')
                       : 'Unknown Author'}

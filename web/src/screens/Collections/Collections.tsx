@@ -10,7 +10,7 @@ import { useCollections, useCreateCollection, type CollectionSummary } from '../
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { FolderIcon, ChevronRightIcon } from '../../components/Icon'
+import { ChevronRightIcon } from '../../components/Icon'
 
 /**
  * Collections index screen at /collections.
@@ -65,13 +65,13 @@ export function Collections() {
         : null
 
   return (
-    <div className="flex flex-col gap-xl p-3xl">
+    <div className="flex flex-col gap-xl p-3xl content-container-medium">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-md">
+      <div className="flex flex-wrap items-center justify-between gap-md mb-xs">
         <div>
-          <h1 className="text-3xl font-medium tracking-1 text-text">Collections</h1>
-          <p className="text-sm text-text-2 mt-4xs">
-            Organize your books into custom reading lists.
+          <h1 className="screen-title text-text">Collections</h1>
+          <p className="text-2xl text-text-2 mt-3xs">
+            Shelves you made. Nothing syncs them but you.
           </p>
         </div>
 
@@ -109,37 +109,49 @@ export function Collections() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-lg">
-            {collections.map((c: CollectionSummary) => (
-              <Link
-                key={c.id}
-                to={`/collections/${c.id}`}
-                className={cx(
-                  'group flex flex-col justify-between rounded-lg border border-border bg-surface p-lg transition-all hover:border-text-3 hover:bg-surface-2 hover:shadow-sm',
-                  FOCUS_RING,
-                )}
-              >
-                <div className="flex flex-col gap-xs">
-                  <div className="flex items-center gap-sm">
-                    <div className="size-9 rounded-md bg-surface-2 border border-border text-text-2 flex items-center justify-center shrink-0 group-hover:border-text-3 group-hover:text-text transition-colors">
-                      <FolderIcon className="size-5" />
+            {collections.map((c: CollectionSummary, index: number) => {
+              const tint1 = `spine-tint-${(index % 4) + 1}`
+              const tint2 = `spine-tint-${((index + 1) % 4) + 1}`
+              const tint3 = `spine-tint-${((index + 2) % 4) + 1}`
+
+              return (
+                <Link
+                  key={c.id}
+                  to={`/collections/${c.id}`}
+                  className={cx(
+                    'group flex flex-col justify-between rounded-2xl border border-border bg-surface p-lg shadow-sm transition-all hover:border-text-3 hover:shadow-md',
+                    FOCUS_RING,
+                  )}
+                >
+                  <div className="flex flex-col">
+                    {/* Spine rack preview */}
+                    <div
+                      className="collection-spine-rack mb-md select-none"
+                      aria-hidden="true"
+                    >
+                      <div className={cx('collection-spine', tint1)} />
+                      <div className={cx('collection-spine', tint2)} />
+                      <div className={cx('collection-spine', tint3)} />
+                      <div className="collection-spine-placeholder" />
                     </div>
-                    <h2 className="text-lg font-medium text-text truncate">
+
+                    <h2 className="collection-title text-text truncate">
                       {c.name}
                     </h2>
                   </div>
-                </div>
 
-                <div className="mt-md flex items-center justify-between border-t border-border/50 pt-sm">
-                  <span className="text-xs text-text-2 font-ui">
-                    {c.workCount} {c.workCount === 1 ? 'book' : 'books'}
-                  </span>
-                  <div className="flex items-center gap-4xs text-xs text-text-3 group-hover:text-text group-hover:translate-x-0.5 transition-all">
-                    <span>View</span>
-                    <ChevronRightIcon className="size-3.5" />
+                  <div className="mt-md flex items-center justify-between border-t border-border-2 pt-sm">
+                    <span className="font-mono text-3xs text-text-3 tracking-5 uppercase">
+                      <span>{c.workCount} {c.workCount === 1 ? 'book' : 'books'}</span> · UPDATED RECENTLY
+                    </span>
+                    <div className="flex items-center gap-4xs text-xs text-text-3 group-hover:text-text group-hover:translate-x-0.5 transition-all">
+                      <span>View</span>
+                      <ChevronRightIcon className="size-3.5" />
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
