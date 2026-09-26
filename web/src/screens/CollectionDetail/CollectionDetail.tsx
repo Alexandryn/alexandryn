@@ -11,7 +11,7 @@ import { useCollection, useDeleteCollection, useRenameCollection } from '../../d
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { FolderIcon, ChevronLeftIcon } from '../../components/Icon'
+import { ChevronLeftIcon } from '../../components/Icon'
 
 /**
  * Collection detail screen at /collections/:id and /collection/:id.
@@ -133,31 +133,42 @@ export function CollectionDetail() {
         : null
 
   return (
-    <div className="flex flex-col gap-xl p-3xl">
+    <div className="flex flex-col gap-xl p-3xl content-container-wide">
       {/* Back navigation */}
       <div>
         <Link
           to="/collections"
           className={cx(
-            'inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
+            'inline-flex items-center gap-xs text-xs font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
             FOCUS_RING,
           )}
         >
-          <ChevronLeftIcon className="size-4" aria-hidden="true" />
-          <span>Collections</span>
+          <ChevronLeftIcon className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>← Collections</span>
         </Link>
       </div>
 
-      {/* Screen Header */}
-      <div className="flex flex-wrap items-center justify-between gap-md border-b border-border/50 pb-lg">
-        <div className="flex flex-col gap-4xs">
-          <div className="flex items-center gap-sm">
-            <FolderIcon className="size-6 text-text-2 shrink-0" aria-hidden="true" />
-            <h1 className="text-3xl font-medium tracking-1 text-text">{collection.name}</h1>
+      {/* Prototype Collection Detail Header */}
+      <div className="flex flex-wrap items-end justify-between gap-xl border-b border-border pb-xl">
+        <div className="flex items-end gap-lg">
+          {/* Mini spine preview rack */}
+          <div className="collection-spine-rack flex-none" aria-hidden="true">
+            <div className="collection-spine spine-tint-1" />
+            <div className="collection-spine spine-tint-2" />
+            <div className="collection-spine spine-tint-3" />
           </div>
-          <p className="text-sm text-text-2">
-            {collection.works.length} {collection.works.length === 1 ? 'book' : 'books'}
-          </p>
+
+          <div className="flex flex-col">
+            <div className="font-mono text-3xs tracking-wider text-text-3 uppercase">
+              COLLECTION
+            </div>
+            <h1 className="collection-detail-title text-text mt-2xs mb-3xs">
+              {collection.name}
+            </h1>
+            <p className="text-xs text-text-2">
+              {collection.works.length} {collection.works.length === 1 ? 'book' : 'books'}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-sm">

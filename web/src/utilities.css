@@ -197,4 +197,112 @@
     -2px 0 4px color-mix(in srgb, var(--book-shadow-color) 12%, transparent);
 }
 
+/* Prototype Layout & Dimension Utilities */
+.book-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(196px, clamp(196px, 20vw, 288px)) minmax(0, 1fr);
+  gap: clamp(28px, 3.6vw, 52px);
+  align-items: start;
+}
+
+.book-detail-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 30px 60px -30px rgba(0, 0, 0, 0.5);
+}
+
+.book-detail-title {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+  font-size: 52px;
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+}
+
+.book-cover-title {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+  font-size: 31px;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.book-reading-desc {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+  font-size: 19px;
+  line-height: 1.62;
+  letter-spacing: -0.003em;
+  max-width: 64ch;
+}
+
+.stat-strip {
+  display: flex;
+  gap: 26px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.source-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.source-avatar-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.source-avatar-lg {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+
+.source-dashed-card {
+  min-height: 140px;
+}
+
+.collection-detail-title {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.discover-search-bar {
+  height: 44px;
+  max-width: 720px;
+  border-radius: 11px;
+}
+
+.reader-bar-h {
+  height: 52px;
+}
+
+.reader-footer-h {
+  height: 46px;
+}
+
+.book-cover-pattern {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 8px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.tab-active-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--color-text);
+}
+
 

@@ -11,7 +11,6 @@ import { useDeleteSource, useHealthCheckSource, useSources, type Source } from '
 import { ApiError } from '../../data/http'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
-import { FolderIcon, GlobeIcon } from '../../components/Icon'
 
 /**
  * Sources index screen at /sources.
@@ -86,52 +85,51 @@ export function Sources() {
             }}
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-lg">
+          <div className="source-card-grid">
             {sources.map((src) => {
               const isLocal = src.kind === 'local-folder'
               const configDisplay = isLocal ? src.config.basePath : src.config.baseUrl
+              const abbr = isLocal ? 'DIR' : 'OPDS'
 
               return (
                 <div
                   key={src.id}
-                  className="flex flex-col justify-between rounded-lg border border-border bg-surface p-lg shadow-sm transition-all hover:border-text-3"
+                  className="flex flex-col justify-between rounded-md border border-border bg-surface p-lg shadow-xs transition-colors hover:border-text-3"
                 >
-                  <div className="flex flex-col gap-md">
+                  <div className="flex flex-col gap-sm">
                     <div className="flex items-start justify-between gap-sm">
-                      <div className="flex items-center gap-xs">
-                        {isLocal ? (
-                          <FolderIcon className="size-5 text-text-2 shrink-0" aria-hidden="true" />
-                        ) : (
-                          <GlobeIcon className="size-5 text-text-2 shrink-0" aria-hidden="true" />
-                        )}
-                        <div>
-                          <h2 className="text-base font-medium text-text">{src.label}</h2>
-                          <span className="text-3xs font-ui uppercase tracking-wide text-text-3">
-                            {isLocal ? 'Local folder' : 'OPDS catalog'}
+                      <div className="flex items-center gap-sm">
+                        <div className="source-avatar-sm bg-surface-3 flex items-center justify-center font-mono text-3xs text-text-2 shrink-0">
+                          {abbr}
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-sm font-semibold tracking-tight text-text truncate">{src.label}</h2>
+                          <span className="text-3xs font-mono uppercase tracking-wider text-text-3">
+                            {isLocal ? 'LOCAL FOLDER' : 'OPDS CATALOG'}
                           </span>
                         </div>
                       </div>
+
+                      {/* Health status badge */}
+                      <SourceStatusBadge
+                        health={src.health}
+                        onCheckAgain={() => healthCheckMutation.mutate(src.id)}
+                        isChecking={
+                          healthCheckMutation.isPending && healthCheckMutation.variables === src.id
+                        }
+                      />
                     </div>
 
                     {/* Config path / URL */}
                     <p
-                      className="text-xs font-mono text-text-2 truncate bg-surface-2 p-2xs rounded"
+                      className="text-xs font-mono text-text-3 truncate mt-xs"
                       title={configDisplay}
                     >
                       {configDisplay}
                     </p>
 
-                    {/* Health status badge */}
-                    <SourceStatusBadge
-                      health={src.health}
-                      onCheckAgain={() => healthCheckMutation.mutate(src.id)}
-                      isChecking={
-                        healthCheckMutation.isPending && healthCheckMutation.variables === src.id
-                      }
-                    />
-
                     {/* Capabilities badges */}
-                    <div className="flex flex-wrap items-center gap-4xs">
+                    <div className="flex flex-wrap items-center gap-4xs mt-xs">
                       {src.capabilities.canList && (
                         <span className="inline-flex items-center rounded-3xs bg-surface-3 px-2xs py-4xs text-3xs font-ui text-text-2">
                           Browse
@@ -151,9 +149,8 @@ export function Sources() {
                   </div>
 
                   {/* Actions footer */}
-                  <div className="mt-lg flex items-center justify-between border-t border-border/50 pt-sm">
+                  <div className="mt-md flex items-center justify-between border-t border-border pt-sm">
                     <div className="flex items-center gap-2xs">
-                      {/* size="sm" not h-auto: preserves the 44px touch-target minimum */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -175,7 +172,7 @@ export function Sources() {
                     <Link
                       to={`/sources/${src.id}`}
                       className={cx(
-                        'text-xs font-medium text-text-2 hover:text-text px-2xs py-4xs rounded',
+                        'text-xs font-medium text-accent hover:underline px-2xs py-4xs rounded',
                         FOCUS_RING,
                       )}
                     >
@@ -185,6 +182,24 @@ export function Sources() {
                 </div>
               )
             })}
+
+            {/* Prototype Add a Source Dashed Card */}
+            <button
+              type="button"
+              onClick={() => setIsCreateOpen(true)}
+              className={cx(
+                'flex flex-col justify-center items-start gap-xs p-lg rounded-md border border-dashed border-border hover:border-text-2 bg-transparent text-left cursor-pointer transition-colors source-dashed-card',
+                FOCUS_RING,
+              )}
+            >
+              <div className="source-avatar-sm rounded-2xs border border-border flex items-center justify-center text-text-3 text-base">
+                +
+              </div>
+              <div className="text-sm font-semibold text-text mt-2xs">Add a source</div>
+              <div className="text-xs text-text-3 max-w-[26ch] leading-relaxed">
+                OPDS, a folder on this machine, a remote library or cloud storage.
+              </div>
+            </button>
           </div>
         )}
       </div>
