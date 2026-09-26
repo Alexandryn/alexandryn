@@ -60,13 +60,6 @@ export function Titlebar() {
 
   return (
     <header className="flex h-[var(--shell-titlebar-height)] flex-none items-center gap-2xl border-b border-border bg-background px-xl select-none">
-      {/* Prototype Window Controls */}
-      <div className="hidden sm:flex items-center gap-xs pr-1" aria-hidden="true">
-        <div className="shell-window-dot" />
-        <div className="shell-window-dot" />
-        <div className="shell-window-dot" />
-      </div>
-
       {/* Wordmark with colored Alex the Cat Mascot */}
       <Link
         to="/library"
