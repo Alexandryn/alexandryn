@@ -44,12 +44,12 @@ export function Sources() {
   }
 
   return (
-    <div className="flex flex-col gap-xl p-3xl">
+    <div className="flex flex-col gap-xl p-3xl content-container-medium">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-md">
+      <div className="flex flex-wrap items-center justify-between gap-md mb-xs">
         <div>
-          <h1 className="text-3xl font-medium tracking-1 text-text">Sources</h1>
-          <p className="text-sm text-text-2 mt-4xs">
+          <h1 className="screen-title text-text">Sources</h1>
+          <p className="text-2xl text-text-2 mt-3xs">
             Connect local book folders and OPDS catalogs to browse and import into your library.
           </p>
         </div>

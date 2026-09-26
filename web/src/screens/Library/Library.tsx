@@ -182,10 +182,17 @@ export function Library() {
   const hasActiveFilters = Boolean(qParam || activeFilter !== 'all' || activeSort !== 'added_at')
 
   return (
-    <div className="flex flex-col gap-xl p-3xl">
+    <div className="flex flex-col gap-xl p-3xl content-container-wide">
       {/* Screen Header */}
-      <div className="flex flex-col gap-md">
-        <h1 className="text-3xl font-medium tracking-1 text-text">Library</h1>
+      <div className="flex flex-col gap-lg">
+        <div className="flex flex-wrap items-end justify-between gap-md">
+          <div>
+            <h1 className="screen-title text-text">Library</h1>
+            <div className="screen-subtext mt-1">
+              {allWorks.length.toLocaleString()} BOOKS · 4 SOURCES · UPDATED RECENTLY
+            </div>
+          </div>
+        </div>
 
         {/* Controls Bar: Search, Filters, Sort, View Toggle */}
         <div className="flex flex-wrap items-end justify-between gap-md">
@@ -261,6 +268,15 @@ export function Library() {
           )
         ) : (
           <div className="flex flex-col gap-lg">
+            {/* Prototype Signature Section Divider */}
+            <div className="section-divider">
+              <span className="section-divider-title">ALL BOOKS</span>
+              <div className="section-divider-line" />
+              <span className="font-mono text-2xs text-text-3 font-normal">
+                {allWorks.length}
+              </span>
+            </div>
+
             <WorkGrid works={allWorks} view={view} />
 
             {/* Infinite Scroll Sentinel / Load More Status */}

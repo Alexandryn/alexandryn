@@ -129,16 +129,21 @@ export function Discover() {
   const hasNextPage = offset + PAGE_SIZE < total
 
   return (
-    <div className="flex flex-col gap-xl p-3xl">
+    <div className="flex flex-col gap-xl p-3xl content-container-wide">
       {/* Header */}
       <div className="flex flex-col gap-md">
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-3xl font-medium tracking-1 text-text outline-none"
-        >
-          Discover
-        </h1>
+        <div>
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="screen-title text-text outline-none"
+          >
+            Discover
+          </h1>
+          <p className="text-2xl text-text-2 mt-3xs">
+            Search the Open Library catalogue, then check it against the sources you have connected.
+          </p>
+        </div>
 
         {/* Search Input */}
         {/* max-w-[28rem] not max-w-md: --spacing-md collides with Tailwind's max-w-md key */}

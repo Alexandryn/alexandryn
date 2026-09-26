@@ -27,24 +27,118 @@
   contain-intrinsic-size: auto 68px;
 }
 
-/* Typography Scale Modernization:
- * Ensures all text scales meet readable, accessible desktop & mobile baselines.
- * Replaces micro-extracted font sizes with standard, legible typographic values.
+/* Prototype Typography & Layout Utilities:
+ * Faithful alignment with Alexandryn Electron prototype.
  */
-:root {
-  --text-5xs: 0.625rem;
-  --text-4xs: 0.6875rem;
-  --text-3xs: 0.75rem;
-  --text-2xs: 0.8125rem;
-  --text-xs: 0.875rem;
-  --text-sm: 0.9375rem;
-  --text-md: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
-  --text-4xl: 2.25rem;
+.screen-title {
+  font-size: 1.6875rem; /* 27px */
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
+
+.screen-subtext {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: var(--text-xs, 11px);
+  color: var(--color-text-3, #9c978f);
+  letter-spacing: 0.04em;
+}
+
+.collection-title {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+  font-size: 1.3125rem; /* 21px */
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.content-container-wide {
+  max-width: 85rem; /* 1360px */
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.content-container-medium {
+  max-width: 75rem; /* 1200px */
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.section-divider-title {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: var(--text-2xs, 10.5px);
+  letter-spacing: 0.12em;
+  color: var(--color-text-3, #9c978f);
+  text-transform: uppercase;
+}
+
+.section-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-border, #e7e4de);
+}
+
+.font-reading {
+  font-family: var(--font-reading, Newsreader, Georgia, serif);
+}
+
+.work-list-grid {
+  display: grid;
+  grid-template-columns: 36px 2.2fr 1.3fr 70px 1fr 110px;
+  gap: var(--spacing-2xl, 16px);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .work-list-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs, 8px);
+  }
+}
+
+.work-cover-thumb {
+  width: 30px;
+  aspect-ratio: 2 / 3;
+}
+
+.collection-spine-rack {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 78px;
+}
+
+.collection-spine {
+  width: 52px;
+  height: 78px;
+  border-radius: 2px;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.collection-spine-placeholder {
+  width: 52px;
+  height: 60px;
+  border-radius: 2px;
+  border: 1px dashed var(--color-border);
+  flex-shrink: 0;
+}
+
+.spine-tint-1 { background-color: #2a3550; }
+.spine-tint-2 { background-color: #8a6038; }
+.spine-tint-3 { background-color: #3c5844; }
+.spine-tint-4 { background-color: #583238; }
 
 /* Alex the Cat Mascot Palette */
 :root {
