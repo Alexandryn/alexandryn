@@ -212,15 +212,11 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
                 >
                   <div className="relative work-cover-thumb shrink-0 overflow-hidden rounded-4xs bg-surface-3 book-shadow">
                     <div className="absolute inset-y-0 left-0 w-1 book-spine-crease pointer-events-none z-10" />
-                    {coverFor(index) ? (
-                      <GeneratedCover
-                        identifier={work.id}
-                        title={work.title}
-                        author={formatCoverAuthor(work.authors)}
-                      />
-                    ) : (
-                      coverPlaceholder
-                    )}
+                    <GeneratedCover
+                      identifier={work.id}
+                      title={work.title}
+                      author={formatCoverAuthor(work.authors)}
+                    />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-baseline gap-xs">
@@ -323,16 +319,11 @@ export function WorkGrid({ works, view, className, ...rest }: WorkGridProps) {
               >
                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-4xs bg-surface-3 book-shadow group-hover:book-shadow-hover transition-all duration-200 group-hover:-translate-y-1">
                   <div className="absolute inset-y-0 left-0 w-2.5 book-spine-crease pointer-events-none z-10" />
-                  {coverFor(index) ? (
-                    <GeneratedCover
-                      identifier={work.id}
-                      title={work.title}
-                      author={formatCoverAuthor(work.authors)}
-                    />
-                  ) : (
-                    coverPlaceholder
-                  )}
-                </div>
+                  <GeneratedCover
+                    identifier={work.id}
+                    title={work.title}
+                    author={formatCoverAuthor(work.authors)}
+                  />
                 </div>
 
                 <div className="mt-xs flex flex-col">
