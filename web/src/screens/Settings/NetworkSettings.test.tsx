@@ -242,4 +242,48 @@ describe('NetworkSettings screen', () => {
     expect(domHtml).not.toContain(SECRET_DB)
     expect(domHtml).not.toContain('secretpass')
   })
+
+  it('renders verified badge when hostnameVerified is true', async () => {
+    server.use(
+      http.get('*/api/v1/network/status', () =>
+        HttpResponse.json({
+          reachability: 'local_network',
+          tlsMode: 'none',
+          authRequired: true,
+          address: 'http://192.168.1.50:4000',
+          addresses: [{ scope: 'lan', url: 'http://192.168.1.50:4000' }],
+          hostName: 'alexandryn.local',
+          hostnameVerified: true,
+        }),
+      ),
+    )
+
+    renderWithProviders(<NetworkSettings />)
+    await waitFor(() => expect(screen.getByTestId('hostname-verified-badge')).toBeInTheDocument())
+    expect(screen.getByTestId('hostname-verified-badge')).toHaveTextContent('Verified')
+    expect(screen.queryByTestId('hostname-unverified-guidance')).not.toBeInTheDocument()
+  })
+
+  it('renders unverified badge and actionable fallback guidance when hostnameVerified is false', async () => {
+    server.use(
+      http.get('*/api/v1/network/status', () =>
+        HttpResponse.json({
+          reachability: 'local_network',
+          tlsMode: 'none',
+          authRequired: true,
+          address: 'http://192.168.1.50:4000',
+          addresses: [{ scope: 'lan', url: 'http://192.168.1.50:4000' }],
+          hostName: 'alexandryn.local',
+          hostnameVerified: false,
+        }),
+      ),
+    )
+
+    renderWithProviders(<NetworkSettings />)
+    await waitFor(() => expect(screen.getByTestId('hostname-unverified-badge')).toBeInTheDocument())
+    expect(screen.getByTestId('hostname-unverified-badge')).toHaveTextContent('Unverified / Check Firewall')
+    expect(screen.getByTestId('hostname-unverified-guidance')).toBeInTheDocument()
+    expect(screen.getByTestId('hostname-unverified-guidance')).toHaveTextContent('UDP on port 5353')
+    expect(screen.getByTestId('hostname-unverified-guidance')).toHaveTextContent('/etc/hosts')
+  })
 })

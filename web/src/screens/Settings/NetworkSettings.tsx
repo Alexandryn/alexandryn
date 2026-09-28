@@ -1,6 +1,7 @@
 import { useState, useId } from 'react'
 import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner/Spinner'
+import { StatusPill } from '../../components/StatusPill/StatusPill'
 import {
   isAdminNetworkStatus,
   useNetworkSettings,
@@ -156,6 +157,49 @@ export function NetworkSettings() {
               {status.address}
             </span>
           </div>
+
+          {adminStatus && 'hostName' in status && (
+            <div className="flex flex-col gap-4xs md:col-span-2">
+              <span className="text-xs uppercase tracking-7 text-text-3 font-medium">Local Hostname (.local)</span>
+              <div className="flex items-center gap-xs">
+                <span data-testid="hostname-val" className="font-mono font-medium text-text">
+                  {status.hostName}
+                </span>
+                {status.hostnameVerified ? (
+                  <StatusPill tone="success" data-testid="hostname-verified-badge">
+                    Verified
+                  </StatusPill>
+                ) : (
+                  <StatusPill tone="warning" data-testid="hostname-unverified-badge">
+                    Unverified / Check Firewall
+                  </StatusPill>
+                )}
+              </div>
+              {!status.hostnameVerified && (
+                <div data-testid="hostname-unverified-guidance" className="text-xs text-text-2 bg-surface-2 p-sm rounded-md border border-border mt-4xs flex flex-col gap-4xs">
+                  <p>
+                    <strong>Resolution note:</strong> Automatic discovery for <code className="font-mono text-text">{status.hostName}</code> has not been verified on your LAN.
+                  </p>
+                  <p>
+                    Ensure your firewall allows incoming multicast UDP on port 5353. If your network isolates mDNS traffic, connect using your device's direct LAN IP ({status.address}) or add <code className="font-mono text-text">{status.hostName}</code> to your <code className="font-mono text-text">/etc/hosts</code> file.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {adminStatus && 'addresses' in status && status.addresses && status.addresses.length > 1 && (
+            <div className="flex flex-col gap-4xs md:col-span-2">
+              <span className="text-xs uppercase tracking-7 text-text-3 font-medium">Alternative LAN Addresses</span>
+              <ul className="flex flex-wrap gap-xs">
+                {status.addresses.map((addr, idx) => (
+                  <li key={idx} className="font-mono text-xs px-xs py-4xs rounded bg-surface-2 border border-border text-text">
+                    {addr.url} <span className="text-text-3">({addr.scope})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-col gap-4xs md:col-span-2">
             <span className="text-xs uppercase tracking-7 text-text-3 font-medium">Encryption & Security</span>

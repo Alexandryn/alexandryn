@@ -342,12 +342,13 @@ func PairingQRHandler(
 }
 
 type NetworkInfo struct {
-	Reachability string
-	TLSMode      string
-	BindAddress  string
-	ACMEDomain   string
-	HostName     string
-	Addresses    []NetworkAddressWire
+	Reachability     string
+	TLSMode          string
+	BindAddress      string
+	ACMEDomain       string
+	HostName         string
+	HostnameVerified bool
+	Addresses        []NetworkAddressWire
 }
 
 type NetworkAddressWire struct {
@@ -363,13 +364,14 @@ type NetworkStatusReaderWire struct {
 }
 
 type NetworkStatusAdminWire struct {
-	Reachability string               `json:"reachability"`
-	TLSMode      string               `json:"tlsMode"`
-	AuthRequired bool                 `json:"authRequired"`
-	Address      string               `json:"address"`
-	Addresses    []NetworkAddressWire `json:"addresses"`
-	HostName     string               `json:"hostName"`
-	ACMEDomain   string               `json:"acmeDomain,omitempty"`
+	Reachability     string               `json:"reachability"`
+	TLSMode          string               `json:"tlsMode"`
+	AuthRequired     bool                 `json:"authRequired"`
+	Address          string               `json:"address"`
+	Addresses        []NetworkAddressWire `json:"addresses"`
+	HostName         string               `json:"hostName"`
+	HostnameVerified bool                 `json:"hostnameVerified"`
+	ACMEDomain       string               `json:"acmeDomain,omitempty"`
 }
 
 // NetworkStatusHandler returns reachability, TLS mode, and address info scoped by role.
@@ -415,12 +417,13 @@ func NetworkStatusHandler(
 
 		if user.Role == domain.RoleAdmin {
 			adminResp := NetworkStatusAdminWire{
-				Reachability: info.Reachability,
-				TLSMode:      info.TLSMode,
-				AuthRequired: true,
-				Address:      matchedAddress,
-				Addresses:    info.Addresses,
-				HostName:     info.HostName,
+				Reachability:     info.Reachability,
+				TLSMode:          info.TLSMode,
+				AuthRequired:     true,
+				Address:          matchedAddress,
+				Addresses:        info.Addresses,
+				HostName:         info.HostName,
+				HostnameVerified: info.HostnameVerified,
 			}
 			if info.TLSMode == "acme" {
 				adminResp.ACMEDomain = info.ACMEDomain

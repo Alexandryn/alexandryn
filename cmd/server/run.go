@@ -28,6 +28,7 @@ import (
 	"github.com/Alexandryn/alexandryn/internal/persistence/postgres"
 	"github.com/Alexandryn/alexandryn/internal/reader/content"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"github.com/Alexandryn/alexandryn/internal/transport/mdns"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
@@ -102,6 +103,8 @@ type runDeps struct {
 
 	userConfigDir func() (string, error)
 
+	newMDNSServer func(cfg mdns.Config) (*mdns.Server, error)
+
 	stderr io.Writer
 }
 
@@ -136,8 +139,12 @@ func waitForPostgres(ctx context.Context, cfg *config.Config, obtain func(contex
 // connections, allow in-flight requests to complete within the configured
 // grace period, stop background jobs, drain observability sweeps, and close
 // the database connection pool.
-func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, eventReaper *observability.Reaper, logger *slog.Logger) int {
+func gracefulShutdown(cfg *config.Config, deps runDeps, srv shutdownableServer, redirectSrv *http.Server, pool pgPool, jobSystem jobRunner, eventReaper *observability.Reaper, mdnsServer *mdns.Server, logger *slog.Logger) int {
 	logger.Info("shutdown signal received")
+
+	if mdnsServer != nil {
+		_ = mdnsServer.Close()
+	}
 
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deps.clock.Now().Add(cfg.ShutdownGracePeriod))
 	defer cancel()
@@ -353,10 +360,35 @@ func run(ctx context.Context, deps runDeps) int {
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(listener) }()
 
+	var mdnsServer *mdns.Server
+	if cfg.Reachability() != "loopback" {
+		port := 80
+		if len(cfg.TrustedProxyCIDRs) == 0 && boundPort != "" {
+			if p, err := strconv.Atoi(boundPort); err == nil && p > 0 {
+				port = p
+			}
+		}
+		newMDNS := deps.newMDNSServer
+		if newMDNS == nil {
+			newMDNS = mdns.NewServer
+		}
+		ms, err := newMDNS(mdns.Config{
+			Hostname: "alexandryn.local",
+			Port:     port,
+			Logger:   logger,
+		})
+		if err == nil && ms != nil {
+			mdnsServer = ms
+			if err := mdnsServer.Start(ctx); err != nil {
+				logger.Warn("could not start mDNS responder", "error", err.Error())
+			}
+		}
+	}
+
 	if err := waitForPostgres(ctx, cfg, deps.obtainPostgres, deps.postgresMaxAttempts, deps.postgresBackoff, deps.sleep, logger); err != nil {
 		if ctx.Err() != nil {
 			// A shutdown signal terminated startup. Proceed with graceful shutdown.
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, mdnsServer, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -370,7 +402,7 @@ func run(ctx context.Context, deps runDeps) int {
 
 	if err := deps.runMigrations(ctx, cfg); err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, mdnsServer, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -387,7 +419,7 @@ func run(ctx context.Context, deps runDeps) int {
 	pool, repos, err := deps.newPool(ctx, cfg)
 	if err != nil {
 		if ctx.Err() != nil {
-			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, logger)
+			return gracefulShutdown(cfg, deps, srv, redirectSrv, nil, nil, nil, mdnsServer, logger)
 		}
 		msg := err.Error()
 		if cfg.DatabaseURL != "" {
@@ -560,7 +592,7 @@ func run(ctx context.Context, deps runDeps) int {
 				IDs:                idgen.New(),
 				Now:                time.Now,
 				Logger:             logger,
-				InfoProvider:       fallbackNetworkInfo(cfg),
+				InfoProvider:       fallbackNetworkInfo(cfg, mdnsServer),
 			})
 		}
 
@@ -674,8 +706,11 @@ func run(ctx context.Context, deps runDeps) int {
 
 	select {
 	case <-ctx.Done():
-		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, eventReaper, logger)
+		return gracefulShutdown(cfg, deps, srv, redirectSrv, pool, jobSystem, eventReaper, mdnsServer, logger)
 	case err := <-serveErr:
+		if mdnsServer != nil {
+			_ = mdnsServer.Close()
+		}
 		// The server stopped without a shutdown signal. Close background jobs
 		// and the database pool before exiting.
 		if jobSystem != nil {
