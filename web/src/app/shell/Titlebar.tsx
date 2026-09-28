@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { QueryClientContext } from '@tanstack/react-query'
 import { getCurrentUser, logout } from '../../data/auth'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
@@ -12,6 +13,7 @@ import { SearchIcon } from '../../components/Icon'
  */
 export function Titlebar() {
   const navigate = useNavigate()
+  const queryClient = useContext(QueryClientContext)
   const user = getCurrentUser()
   const [searchQuery, setSearchQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,6 +47,7 @@ export function Titlebar() {
 
   const handleLogout = async () => {
     await logout()
+    queryClient?.clear()
     navigate('/login')
   }
 

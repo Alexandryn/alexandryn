@@ -7,7 +7,6 @@ import { setActiveLibraryId } from './auth'
 // on a switch.
 const LIBRARY_INDEPENDENT_ROOTS = new Set([
   'libraries', // the set of libraries the user can reach
-  'bootstrap', // host capabilities
   'devices', // the user's paired devices
   'discover', // Open Library — no tenant
   'network', // host network status

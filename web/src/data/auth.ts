@@ -39,16 +39,44 @@ export function notifyAuthChange(): void {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY)
+  return typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null
+}
+
+export function parseJwtLibraries(token: string): string[] {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return []
+    const base64Url = parts[1]
+    if (!base64Url) return []
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    )
+    const payload = JSON.parse(jsonPayload)
+    return Array.isArray(payload.libraries) ? payload.libraries : []
+  } catch {
+    return []
+  }
 }
 
 export function setAccessToken(token: string | null): void {
-  if (token) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, token)
-  } else {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, token)
+      if (!getActiveLibraryId()) {
+        const libs = parseJwtLibraries(token)
+        if (libs.length > 0 && libs[0]) {
+          localStorage.setItem(ACTIVE_LIB_KEY, libs[0])
+        }
+      }
+    } else {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+    }
+    notifyAuthChange()
   }
-  notifyAuthChange()
 }
 
 export function getRefreshToken(): string | null {
@@ -74,30 +102,36 @@ export function getCurrentUser(): UserSummary | null {
 }
 
 export function setCurrentUser(user: UserSummary | null): void {
-  if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
-  } else {
-    localStorage.removeItem(USER_KEY)
+  if (typeof window !== 'undefined') {
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(USER_KEY)
+    }
+    notifyAuthChange()
   }
 }
 
 export function getActiveLibraryId(): string | null {
-  return localStorage.getItem(ACTIVE_LIB_KEY)
+  return typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_LIB_KEY) : null
 }
 
 export function setActiveLibraryId(id: string | null): void {
-  if (id) {
-    localStorage.setItem(ACTIVE_LIB_KEY, id)
-  } else {
-    localStorage.removeItem(ACTIVE_LIB_KEY)
+  if (typeof window !== 'undefined') {
+    if (id) {
+      localStorage.setItem(ACTIVE_LIB_KEY, id)
+    } else {
+      localStorage.removeItem(ACTIVE_LIB_KEY)
+    }
+    notifyAuthChange()
   }
-  notifyAuthChange()
 }
 
 export function clearSession(): void {
   setAccessToken(null)
   setRefreshToken(null)
   setCurrentUser(null)
+  setActiveLibraryId(null)
   notifyAuthChange()
 }
 

@@ -13,6 +13,7 @@ import {
   type LibrarySort,
   type WorkSummary,
 } from '../../data/library'
+import { useSources } from '../../data/sources'
 import { ApiError } from '../../data/http'
 
 const STORAGE_VIEW_KEY = 'alexandryn:library-view'
@@ -158,6 +159,8 @@ export function Library() {
     [data],
   )
 
+  const { data: sources = [] } = useSources()
+
   // 6. Infinite scroll sentinel intersection observer
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -189,7 +192,9 @@ export function Library() {
           <div>
             <h1 className="screen-title text-text">Library</h1>
             <div className="screen-subtext mt-1">
-              {allWorks.length.toLocaleString()} BOOKS · 4 SOURCES · UPDATED RECENTLY
+              {allWorks.length.toLocaleString()} {allWorks.length === 1 ? 'BOOK' : 'BOOKS'}
+              {sources.length > 0 ? ` · ${sources.length} ${sources.length === 1 ? 'SOURCE' : 'SOURCES'}` : ''}
+              {' · UPDATED RECENTLY'}
             </div>
           </div>
         </div>
