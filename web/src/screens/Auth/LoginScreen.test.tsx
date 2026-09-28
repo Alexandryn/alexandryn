@@ -21,6 +21,7 @@ function renderLogin(initialEntry: string) {
         <LocationProbe />
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
+          <Route path="/setup" element={<div data-testid="setup-page">setup</div>} />
           <Route path="/forgot-password" element={<div data-testid="forgot-page">forgot</div>} />
           <Route path="/library" element={<div data-testid="library-page">library</div>} />
           <Route path="/reader/7" element={<div data-testid="reader-page">reader</div>} />
@@ -119,5 +120,15 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(sentGrant).toBe('grant-xyz'))
     await waitFor(() => expect(screen.getByTestId('library-page')).toBeInTheDocument())
     expect(sessionStorage.getItem('alexandryn_pending_enrolment')).toBeNull()
+  })
+
+  it('redirects to /setup when system is not yet initialized', async () => {
+    server.use(
+      http.get('*/api/v1/auth/setup/status', () => {
+        return HttpResponse.json({ isSetup: false })
+      }),
+    )
+    renderLogin('/login')
+    await waitFor(() => expect(screen.getByTestId('setup-page')).toBeInTheDocument())
   })
 })

@@ -86,10 +86,15 @@ export function spawnServer(
     }
   })
 
-  // Stderr: prefix and forward; no PORT scanning needed here.
+  // Stderr: prefix and forward; keep last 10 lines for diagnostic reporting if process fails early.
+  const stderrLines: string[] = []
   const stderr = createInterface({ input: child.stderr! })
   stderr.on('line', (line) => {
     process.stderr.write(`[server] ${line}\n`)
+    if (stderrLines.length >= 10) {
+      stderrLines.shift()
+    }
+    stderrLines.push(line)
   })
 
   // If spawn fails (e.g. ENOENT), reject the portPromise immediately.
@@ -101,7 +106,8 @@ export function spawnServer(
   // caller (health poller) can surface a `Failed` state rather than
   // hanging indefinitely.
   child.once('exit', (code) => {
-    portReject(new Error(`Server process exited (code ${code ?? 'null'}) before announcing a port`))
+    const detail = stderrLines.length > 0 ? `: ${stderrLines.join(' | ')}` : ''
+    portReject(new Error(`Server process exited (code ${code ?? 'null'}) before announcing a port${detail}`))
   })
 
   return { child, portPromise }
