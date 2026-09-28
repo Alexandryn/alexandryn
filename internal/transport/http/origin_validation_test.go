@@ -97,4 +97,3 @@ func TestLazyOriginValidation_DynamicOrigins(t *testing.T) {
 		t.Errorf("foreign origin got %d, want 403", rec.Code)
 	}
 }
-

@@ -128,4 +128,3 @@ func TestComputeAllowedOrigins_WildcardIncludesLoopback(t *testing.T) {
 		}
 	}
 }
-

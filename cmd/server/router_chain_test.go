@@ -234,7 +234,6 @@ func TestRouter_OriginValidationAllowsConfiguredAndDynamicOrigin(t *testing.T) {
 	}
 }
 
-
 func TestRouter_BootstrapRouteAccessible(t *testing.T) {
 	router := chainTestRouter(t, nil)
 	rec := httptest.NewRecorder()
