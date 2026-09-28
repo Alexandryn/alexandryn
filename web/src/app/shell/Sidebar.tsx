@@ -2,6 +2,7 @@ import { Suspense, lazy, useContext } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { QueryClientContext } from '@tanstack/react-query'
 import { useActivityBadge } from '../../data/activity'
+import { getCurrentUser } from '../../data/auth'
 import { cx } from '../../lib/cx'
 import { FOCUS_RING } from '../../lib/focusRing'
 import { NAV_ITEMS } from './navItems'
@@ -56,6 +57,16 @@ function ActivityBadge() {
 }
 
 function SidebarStaticContent({ hasQueryClient }: { hasQueryClient: boolean }) {
+  const user = getCurrentUser()
+  const isAdmin = user?.role === 'admin'
+
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.to === '/sources' || item.to === '/activity' || item.to === '/import') {
+      return isAdmin
+    }
+    return true
+  })
+
   return (
     <>
       <div className="flex items-center gap-md px-2 py-sm mb-xs">
@@ -70,7 +81,7 @@ function SidebarStaticContent({ hasQueryClient }: { hasQueryClient: boolean }) {
       </div>
 
       <ul className="flex flex-col gap-4xs flex-1">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const isSecondary =
             item.dividerBefore || item.to === '/import' || item.to === '/settings'
           return (
@@ -109,22 +120,24 @@ function SidebarStaticContent({ hasQueryClient }: { hasQueryClient: boolean }) {
         })}
       </ul>
 
-      <div className="rounded-md border border-border bg-surface p-md shadow-sm">
-        <div className="flex items-center gap-2xs mb-2xs">
-          <span className="size-1.5 rounded-full bg-success flex-none" />
-          <span className="font-mono text-3xs uppercase tracking-7 text-text-2 font-medium">
-            HOSTING
-          </span>
+      {isAdmin && (
+        <div className="rounded-md border border-border bg-surface p-md shadow-sm">
+          <div className="flex items-center gap-2xs mb-2xs">
+            <span className="size-1.5 rounded-full bg-success flex-none" />
+            <span className="font-mono text-3xs uppercase tracking-7 text-text-2 font-medium">
+              HOSTING
+            </span>
+          </div>
+          <div className="font-mono text-xs text-text font-medium">127.0.0.1:8474</div>
+          <div className="text-sm text-text-3 mt-4xs">0 devices connected</div>
+          <Link
+            to="/network"
+            className="mt-2 block text-sm text-accent hover:underline cursor-pointer"
+          >
+            Open on another device →
+          </Link>
         </div>
-        <div className="font-mono text-xs text-text font-medium">127.0.0.1:8474</div>
-        <div className="text-sm text-text-3 mt-4xs">0 devices connected</div>
-        <Link
-          to="/network"
-          className="mt-2 block text-sm text-accent hover:underline cursor-pointer"
-        >
-          Open on another device →
-        </Link>
-      </div>
+      )}
     </>
   )
 }

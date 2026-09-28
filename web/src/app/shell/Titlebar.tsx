@@ -114,28 +114,34 @@ export function Titlebar() {
 
       {/* Right Controls: Hosting pill & Profile / Auth */}
       <div className="flex items-center gap-md">
-        <Link
-          to="/network"
-          className={cx(
-            'hidden lg:flex items-center gap-2xs shell-hosting-pill px-md border border-border bg-surface text-text-2 hover:text-text transition-colors cursor-pointer',
-            FOCUS_RING,
-          )}
-          title="Network hosting status"
-        >
-          <span className="size-1.5 rounded-full bg-success flex-none" />
-          <span className="font-mono text-2xs uppercase tracking-7">
-            HOSTING · 2 DEVICES
-          </span>
-        </Link>
+        {user?.role === 'admin' && (
+          <Link
+            to="/network"
+            className={cx(
+              'hidden lg:flex items-center gap-2xs shell-hosting-pill px-md border border-border bg-surface text-text-2 hover:text-text transition-colors cursor-pointer',
+              FOCUS_RING,
+            )}
+            title="Network hosting status"
+          >
+            <span className="size-1.5 rounded-full bg-success flex-none" />
+            <span className="font-mono text-2xs uppercase tracking-7">
+              HOSTING
+            </span>
+          </Link>
+        )}
 
         {user && (
           <div className="flex items-center gap-xs">
-            <div
-              title={user.username}
-              className="shell-badge-circle bg-surface-3 flex items-center justify-center font-ui text-2xs font-medium text-text-2 uppercase select-none"
+            <Link
+              to="/settings/account"
+              title={`Account (${user.role === 'admin' ? 'Administrator' : 'Reader'}): ${user.username}`}
+              className={cx(
+                'shell-badge-circle bg-surface-3 flex items-center justify-center font-ui text-2xs font-medium text-text-2 hover:text-text uppercase select-none cursor-pointer',
+                FOCUS_RING,
+              )}
             >
               {user.username.slice(0, 2)}
-            </div>
+            </Link>
             <button
               onClick={handleLogout}
               className={cx(

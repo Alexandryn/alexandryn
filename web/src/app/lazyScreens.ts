@@ -46,6 +46,12 @@ export const DevicesSettings = lazy(() =>
 export const ConnectScreen = lazy(() =>
   import('../screens/Network/ConnectScreen').then((m) => ({ default: m.ConnectScreen })),
 )
+export const AccountSettings = lazy(() =>
+  import('../screens/Settings/AccountSettings').then((m) => ({ default: m.AccountSettings })),
+)
+export const DiagnosticsScreen = lazy(() =>
+  import('../screens/Settings/DiagnosticsScreen').then((m) => ({ default: m.DiagnosticsScreen })),
+)
 export const AccessScreen = lazy(() =>
   import('../screens/Network/AccessScreen').then((m) => ({ default: m.AccessScreen })),
 )

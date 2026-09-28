@@ -260,7 +260,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 		transporthttp.LazyInitiatePairingHandler(poolRef),
 		transporthttp.PublicRateLimit(pairInitiateLimiter, func(string) bool { return true }),
 	)
-	mux.Handle("POST /api/v1/network/pair/initiate", initiateHandler)
+	mux.Handle("POST /api/v1/network/pair/initiate", adminOnly(initiateHandler))
 
 	verifyHandler := transporthttp.Chain(
 		transporthttp.LazyVerifyPairingHandler(poolRef),
@@ -269,11 +269,11 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	)
 	mux.Handle("POST /api/v1/network/pair/verify", verifyHandler)
 
-	mux.Handle("GET /api/v1/network/pair/{id}/qr", transporthttp.LazyPairingQRHandler(poolRef))
+	mux.Handle("GET /api/v1/network/pair/{id}/qr", adminOnly(transporthttp.LazyPairingQRHandler(poolRef)))
 	mux.Handle("GET /api/v1/network/status", transporthttp.LazyNetworkStatusHandler(poolRef, fallbackNetworkInfo(cfg)))
-	mux.Handle("GET /api/v1/network/settings", transporthttp.LazyGetNetworkSettingsHandler(poolRef))
-	mux.Handle("PATCH /api/v1/network/settings", transporthttp.LazyUpdateNetworkSettingsHandler(poolRef))
-	mux.Handle("DELETE /api/v1/network/pair/{id}", transporthttp.LazyDeletePairingHandler(poolRef))
+	mux.Handle("GET /api/v1/network/settings", adminOnly(transporthttp.LazyGetNetworkSettingsHandler(poolRef)))
+	mux.Handle("PATCH /api/v1/network/settings", adminOnly(transporthttp.LazyUpdateNetworkSettingsHandler(poolRef)))
+	mux.Handle("DELETE /api/v1/network/pair/{id}", adminOnly(transporthttp.LazyDeletePairingHandler(poolRef)))
 
 	// Device management and sync routes
 	mux.Handle("GET /api/v1/devices", transporthttp.Chain(transporthttp.LazyListDevicesHandler(poolRef), syncMW))
