@@ -1,7 +1,9 @@
+import { useContext } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useActivityBadge } from '../../data/activity'
-import { getActiveLibraryId } from '../../data/auth'
+import { CapabilityContext } from '../capability/CapabilityContext'
+import { getCurrentUser, getActiveLibraryId } from '../../data/auth'
 import { useCollections } from '../../data/collections'
 import { useDevices } from '../../data/devices'
 import { fetchLibraries } from '../../data/libraries'
@@ -61,12 +63,15 @@ function ActivityBadge() {
 }
 
 function SidebarLiveHeader() {
+  const user = getCurrentUser()
+  const isAdmin = user ? user.role === 'admin' : true
+
   const { data: librariesData } = useQuery({
     queryKey: ['libraries'],
     queryFn: fetchLibraries,
     staleTime: 60_000,
   })
-  const { data: sources = [], isPending: isSourcesPending } = useSources()
+  const { data: sources = [], isPending: isSourcesPending } = useSources({ enabled: isAdmin })
   const { data: libraryData, isPending: isLibraryPending } = useLibrary({ filter: 'all' })
 
   const libraries = librariesData?.libraries ?? []
@@ -78,10 +83,16 @@ function SidebarLiveHeader() {
     libraryData?.pages.reduce((acc, p) => acc + p.works.length, 0) ?? 0
   const sourcesCount = sources.length
 
-  const isPending = isSourcesPending && isLibraryPending
-  const statsText = isPending
-    ? '...'
-    : `${booksCount.toLocaleString()} ${booksCount === 1 ? 'BOOK' : 'BOOKS'} · ${sourcesCount.toLocaleString()} ${sourcesCount === 1 ? 'SOURCE' : 'SOURCES'}`
+  let statsText: string
+  if (isAdmin) {
+    statsText = isSourcesPending && isLibraryPending
+      ? '...'
+      : `${booksCount.toLocaleString()} ${booksCount === 1 ? 'BOOK' : 'BOOKS'} · ${sourcesCount.toLocaleString()} ${sourcesCount === 1 ? 'SOURCE' : 'SOURCES'}`
+  } else {
+    statsText = isLibraryPending
+      ? '...'
+      : `${booksCount.toLocaleString()} ${booksCount === 1 ? 'BOOK' : 'BOOKS'}`
+  }
 
   return (
     <div className="flex flex-col gap-xs px-2 py-sm mb-xs">
@@ -104,7 +115,12 @@ function SidebarLiveHeader() {
 }
 
 function SidebarLiveNavList() {
-  const { data: sources = [] } = useSources()
+  const user = getCurrentUser()
+  const isAdmin = user ? user.role === 'admin' : true
+  const capability = useContext(CapabilityContext)
+  const canImport = capability?.status === 'granted' ? capability.can('import') : isAdmin
+
+  const { data: sources = [] } = useSources({ enabled: isAdmin })
   const { data: collections = [] } = useCollections()
   const { data: libraryData } = useLibrary({ filter: 'all' })
 
@@ -118,9 +134,19 @@ function SidebarLiveNavList() {
     return undefined
   }
 
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.to === '/sources' || item.to === '/activity') {
+      return isAdmin
+    }
+    if (item.to === '/import') {
+      return canImport
+    }
+    return true
+  })
+
   return (
     <ul className="flex flex-col gap-4xs flex-1">
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const isSecondary =
           item.dividerBefore || item.to === '/import' || item.to === '/settings'
         const badge = getDynamicBadge(item.to) ?? item.count
@@ -196,11 +222,14 @@ function SidebarLiveHostingCard() {
 }
 
 export default function SidebarLive() {
+  const user = getCurrentUser()
+  const isAdmin = user ? user.role === 'admin' : true
+
   return (
     <>
       <SidebarLiveHeader />
       <SidebarLiveNavList />
-      <SidebarLiveHostingCard />
+      {isAdmin && <SidebarLiveHostingCard />}
     </>
   )
 }

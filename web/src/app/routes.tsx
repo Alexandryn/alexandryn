@@ -17,9 +17,11 @@ import { MoreScreen } from '../screens/shell/MoreScreen'
 import {
   AccessScreen,
   AcceptInviteScreen,
+  AccountSettings,
   ActivityScreen,
   ConnectScreen,
   DevicesSettings,
+  DiagnosticsScreen,
   ForgotPasswordScreen,
   Import,
   LibraryManagement,
@@ -57,7 +59,14 @@ const shellChildren: RouteObject[] = [
   { path: 'collection/:id', element: <CollectionDetail /> },
   { path: 'discover', element: <Discover /> },
   { path: 'discover/works/:openLibraryId', element: <DiscoverWorkDetail /> },
-  { path: 'activity', element: <ActivityScreen /> },
+  {
+    path: 'activity',
+    element: (
+      <RequireCapability capability="system">
+        <ActivityScreen />
+      </RequireCapability>
+    ),
+  },
   { path: 'more', element: <MoreScreen /> },
 
   // Multi-library administration
@@ -96,6 +105,10 @@ const shellChildren: RouteObject[] = [
     ),
   },
   {
+    path: 'settings/account',
+    element: <AccountSettings />,
+  },
+  {
     path: 'settings/network',
     element: (
       <RequireCapability capability="network">
@@ -105,12 +118,18 @@ const shellChildren: RouteObject[] = [
   },
   {
     path: 'settings/devices',
+    element: <DevicesSettings />,
+  },
+  {
+    path: 'settings/diagnostics',
     element: (
-      <RequireCapability capability="settings">
-        <DevicesSettings />
+      <RequireCapability capability="system">
+        <DiagnosticsScreen />
       </RequireCapability>
     ),
   },
+  { path: 'account', element: <Navigate to="/settings/account" replace /> },
+  { path: 'diagnostics', element: <Navigate to="/settings/diagnostics" replace /> },
   { path: 'network', element: <Navigate to="/settings/network" replace /> },
   { path: 'devices', element: <Navigate to="/settings/devices" replace /> },
   { path: 'settings', element: <SettingsIndex /> },
