@@ -3809,6 +3809,7 @@ components:
           type: array
           items: { $ref: '#/components/schemas/NetworkAddress' }
         hostName: { type: string }
+        hostnameVerified: { type: boolean }
         acmeDomain: { type: string }
 
     NetworkSettingsResponse:

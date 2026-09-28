@@ -50,6 +50,7 @@ export interface NetworkStatusBase {
 export interface NetworkStatusAdmin extends NetworkStatusBase {
   addresses: NetworkAddress[]
   hostName: string
+  hostnameVerified?: boolean
   acmeDomain?: string
 }
 

@@ -47,6 +47,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — see .env.example}@postgres:5432/${POSTGRES_DB:-alexandryn}?sslmode=disable}
       # Required by Open Library's API policy. Must be set in .env.
       - OPEN_LIBRARY_USER_AGENT
+      - TRUSTED_PROXY_CIDRS=172.28.0.0/24
     volumes:
       # cmd/server/run.go resolves appDataDir from $HOME (os.UserConfigDir())
       # — /home/app/.config/alexandryn for this image's `app` user. Without
@@ -64,6 +65,23 @@ services:
       postgres:
         condition: service_healthy
         required: false
+
+  # NGINX reverse proxy entry point for LAN and local access.
+  # Routes frontend and API requests through a single user-facing port (80)
+  # while keeping backend (8080) and postgres (5432) strictly private.
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      default:
+        ipv4_address: 172.28.0.2
     # No exposed ports or host networking on this, the tracked default
     # profile (enforced by scripts/check-compose-published-port.sh) —
     # unreachable from the host or LAN until you opt in. Copy

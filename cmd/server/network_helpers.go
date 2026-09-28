@@ -6,6 +6,7 @@ import (
 
 	"github.com/Alexandryn/alexandryn/internal/config"
 	transporthttp "github.com/Alexandryn/alexandryn/internal/transport/http"
+	"github.com/Alexandryn/alexandryn/internal/transport/mdns"
 )
 
 // resolvedBindAddress is the shared address-derivation result for a
@@ -83,7 +84,7 @@ func formatHost(ip net.IP) string {
 	return s
 }
 
-func fallbackNetworkInfo(cfg *config.Config) func() transporthttp.NetworkInfo {
+func fallbackNetworkInfo(cfg *config.Config, mdnsServer ...*mdns.Server) func() transporthttp.NetworkInfo {
 	return func() transporthttp.NetworkInfo {
 		scheme := "http"
 		if cfg != nil && (cfg.TLSMode() == "static" || cfg.TLSMode() == "acme") {
@@ -97,6 +98,9 @@ func fallbackNetworkInfo(cfg *config.Config) func() transporthttp.NetworkInfo {
 		if cfg != nil {
 			if cfg.Reachability() != "" {
 				reachability = cfg.Reachability()
+				if reachability == "private" {
+					reachability = "lan"
+				}
 			}
 			if cfg.BindAddress != "" {
 				bindAddr = cfg.BindAddress
@@ -108,21 +112,33 @@ func fallbackNetworkInfo(cfg *config.Config) func() transporthttp.NetworkInfo {
 		}
 
 		var addresses []transporthttp.NetworkAddressWire
+		hostnameVerified := false
 		if resolved, ok := resolveBindAddress(bindAddr); ok {
 			portSuffix := ":" + resolved.port
 			if (scheme == "http" && resolved.port == "80") || (scheme == "https" && resolved.port == "443") {
 				portSuffix = ""
 			}
+
+			isStrictLoopback := reachability == "loopback" || (isLoopbackHost(resolved.primaryHost) && len(resolved.extraHosts) == 0)
+			if isStrictLoopback {
+				reachability = "loopback"
+			}
+
 			if resolved.primaryHost != "" {
 				addresses = append(addresses, transporthttp.NetworkAddressWire{
 					Scope: reachability,
 					URL:   fmt.Sprintf("%s://%s%s", scheme, resolved.primaryHost, portSuffix),
 				})
 			}
-			addresses = append(addresses, transporthttp.NetworkAddressWire{
-				Scope: "lan",
-				URL:   fmt.Sprintf("%s://alexandryn.local%s", scheme, portSuffix),
-			})
+			if !isStrictLoopback {
+				addresses = append(addresses, transporthttp.NetworkAddressWire{
+					Scope: "lan",
+					URL:   fmt.Sprintf("%s://alexandryn.local%s", scheme, portSuffix),
+				})
+				if len(mdnsServer) > 0 && mdnsServer[0] != nil && mdnsServer[0].IsVerified() {
+					hostnameVerified = true
+				}
+			}
 			for _, ip := range resolved.extraHosts {
 				addresses = append(addresses, transporthttp.NetworkAddressWire{
 					Scope: scopeForIP(ip),
@@ -132,12 +148,13 @@ func fallbackNetworkInfo(cfg *config.Config) func() transporthttp.NetworkInfo {
 		}
 
 		return transporthttp.NetworkInfo{
-			Reachability: reachability,
-			TLSMode:      tlsMode,
-			BindAddress:  bindAddr,
-			ACMEDomain:   acmeDomain,
-			HostName:     "alexandryn.local",
-			Addresses:    addresses,
+			Reachability:     reachability,
+			TLSMode:          tlsMode,
+			BindAddress:      bindAddr,
+			ACMEDomain:       acmeDomain,
+			HostName:         "alexandryn.local",
+			HostnameVerified: hostnameVerified,
+			Addresses:        addresses,
 		}
 	}
 }

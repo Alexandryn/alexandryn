@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Alexandryn/alexandryn/internal/config"
+	"github.com/Alexandryn/alexandryn/internal/transport/mdns"
 )
 
 // TestScopeForIP_LinkLocalIsNotPublic reproduces the bug where interface
@@ -126,5 +127,70 @@ func TestComputeAllowedOrigins_WildcardIncludesLoopback(t *testing.T) {
 		if !originSet[want] {
 			t.Errorf("expected origin %q to be allowed for wildcard bind, got: %v", want, origins)
 		}
+	}
+}
+
+func TestFallbackNetworkInfo_LoopbackOmitAlexandrynLocal(t *testing.T) {
+	cfg := &config.Config{
+		BindAddress: "127.0.0.1:8080",
+	}
+	info := fallbackNetworkInfo(cfg)()
+	if info.Reachability != "loopback" {
+		t.Errorf("Reachability = %q, want loopback", info.Reachability)
+	}
+	if info.HostnameVerified {
+		t.Errorf("HostnameVerified = true on loopback bind, want false")
+	}
+	for _, addr := range info.Addresses {
+		if strings.Contains(addr.URL, "alexandryn.local") {
+			t.Errorf("found alexandryn.local in loopback addresses: %v", info.Addresses)
+		}
+	}
+}
+
+func TestFallbackNetworkInfo_LANIncludesAlexandrynLocal(t *testing.T) {
+	cfg := &config.Config{
+		BindAddress: "0.0.0.0:8080",
+	}
+	info := fallbackNetworkInfo(cfg)()
+	if info.Reachability != "lan" {
+		t.Errorf("Reachability = %q, want lan", info.Reachability)
+	}
+	if info.HostnameVerified {
+		t.Errorf("HostnameVerified = true without verified mDNS, want false")
+	}
+	found := false
+	for _, addr := range info.Addresses {
+		if strings.Contains(addr.URL, "alexandryn.local:8080") {
+			found = true
+			if addr.Scope != "lan" {
+				t.Errorf("alexandryn.local scope = %q, want lan", addr.Scope)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected alexandryn.local:8080 in LAN addresses, got: %v", info.Addresses)
+	}
+}
+
+func TestFallbackNetworkInfo_HostnameVerifiedWithMDNS(t *testing.T) {
+	cfg := &config.Config{
+		BindAddress: "0.0.0.0:8080",
+	}
+	ms, err := mdns.NewServer(mdns.Config{Hostname: "alexandryn.local", Port: 8080})
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	ms.SetVerified(true)
+
+	info := fallbackNetworkInfo(cfg, ms)()
+	if !info.HostnameVerified {
+		t.Errorf("HostnameVerified = false with verified mDNS server, want true")
+	}
+
+	ms.SetVerified(false)
+	infoUnverified := fallbackNetworkInfo(cfg, ms)()
+	if infoUnverified.HostnameVerified {
+		t.Errorf("HostnameVerified = true with unverified mDNS server, want false")
 	}
 }
