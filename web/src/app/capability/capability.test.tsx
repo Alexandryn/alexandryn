@@ -71,4 +71,104 @@ describe('RequireCapability', () => {
     expect(await screen.findByRole('heading', { name: 'Sources' })).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('renders informative message and sign-in action when unauthenticated and capability is denied', async () => {
+    localStorage.clear()
+    server.use(
+      http.get('*/api/bootstrap', () =>
+        HttpResponse.json({
+          capabilities: {
+            sources: false,
+            import: false,
+            settings: false,
+            system: false,
+            network: false,
+          },
+        }),
+      ),
+    )
+
+    wrap(
+      <RequireCapability capability="sources">
+        <h1>Sources</h1>
+      </RequireCapability>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to configure sources' })).toBeInTheDocument()
+    expect(
+      screen.getByText(/Sources manage the filesystem directories and OPDS catalogs/i),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Sources' })).not.toBeInTheDocument()
+  })
+
+  it('renders reader-specific message and back action when authenticated as reader', async () => {
+    localStorage.setItem('alexandryn_access_token', 'test-token')
+    localStorage.setItem(
+      'alexandryn_user',
+      JSON.stringify({ id: 'user-1', username: 'reader_user', email: 'r@test.com', role: 'reader' }),
+    )
+    server.use(
+      http.get('*/api/bootstrap', () =>
+        HttpResponse.json({
+          capabilities: {
+            sources: false,
+            import: false,
+            settings: false,
+            system: false,
+            network: false,
+          },
+        }),
+      ),
+    )
+
+    wrap(
+      <RequireCapability capability="sources">
+        <h1>Sources</h1>
+      </RequireCapability>,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Administrator access required for sources' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Your current account has reader permissions/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back to Library' })).toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it('renders upload restriction message when reader import is denied', async () => {
+    localStorage.setItem('alexandryn_access_token', 'test-token')
+    localStorage.setItem(
+      'alexandryn_user',
+      JSON.stringify({ id: 'user-1', username: 'reader_user', email: 'r@test.com', role: 'reader' }),
+    )
+    server.use(
+      http.get('*/api/bootstrap', () =>
+        HttpResponse.json({
+          capabilities: {
+            sources: false,
+            import: false,
+            settings: false,
+            system: false,
+            network: false,
+          },
+        }),
+      ),
+    )
+
+    wrap(
+      <RequireCapability capability="import">
+        <h1>Import</h1>
+      </RequireCapability>,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Reader uploads are disabled' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/This library is configured to disallow reader accounts from uploading/i),
+    ).toBeInTheDocument()
+    localStorage.clear()
+  })
 })
+

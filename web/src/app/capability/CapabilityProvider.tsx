@@ -1,10 +1,32 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchBootstrap } from '../../data/bootstrap'
+import { AUTH_CHANGE_EVENT, getAccessToken, getActiveLibraryId } from '../../data/auth'
 import { CapabilityContext, type CapabilityState } from './CapabilityContext'
 
 export function CapabilityProvider({ children }: { children: ReactNode }) {
-  const { data, isError, refetch } = useQuery({ queryKey: ['bootstrap'], queryFn: fetchBootstrap })
+  const [token, setToken] = useState(() => getAccessToken())
+  const [activeLib, setActiveLib] = useState(() => getActiveLibraryId())
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setToken(getAccessToken())
+      setActiveLib(getActiveLibraryId())
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener(AUTH_CHANGE_EVENT, handleAuth)
+      window.addEventListener('storage', handleAuth)
+      return () => {
+        window.removeEventListener(AUTH_CHANGE_EVENT, handleAuth)
+        window.removeEventListener('storage', handleAuth)
+      }
+    }
+  }, [])
+
+  const { data, isError, refetch } = useQuery({
+    queryKey: ['bootstrap', token, activeLib],
+    queryFn: fetchBootstrap,
+  })
 
   // Fail-closed: neither `error` nor `loading` ever grants a capability,
   // so host-only content still never renders optimistically. A failed fetch
