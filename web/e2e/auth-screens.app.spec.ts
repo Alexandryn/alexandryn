@@ -23,9 +23,16 @@ test.describe('Public auth screens: axe coverage', () => {
     await expect(
       page.getByRole('heading', { name: 'Welcome to Alexandryn', level: 1 }),
     ).toBeVisible()
-    await expect(page.getByLabel('Admin Username')).toBeVisible()
 
-    const results = await axe(page).analyze()
+    let results = await axe(page).analyze()
+    expect(results.violations).toEqual([])
+
+    const beginBtn = page.getByRole('button', { name: 'Begin Installation' })
+    if (await beginBtn.isVisible()) {
+      await beginBtn.click()
+    }
+
+    results = await axe(page).analyze()
     expect(results.violations).toEqual([])
   })
 

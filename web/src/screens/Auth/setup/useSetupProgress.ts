@@ -59,9 +59,9 @@ export function useSetupProgress(backendIsSetup = false) {
   const [state, setState] = useState<SetupProgressData>(() => loadSavedState())
   const isFinishedRef = useRef(false)
 
-  // Derive step: if backend is already setup, advance past welcome/admin
+  // If backend already has admin initialized and user is at admin step, advance to network
   const step: SetupStep =
-    backendIsSetup && (state.step === 'welcome' || state.step === 'admin')
+    backendIsSetup && state.step === 'admin'
       ? 'network'
       : state.step
 
