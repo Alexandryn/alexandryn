@@ -37,13 +37,31 @@ import (
 // posture CORS takes, rather than re-normalizing with a second, divergent
 // implementation that could disagree with CORS's on the same allowlist.
 func OriginValidation(allowed []string) Middleware {
+	return LazyOriginValidation(allowed, nil)
+}
+
+// LazyOriginValidation wraps unauthenticated state-changing routes with origin validation,
+// checking against both statically known origins and any dynamic origins stored on ref
+// (e.g. after the server binds to an ephemeral port).
+func LazyOriginValidation(allowed []string, ref *PoolRef) Middleware {
 	set := make(map[string]struct{}, len(allowed))
 	for _, o := range allowed {
 		set[o] = struct{}{}
 	}
 	inSet := func(origin string) bool {
-		_, ok := set[origin]
-		return ok
+		if _, ok := set[origin]; ok {
+			return true
+		}
+		if ref != nil {
+			if dynamic, ok := ref.GetAllowedOrigins(); ok {
+				for _, d := range dynamic {
+					if d == origin {
+						return true
+					}
+				}
+			}
+		}
+		return false
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,8 +80,8 @@ func OriginValidation(allowed []string) Middleware {
 			// (ContentLength == -1 means chunked with unknown length —
 			// that counts as a body).
 			if r.ContentLength != 0 {
-				if ref := r.Header.Get("Referer"); ref != "" {
-					if u, err := url.Parse(ref); err != nil || !originAllowedFromReferer(u, set) {
+				if refHeader := r.Header.Get("Referer"); refHeader != "" {
+					if u, err := url.Parse(refHeader); err != nil || !originAllowedFromReferer(u, inSet) {
 						writeForbidden(w, "request origin is not allowed", corrID)
 						return
 					}
@@ -81,10 +99,9 @@ func OriginValidation(allowed []string) Middleware {
 // already lower-case the host) — a browser is free to send a Referer with
 // a mixed-case host, and that must compare equal, not spuriously reject a
 // legitimate request.
-func originAllowedFromReferer(u *url.URL, set map[string]struct{}) bool {
+func originAllowedFromReferer(u *url.URL, inSet func(string) bool) bool {
 	if u.Scheme == "" || u.Host == "" {
 		return false
 	}
-	_, ok := set[u.Scheme+"://"+strings.ToLower(u.Host)]
-	return ok
+	return inSet(u.Scheme + "://" + strings.ToLower(u.Host))
 }

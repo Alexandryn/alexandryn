@@ -103,9 +103,21 @@ app.whenReady().then(async () => {
         ? { ...process.env, PATH: pathWithPostgresBinFirst(pgBinDir, process.env.PATH, delimiter) }
         : undefined
 
+      const databaseUrl =
+        process.env.DATABASE_URL ||
+        (!app.isPackaged ? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' : undefined)
+
+      const corsAllowedOrigins =
+        process.env.CORS_ALLOWED_ORIGINS ||
+        (!app.isPackaged
+          ? 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'
+          : undefined)
+
       await runServerLifecycle({
         configValues: {
           OPEN_LIBRARY_USER_AGENT: defaultOpenLibraryUserAgent(app.getVersion()),
+          ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
+          ...(corsAllowedOrigins ? { CORS_ALLOWED_ORIGINS: corsAllowedOrigins } : {}),
         },
         env,
         onChildSpawned: (child) => {

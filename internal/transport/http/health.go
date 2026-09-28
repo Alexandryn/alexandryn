@@ -31,6 +31,7 @@ type PoolRef struct {
 	network       networkRefs       // see network_ref.go
 	sync          syncRefs          // see sync_ref.go
 	observability observabilityRefs // see activity_ref.go
+	origin        originRefs        // see origin_ref.go
 }
 
 // Set stores p as the current reference.

@@ -225,7 +225,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	// state-changing POST routes requiring origin validation.
 	allowedOrigins := computeAllowedOrigins(cfg)
 	originValidated := func(h http.Handler) http.Handler {
-		return transporthttp.Chain(h, transporthttp.OriginValidation(allowedOrigins))
+		return transporthttp.Chain(h, transporthttp.LazyOriginValidation(allowedOrigins, poolRef))
 	}
 
 	mux.Handle("GET /api/v1/auth/setup/status", transporthttp.LazySetupStatusHandler(poolRef))
@@ -265,7 +265,7 @@ func newProductionRouter(ctx context.Context, cfg *config.Config, logger *slog.L
 	verifyHandler := transporthttp.Chain(
 		transporthttp.LazyVerifyPairingHandler(poolRef),
 		transporthttp.PublicRateLimit(pairVerifyLimiter, func(string) bool { return true }),
-		transporthttp.OriginValidation(allowedOrigins),
+		transporthttp.LazyOriginValidation(allowedOrigins, poolRef),
 	)
 	mux.Handle("POST /api/v1/network/pair/verify", verifyHandler)
 

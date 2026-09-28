@@ -60,3 +60,41 @@ func TestOriginValidation(t *testing.T) {
 		t.Errorf("mixed-case-host matching Referer got %d, want 200", rec.Code)
 	}
 }
+
+func TestLazyOriginValidation_DynamicOrigins(t *testing.T) {
+	poolRef := &transporthttp.PoolRef{}
+	mw := transporthttp.LazyOriginValidation([]string{"http://initial.example:8080"}, poolRef)
+
+	mk := func(origin string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/api/v1/network/pair/verify", strings.NewReader(`{"code":"ABCD-2345"}`))
+		r.Header.Set("Origin", origin)
+		return r
+	}
+
+	// Before dynamic update: dynamic origin gets 403
+	if rec := serve(mw, mk("http://127.0.0.1:33879")); rec.Code != http.StatusForbidden {
+		t.Errorf("unregistered ephemeral port origin got %d, want 403", rec.Code)
+	}
+
+	// Initial static origin still passes
+	if rec := serve(mw, mk("http://initial.example:8080")); rec.Code != http.StatusOK {
+		t.Errorf("initial static origin got %d, want 200", rec.Code)
+	}
+
+	// Now simulate server binding to ephemeral port 33879
+	poolRef.SetAllowedOrigins([]string{"http://127.0.0.1:33879", "http://localhost:33879"})
+
+	// Dynamic origin now passes
+	if rec := serve(mw, mk("http://127.0.0.1:33879")); rec.Code != http.StatusOK {
+		t.Errorf("registered ephemeral port origin got %d, want 200", rec.Code)
+	}
+	if rec := serve(mw, mk("http://localhost:33879")); rec.Code != http.StatusOK {
+		t.Errorf("registered localhost ephemeral port origin got %d, want 200", rec.Code)
+	}
+
+	// Foreign origin still gets 403
+	if rec := serve(mw, mk("http://hostile.example")); rec.Code != http.StatusForbidden {
+		t.Errorf("foreign origin got %d, want 403", rec.Code)
+	}
+}
+

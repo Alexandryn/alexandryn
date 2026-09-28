@@ -257,7 +257,7 @@ func LoginHandler(
 			w.WriteHeader(http.StatusTooManyRequests)
 			_ = json.NewEncoder(w).Encode(errorBody{
 				Code:          "TooManyRequests",
-				Message:       "too many login attempts, please try again later",
+				Message:       "too many login attempts; wait before trying again",
 				CorrelationID: corrID,
 			})
 			return
@@ -765,7 +765,7 @@ func TOTPVerifyHandler(
 		corrID := CorrelationIDFromContext(r.Context())
 
 		if ipLimiter != nil && !ipLimiter.Allow(clientIP(r)) {
-			writeTooManyRequests(w, corrID, "too many MFA attempts, please try again later")
+			writeTooManyRequests(w, corrID, "too many MFA attempts; wait before trying again")
 			return
 		}
 
@@ -804,7 +804,7 @@ func TOTPVerifyHandler(
 		}
 
 		if userLimiter != nil && !userLimiter.Allow(string(userID)) {
-			writeTooManyRequests(w, corrID, "too many MFA attempts for this account, please try again later")
+			writeTooManyRequests(w, corrID, "too many MFA attempts for this account; wait before trying again")
 			return
 		}
 

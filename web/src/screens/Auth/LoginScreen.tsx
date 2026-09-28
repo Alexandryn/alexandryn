@@ -1,15 +1,18 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { QueryClientContext } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { AlexAvatar } from '../../components/Mascot'
 import { login } from '../../data/auth'
+import { ApiError } from '../../data/http'
 import { clearPendingEnrolment, getPendingEnrolment } from '../../data/pendingEnrolment'
 import { MfaPromptModal } from './MfaPromptModal'
 
 export function LoginScreen() {
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useContext(QueryClientContext)
   const routerState = location.state as
     | {
         enrolmentGrant?: string
@@ -50,10 +53,31 @@ export function LoginScreen() {
         setMfaTicket(res.mfaTicket)
       } else {
         clearPendingEnrolment()
+        queryClient?.clear()
         navigate(returnTo, { replace: true })
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')
+      if (err instanceof ApiError) {
+        if (err.status === 401 || err.code === 'unauthorized') {
+          setError(
+            err.message && err.message !== 'invalid credentials'
+              ? err.message
+              : 'Incorrect username, email, or password. Check your details and try again.',
+          )
+        } else if (err.status === 403 || err.code === 'Forbidden' || err.message.includes('origin')) {
+          setError(
+            'Sign-in was blocked by origin validation. Connect through an allowed address or configure CORS_ALLOWED_ORIGINS.',
+          )
+        } else if (err.status === 429) {
+          setError('Too many sign-in attempts. Wait a few moments before trying again.')
+        } else {
+          setError(err.message || 'Could not sign in. Check your connection and try again.')
+        }
+      } else if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Could not sign in. Check your connection and try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -124,6 +148,7 @@ export function LoginScreen() {
           onSuccess={() => {
             setMfaTicket(null)
             clearPendingEnrolment()
+            queryClient?.clear()
             navigate(returnTo, { replace: true })
           }}
           onCancel={() => setMfaTicket(null)}

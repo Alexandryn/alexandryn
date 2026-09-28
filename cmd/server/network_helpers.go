@@ -161,6 +161,20 @@ func computeAllowedOrigins(cfg *config.Config) []string {
 		}
 		if resolved.primaryHost != "" {
 			origins = append(origins, fmt.Sprintf("%s://%s%s", scheme, resolved.primaryHost, portSuffix))
+			if isLoopbackHost(resolved.primaryHost) {
+				origins = append(origins,
+					fmt.Sprintf("%s://localhost%s", scheme, portSuffix),
+					fmt.Sprintf("%s://127.0.0.1%s", scheme, portSuffix),
+					fmt.Sprintf("%s://[::1]%s", scheme, portSuffix),
+				)
+			}
+		} else {
+			// Wildcard bind (0.0.0.0, ::, [::]) listens on all interfaces including loopback.
+			origins = append(origins,
+				fmt.Sprintf("%s://localhost%s", scheme, portSuffix),
+				fmt.Sprintf("%s://127.0.0.1%s", scheme, portSuffix),
+				fmt.Sprintf("%s://[::1]%s", scheme, portSuffix),
+			)
 		}
 		origins = append(origins, fmt.Sprintf("%s://alexandryn.local%s", scheme, portSuffix))
 		for _, ip := range resolved.extraHosts {
@@ -210,3 +224,13 @@ func resolveServerAddress(cfg *config.Config) string {
 	// would be worse than an empty string.
 	return ""
 }
+
+// isLoopbackHost reports whether a host string is a loopback hostname or IP.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+

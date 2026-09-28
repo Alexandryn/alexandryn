@@ -84,3 +84,48 @@ func TestComputeAllowedOrigins_NoDuplicates(t *testing.T) {
 		}
 	}
 }
+
+func TestComputeAllowedOrigins_LoopbackIncludesLocalhostAnd127(t *testing.T) {
+	cfg := &config.Config{
+		BindAddress: "127.0.0.1:33879",
+	}
+	origins := computeAllowedOrigins(cfg)
+	originSet := make(map[string]bool)
+	for _, o := range origins {
+		originSet[o] = true
+	}
+
+	for _, want := range []string{
+		"http://127.0.0.1:33879",
+		"http://localhost:33879",
+		"http://[::1]:33879",
+		"http://alexandryn.local:33879",
+	} {
+		if !originSet[want] {
+			t.Errorf("expected origin %q to be allowed for loopback bind, got: %v", want, origins)
+		}
+	}
+}
+
+func TestComputeAllowedOrigins_WildcardIncludesLoopback(t *testing.T) {
+	cfg := &config.Config{
+		BindAddress: "0.0.0.0:8080",
+	}
+	origins := computeAllowedOrigins(cfg)
+	originSet := make(map[string]bool)
+	for _, o := range origins {
+		originSet[o] = true
+	}
+
+	for _, want := range []string{
+		"http://127.0.0.1:8080",
+		"http://localhost:8080",
+		"http://[::1]:8080",
+		"http://alexandryn.local:8080",
+	} {
+		if !originSet[want] {
+			t.Errorf("expected origin %q to be allowed for wildcard bind, got: %v", want, origins)
+		}
+	}
+}
+

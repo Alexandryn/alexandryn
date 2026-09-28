@@ -255,6 +255,19 @@ func run(ctx context.Context, deps runDeps) int {
 		// Announces bound ephemeral port to Electron host process.
 		fmt.Printf("PORT=%d\n", tcpAddr.Port)
 		boundPort = strconv.Itoa(tcpAddr.Port)
+	} else if _, p, err := net.SplitHostPort(listener.Addr().String()); err == nil {
+		boundPort = p
+	}
+	if boundPort != "" {
+		if host, _, err := net.SplitHostPort(cfg.BindAddress); err == nil {
+			if host == "" {
+				host = "127.0.0.1"
+			}
+			cfg.BindAddress = net.JoinHostPort(host, boundPort)
+		}
+	}
+	if poolRef != nil {
+		poolRef.SetAllowedOrigins(computeAllowedOrigins(cfg))
 	}
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
