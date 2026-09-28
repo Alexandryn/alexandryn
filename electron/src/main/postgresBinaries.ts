@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { chmodSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 
@@ -8,6 +8,29 @@ import { app } from 'electron'
 // see electron-builder.yml). This never ships on macOS — the darwin build
 // of cmd/server (spawn_darwin.go) refuses to spawn one at all — only Linux
 // and Windows.
+
+/**
+ * Ensures all files in postgres bin directory have execute permissions on POSIX.
+ */
+export function ensurePostgresBinariesExecutable(binDir: string): void {
+  if (process.platform === 'win32') return
+  try {
+    const files = readdirSync(binDir)
+    for (const file of files) {
+      const fullPath = join(binDir, file)
+      try {
+        const stat = statSync(fullPath)
+        if (stat.isFile() && (stat.mode & 0o111) === 0) {
+          chmodSync(fullPath, stat.mode | 0o755)
+        }
+      } catch {
+        // Read-only filesystem is ignored
+      }
+    }
+  } catch {
+    // Ignore
+  }
+}
 
 /**
  * Where the bundled `postgres`/`initdb` binaries live: dev reads
@@ -26,7 +49,11 @@ export function resolvePostgresBinDir(): string | undefined {
       })()
     : join(app.getAppPath(), 'resources', 'postgres', 'bin')
 
-  return dir !== undefined && existsSync(dir) ? dir : undefined
+  if (dir !== undefined && existsSync(dir)) {
+    ensurePostgresBinariesExecutable(dir)
+    return dir
+  }
+  return undefined
 }
 
 /** Puts `binDir` first on `PATH`, so it is found before any system install. */

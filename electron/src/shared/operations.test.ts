@@ -16,10 +16,19 @@ function getAllTypeScriptFiles(dir: string): string[] {
     const fullPath = join(dir, entry)
     const stat = statSync(fullPath)
     if (stat.isDirectory()) {
-      if (entry !== 'node_modules' && entry !== 'out' && entry !== 'dist' && entry !== 'test-helpers') {
+      if (
+        entry !== 'node_modules' &&
+        entry !== 'out' &&
+        entry !== 'dist' &&
+        entry !== 'test-helpers'
+      ) {
         files.push(...getAllTypeScriptFiles(fullPath))
       }
-    } else if (entry.endsWith('.ts') && !entry.endsWith('.test.ts') && !entry.endsWith('.spec.ts')) {
+    } else if (
+      entry.endsWith('.ts') &&
+      !entry.endsWith('.test.ts') &&
+      !entry.endsWith('.spec.ts')
+    ) {
       files.push(fullPath)
     }
   }

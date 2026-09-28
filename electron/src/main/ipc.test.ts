@@ -8,7 +8,6 @@ import {
   SYSTEM_RETRY_STARTUP,
 } from '../shared/operations'
 
-
 // Tests for main process IPC registration and handler execution.
 
 // Mock ipcMain
@@ -22,9 +21,11 @@ vi.mock('electron', () => ({
     showOpenDialog: vi.fn(),
   },
   ipcMain: {
-    handle: vi.fn((channel: string, listener: (event: unknown, ...args: unknown[]) => Promise<unknown>) => {
-      handlers.set(channel, listener)
-    }),
+    handle: vi.fn(
+      (channel: string, listener: (event: unknown, ...args: unknown[]) => Promise<unknown>) => {
+        handlers.set(channel, listener)
+      },
+    ),
     removeHandler: vi.fn((channel: string) => {
       handlers.delete(channel)
     }),
@@ -67,7 +68,6 @@ describe('registerIpcHandlers', () => {
   })
 
   it('source.pickLocalFolder returns path when user selects a directory', async () => {
-
     const mockShowOpenDialog = vi.fn().mockResolvedValue({
       canceled: false,
       filePaths: ['/home/user/Books/MyLibrary'],

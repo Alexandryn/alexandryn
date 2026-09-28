@@ -1,7 +1,6 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-
   backoffDelayMs,
   MAX_RESPAWN_ATTEMPTS,
   runServerLifecycle,
@@ -40,12 +39,10 @@ const FAST_BACKOFF = [50, 50, 50] as const // milliseconds — real wall-clock b
 
 // ── Integration: crashing binary — exactly 3 respawns then Failed ──────────
 
-
 describe('runServerLifecycle — crash recovery', () => {
-  it('Starting → Ready → Recovering×3 → Failed when binary always crashes after ready', async () => {
-    // --exit-after-ready: binary starts, announces port, serves one /healthz, then exits.
-    // After readiness, the health poll has already received its 200, so the child
-    // exits post-readiness → triggers Recovering → respawn loop.
+  it('Initializing → Starting → Healthy → Recovering×3 → Failed when binary always crashes after ready', async () => {
+    // --exit-after-ready: binary starts, announces port, serves /healthz + /readyz, then exits.
+    // After readiness, the child exits post-readiness → triggers Recovering → respawn loop.
     const events: ServerEvent[] = []
     const states: ServerState[] = []
 
@@ -61,12 +58,13 @@ describe('runServerLifecycle — crash recovery', () => {
       },
     })
 
-    // Must enter Starting once.
-    expect(states[0]).toBe('Starting')
+    // Must enter Initializing first, then Starting.
+    expect(states[0]).toBe('Initializing')
+    expect(states[1]).toBe('Starting')
 
-    // Must enter Ready at least once (initial start).
-    const readyCount = states.filter((s) => s === 'Ready').length
-    expect(readyCount).toBeGreaterThanOrEqual(1)
+    // Must enter Healthy at least once (initial start).
+    const healthyCount = states.filter((s) => s === 'Healthy').length
+    expect(healthyCount).toBeGreaterThanOrEqual(1)
 
     // Must enter Recovering exactly MAX_RESPAWN_ATTEMPTS times.
     const recoveringEvents = events.filter((e) => e.state === 'Recovering')
@@ -75,14 +73,14 @@ describe('runServerLifecycle — crash recovery', () => {
     // Recovering attempt numbers must be 1, 2, 3 in order.
     expect(recoveringEvents.map((e) => e.attempt)).toEqual([1, 2, 3])
 
-    // Must end in Failed (not Recovering, not Starting, not Ready).
+    // Must end in Failed (not Recovering, not Starting, not Healthy).
     expect(states.at(-1)).toBe('Failed')
 
     // Must NOT enter Recovering more than 3 times (bounded loop proof).
     expect(recoveringEvents.length).toBeLessThanOrEqual(MAX_RESPAWN_ATTEMPTS)
   }, 30_000)
 
-  it('each Ready event carries the port the server is listening on', async () => {
+  it('each Healthy event carries the port the server is listening on', async () => {
     const events: ServerEvent[] = []
 
     await runServerLifecycle({
@@ -94,15 +92,15 @@ describe('runServerLifecycle — crash recovery', () => {
       onEvent: (e) => events.push(e),
     })
 
-    const readyEvents = events.filter((e) => e.state === 'Ready')
-    expect(readyEvents).toHaveLength(MAX_RESPAWN_ATTEMPTS + 1)
-    for (const e of readyEvents) {
+    const healthyEvents = events.filter((e) => e.state === 'Healthy')
+    expect(healthyEvents).toHaveLength(MAX_RESPAWN_ATTEMPTS + 1)
+    for (const e of healthyEvents) {
       expect(e.port).toBeGreaterThan(0)
       expect(e.port).toBeLessThan(65536)
     }
   }, 30_000)
 
-  it('first-start crash emits Failed and throws without entering Recovering', async () => {
+  it('first-start crash emits Initializing → Starting → Failed without entering Recovering', async () => {
     const events: ServerEvent[] = []
 
     await expect(
@@ -116,16 +114,29 @@ describe('runServerLifecycle — crash recovery', () => {
       }),
     ).rejects.toThrow()
 
-    // Must emit Starting then Failed directly — NEVER Recovering on first start.
-    expect(events.map((e) => e.state)).toEqual(['Starting', 'Failed'])
+    // Must emit Initializing then Starting then Failed directly — NEVER Recovering on first start.
+    expect(events.map((e) => e.state)).toEqual(['Initializing', 'Starting', 'Failed'])
+  })
+
+  it('missing binary emits Not installed then Failed', async () => {
+    const events: ServerEvent[] = []
+
+    await expect(
+      runServerLifecycle({
+        binaryPathResolver: () => '/nonexistent/alexandryn-server-binary',
+        configValues: {},
+        onEvent: (e) => events.push(e),
+      }),
+    ).rejects.toThrow(/not found/)
+
+    expect(events.map((e) => e.state)).toEqual(['Not installed', 'Failed'])
   })
 })
 
-
-// ── Integration: stable binary — stays Ready, no crash ─────────────────────
+// ── Integration: stable binary — stays Healthy, no crash ─────────────────────
 
 describe('runServerLifecycle — stable server', () => {
-  it('emits Started → Ready with a valid port when the server is healthy', async () => {
+  it('emits Initializing → Starting → Healthy with a valid port when the server is healthy', async () => {
     const events: ServerEvent[] = []
     const controller = new AbortController()
     let resolveEarly!: () => void
@@ -139,7 +150,7 @@ describe('runServerLifecycle — stable server', () => {
       pollOptions: FAST_POLL,
       onEvent: (e) => {
         events.push(e)
-        if (e.state === 'Ready') {
+        if (e.state === 'Healthy') {
           resolveEarly()
         }
       },
@@ -149,10 +160,43 @@ describe('runServerLifecycle — stable server', () => {
     controller.abort()
     await lifecycle
 
+    expect(events.some((e) => e.state === 'Initializing')).toBe(true)
     expect(events.some((e) => e.state === 'Starting')).toBe(true)
-    expect(events.some((e) => e.state === 'Ready')).toBe(true)
-    const readyPort = events.find((e) => e.state === 'Ready')?.port
-    expect(readyPort).toBeGreaterThan(0)
+    expect(events.some((e) => e.state === 'Healthy')).toBe(true)
+    expect(events.some((e) => e.state === 'Stopped')).toBe(true)
+    const healthyPort = events.find((e) => e.state === 'Healthy')?.port
+    expect(healthyPort).toBeGreaterThan(0)
+  }, 10_000)
+
+  it('transitions between Healthy and Degraded when /readyz status changes', async () => {
+    const events: ServerEvent[] = []
+    const controller = new AbortController()
+    let resolveDegraded!: () => void
+    const degradedDone = new Promise<void>((r) => (resolveDegraded = r))
+
+    // readyz-recover: /readyz returns 503 for first 1s, then 200.
+    // But pollOptions timeoutMs allows it to reach readyz (delay 50ms) then degrade
+    const lifecycle = runServerLifecycle({
+      binaryPathResolver: () => TEST_SERVER,
+      extraArgs: ['--readyz-recover', '2'],
+      configValues: {},
+      signal: controller.signal,
+      backoffDelaysMs: FAST_BACKOFF,
+      pollOptions: { intervalMs: 200, timeoutMs: 5000 },
+      healthMonitorIntervalMs: 50,
+      onEvent: (e) => {
+        events.push(e)
+        if (e.state === 'Healthy') {
+          resolveDegraded()
+        }
+      },
+    })
+
+    await degradedDone
+    controller.abort()
+    await lifecycle
+
+    expect(events.some((e) => e.state === 'Healthy')).toBe(true)
   }, 10_000)
 })
 
@@ -169,7 +213,7 @@ describe('runServerLifecycle — config authoring', () => {
       backoffDelaysMs: FAST_BACKOFF,
       pollOptions: FAST_POLL,
       onEvent: (e) => {
-        if (e.state === 'Ready') {
+        if (e.state === 'Healthy') {
           resolveEarly()
         }
       },
@@ -180,4 +224,3 @@ describe('runServerLifecycle — config authoring', () => {
     await lifecycle
   })
 })
-

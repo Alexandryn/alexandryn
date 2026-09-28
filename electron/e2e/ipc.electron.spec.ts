@@ -43,7 +43,7 @@ test('window.alexandryn bridge surface is exposed and sandboxed', async () => {
 
   expect(evaluation.hasBridge).toBe(true)
   expect(evaluation.namespaces).toEqual(['system', 'source'])
-  expect(evaluation.systemMethods).toEqual(['getAppVersion', 'retryStartup'])
+  expect(evaluation.systemMethods).toEqual(['getAppVersion', 'retryStartup', 'getHostingStatus'])
   expect(evaluation.sourceMethods).toEqual(['pickLocalFolder'])
 
   expect(evaluation.isPickLocalFolderFn).toBe(true)

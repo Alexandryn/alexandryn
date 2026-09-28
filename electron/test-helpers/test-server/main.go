@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -45,8 +46,13 @@ func main() {
 	slowShutdownSec := flag.Int("slow-shutdown", 0, "ignore SIGTERM for N seconds")
 	port := flag.Int("port", 0, "bind to this port (0 = OS-assigned)")
 	requestsToServe := flag.Int("requests-to-serve", 0, "exit after N requests (0 = never)")
+	readyzFail := flag.Bool("readyz-fail", false, "make /readyz return 503")
+	readyzDelayMs := flag.Int("readyz-delay-ms", 0, "return 503 on /readyz for first N ms")
+	readyzRecoverSec := flag.Int("readyz-recover", 0, "return 503 on /readyz for first N seconds, then 200")
 	_ = flag.String("config", "", "path to config file (accepted and ignored — matches the real server's flag)")
 	flag.Parse()
+
+	startTime := time.Now()
 
 	if *exitBeforeReady {
 		fmt.Fprintln(os.Stderr, "test-server: exiting before ready (--exit-before-ready)")
@@ -62,6 +68,18 @@ func main() {
 
 	served := 0
 	doneCh := make(chan struct{})
+	var doneOnce sync.Once
+	triggerDone := func() {
+		doneOnce.Do(func() {
+			close(doneCh)
+		})
+	}
+	triggerDoneDelayed := func(d time.Duration) {
+		go func() {
+			time.Sleep(d)
+			triggerDone()
+		}()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -78,10 +96,43 @@ func main() {
 
 		served++
 		if *requestsToServe > 0 && served >= *requestsToServe {
-			go func() { close(doneCh) }()
+			triggerDone()
 		}
 		if *exitAfterReady {
-			go func() { close(doneCh) }()
+			triggerDoneDelayed(50 * time.Millisecond)
+		}
+	})
+
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		if *readyzFail {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":{"code":"Unavailable","message":"database unreachable"}}`))
+			return
+		}
+
+		if *readyzDelayMs > 0 && time.Since(startTime) < time.Duration(*readyzDelayMs)*time.Millisecond {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":{"code":"Unavailable","message":"not yet started"}}`))
+			return
+		}
+
+		if *readyzRecoverSec > 0 && time.Since(startTime) < time.Duration(*readyzRecoverSec)*time.Second {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":{"code":"Unavailable","message":"lost the connection"}}`))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+
+		if *exitAfterReady {
+			triggerDoneDelayed(50 * time.Millisecond)
 		}
 	})
 

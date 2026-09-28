@@ -32,13 +32,21 @@ if (!acquireSingleInstanceLock()) {
   app.quit()
 }
 
+import type { HostingStatusReport } from '../shared/operations'
+
 let triggerRetry: (() => void) | undefined
+let currentHostingStatus: HostingStatusReport = {
+  state: 'Initializing',
+  healthy: false,
+  degraded: false,
+}
 
 // Register declared IPC handlers
 registerIpcHandlers({
   onRetryStartup: () => {
     triggerRetry?.()
   },
+  getHostingStatus: () => currentHostingStatus,
 })
 
 const BOOT_HTML = join(import.meta.dirname, '../renderer/index.html')
@@ -77,7 +85,7 @@ async function createWindow(): Promise<{
 }
 
 app.whenReady().then(async () => {
-  const { serving } = await createWindow()
+  const { window, serving } = await createWindow()
 
   // Allow static smoke / boot-asset specs to test the initial window state in isolation
   if (process.env.ALEXANDRYN_SKIP_SERVER_LIFECYCLE === '1') {
@@ -124,6 +132,13 @@ app.whenReady().then(async () => {
           serverChild = child
         },
         onEvent: (event) => {
+          currentHostingStatus = {
+            state: event.state,
+            port: event.port ?? currentHostingStatus.port,
+            healthy: event.state === 'Healthy' || event.state === 'Ready',
+            degraded: event.state === 'Degraded',
+            message: event.message,
+          }
           void serving.handleServerEvent(event)
         },
       })
@@ -136,6 +151,7 @@ app.whenReady().then(async () => {
 
   triggerRetry = () => {
     if (!serving.isRealUiLoaded() && !isRunning) {
+      void window.loadFile(BOOT_HTML)
       void startLifecycle()
     }
   }

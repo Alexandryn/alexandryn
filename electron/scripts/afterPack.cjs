@@ -63,6 +63,43 @@ function resolveBinaryPath({ appOutDir, platform, names }) {
   return found
 }
 
+function ensureExecutablePermissions(appOutDir, platform) {
+  if (platform === 'win32') return
+  const candidates = [path.join(appOutDir, 'resources')]
+  try {
+    const appBundle = fs.readdirSync(appOutDir).find((f) => f.endsWith('.app'))
+    if (appBundle) {
+      candidates.push(path.join(appOutDir, appBundle, 'Contents', 'Resources'))
+    }
+  } catch {
+    // Ignore
+  }
+
+  for (const resourcesDir of candidates) {
+    if (!fs.existsSync(resourcesDir)) continue
+    const targets = [path.join(resourcesDir, 'server'), path.join(resourcesDir, 'postgres', 'bin')]
+    for (const target of targets) {
+      if (fs.existsSync(target)) {
+        try {
+          const stat = fs.statSync(target)
+          if (stat.isDirectory()) {
+            const files = fs.readdirSync(target)
+            for (const file of files) {
+              const filePath = path.join(target, file)
+              const fStat = fs.statSync(filePath)
+              if (fStat.isFile()) {
+                fs.chmodSync(filePath, 0o755)
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`[afterPack] Could not chmod ${target}:`, err.message)
+        }
+      }
+    }
+  }
+}
+
 exports.default = async function afterPack(context) {
   const { appOutDir, packager, electronPlatformName } = context
   const binaryPath = resolveBinaryPath({
@@ -105,9 +142,12 @@ exports.default = async function afterPack(context) {
     )
   }
 
+  ensureExecutablePermissions(appOutDir, electronPlatformName)
+
   console.log(
     `afterPack: fuses verified on packaged ${electronPlatformName} binary (${binaryPath})`,
   )
 }
 
 exports.resolveBinaryPath = resolveBinaryPath
+exports.ensureExecutablePermissions = ensureExecutablePermissions
