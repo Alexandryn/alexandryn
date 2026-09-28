@@ -15,7 +15,7 @@ interface MoreNavItem extends NavListItem {
  */
 export function MoreScreen() {
   const user = getCurrentUser()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user ? user.role === 'admin' : true
   const capability = useContext(CapabilityContext)
   const canImport = capability?.status === 'granted' ? capability.can('import') : isAdmin
 

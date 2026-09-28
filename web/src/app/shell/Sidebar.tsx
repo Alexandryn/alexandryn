@@ -58,7 +58,7 @@ function ActivityBadge() {
 
 function SidebarStaticContent({ hasQueryClient }: { hasQueryClient: boolean }) {
   const user = getCurrentUser()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user ? user.role === 'admin' : true
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (item.to === '/sources' || item.to === '/activity' || item.to === '/import') {

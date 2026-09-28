@@ -8,7 +8,7 @@ import { getCurrentUser } from '../../data/auth'
  */
 export function SettingsIndex() {
   const user = getCurrentUser()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user ? user.role === 'admin' : true
 
   const accountItems: NavListItem[] = [
     {
