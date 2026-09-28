@@ -18,7 +18,7 @@ func TestCheckPortAvailability_InUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	item := CheckPortAvailability("tcp", l.Addr().String())
 	if item.Status != StatusError {
