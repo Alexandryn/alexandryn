@@ -1,10 +1,10 @@
 import React, { useContext, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { QueryClientContext } from '@tanstack/react-query'
+import { QueryClientContext, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { AlexAvatar } from '../../components/Mascot'
-import { login } from '../../data/auth'
+import { fetchSetupStatus, login } from '../../data/auth'
 import { ApiError } from '../../data/http'
 import { clearPendingEnrolment, getPendingEnrolment } from '../../data/pendingEnrolment'
 import { MfaPromptModal } from './MfaPromptModal'
@@ -35,6 +35,18 @@ export function LoginScreen() {
     (fromState?.pathname ? fromState.pathname + (fromState.search ?? '') : null) ??
     nextParam ??
     '/library'
+
+  const { data: setupStatus } = useQuery({
+    queryKey: ['setupStatus'],
+    queryFn: fetchSetupStatus,
+    staleTime: 60_000,
+  })
+
+  React.useEffect(() => {
+    if (setupStatus && !setupStatus.isSetup) {
+      navigate('/setup', { replace: true })
+    }
+  }, [setupStatus, navigate])
 
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
