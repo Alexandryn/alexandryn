@@ -266,9 +266,7 @@ func run(ctx context.Context, deps runDeps) int {
 			cfg.BindAddress = net.JoinHostPort(host, boundPort)
 		}
 	}
-	if poolRef != nil {
-		poolRef.SetAllowedOrigins(computeAllowedOrigins(cfg))
-	}
+	poolRef.SetAllowedOrigins(computeAllowedOrigins(cfg))
 	logger.Info("startup step completed", "step", "listen", "address", listener.Addr().String())
 
 	// TLS configuration and optional redirect listener.
