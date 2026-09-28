@@ -287,9 +287,5 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('*/api/v1/devices', () =>
-    HttpResponse.json({ devices: [] }),
-  ),
-
   http.all('*/api/v1/*', () => HttpResponse.json(notFoundError, { status: 404 })),
 ]
