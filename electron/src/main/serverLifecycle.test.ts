@@ -1,5 +1,7 @@
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('electron', () => ({}))
 import {
   backoffDelayMs,
   MAX_RESPAWN_ATTEMPTS,

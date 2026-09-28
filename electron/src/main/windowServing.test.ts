@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('electron', () => ({}))
+
 import { WindowServingController } from './windowServing'
 
 // LoadURL sequencing & Recovering banner.
