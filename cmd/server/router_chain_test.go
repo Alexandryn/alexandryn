@@ -198,6 +198,43 @@ func TestRouter_OriginValidationOnSetupAndLogin(t *testing.T) {
 	}
 }
 
+func TestRouter_OriginValidationAllowsConfiguredAndDynamicOrigin(t *testing.T) {
+	poolRef := &transporthttp.PoolRef{}
+	cfg := &config.Config{
+		HTTPMaxBodyBytes:   1 << 20,
+		CORSAllowedOrigins: []string{"https://allowed.example"},
+	}
+	limiter := auth.NewIPRateLimiter(rate.Every(time.Second/2), 60, time.Minute)
+	router := newProductionRouter(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), poolRef, limiter)
+
+	for _, path := range []string{"/api/v1/auth/setup", "/api/v1/auth/login"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "https://allowed.example")
+		router.ServeHTTP(rec, req)
+
+		if rec.Code == http.StatusForbidden {
+			t.Errorf("%s with configured Origin: status = 403, want permitted past OriginValidation", path)
+		}
+	}
+
+	// Dynamic origin via poolRef
+	poolRef.SetAllowedOrigins([]string{"http://127.0.0.1:33879"})
+	for _, path := range []string{"/api/v1/auth/setup", "/api/v1/auth/login"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "http://127.0.0.1:33879")
+		router.ServeHTTP(rec, req)
+
+		if rec.Code == http.StatusForbidden {
+			t.Errorf("%s with dynamic poolRef Origin: status = 403, want permitted past OriginValidation", path)
+		}
+	}
+}
+
+
 func TestRouter_BootstrapRouteAccessible(t *testing.T) {
 	router := chainTestRouter(t, nil)
 	rec := httptest.NewRecorder()

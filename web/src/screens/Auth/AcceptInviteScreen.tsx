@@ -28,7 +28,11 @@ export function AcceptInviteScreen() {
       switchActiveLibrary(queryClient, res.libraryId)
       navigate('/library', { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invitation. The link may have expired.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not accept invitation. The invitation link may have expired or already been used.',
+      )
     } finally {
       setLoading(false)
     }
@@ -49,7 +53,7 @@ export function AcceptInviteScreen() {
 
         {!isAuthenticated ? (
           <div className="flex flex-col gap-md">
-            <p className="text-sm text-text-2">Please sign in to your Alexandryn account to accept this invitation.</p>
+            <p className="text-sm text-text-2">Sign in to your Alexandryn account to accept this invitation.</p>
             {/* Preserve the invite URL so login returns here and the token
                 is not lost. */}
             <Button onClick={() => navigate('/login', { state: { from: location } })}>Sign in</Button>

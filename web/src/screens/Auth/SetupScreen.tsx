@@ -1,12 +1,15 @@
-import React, { useRef, useState } from 'react'
+import React, { useContext, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { QueryClientContext } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { AlexAvatar } from '../../components/Mascot'
 import { setupAdmin } from '../../data/auth'
+import { ApiError } from '../../data/http'
 
 export function SetupScreen() {
   const navigate = useNavigate()
+  const queryClient = useContext(QueryClientContext)
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,22 +25,43 @@ export function SetupScreen() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError('Passwords do not match. Check both fields and try again.')
       confirmPasswordRef.current?.focus()
       return
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long')
+      setError('Password must be at least 8 characters long. Choose a longer password and try again.')
       passwordRef.current?.focus()
       return
     }
 
     setLoading(true)
     try {
-      await setupAdmin({ username, email, password })
-      navigate('/library', { replace: true })
+       await setupAdmin({ username, email, password })
+       queryClient?.clear()
+       navigate('/library', { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Setup failed. Please check inputs.')
+      if (err instanceof ApiError) {
+        if (err.status === 409 || err.message === 'system already initialized') {
+          setError('Alexandryn has already been initialized. Sign in with your administrator account.')
+        } else if (err.status === 403 || err.code === 'Forbidden' || err.message.includes('origin')) {
+          setError(
+            'Setup request was blocked by origin validation. Connect through an allowed address or configure CORS_ALLOWED_ORIGINS.',
+          )
+        } else if (err.status === 400 || err.code === 'InvalidInput') {
+          setError(
+            err.message && err.message !== 'malformed request payload'
+              ? err.message
+              : 'Invalid account details. Check username, email, and password requirements, then try again.',
+          )
+        } else {
+          setError(err.message || 'Could not initialize Alexandryn. Check your connection and try again.')
+        }
+      } else if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Could not initialize Alexandryn. Check your connection and try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -110,8 +134,8 @@ export function SetupScreen() {
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            aria-invalid={error === 'Passwords do not match' ? true : undefined}
-            aria-describedby={error === 'Passwords do not match' ? 'setup-error' : undefined}
+            aria-invalid={error?.startsWith('Passwords do not match') ? true : undefined}
+            aria-describedby={error?.startsWith('Passwords do not match') ? 'setup-error' : undefined}
             placeholder="••••••••"
           />
 
