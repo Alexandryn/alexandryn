@@ -217,7 +217,8 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-md font-sans">
-      <div className="w-full max-w-xl bg-surface p-xl rounded-lg border border-border shadow-lg flex flex-col gap-lg">
+      {/* max-w-[36rem] not max-w-xl: --spacing-xl collides with Tailwind's max-w-xl key */}
+      <div className="w-full max-w-[36rem] bg-surface p-xl rounded-lg border border-border shadow-lg flex flex-col gap-lg">
         {/* Wizard Progress Header */}
         <div className="flex flex-col gap-xs" aria-label="Setup progress">
           <div className="flex items-center justify-between text-xs text-text-3 font-medium">
@@ -281,9 +282,9 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
         {step === 'admin' && (
           <div className="flex flex-col gap-md" data-testid="step-admin">
             <div>
-              <h2 className="text-xl font-serif font-bold text-text mb-4xs">
+              <h1 className="text-xl font-serif font-bold text-text mb-4xs">
                 Administrator Account
-              </h2>
+              </h1>
               <p className="text-xs text-text-3">
                 Create the master account used to manage your library, collections, and settings.
               </p>
@@ -393,9 +394,9 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
             data-testid="step-network"
           >
             <div>
-              <h2 className="text-xl font-serif font-bold text-text mb-4xs">
+              <h1 className="text-xl font-serif font-bold text-text mb-4xs">
                 Network Configuration
-              </h2>
+              </h1>
               <p className="text-xs text-text-3">
                 Select how readers and devices will connect to your library. Local Network (LAN) is
                 recommended.
@@ -504,9 +505,9 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
         {step === 'services' && (
           <div className="flex flex-col gap-md" data-testid="step-services">
             <div>
-              <h2 className="text-xl font-serif font-bold text-text mb-4xs">
+              <h1 className="text-xl font-serif font-bold text-text mb-4xs">
                 Service Initialization
-              </h2>
+              </h1>
               <p className="text-xs text-text-3">
                 Validating database connection, authentication state, and network discovery
                 listeners.
@@ -581,9 +582,9 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
         {step === 'commands' && (
           <div className="flex flex-col gap-md" data-testid="step-commands">
             <div>
-              <h2 className="text-xl font-serif font-bold text-text mb-4xs">
+              <h1 className="text-xl font-serif font-bold text-text mb-4xs">
                 Manual Command Steps
-              </h2>
+              </h1>
               <p className="text-xs text-text-3">
                 When running behind strict firewalls or managing containerized deployments, execute
                 these commands in your terminal and verify.
@@ -641,9 +642,9 @@ export function SetupScreen({ initialStep }: SetupScreenProps) {
         {step === 'verification' && (
           <div className="flex flex-col gap-md" data-testid="step-verification">
             <div>
-              <h2 className="text-xl font-serif font-bold text-text mb-4xs">
+              <h1 className="text-xl font-serif font-bold text-text mb-4xs">
                 Setup Verification Checklist
-              </h2>
+              </h1>
               <p className="text-xs text-text-3">
                 All prerequisites and configurations have been verified for your deployment.
               </p>
