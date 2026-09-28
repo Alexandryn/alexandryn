@@ -127,5 +127,6 @@ describe('Collections Index Screen', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-err')
+    expect(screen.queryByText('No collections yet')).not.toBeInTheDocument()
   })
 })

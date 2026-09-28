@@ -157,4 +157,24 @@ describe('Sources Screen', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
+
+  it('renders ErrorState with retry button when initial sources query fails', async () => {
+    server.use(
+      http.get('*/api/v1/sources', () =>
+        HttpResponse.json(
+          { code: 'server_error', message: 'Database connection failed', correlationId: 'corr-src-err' },
+          { status: 500 },
+        ),
+      ),
+    )
+
+    renderWithProviders(<Sources />, { routerEntries: ['/sources'] })
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Something went wrong loading sources')).toBeInTheDocument()
+    expect(screen.getByText('Database connection failed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // Must NOT render empty state when an error occurs
+    expect(screen.queryByText('No sources configured')).not.toBeInTheDocument()
+  })
 })

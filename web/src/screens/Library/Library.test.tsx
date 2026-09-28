@@ -153,4 +153,32 @@ describe('Library Screen', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByTestId('correlation-id')).toHaveTextContent('corr-lib-1')
   })
+
+  it('renders dynamic counts in screen subtext without hardcoded mock values', async () => {
+    server.use(
+      http.get('*/api/v1/library', () =>
+        HttpResponse.json({ works: mockWorks, nextCursor: null }),
+      ),
+      http.get('*/api/v1/sources', () =>
+        HttpResponse.json({
+          sources: [
+            {
+              id: 's-1',
+              label: 'Personal OPDS',
+              kind: 'opds',
+              config: {},
+              hasCredential: true,
+              health: { status: 'reachable', checkedAt: null, detail: null },
+              capabilities: { canList: true, canSearch: true, canDownload: true },
+            },
+          ],
+        }),
+      ),
+    )
+    renderWithProviders(<Library />, { routerEntries: ['/library'] })
+
+    // 2 works loaded, 1 source present
+    expect(await screen.findByText('2 BOOKS · 1 SOURCE · UPDATED RECENTLY')).toBeInTheDocument()
+    expect(screen.queryByText(/4 SOURCES/)).not.toBeInTheDocument()
+  })
 })

@@ -13,10 +13,10 @@ export interface NavItem {
 // src/app/routes.tsx's `hostOnly()` wrapper — not duplicated here; every
 // link renders while the mock grants all capabilities.
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/library', label: 'Library', count: '1284' },
+  { to: '/library', label: 'Library' },
   { to: '/discover', label: 'Discover' },
-  { to: '/sources', label: 'Sources', count: '4' },
-  { to: '/collections', label: 'Collections', count: '5' },
+  { to: '/sources', label: 'Sources' },
+  { to: '/collections', label: 'Collections' },
   { to: '/activity', label: 'Activity', dividerBefore: true },
   { to: '/import', label: 'Import' },
   { to: '/settings', label: 'Settings' },

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -107,7 +107,9 @@ describe('AppShell', () => {
 
     await router.navigate('/discover')
     await screen.findByRole('heading', { name: 'Discover' })
-    expect(screen.getByRole('main')).toHaveFocus()
+    await waitFor(() => {
+      expect(screen.getByRole('main')).toHaveFocus()
+    })
   })
 
   it('has no axe violations', async () => {
