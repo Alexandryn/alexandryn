@@ -164,6 +164,7 @@ export function WorkDetail() {
             <div className="flex gap-2xs">
               <button
                 type="button"
+                aria-label="+ Add to collection"
                 onClick={() => setIsManageCollectionsOpen(true)}
                 className={cx('book-btn-collection', FOCUS_RING)}
               >
