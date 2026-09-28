@@ -4,6 +4,7 @@
 function initBootAsset(): void {
   const params = new URLSearchParams(window.location.search)
   const isError = params.get('state') === 'error' || window.location.hash === '#error'
+  const customMessage = params.get('message')
 
   const loadingView = document.getElementById('loading-state')
   const errorView = document.getElementById('error-state')
@@ -11,7 +12,15 @@ function initBootAsset(): void {
 
   if (isError) {
     if (loadingView) loadingView.style.display = 'none'
-    if (errorView) errorView.style.display = 'block'
+    if (errorView) {
+      errorView.style.display = 'block'
+      if (customMessage) {
+        const desc = errorView.querySelector('.state-description')
+        if (desc) {
+          desc.textContent = customMessage
+        }
+      }
+    }
   } else {
     if (loadingView) loadingView.style.display = 'block'
     if (errorView) errorView.style.display = 'none'
@@ -23,7 +32,9 @@ function initBootAsset(): void {
       if (loadingView) loadingView.style.display = 'block'
       if (errorView) errorView.style.display = 'none'
 
-      const alex = (window as unknown as { alexandryn?: { system?: { retryStartup?: () => Promise<void> } } }).alexandryn
+      const alex = (
+        window as unknown as { alexandryn?: { system?: { retryStartup?: () => Promise<void> } } }
+      ).alexandryn
       if (alex?.system?.retryStartup) {
         try {
           await alex.system.retryStartup()
@@ -37,12 +48,6 @@ function initBootAsset(): void {
     })
   }
 }
-
-
-
-
-
-
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initBootAsset)

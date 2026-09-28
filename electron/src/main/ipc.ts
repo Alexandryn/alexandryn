@@ -6,7 +6,9 @@ import {
   OPERATIONS,
   SOURCE_PICK_LOCAL_FOLDER,
   SYSTEM_GET_APP_VERSION,
+  SYSTEM_GET_HOSTING_STATUS,
   SYSTEM_RETRY_STARTUP,
+  type HostingStatusReport,
 } from '../shared/operations'
 
 // Main process IPC registration: iterates OPERATIONS array directly.
@@ -37,11 +39,13 @@ export interface IpcHandlerDependencies {
   getAppVersion?: () => string
   showOpenDialog?: typeof dialog.showOpenDialog
   onRetryStartup?: () => Promise<void> | void
+  getHostingStatus?: () => Promise<HostingStatusReport> | HostingStatusReport
 }
 
 export const OPERATION_SCHEMAS: Record<string, z.ZodType> = {
   [SYSTEM_GET_APP_VERSION.name]: z.void().or(z.undefined()),
   [SYSTEM_RETRY_STARTUP.name]: z.void().or(z.undefined()),
+  [SYSTEM_GET_HOSTING_STATUS.name]: z.void().or(z.undefined()),
   [SOURCE_PICK_LOCAL_FOLDER.name]: z.void().or(z.undefined()),
 }
 
@@ -57,6 +61,16 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies = {}): void {
     [SYSTEM_RETRY_STARTUP.name]: async () => {
       await deps.onRetryStartup?.()
     },
+    [SYSTEM_GET_HOSTING_STATUS.name]: async () => {
+      if (deps.getHostingStatus) {
+        return deps.getHostingStatus()
+      }
+      return {
+        state: 'Unknown',
+        healthy: false,
+        degraded: false,
+      }
+    },
     [SOURCE_PICK_LOCAL_FOLDER.name]: async () => {
       const result = await showOpenDialog({
         properties: ['openDirectory'],
@@ -67,7 +81,6 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies = {}): void {
       return { path: result.filePaths[0] }
     },
   }
-
 
   for (const op of OPERATIONS) {
     const handler = handlers[op.name]

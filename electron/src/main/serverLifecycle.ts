@@ -1,28 +1,45 @@
-// State machine for the Go server's lifecycle after first startup.
-// Distinct states:
-//   Starting   — initial spawn, waiting for first readiness
-//   Ready      — /healthz 200 received; real UI is loaded
-//   Recovering — Go process exited post-readiness; respawning
-//   Failed     — all attempts exhausted or first-start timeout; manual retry only
-//
-// Degraded state (Go alive, PostgreSQL unreachable) is surfaced by the
-// web UI's own API-error handling, not by this lifecycle module.
+// State machine for Alexandryn's hosting lifecycle.
+// 8 explicit states:
+//   Not installed — server binary or prerequisites missing on disk
+//   Initializing  — preflight environment, directories, configuration setup
+//   Starting      — process spawned, waiting for port announcement and readiness
+//   Healthy       — /healthz 200 AND /readyz 200; database connected and serving data
+//   Degraded      — /healthz 200 alive, but /readyz non-200 (database connection lost or unready)
+//   Stopped       — host process cleanly terminated/shutdown
+//   Failed        — startup timeout, crash before ready, or recovery exhausted
+//   Recovering    — post-readiness crash detected; respawning with backoff
 
 import type { ChildProcess } from 'node:child_process'
-import { resolveServerBinaryPath } from './serverBinary'
+import { existsSync } from 'node:fs'
+import { ensureBinaryExecutable, resolveServerBinaryPath } from './serverBinary'
 import { writeServerConfig } from './serverConfig'
 import type { ServerConfigHandle } from './serverConfig'
 import { spawnServer } from './serverProcess'
-import { pollUntilReady } from './healthPoller'
+import { pollUntilReady, startHealthMonitor, type HealthMonitor } from './healthPoller'
 
-export type ServerState = 'Starting' | 'Ready' | 'Recovering' | 'Failed'
+export type HostingLifecycleState =
+  | 'Not installed'
+  | 'Initializing'
+  | 'Starting'
+  | 'Healthy'
+  | 'Degraded'
+  | 'Stopped'
+  | 'Failed'
+  | 'Recovering'
+
+/** ServerState alias for HostingLifecycleState, supporting legacy 'Ready' alias where needed. */
+export type ServerState = HostingLifecycleState | 'Ready'
 
 export interface ServerEvent {
   state: ServerState
-  /** Present when state is `Ready` — the port the server is listening on. */
+  /** Present when state is Healthy / Ready — the port the server is listening on. */
   port?: number
-  /** Present when state is `Recovering` — which attempt this is (1-based). */
+  /** Present when state is Recovering — which attempt this is (1-based). */
   attempt?: number
+  /** Informational or error message explaining the state transition. */
+  message?: string
+  /** Error object if state transition was caused by an error. */
+  error?: Error
 }
 
 /** Maximum automatic respawn attempts after a post-readiness crash. */
@@ -31,9 +48,7 @@ export const MAX_RESPAWN_ATTEMPTS = 3
 /**
  * Returns the delay in milliseconds before respawn attempt `attempt` (1-based).
  *
- * 1s / 4s / 9s (= n² seconds). This is a pure function — no I/O,
- * no timers — so the unit test verifies the schedule in isolation from any
- * real process timing.
+ * 1s / 4s / 9s (= n² seconds). Pure function for testability.
  */
 export function backoffDelayMs(attempt: number): number {
   return attempt * attempt * 1000
@@ -42,57 +57,30 @@ export function backoffDelayMs(attempt: number): number {
 export interface LifecycleOptions {
   /** Config values passed to writeServerConfig. */
   configValues?: Record<string, string>
-  /**
-   * Environment for the spawned server. Defaults to `process.env`. The one
-   * production use is putting a bundled PostgreSQL's bin directory first on
-   * `PATH` (postgresBinaries.ts).
-   */
+  /** Environment for the spawned server. Defaults to `process.env`. */
   env?: NodeJS.ProcessEnv
-  /**
-   * Override the binary path resolver. Defaults to `resolveServerBinaryPath()`
-   * (production). Tests inject the test binary path directly to avoid
-   * needing a mocked `app.isPackaged`.
-   */
+  /** Override the binary path resolver. Defaults to `resolveServerBinaryPath()`. */
   binaryPathResolver?: () => string
-  /**
-   * Extra arguments appended to the spawn call, for testing only.
-   * Production callers pass nothing.
-   */
+  /** Extra arguments appended to the spawn call, for testing only. */
   extraArgs?: string[]
-  /**
-   * Override backoff delays (ms) for each attempt, for testing.
-   * Default: [1000, 4000, 9000].
-   */
+  /** Override backoff delays (ms) for each attempt, for testing. Default: [1000, 4000, 9000]. */
   backoffDelaysMs?: readonly number[]
-  /**
-   * Override poll options for testing (shorter interval/timeout).
-   */
+  /** Override poll options for testing (shorter interval/timeout). */
   pollOptions?: { intervalMs?: number; timeoutMs?: number }
-  /**
-   * Optional AbortSignal to cleanly terminate the lifecycle and its child process.
-   */
+  /** Override health monitor interval (ms). Default: 3000ms. */
+  healthMonitorIntervalMs?: number
+  /** Optional AbortSignal to cleanly terminate the lifecycle and child process. */
   signal?: AbortSignal
-  /**
-   * Called when a child process is spawned (initial start and respawns).
-   */
+  /** Called when a child process is spawned (initial start and respawns). */
   onChildSpawned?: (child: ChildProcess) => void
-  /**
-   * Called on every state transition, including the initial `Starting`.
-   */
+  /** Called on every state transition. */
   onEvent: (event: ServerEvent) => void
 }
 
 /**
- * Runs the Go server lifecycle: spawn → poll → Ready → crash detection →
- * bounded respawn → Recovering or Failed.
- *
- * Returns the live child process once the server is ready (for the shutdown
- * handler in index.ts). Rejects if the server never becomes ready or all
- * respawn attempts are exhausted.
- *
- * The returned child may later be replaced by a respawn — callers that hold
- * the reference for shutdown must listen to `onEvent` to track the current
- * one, or use `setServerChild` (index.ts) which is updated by this function.
+ * Runs the Go server lifecycle with explicit state transitions:
+ * Not installed (if missing) -> Initializing -> Starting -> Healthy <-> Degraded
+ * -> Recovering (on crash) -> Failed (exhausted) or Stopped (clean shutdown).
  */
 export async function runServerLifecycle(options: LifecycleOptions): Promise<void> {
   const {
@@ -102,25 +90,34 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     extraArgs = [],
     backoffDelaysMs = [1000, 4000, 9000],
     pollOptions,
+    healthMonitorIntervalMs,
     signal,
     onChildSpawned,
     onEvent,
   } = options
 
-  onEvent({ state: 'Starting' })
+  const binaryPath = binaryPathResolver()
+  if (!existsSync(binaryPath)) {
+    const errorMsg = `Server executable not found at ${binaryPath}`
+    onEvent({ state: 'Not installed', message: errorMsg })
+    onEvent({ state: 'Failed', message: errorMsg })
+    throw new Error(errorMsg)
+  }
+
+  onEvent({ state: 'Initializing' })
+  ensureBinaryExecutable(binaryPath)
 
   let activeChild: ChildProcess | undefined
+  let healthMonitor: HealthMonitor | undefined
 
-  // Attempt a single start: resolve → config → spawn → poll.
-  // Returns the active child and port on success.
-  // Throws on failure (binary missing, poll timeout).
+  // Attempt a single start: spawn -> announce port -> poll readyz/healthz.
   async function attempt(): Promise<{
     child: ChildProcess
     port: number
     config: ServerConfigHandle
   }> {
-    const binaryPath = binaryPathResolver()
-    // Pass Electron's PID for child-side orphan monitoring
+    onEvent({ state: 'Starting' })
+
     const config = await writeServerConfig({
       DESKTOP_PARENT_PID: String(process.pid),
       ...configValues,
@@ -138,9 +135,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
       await pollUntilReady(port, pollOptions)
       return { child, port, config }
     } catch (err) {
-      // Clean up config file on any failure path.
       await config.cleanup()
-      // Kill child if it's still running (e.g. poll timeout with binary alive).
       if (child !== undefined && child.exitCode === null && !child.killed) {
         child.kill('SIGKILL')
         await new Promise<void>((resolve) => child!.once('exit', resolve))
@@ -149,7 +144,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     }
   }
 
-  // First start.
+  // First start
   let child: ChildProcess
   let port: number
   let config: ServerConfigHandle
@@ -159,32 +154,61 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
     port = first.port
     config = first.config
   } catch (err) {
-    onEvent({ state: 'Failed' })
+    onEvent({
+      state: 'Failed',
+      message: (err as Error).message,
+      error: err as Error,
+    })
     throw err
   }
 
-  await config.cleanup() // delete config once ready
-  onEvent({ state: 'Ready', port })
+  await config.cleanup()
+  onEvent({ state: 'Healthy', port })
+
+  function setupMonitor(currentPort: number): HealthMonitor {
+    return startHealthMonitor(currentPort, {
+      intervalMs: healthMonitorIntervalMs,
+      onStateChange: (status) => {
+        if (status.state === 'degraded') {
+          onEvent({
+            state: 'Degraded',
+            port: currentPort,
+            message: status.message || 'Database connection degraded',
+          })
+        } else if (status.state === 'healthy') {
+          onEvent({ state: 'Healthy', port: currentPort })
+        }
+      },
+    })
+  }
+
+  healthMonitor = setupMonitor(port)
 
   if (signal?.aborted) {
+    healthMonitor.stop()
     if (child.exitCode === null && !child.killed) {
       child.kill('SIGTERM')
     }
+    onEvent({ state: 'Stopped' })
     return
   }
 
-  // Crash loop: watch for post-readiness exits and respawn up to MAX_RESPAWN_ATTEMPTS.
+  // Crash and recovery loop
   await new Promise<void>((resolve) => {
     let respawnCount = 0
     let respawnTimer: ReturnType<typeof setTimeout> | undefined
     let isTerminated = false
 
-    function cleanupAndResolve(): void {
+    function cleanupAndResolve(stopped = false): void {
       if (isTerminated) return
       isTerminated = true
+      healthMonitor?.stop()
       if (respawnTimer !== undefined) clearTimeout(respawnTimer)
       if (activeChild !== undefined && activeChild.exitCode === null && !activeChild.killed) {
         activeChild.kill('SIGTERM')
+      }
+      if (stopped) {
+        onEvent({ state: 'Stopped' })
       }
       resolve()
     }
@@ -193,7 +217,7 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
       signal.addEventListener(
         'abort',
         () => {
-          cleanupAndResolve()
+          cleanupAndResolve(true)
         },
         { once: true },
       )
@@ -201,8 +225,13 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
 
     function scheduleRespawn(): void {
       if (isTerminated) return
+      healthMonitor?.stop()
+
       if (respawnCount >= MAX_RESPAWN_ATTEMPTS) {
-        onEvent({ state: 'Failed' })
+        onEvent({
+          state: 'Failed',
+          message: `Server failed after ${MAX_RESPAWN_ATTEMPTS} recovery attempts`,
+        })
         cleanupAndResolve()
         return
       }
@@ -222,10 +251,13 @@ export async function runServerLifecycle(options: LifecycleOptions): Promise<voi
               return
             }
             void newConfig.cleanup()
-            onEvent({ state: 'Ready', port: newPort })
+            onEvent({ state: 'Healthy', port: newPort })
+            healthMonitor = setupMonitor(newPort)
             watchChild(newChild)
           })
-          .catch(() => {
+          .catch((err) => {
+            if (isTerminated) return
+            console.warn('[serverLifecycle] respawn attempt failed:', err)
             scheduleRespawn()
           })
       }, delay)

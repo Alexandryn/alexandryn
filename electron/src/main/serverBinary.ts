@@ -1,3 +1,4 @@
+import { chmodSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 
@@ -28,7 +29,6 @@ export function resolveServerBinaryPath(): string {
 
   const name = platformBinaryName()
 
-
   if (app.isPackaged) {
     const { resourcesPath } = process as NodeJS.Process & { resourcesPath?: string }
     if (!resourcesPath) {
@@ -40,4 +40,34 @@ export function resolveServerBinaryPath(): string {
   }
 
   return join(app.getAppPath(), '..', 'bin', name)
+}
+
+/**
+ * Checks if the server binary is installed and present on disk.
+ */
+export function isServerBinaryInstalled(
+  binaryPathResolver: () => string = resolveServerBinaryPath,
+): boolean {
+  try {
+    const path = binaryPathResolver()
+    return existsSync(path)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Ensures the binary has executable permissions on POSIX systems (0o755).
+ * Safe no-op on Windows or read-only filesystems.
+ */
+export function ensureBinaryExecutable(path: string): void {
+  if (process.platform === 'win32') return
+  try {
+    const stat = statSync(path)
+    if ((stat.mode & 0o111) === 0) {
+      chmodSync(path, stat.mode | 0o755)
+    }
+  } catch {
+    // Ignore error if file is on a read-only filesystem (e.g. AppImage squashfs)
+  }
 }

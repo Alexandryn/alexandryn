@@ -104,7 +104,9 @@ body {
   border: 1px solid var(--border, #e7e4de);
   background: var(--surface, #ffffff);
   color: var(--text, #1a1917);
-  transition: opacity 0.15s ease, background-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .btn--primary {

@@ -125,4 +125,47 @@ describe('WindowServingController', () => {
     )
     expect(controller.isRealUiLoaded()).toBe(false)
   })
+
+  it('Not installed: loads error asset variant with not installed message', async () => {
+    const win = createMockWindow()
+    const controller = new WindowServingController(win, BOOT_PATH)
+
+    await controller.handleServerEvent({
+      state: 'Not installed',
+      message: 'Server binary not found',
+    })
+
+    expect(win.loadFile).toHaveBeenCalledWith(
+      BOOT_PATH,
+      expect.objectContaining({
+        query: { state: 'error', message: 'Server binary not found' },
+        hash: '#error',
+      }),
+    )
+    expect(controller.isRealUiLoaded()).toBe(false)
+  })
+
+  it('Degraded: injects degraded banner with alert role', async () => {
+    const win = createMockWindow()
+    const controller = new WindowServingController(win, BOOT_PATH)
+
+    await controller.handleServerEvent({ state: 'Healthy', port: 42100 })
+    await controller.handleServerEvent({ state: 'Degraded', message: 'database unreachable' })
+
+    expect(win.webContents.insertCSS).toHaveBeenCalledOnce()
+    expect(win.webContents.executeJavaScript).toHaveBeenCalledWith(
+      expect.stringContaining('"database unreachable"'),
+    )
+  })
+
+  it('Healthy after Degraded: removes degraded banner', async () => {
+    const win = createMockWindow()
+    const controller = new WindowServingController(win, BOOT_PATH)
+
+    await controller.handleServerEvent({ state: 'Healthy', port: 42100 })
+    await controller.handleServerEvent({ state: 'Degraded', message: 'database unreachable' })
+    await controller.handleServerEvent({ state: 'Healthy', port: 42100 })
+
+    expect(win.webContents.removeInsertedCSS).toHaveBeenCalledWith('css-key-123')
+  })
 })

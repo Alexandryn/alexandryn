@@ -30,6 +30,24 @@ export const SYSTEM_RETRY_STARTUP = {
   method: 'retryStartup',
 } as const satisfies OperationDescriptor
 
+export interface HostingStatusReport {
+  state: string
+  port?: number
+  healthy: boolean
+  degraded: boolean
+  message?: string
+}
+
+/**
+ * system.getHostingStatus — Returns current hosting lifecycle state and health details.
+ * Takes no arguments.
+ */
+export const SYSTEM_GET_HOSTING_STATUS = {
+  name: 'system.getHostingStatus',
+  namespace: 'system',
+  method: 'getHostingStatus',
+} as const satisfies OperationDescriptor
+
 /**
  * source.pickLocalFolder — Opens the OS native folder-selection dialog
  * and returns the chosen absolute path, or null on cancellation.
@@ -48,6 +66,7 @@ export const SOURCE_PICK_LOCAL_FOLDER = {
 export const OPERATIONS = [
   SYSTEM_GET_APP_VERSION,
   SYSTEM_RETRY_STARTUP,
+  SYSTEM_GET_HOSTING_STATUS,
   SOURCE_PICK_LOCAL_FOLDER,
 ] as const
 
@@ -57,12 +76,12 @@ export interface AlexandrynDesktopBridge {
   system: {
     getAppVersion: () => Promise<string>
     retryStartup: () => Promise<void>
+    getHostingStatus: () => Promise<HostingStatusReport>
   }
   source: {
     pickLocalFolder: () => Promise<{ path: string } | null>
   }
 }
-
 
 declare global {
   interface Window {
