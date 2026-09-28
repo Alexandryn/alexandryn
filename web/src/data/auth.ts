@@ -30,6 +30,14 @@ const REFRESH_TOKEN_KEY = 'alexandryn_refresh_token'
 const USER_KEY = 'alexandryn_user'
 const ACTIVE_LIB_KEY = 'alexandryn_active_library'
 
+export const AUTH_CHANGE_EVENT = 'alexandryn_auth_change'
+
+export function notifyAuthChange(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
+  }
+}
+
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
 }
@@ -40,6 +48,7 @@ export function setAccessToken(token: string | null): void {
   } else {
     localStorage.removeItem(ACCESS_TOKEN_KEY)
   }
+  notifyAuthChange()
 }
 
 export function getRefreshToken(): string | null {
@@ -82,12 +91,14 @@ export function setActiveLibraryId(id: string | null): void {
   } else {
     localStorage.removeItem(ACTIVE_LIB_KEY)
   }
+  notifyAuthChange()
 }
 
 export function clearSession(): void {
   setAccessToken(null)
   setRefreshToken(null)
   setCurrentUser(null)
+  notifyAuthChange()
 }
 
 export function fetchSetupStatus(): Promise<SetupStatusResponse> {
