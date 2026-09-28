@@ -86,6 +86,7 @@ export function SourceDetail() {
       <div className="flex flex-col gap-sm">
         <Link
           to="/sources"
+          aria-label="← All sources"
           className={cx(
             'inline-flex items-center gap-xs self-start text-xs font-medium text-text-2 hover:text-text rounded-2xs py-4xs transition-colors',
             FOCUS_RING,

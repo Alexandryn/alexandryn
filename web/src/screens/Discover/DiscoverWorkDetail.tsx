@@ -81,6 +81,7 @@ export function DiscoverWorkDetail() {
       <div>
         <Link
           to="/discover"
+          aria-label="← Back to Discover"
           className={cx(
             'inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-text rounded-2xs transition-colors',
             FOCUS_RING,
