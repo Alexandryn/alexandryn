@@ -64,7 +64,7 @@ func TestHandleQuery_ARecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListenUDP failed: %v", err)
 	}
-	defer fakeConn.Close()
+	defer func() { _ = fakeConn.Close() }()
 
 	s.conn = fakeConn
 
@@ -95,7 +95,7 @@ func TestHandleQuery_UnrelatedQueryIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListenUDP failed: %v", err)
 	}
-	defer fakeConn.Close()
+	defer func() { _ = fakeConn.Close() }()
 	s.conn = fakeConn
 
 	// Should not crash and should not write any answer
@@ -126,7 +126,7 @@ func TestHandleQuery_ServiceDiscovery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListenUDP failed: %v", err)
 	}
-	defer fakeConn.Close()
+	defer func() { _ = fakeConn.Close() }()
 	s.conn = fakeConn
 
 	s.handleQuery(&query, &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 54321})
