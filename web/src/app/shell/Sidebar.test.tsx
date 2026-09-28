@@ -149,4 +149,69 @@ describe('Sidebar Data Integrity and Dynamic Badges', () => {
     expect(screen.getByText('10.0.0.42:8474')).toBeInTheDocument()
     expect(screen.getByText('1 device connected')).toBeInTheDocument()
   })
+
+  it('hides administrative navigation, sources, activity, and hosting card for regular reader', async () => {
+    localStorage.setItem(
+      'alexandryn_user',
+      JSON.stringify({
+        id: 'reader-user-1',
+        username: 'reader',
+        email: 'reader@example.com',
+        role: 'reader',
+      }),
+    )
+
+    server.use(
+      http.get('*/api/v1/library', () =>
+        HttpResponse.json({
+          works: [
+            {
+              work: { id: 'w1', title: 'Reader Book 1' },
+              authors: ['Author 1'],
+              editionsCount: 1,
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get('*/api/v1/collections', () => HttpResponse.json({ collections: [] })),
+      http.get('*/api/v1/libraries', () =>
+        HttpResponse.json({
+          libraries: [
+            {
+              id: '00000000-0000-0000-0000-000000000001',
+              name: 'Community Library',
+              description: '',
+              allowReaderUploads: false,
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<Sidebar />, { routerEntries: ['/library'] })
+
+    // Active library name
+    expect(await screen.findByText('Community Library')).toBeInTheDocument()
+
+    // Header displays book count only, without sources
+    expect(await screen.findByText('1 BOOK')).toBeInTheDocument()
+    expect(screen.queryByText(/SOURCE/i)).not.toBeInTheDocument()
+
+    // Reader sees Library, Discover, Collections, Settings
+    expect(screen.getByRole('link', { name: /library/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /discover/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /collections/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
+
+    // Administrative items are NOT rendered
+    expect(screen.queryByRole('link', { name: /sources/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /activity/i })).not.toBeInTheDocument()
+
+    // Hosting card is NOT rendered
+    expect(screen.queryByText('HOSTING')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Open on another device/i)).not.toBeInTheDocument()
+  })
 })

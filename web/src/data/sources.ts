@@ -152,10 +152,11 @@ export function fetchSourceSearch(
  * Sources list hook using TanStack Query useQuery.
  * Cache key: ['sources', 'list'].
  */
-export function useSources() {
+export function useSources(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: sourceKeys.lists(),
     queryFn: fetchSources,
+    enabled: options?.enabled,
   })
 }
 
