@@ -15,5 +15,13 @@
     "esbuild@0.28.2": true,
     "msw@2.15.0": true,
     "electron-winstaller@5.4.0": true
+  },
+  "overrides": {
+    "@electron/get": {
+      "undici": "^7.30.0"
+    },
+    "jsdom": {
+      "undici": "^8.11.2"
+    }
   }
 }
