@@ -59,6 +59,42 @@ func Migrate(ctx context.Context, databaseURL string) error {
 	return RunMigrations(ctx, databaseURL, sql.Open, gooseUp)
 }
 
+// MigrateTo applies embedded migrations up to targetVersion.
+func MigrateTo(ctx context.Context, databaseURL string, targetVersion int64) error {
+	return RunMigrations(ctx, databaseURL, sql.Open, func(ctx context.Context, db *sql.DB) error {
+		if err := db.PingContext(ctx); err != nil {
+			return ConnectionFailure(err)
+		}
+		goose.SetBaseFS(migrationsFS)
+		if err := goose.SetDialect("postgres"); err != nil {
+			return fmt.Errorf("could not set migration dialect: %w", err)
+		}
+		return goose.UpToContext(ctx, db, "migrations", targetVersion)
+	})
+}
+
+// CurrentVersion queries the current schema version applied to databaseURL.
+// Returns 0 if no migrations have been applied yet.
+func CurrentVersion(ctx context.Context, databaseURL string) (int64, error) {
+	var version int64
+	err := RunMigrations(ctx, databaseURL, sql.Open, func(ctx context.Context, db *sql.DB) error {
+		if err := db.PingContext(ctx); err != nil {
+			return ConnectionFailure(err)
+		}
+		goose.SetBaseFS(migrationsFS)
+		if err := goose.SetDialect("postgres"); err != nil {
+			return fmt.Errorf("could not set migration dialect: %w", err)
+		}
+		v, err := goose.GetDBVersionContext(ctx, db)
+		if err != nil {
+			return err
+		}
+		version = v
+		return nil
+	})
+	return version, err
+}
+
 func gooseUp(ctx context.Context, db *sql.DB) error {
 	if err := db.PingContext(ctx); err != nil {
 		return ConnectionFailure(err)

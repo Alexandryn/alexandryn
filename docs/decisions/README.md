@@ -85,6 +85,9 @@ deserves to know they were already weighed.
 | [0033](0033-go-coverage-threshold.md) | Go unit-test coverage: CI enforces a non-regression floor (1-point tolerance below `scripts/coverage-baseline.txt`), not a fixed target; interim until the integration profile is merged in (audit 0016 #131) | Accepted |
 | [0034](0034-ci-supply-chain-posture.md) | CI workflow supply-chain posture: third-party actions SHA-pinned with Dependabot bumps, least-privilege `GITHUB_TOKEN` (`contents: read`), `gosec` at high/high in-CI, SHA-256 checksum on the cross-job server binary (audit 0016 #121/#123/#125/#205) | Accepted |
 | [0035](0035-csp-style-src-unsafe-inline-residual-risk.md) | Content-Security-Policy style-src 'unsafe-inline' residual risk: retained for Radix UI runtime dynamic styling without per-request template rendering; residual risk recorded (audit 0016 #191) | Accepted |
+| [0036](0036-container-registry-ghcr.md) | Container image publishing: GitHub Container Registry (ghcr.io), using the release workflow's ambient GITHUB_TOKEN | Accepted |
+| [0037](0037-persistence-migrations-and-recovery.md) | Persistence, migrations, restart durability, and backup/recovery strategy across Electron and Docker hosting models | Accepted |
+
 
 
 ## Open questions not yet ADRs
