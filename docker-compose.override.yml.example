@@ -37,3 +37,8 @@ services:
   # backend:
   #   environment:
   #     - CORS_ALLOWED_ORIGINS=http://192.168.1.50:8080
+  #   volumes:
+  #     # Persistent book storage mount: mount your host folder of ebooks into
+  #     # the container so it can be added as a local folder source in the web UI.
+  #     # Read-only (:ro) is recommended to protect your library originals.
+  #     - /path/to/your/ebooks:/books:ro
